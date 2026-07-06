@@ -1,0 +1,3021 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Processual — Adenilson Borges da Silva</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --border2: #2f3548;
+    --text: #e8eaf0;
+    --muted: #9ba3c0;
+    --accent: #c8a96e;
+    --accent2: #e8c98e;
+    --red: #e05454;
+    --orange: #e07c3a;
+    --yellow: #d4a017;
+    --green: #4caf7d;
+    --blue: #5b8dee;
+    --purple: #9b6dff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .logo-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sync-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .sync-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+
+  .sync-dot.error { background: var(--red); }
+  .sync-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn-sync {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .btn-sync:hover { background: var(--border); border-color: var(--accent); color: var(--accent); }
+  .btn-sync svg { width: 14px; height: 14px; }
+
+  .sync-status {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 64px;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    margin-bottom: 24px;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #8a94b8;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { background: var(--surface2); color: var(--text); }
+
+  .filter-btn .count {
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    background: var(--border2);
+    color: #8a94b8;
+    min-width: 22px;
+    text-align: center;
+  }
+
+  /* Todos ativos */
+  .filter-btn.active { color: var(--text); font-weight: 600; }
+  .filter-btn[data-filter="all"].active { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.3); }
+  .filter-btn[data-filter="all"].active .count { background: var(--accent); color: #000; }
+
+  /* Crítico */
+  .filter-btn[data-filter="critico"].active { background: rgba(224,84,84,0.12); border-color: rgba(224,84,84,0.4); color: var(--red); }
+  .filter-btn[data-filter="critico"].active .count { background: var(--red); color: #fff; }
+  .filter-btn[data-filter="critico"]:hover { color: var(--red); }
+
+  /* Urgente */
+  .filter-btn[data-filter="urgente"].active { background: rgba(224,124,58,0.12); border-color: rgba(224,124,58,0.4); color: var(--orange); }
+  .filter-btn[data-filter="urgente"].active .count { background: var(--orange); color: #fff; }
+  .filter-btn[data-filter="urgente"]:hover { color: var(--orange); }
+
+  /* Atenção */
+  .filter-btn[data-filter="atencao"].active { background: rgba(212,160,23,0.12); border-color: rgba(212,160,23,0.4); color: var(--yellow); }
+  .filter-btn[data-filter="atencao"].active .count { background: var(--yellow); color: #000; }
+  .filter-btn[data-filter="atencao"]:hover { color: var(--yellow); }
+
+  /* Normal */
+  .filter-btn[data-filter="normal"].active { background: rgba(76,175,125,0.12); border-color: rgba(76,175,125,0.4); color: var(--green); }
+  .filter-btn[data-filter="normal"].active .count { background: var(--green); color: #000; }
+  .filter-btn[data-filter="normal"]:hover { color: var(--green); }
+
+  /* Monitorar */
+  .filter-btn[data-filter="monitorar"].active { background: rgba(91,141,238,0.12); border-color: rgba(91,141,238,0.4); color: var(--blue); }
+  .filter-btn[data-filter="monitorar"].active .count { background: var(--blue); color: #fff; }
+  .filter-btn[data-filter="monitorar"]:hover { color: var(--blue); }
+
+  /* Audiência */
+  .filter-btn[data-filter="audiencia"].active { background: rgba(155,109,255,0.12); border-color: rgba(155,109,255,0.4); color: var(--purple); }
+  .filter-btn[data-filter="audiencia"].active .count { background: var(--purple); color: #fff; }
+  .filter-btn[data-filter="audiencia"]:hover { color: var(--purple); }
+
+  /* Providência */
+  .filter-btn[data-filter="providencia"].active { background: rgba(212,160,23,0.12); border-color: rgba(212,160,23,0.4); color: var(--yellow); }
+  .filter-btn[data-filter="providencia"].active .count { background: var(--yellow); color: #000; }
+  .filter-btn[data-filter="providencia"]:hover { color: var(--yellow); }
+
+  .urgency-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .dot-critico { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .dot-urgente { background: var(--orange); }
+  .dot-atencao { background: var(--yellow); }
+  .dot-normal { background: var(--green); }
+  .dot-monitorar { background: var(--blue); }
+
+  /* MAIN */
+  .main {
+    padding: 24px 28px;
+    overflow-y: auto;
+  }
+
+  /* TOP STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card .value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .stat-card .sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .stat-card.critico { border-color: rgba(224,84,84,0.4); background: rgba(224,84,84,0.05); }
+  .stat-card.critico .value { color: var(--red); }
+  .stat-card.urgente { border-color: rgba(224,124,58,0.4); background: rgba(224,124,58,0.05); }
+  .stat-card.urgente .value { color: var(--orange); }
+  .stat-card.audiencia .value { color: var(--purple); }
+
+  /* SEARCH */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-input-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    width: 16px;
+    height: 16px;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px 10px 38px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .sort-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* PROCESSOS LIST */
+  .processos-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .processos-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--text);
+  }
+
+  .processos-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .processo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: grid;
+    grid-template-columns: 4px 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .processo-card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+    transform: translateX(2px);
+  }
+
+  .processo-card.expanded {
+    border-color: var(--accent);
+  }
+
+  .priority-bar {
+    width: 4px;
+    border-radius: 4px;
+    align-self: stretch;
+    min-height: 40px;
+  }
+
+  .priority-critico { background: var(--red); box-shadow: 0 0 8px rgba(224,84,84,0.5); }
+  .priority-urgente { background: var(--orange); }
+  .priority-atencao { background: var(--yellow); }
+  .priority-normal { background: var(--green); }
+  .priority-monitorar { background: var(--blue); }
+
+  .processo-body { min-width: 0; }
+
+  .processo-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .processo-nome {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+  }
+
+  .badge {
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge-ramo {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  .badge-urgencia {
+    border: 1px solid transparent;
+  }
+
+  .badge-critico { background: rgba(224,84,84,0.15); color: var(--red); border-color: rgba(224,84,84,0.3); }
+  .badge-urgente { background: rgba(224,124,58,0.15); color: var(--orange); border-color: rgba(224,124,58,0.3); }
+  .badge-atencao { background: rgba(212,160,23,0.15); color: var(--yellow); border-color: rgba(212,160,23,0.3); }
+  .badge-normal { background: rgba(76,175,125,0.15); color: var(--green); border-color: rgba(76,175,125,0.3); }
+  .badge-monitorar { background: rgba(91,141,238,0.15); color: var(--blue); border-color: rgba(91,141,238,0.3); }
+
+  .processo-numero {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .processo-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .meta-item svg { width: 12px; height: 12px; }
+  .meta-item.destaque { color: var(--accent); }
+
+  .processo-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    min-width: 100px;
+  }
+
+  .prazo-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .prazo-vencido { background: rgba(224,84,84,0.2); color: var(--red); }
+  .prazo-hoje { background: rgba(224,124,58,0.2); color: var(--orange); }
+  .prazo-breve { background: rgba(212,160,23,0.2); color: var(--yellow); }
+  .prazo-ok { background: rgba(76,175,125,0.1); color: var(--green); }
+  .prazo-sem { background: var(--surface2); color: var(--muted); }
+
+  .sistema-badge {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* EXPANDED DETAIL */
+  .processo-detail {
+    display: none;
+    grid-column: 2 / 4;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding-top: 16px;
+  }
+
+  .processo-card.expanded .processo-detail { display: block; }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .detail-block { }
+
+  .detail-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .detail-value {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .providencias-box {
+    background: rgba(200,169,110,0.08);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .providencias-box .label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .providencias-box .text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .atualizacao-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .atualizacao-box strong { color: var(--text); }
+
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .btn-action {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+
+  .btn-action:hover { color: var(--text); border-color: var(--accent); }
+  .btn-action svg { width: 12px; height: 12px; }
+
+  /* AUDIENCIA AVISO */
+  .audiencia-highlight {
+    background: rgba(155,109,255,0.1);
+    border: 1px solid rgba(155,109,255,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .audiencia-highlight svg { color: var(--purple); width: 16px; height: 16px; flex-shrink: 0; }
+
+  .audiencia-highlight .text { font-size: 13px; color: var(--text); }
+  .audiencia-highlight .text strong { color: var(--purple); }
+
+  /* EMPTY */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+
+  /* LOADING */
+  .loading-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MODAL CONFIG */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 32px;
+    width: 480px;
+    max-width: 90vw;
+  }
+
+  .modal h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+
+  .modal p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn-primary {
+    flex: 1;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover { background: var(--accent2); }
+
+  .btn-secondary {
+    padding: 10px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* MODAL RECIBO */
+  .modal-recibo-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 400;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-recibo-overlay.open { display: flex; }
+
+  .recibo-wrap {
+    background: #f5f0e8;
+    border-radius: 12px;
+    width: 680px;
+    max-width: 96vw;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    margin: auto;
+  }
+
+  .recibo-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .recibo-toolbar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    color: var(--accent);
+    flex: 1;
+  }
+
+  .btn-recibo-print {
+    background: #1a2a3a;
+    color: var(--accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-recibo-print:hover { background: #243545; }
+
+  .btn-recibo-limpar {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .btn-recibo-fechar {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  /* RECIBO INTERNO */
+  .recibo-doc {
+    padding: 32px 36px;
+    background: #f5f0e8;
+    color: #1a2030;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .recibo-header-box {
+    background: #0d1f35;
+    border-radius: 8px;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .recibo-nome-adv {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: #c8a96e;
+  }
+
+  .recibo-sub-adv {
+    font-size: 10px;
+    color: #7a9ab5;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .recibo-oab {
+    text-align: right;
+    font-size: 10px;
+    color: #7a9ab5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .recibo-oab strong {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: #c8a96e;
+    display: block;
+  }
+
+  .recibo-endereco {
+    font-size: 11px;
+    color: #5a6a7a;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #c8a96e;
+  }
+
+  .recibo-titulo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #1a2030;
+    margin-bottom: 20px;
+  }
+
+  .recibo-grid {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .recibo-grid-2 { grid-template-columns: 1fr 1fr; }
+  .recibo-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .recibo-field { display: flex; flex-direction: column; gap: 4px; }
+
+  .recibo-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #5a6a7a;
+  }
+
+  .recibo-input {
+    background: #fff;
+    border: 1px solid #c8bea8;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #1a2030;
+    outline: none;
+    width: 100%;
+    min-height: 36px;
+  }
+
+  #recEndereco {
+    min-height: 48px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .recibo-input:focus { border-color: #c8a96e; }
+
+  .recibo-textarea {
+    background: #fff;
+    border: 1px solid #c8bea8;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #1a2030;
+    outline: none;
+    width: 100%;
+    resize: vertical;
+    min-height: 64px;
+  }
+
+  .recibo-textarea:focus { border-color: #c8a96e; }
+
+  .recibo-select {
+    background: #fff;
+    border: 1px solid #c8bea8;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #1a2030;
+    outline: none;
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .recibo-valores-box {
+    background: #fff;
+    border: 1px solid #c8bea8;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 160px;
+    gap: 16px;
+    align-items: end;
+  }
+
+  .recibo-total-box {
+    background: #0d1f35;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .recibo-total-label {
+    font-size: 10px;
+    color: #7a9ab5;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .recibo-total-valor {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: #c8a96e;
+  }
+
+  .recibo-pix-area {
+    text-align: center;
+  }
+
+  .recibo-pix-label {
+    font-size: 9px;
+    color: #5a6a7a;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .recibo-qr {
+    width: 100px;
+    height: 100px;
+  }
+
+  .recibo-pix-chave {
+    font-size: 10px;
+    font-weight: 700;
+    color: #1a2030;
+    margin-top: 4px;
+  }
+
+  .recibo-obs-box {
+    background: #fff;
+    border: 1px solid #c8bea8;
+    border-left: 3px solid #c8a96e;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+  }
+
+  .recibo-obs-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #c8a96e;
+    margin-bottom: 6px;
+  }
+
+  .recibo-assinatura {
+    text-align: center;
+    margin: 24px 0 16px;
+  }
+
+  .recibo-linha-assinatura {
+    border-top: 1px solid #1a2030;
+    width: 60%;
+    margin: 0 auto 6px;
+  }
+
+  .recibo-assinatura-nome {
+    font-size: 12px;
+    color: #1a2030;
+  }
+
+  .recibo-footer-doc {
+    background: #0d1f35;
+    border-radius: 6px;
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 10px;
+    color: #5a7a95;
+  }
+
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+
+    /* Esconder TUDO por padrão */
+    body > * { display: none !important; }
+
+    /* Mostrar APENAS o recibo quando tem classe printing-recibo */
+    body.printing-recibo .modal-recibo-overlay {
+      display: block !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      background: #fff !important;
+      padding: 0 !important;
+      z-index: 9999 !important;
+      overflow: visible !important;
+    }
+    body.printing-recibo .recibo-toolbar { display: none !important; }
+    body.printing-recibo .recibo-wrap {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      background: #f5f0e8 !important;
+    }
+    body.printing-recibo .recibo-doc { padding: 20px 28px !important; background: #f5f0e8 !important; }
+
+    /* Esconder todos os outros modais explicitamente */
+    .modal-card-overlay,
+    .modal-doc-overlay,
+    .modal-overlay,
+    .layout, .header, .sidebar, .main { display: none !important; }
+  }
+
+  /* MODAL DOCUMENTOS (Procuração, Gratuidade, Contrato) */
+  .modal-doc-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 450;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-doc-overlay.open { display: flex; }
+
+  .doc-wrap {
+    background: #f8f5ef;
+    border-radius: 12px;
+    width: 720px;
+    max-width: 96vw;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    margin: auto;
+    color: #1a1a2e;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .doc-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .doc-toolbar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    color: var(--accent);
+    flex: 1;
+  }
+
+  .doc-body {
+    padding: 40px 48px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #1a1a2e;
+  }
+
+  .doc-cabecalho {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .doc-titulo {
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .doc-subtitulo {
+    font-size: 12px;
+    color: #5a5a7a;
+  }
+
+  .doc-texto {
+    text-align: justify;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.9;
+  }
+
+  .doc-campo {
+    display: inline;
+    border-bottom: 1px solid #1a1a2e;
+    min-width: 80px;
+    padding: 0 4px;
+    font-weight: 600;
+  }
+
+  .doc-assinaturas {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    text-align: center;
+  }
+
+  .doc-assinatura-linha {
+    border-top: 1px solid #1a1a2e;
+    padding-top: 6px;
+    font-size: 12px;
+  }
+
+  .doc-local-data {
+    text-align: right;
+    font-size: 12px;
+    color: #5a5a7a;
+    margin-bottom: 32px;
+  }
+
+  @media print {
+    .modal-doc-overlay { display: block !important; position: static; background: #fff; padding: 0; }
+    .doc-toolbar { display: none !important; }
+    .doc-wrap { box-shadow: none; border-radius: 0; width: 100%; }
+    body > *:not(.modal-doc-overlay) { display: none !important; }
+  }
+
+  /* MODAL CARD ATENDIMENTO */
+  .modal-card-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-card-overlay.open { display: flex; }
+
+  .card-preview-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 24px;
+    width: 520px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .card-preview-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .card-preview-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* CARD VISUAL — replica estilo Painel de Atendimento */
+  .atend-card {
+    background: #0f1923;
+    border-radius: 14px;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid #1e2d3d;
+  }
+
+  .atend-header {
+    background: linear-gradient(135deg, #1a2a3a 0%, #0d1f2d 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 16px 20px;
+  }
+
+  .atend-header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  .atend-header-sub {
+    font-size: 10px;
+    color: #7a9ab5;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .atend-body { padding: 16px 20px; }
+
+  .atend-section {
+    margin-bottom: 14px;
+  }
+
+  .atend-section-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #5a7a95;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .atend-section-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .atend-nome {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  .atend-processo {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .atend-tipo {
+    font-size: 13px;
+    font-weight: 600;
+    color: #d0d8e8;
+    margin-bottom: 2px;
+  }
+
+  .atend-meta {
+    font-size: 12px;
+    color: #7a9ab5;
+    margin-bottom: 2px;
+  }
+
+  .atend-box {
+    background: #162030;
+    border: 1px solid #1e2d3d;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #c8d8e8;
+    line-height: 1.6;
+  }
+
+  .atend-box.destaque-adv {
+    border-color: rgba(200,169,110,0.3);
+    background: rgba(200,169,110,0.05);
+  }
+
+  .atend-box.destaque-cliente {
+    border-color: rgba(224,124,58,0.3);
+    background: rgba(224,124,58,0.05);
+    color: #e8c090;
+    font-weight: 600;
+  }
+
+  .atend-box.destaque-audiencia {
+    border-color: rgba(155,109,255,0.3);
+    background: rgba(155,109,255,0.05);
+  }
+
+  .atend-audiencia-data {
+    font-size: 15px;
+    font-weight: 700;
+    color: #b090f0;
+    margin-bottom: 4px;
+  }
+
+  .atend-audiencia-local {
+    font-size: 12px;
+    color: #7a9ab5;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .atend-footer {
+    background: #0a1520;
+    border-top: 1px solid #1e2d3d;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 10px;
+    color: #3a5a75;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .atend-footer strong { color: #5a7a95; }
+
+  .card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn-share {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-share-wpp { background: #25d366; color: #000; }
+  .btn-share-wpp:hover { background: #20bd5a; }
+  .btn-share-copy { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); }
+  .btn-share-copy:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-close-card { background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+  .fade-in {
+    animation: fadeIn 0.3s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .processo-card {
+    animation: slideIn 0.3s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tooltip {
+    position: relative;
+  }
+
+  .tooltip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: var(--text);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+  }
+
+  .tooltip:hover::after { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-wrap">
+      <div class="logo">Lex<em>Flow</em></div>
+      <div class="logo-sub">Painel Processual</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sync-pill">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncStatus">—</span>
+    </div>
+    <button class="btn-sync" id="btnSync" onclick="loadFromSheets()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+      Atualizar
+    </button>
+    <button class="btn-sync" onclick="document.getElementById('modalConfig').classList.add('open')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+      </svg>
+      Config
+    </button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filtrar por urgência</div>
+      <button class="filter-btn active" onclick="filterBy('all', this)" data-filter="all">
+        Todos os ativos
+        <span class="count" id="cnt-all">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('critico', this)" data-filter="critico">
+        <span class="urgency-dot dot-critico"></span>Crítico
+        <span class="count" id="cnt-critico">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('urgente', this)" data-filter="urgente">
+        <span class="urgency-dot dot-urgente"></span>Urgente
+        <span class="count" id="cnt-urgente">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('atencao', this)" data-filter="atencao">
+        <span class="urgency-dot dot-atencao"></span>Atenção
+        <span class="count" id="cnt-atencao">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('normal', this)" data-filter="normal">
+        <span class="urgency-dot dot-normal"></span>Normal
+        <span class="count" id="cnt-normal">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('monitorar', this)" data-filter="monitorar">
+        <span class="urgency-dot dot-monitorar"></span>Monitorar
+        <span class="count" id="cnt-monitorar">—</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filtrar por área</div>
+      <button class="filter-btn" onclick="filterByRamo('all', this)" id="ramobtn-all">Todas as áreas</button>
+      <div id="ramoButtons" class="ramo-buttons"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Com audiência marcada</div>
+      <button class="filter-btn" onclick="filterBy('audiencia', this)" data-filter="audiencia">
+        Processos com audiência
+        <span class="count" id="cnt-audiencia">—</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Com providência pendente</div>
+      <button class="filter-btn" onclick="filterBy('providencia', this)" data-filter="providencia">
+        Ação necessária
+        <span class="count" id="cnt-providencia">—</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- STATS -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="label">CASOS ATIVOS</div>
+        <div class="value" id="st-total" style="color:var(--accent)">—</div>
+        <div class="sub">no momento</div>
+      </div>
+      <div class="stat-card critico">
+        <div class="label">CRÍTICO / URGENTE</div>
+        <div class="value" id="st-criticos">—</div>
+        <div class="sub">ação imediata</div>
+      </div>
+      <div class="stat-card urgente">
+        <div class="label">PRAZO EM DIAS</div>
+        <div class="value" id="st-prazo">—</div>
+        <div class="sub">menor prazo ativo</div>
+      </div>
+      <div class="stat-card audiencia">
+        <div class="label">AUDIÊNCIAS</div>
+        <div class="value" id="st-audiencia" style="color:var(--purple)">—</div>
+        <div class="sub">marcadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">PROVIDÊNCIAS</div>
+        <div class="value" id="st-providencias" style="color:var(--yellow)">—</div>
+        <div class="sub">ações pendentes</div>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" class="search-input" placeholder="Buscar por cliente, número, tipo de ação..." id="searchInput" oninput="renderProcessos()">
+      </div>
+      <select class="sort-select" id="sortSelect" onchange="renderProcessos()">
+        <option value="prioridade">Ordenar: Prioridade</option>
+        <option value="nome">Ordenar: Nome</option>
+        <option value="atualizacao">Ordenar: Última atualização</option>
+        <option value="prazo">Ordenar: Prazo (menor)</option>
+      </select>
+    </div>
+
+    <!-- LISTA -->
+    <div class="processos-header">
+      <div class="processos-title">Processos</div>
+      <div class="processos-count" id="processosCount">—</div>
+    </div>
+
+    <div id="processosList">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Configure o acesso à planilha clicando em <strong>Config</strong></p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL DOCUMENTOS -->
+<div class="modal-doc-overlay" id="modalDoc">
+  <div class="doc-wrap">
+    <div class="doc-toolbar">
+      <div class="doc-toolbar-title" id="docToolbarTitle">Documento</div>
+      <button class="btn-recibo-print" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Imprimir / PDF
+      </button>
+      <button class="btn-recibo-fechar" onclick="document.getElementById('modalDoc').classList.remove('open')">✕</button>
+    </div>
+    <div class="doc-body" id="docBody"></div>
+  </div>
+</div>
+
+<!-- MODAL RECIBO -->
+<div class="modal-recibo-overlay" id="modalRecibo">
+  <div class="recibo-wrap">
+    <div class="recibo-toolbar">
+      <div class="recibo-toolbar-title">Recibo de Honorários</div>
+      <button class="btn-recibo-limpar" onclick="limparRecibo()">✕ Limpar</button>
+      <button class="btn-recibo-print" onclick="imprimirRecibo()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Imprimir / PDF
+      </button>
+      <button class="btn-recibo-fechar" onclick="document.getElementById('modalRecibo').classList.remove('open')">✕</button>
+    </div>
+
+    <div class="recibo-doc" id="reciboDoc">
+
+      <div class="recibo-header-box">
+        <div>
+          <div class="recibo-nome-adv">Dr. Adenilson Borges da Silva</div>
+          <div class="recibo-sub-adv">Advocacia &amp; Consultoria Jurídica</div>
+        </div>
+        <div class="recibo-oab">
+          OAB/SP<strong>335.600</strong>
+        </div>
+      </div>
+
+      <div class="recibo-endereco">
+        Rua Engenheiro Pegado, 945, Conj. 1304 — Carrão, São Paulo/SP — CEP 03430-003 &nbsp;|&nbsp;
+        adeborges@gmail.com &nbsp;|&nbsp; (11) 99931-3712
+      </div>
+
+      <div class="recibo-titulo">Recibo de Honorários</div>
+
+      <div class="recibo-grid recibo-grid-3" style="margin-bottom:16px">
+        <div class="recibo-field">
+          <label class="recibo-label">Data de Emissão</label>
+          <input type="date" class="recibo-input" id="recDataEmissao">
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">Data de Pagamento</label>
+          <input type="date" class="recibo-input" id="recDataPagamento">
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">Forma de Pagamento</label>
+          <select class="recibo-select" id="recFormaPagamento">
+            <option value="">Selecionar...</option>
+            <option>PIX</option>
+            <option>Transferência bancária</option>
+            <option>Boleto</option>
+            <option>Dinheiro</option>
+            <option>Cheque</option>
+            <option>Cartão de crédito</option>
+            <option>Cartão de débito</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="recibo-grid recibo-grid-2" style="margin-bottom:16px">
+        <div class="recibo-field">
+          <label class="recibo-label">Nome / Razão Social do Cliente</label>
+          <input type="text" class="recibo-input" id="recNomeCliente" placeholder="Nome completo ou razão social">
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">CPF / CNPJ</label>
+          <input type="text" class="recibo-input" id="recCpfCnpj" placeholder="000.000.000-00">
+        </div>
+      </div>
+
+      <div class="recibo-grid recibo-grid-2" style="margin-bottom:16px">
+        <div class="recibo-field">
+          <label class="recibo-label">Endereço do Cliente</label>
+          <textarea class="recibo-textarea" id="recEndereco" rows="2" placeholder="Rua, n.º, complemento — Cidade/UF" style="min-height:52px;resize:none"></textarea>
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">Telefone</label>
+          <input type="text" class="recibo-input" id="recTelefone" placeholder="(11) 00000-0000">
+        </div>
+      </div>
+
+      <div class="recibo-grid" style="margin-bottom:16px">
+        <div class="recibo-field">
+          <label class="recibo-label">Referente a / Descrição dos Serviços</label>
+          <textarea class="recibo-textarea" id="recDescricao" placeholder="Ex.: Honorários advocatícios referentes à propositura de ação de cobrança, processo n.º ..., relativo ao mês de ..."></textarea>
+        </div>
+      </div>
+
+      <div class="recibo-grid recibo-grid-2" style="margin-bottom:16px">
+        <div class="recibo-field">
+          <label class="recibo-label">Processo / Referência Interna</label>
+          <input type="text" class="recibo-input" id="recProcesso" placeholder="N.º do processo ou código interno">
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">Vara / Tribunal</label>
+          <input type="text" class="recibo-input" id="recVara" placeholder="Ex.: 1ª Vara Cível — Foro Regional VIII">
+        </div>
+      </div>
+
+      <div class="recibo-grid" style="margin-bottom:12px">
+        <div class="recibo-field">
+          <label class="recibo-label">Parcela (ex.: 01/03, Entrada, Única)</label>
+          <input type="text" class="recibo-input" id="recParcela" placeholder="Ex.: 01/03" oninput="calcTotal()">
+        </div>
+      </div>
+
+      <div class="recibo-valores-box" style="grid-template-columns:1fr 1fr 160px">
+        <div class="recibo-field">
+          <label class="recibo-label">Honorários (R$)</label>
+          <input type="number" class="recibo-input" id="recHonorarios" value="0" min="0" step="0.01" oninput="calcTotal()">
+        </div>
+        <div class="recibo-field">
+          <label class="recibo-label">Despesas / Custas (R$)</label>
+          <input type="number" class="recibo-input" id="recDespesas" value="0" min="0" step="0.01" oninput="calcTotal()">
+        </div>
+        <div class="recibo-pix-area">
+          <div class="recibo-pix-label">Pagamento via PIX</div>
+          <img class="recibo-qr" id="recQrImg"
+            src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&ecc=M&data=00020126330014BR.GOV.BCB.PIX0111051303588565204000053039865802BR5925ADENILSON%20BORGES%20DA%20SILVA6009SAO%20PAULO622605225NVIICl1n1CrHs1dk5IFbj63044733"
+            alt="QR PIX" style="width:120px;height:120px;border:1px solid #c8bea8;border-radius:4px;display:block;margin:0 auto">
+          <div class="recibo-pix-chave">051.303.588-56</div>
+          <div style="font-size:10px;color:#5a6a7a">CPF — Chave Pix</div>
+        </div>
+      </div>
+
+      <div class="recibo-total-box" style="margin-bottom:16px">
+        <div>
+          <div class="recibo-total-label">Total a Pagar</div>
+          <div id="recParcelaInfo" style="font-size:10px;color:#7a9ab5;margin-top:3px"></div>
+        </div>
+        <div class="recibo-total-valor" id="recTotal">R$ 0,00</div>
+      </div>
+
+      <div class="recibo-obs-box">
+        <div class="recibo-obs-label">Observações</div>
+        <textarea class="recibo-textarea" id="recObs" placeholder="Ex.: Este recibo quitará integralmente a obrigação referente ao período acima indicado."></textarea>
+      </div>
+
+      <div class="recibo-assinatura">
+        <div class="recibo-linha-assinatura"></div>
+        <div class="recibo-assinatura-nome">Dr. Adenilson Borges da Silva</div>
+        <div style="font-size:11px;color:#5a6a7a">OAB/SP 335.600</div>
+      </div>
+
+      <div class="recibo-footer-doc">
+        Documento emitido por Dr. Adenilson Borges da Silva — OAB/SP 335.600 |
+        Este recibo tem validade como comprovante de pagamento de honorários advocatícios
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARD ATENDIMENTO -->
+<div class="modal-card-overlay" id="modalCard">
+  <div class="card-preview-wrap">
+    <div class="card-preview-title">Card de Atualização</div>
+    <div class="card-preview-sub" id="cardPreviewSub">pré-visualização para envio ao cliente</div>
+
+    <div class="atend-card" id="atendCard">
+      <div class="atend-header">
+        <div class="atend-header-title">Atualização Processual</div>
+        <div class="atend-header-sub">Escritório Adenilson Borges</div>
+      </div>
+      <div class="atend-body">
+
+        <div class="atend-section">
+          <div class="atend-section-label">Cliente</div>
+          <div class="atend-nome" id="cardNome"></div>
+          <div class="atend-processo" id="cardProcesso"></div>
+          <div class="atend-tipo" id="cardTipo"></div>
+          <div class="atend-meta" id="cardParte"></div>
+          <div class="atend-meta" id="cardOutra"></div>
+        </div>
+
+        <div class="atend-section" id="cardSituacaoSection">
+          <div class="atend-section-label">Situação Atual</div>
+          <div class="atend-box" id="cardSituacao"></div>
+        </div>
+
+        <div class="atend-section" id="cardAdvSection">
+          <div class="atend-section-label">O que vamos fazer por você</div>
+          <div class="atend-box destaque-adv" id="cardAdv"></div>
+        </div>
+
+        <div class="atend-section" id="cardClienteSection">
+          <div class="atend-section-label">O que o Sr(a). precisa fazer</div>
+          <div class="atend-box destaque-cliente" id="cardCliente"></div>
+        </div>
+
+        <div class="atend-section" id="cardAudienciaSection" style="display:none">
+          <div class="atend-section-label">Audiência Marcada</div>
+          <div class="atend-box destaque-audiencia">
+            <div class="atend-audiencia-data" id="cardAudienciaData"></div>
+            <div class="atend-audiencia-local" id="cardAudienciaLocal"></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="atend-footer">
+        Dúvidas? Ligue ou envie mensagem.<br>
+        <strong>ADENILSON BORGES DA SILVA · OAB/SP 335.600 · (11) 99931-3712</strong>
+      </div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn-share btn-share-wpp" onclick="shareWhatsApp()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Enviar WhatsApp
+      </button>
+      <button class="btn-share btn-share-copy" onclick="copyCardText()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        Copiar texto
+      </button>
+      <button class="btn-close-card" onclick="document.getElementById('modalCard').classList.remove('open')">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIG -->
+<div class="modal-overlay" id="modalConfig">
+  <div class="modal">
+    <h2>Configurar planilha</h2>
+    <p>Informe o ID da sua planilha do Google Sheets e a chave da API para carregar os dados. O painel lê apenas a aba de processos — sem modificar nada.</p>
+
+    <div class="form-group">
+      <label class="form-label">ID DA PLANILHA</label>
+      <input type="text" class="form-input" id="inputSheetId"
+        placeholder="Ex: 1GHRSdjAXRns-wV2lGoCNve8H2vAkbl1K0nLaek7xtP4"
+        value="1GHRSdjAXRns-wV2lGoCNve8H2vAkbl1K0nLaek7xtP4">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">CHAVE DE API GOOGLE SHEETS</label>
+      <input type="text" class="form-input" id="inputApiKey" placeholder="AIzaSy...">
+      <div style="margin-top:6px;font-size:11px;color:var(--muted)">
+        Obtenha em: console.cloud.google.com → APIs → Google Sheets API → Credenciais
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">NOME DA ABA DE PROCESSOS</label>
+      <input type="text" class="form-input" id="inputSheetName" placeholder="Planilha1" value="Planilha1">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
+      <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── ESTADO ───────────────────────────────────────────────────
+let allProcessos = [];
+let filteredProcessos = [];
+let currentFilter = 'all';
+let currentRamo = 'all';
+let expandedId = null;
+
+const CONFIG_KEY = 'lexflow_config';
+
+// ─── CONFIG ───────────────────────────────────────────────────
+function getConfig() {
+  try {
+    return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function saveConfig() {
+  const sheetId = document.getElementById('inputSheetId').value.trim();
+  const apiKey = document.getElementById('inputApiKey').value.trim();
+  const sheetName = document.getElementById('inputSheetName').value.trim() || 'Planilha1';
+
+  if (!sheetId || !apiKey) {
+    alert('Preencha o ID da planilha e a chave de API.');
+    return;
+  }
+
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({ sheetId, apiKey, sheetName }));
+  document.getElementById('modalConfig').classList.remove('open');
+  loadFromSheets();
+}
+
+// ─── CARGA DO SHEETS ──────────────────────────────────────────
+async function loadFromSheets() {
+  const cfg = getConfig();
+  if (!cfg.apiKey || !cfg.sheetId) {
+    document.getElementById('modalConfig').classList.add('open');
+    return;
+  }
+
+  document.getElementById('syncStatus').textContent = 'carregando…';
+  const listEl = document.getElementById('processosList');
+  listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Sincronizando com Google Sheets…</p></div>';
+
+  try {
+    const sheetName = encodeURIComponent(cfg.sheetName || 'Planilha1');
+    // Lê colunas A a W (23 colunas conforme estrutura mapeada)
+    const range = `${sheetName}!A1:BT300`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${range}?key=${cfg.apiKey}`;
+
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || 'Erro na API');
+    }
+
+    const data = await resp.json();
+    const rows = data.values || [];
+    parseProcessos(rows);
+
+    const now = new Date();
+    document.getElementById('syncStatus').textContent =
+      `atualizado ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    const dot = document.getElementById('syncDot');
+    if (dot) { dot.className = 'sync-dot'; }
+
+  } catch (e) {
+    document.getElementById('syncStatus').textContent = 'erro';
+    const dotErr = document.getElementById('syncDot');
+    if (dotErr) dotErr.className = 'sync-dot error';
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <p style="color:var(--red);margin-bottom:8px">Erro ao acessar a planilha</p>
+        <p style="font-size:13px">${e.message}</p>
+        <p style="font-size:12px;margin-top:8px">Verifique se a API Key está correta e se a planilha é pública (compartilhada com "qualquer pessoa com o link").</p>
+      </div>`;
+  }
+}
+
+// ─── PARSE DOS DADOS ──────────────────────────────────────────
+function parseProcessos(rows) {
+  if (rows.length < 2) {
+    allProcessos = [];
+    renderProcessos();
+    return;
+  }
+
+  // Mapear cabeçalhos por nome (robusto a colunas extras/faltantes)
+  const header = rows[0];
+  const H = {};
+  header.forEach((h, i) => { if (h) H[h.toString().trim()] = i; });
+
+  // Função auxiliar — busca por nome exato ou índice fallback (-1 = só por nome)
+  const get = (row, name, fallback) => {
+    if (H[name] !== undefined) return (row[H[name]] || '').toString().trim();
+    if (fallback < 0) return '';
+    return (row[fallback] || '').toString().trim();
+  };
+
+  allProcessos = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < 3) continue;
+
+    // Leitura por nome de coluna (com fallback numérico)
+    const nro              = get(row, 'Nº ',              0);
+    const nome             = get(row, 'Nome',             1);
+    const processo         = get(row, 'Número do Processo', 2);
+    const sistema          = get(row, 'Sistema',          3);
+    const vara             = get(row, 'Vara',              -1);  // coluna D nova
+    const tribunal         = get(row, 'Tribunal e Fórum',  -1);  // coluna E nova
+    const cpfCnpj          = get(row, 'CPF/CNPJ',         6);
+    const rg               = get(row, 'RG/ Órgão emissor', 7);
+    const estadoCivil      = get(row, 'Estado civil',     8);
+    const profissao        = get(row, 'Profissão',        9);
+    const dataNasc         = get(row, 'Data de Nascimento', 10);
+    const endereco         = get(row, 'Endereço - Rua e Número', 11);
+    const bairro           = get(row, 'Bairro',           12);
+    const complemento      = get(row, 'Complemento',      13);
+    const cep              = get(row, 'CEP',              14);
+    const cidade           = get(row, 'Cidade',           15);
+    const estado           = get(row, 'Estado (UF)',      16);
+    const valorHonorarios  = get(row, 'Valor dos Honorários', 17);
+    const numParcelas      = get(row, 'Número de parcelas', 18);
+    const valorEntrada     = get(row, 'Valor da parcela de entrada', 19);
+    const valorParcela     = get(row, 'Valor da Parcela', 20);
+    const diaVencimento    = get(row, 'Dia do Vencimento', 21);
+    const formaPagamento   = get(row, 'Forma de pagamento ', 22);
+    const objetoContrato   = get(row, 'Objeto do contrato (descrição dos Serviços)', 23);
+    const tipoProcuracao   = get(row, 'Tipo de Procuração', 24);
+    const poderesEspeciais = get(row, 'Poderes Especiais (texto livre para poderes especificos)', 25);
+    const rendaMensal      = get(row, 'Renda mensal declarada', 26);
+    const numDependentes   = get(row, 'Número de Dependendes', 27);
+    const outra            = get(row, 'Outra Parte',      28);
+    const parte            = get(row, 'Parte',            29);
+    const ramo             = get(row, 'Ramo do Direito',  30);
+    const tipo             = get(row, 'Tipo de Ação',     31);
+    const status           = get(row, 'Status',           32);
+    const dataAtua         = get(row, 'Data Atualização', 33);
+    const ultima           = get(row, 'Última Atualização', 34);
+    const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
+    const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
+    const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
+    const diasPrazo        = get(row, 'diasPrazo',        38);
+    const prazoData        = get(row, 'prazoData',        39);
+    const dataAudi         = get(row, 'Data Audiência',   40);
+    const horAudi          = get(row, 'Horário Audiência', 41);
+    const localAudi        = get(row, 'Local da Audiência', 42);
+    const advParc          = get(row, 'Advogado Parceiro', 43);
+    const obs              = get(row, 'Observações',      44);
+    const pastaDrive       = get(row, 'Pasta Drive',      45);
+    const linkTrib         = get(row, 'Link Tribunal',    46);
+    const telefone         = get(row, 'Telefone',         47);
+    const email            = get(row, 'e-mail',           48);
+
+    // Só processa linhas com número (processo real)
+    if (!nro || isNaN(parseInt(nro))) continue;
+
+    // Só mostra ATIVO e MONITORAR
+    const st = status.toUpperCase();
+    if (st !== 'ATIVO' && st !== 'MONITORAR') continue;
+    if (!nome || nome.length < 2) continue;
+
+    const diasPrazoNum = parseInt(diasPrazo) || 0;
+
+    // Calcular urgência usando diasPrazo, prazoData, dataPrazoCliente e dataAudi
+    const urgencia = calcUrgencia(diasPrazoNum, prazoData, dataPrazoCliente, dataAudi, st, tipo);
+
+    allProcessos.push({
+      nro: parseInt(nro),
+      _uid: i,
+      nome, processo, sistema,
+      vara, tribunal, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
+      endereco, bairro, complemento, cep, cidade, estado,
+      valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento,
+      formaPagamento, objetoContrato,
+      tipoProcuracao, poderesEspeciais,
+      rendaMensal, numDependentes,
+      outra, parte, ramo, tipo, status: st,
+      dataAtua, ultima,
+      providCliente, dataPrazoCliente, proximoPassoAdv,
+      diasPrazo: diasPrazoNum, prazoData,
+      dataAudi, horAudi, localAudi,
+      advParc, obs, pastaDrive, linkTrib, telefone, email,
+      urgencia,
+      _row: i
+    });
+  }
+
+  buildRamoFilter();
+  updateStats();
+  renderProcessos();
+}
+
+function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, tipo) {
+  const hoje = new Date();
+
+  // 1. Audiência próxima — maior prioridade
+  if (dataAudi && dataAudi.length > 3) {
+    const d = parseDate(dataAudi);
+    if (d) {
+      const diff = Math.ceil((d - hoje) / 86400000);
+      if (diff <= 7 && diff >= 0) return 'critico';
+      if (diff <= 30 && diff >= 0) return 'urgente';
+    }
+  }
+
+  // 2. prazoData — data do prazo processual
+  if (prazoData && prazoData.length > 3) {
+    const d = parseDate(prazoData);
+    if (d) {
+      const diff = Math.ceil((d - hoje) / 86400000);
+      if (diff <= 5 && diff >= 0) return 'critico';
+      if (diff <= 15 && diff >= 0) return 'urgente';
+      if (diff <= 30 && diff >= 0) return 'atencao';
+    }
+  }
+
+  // 3. diasPrazo — dias restantes informados manualmente
+  if (diasPrazo > 0) {
+    if (diasPrazo <= 5) return 'critico';
+    if (diasPrazo <= 15) return 'urgente';
+    if (diasPrazo <= 30) return 'atencao';
+  }
+
+  // 4. Tipo de ação urgente
+  const tipoUp = (tipo || '').toUpperCase();
+  if (tipoUp.includes('LIMINAR') || tipoUp.includes('AGRAVO')) return 'urgente';
+
+  // 5. dataPrazoCliente — cliente tem tarefa pendente
+  if (dataPrazoCliente && dataPrazoCliente.length > 3) {
+    const d = parseDate(dataPrazoCliente);
+    if (d) {
+      const diff = Math.ceil((d - hoje) / 86400000);
+      if (diff <= 5 && diff >= 0) return 'urgente';
+      if (diff >= 0) return 'atencao';
+    }
+    return 'atencao'; // data informada mas não parseável
+  }
+
+  // MONITORAR
+  if (status === 'MONITORAR') return 'monitorar';
+
+  return 'normal';
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  // Tenta DD/MM/YYYY ou MM/DD/YYYY ou YYYY-MM-DD
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    let d, m, y;
+    if (parts[2].length === 4) { // DD/MM/YYYY
+      d = parseInt(parts[0]); m = parseInt(parts[1]) - 1; y = parseInt(parts[2]);
+    } else { // MM/DD/YYYY (como o Sheets guarda)
+      m = parseInt(parts[0]) - 1; d = parseInt(parts[1]); y = parseInt(parts[2]);
+    }
+    const dt = new Date(y, m, d);
+    if (!isNaN(dt)) return dt;
+  }
+  return null;
+}
+
+// ─── FILTROS E RENDER ─────────────────────────────────────────
+function filterBy(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.sidebar .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+
+function filterByRamo(ramo, btn) {
+  currentRamo = ramo;
+  document.querySelectorAll('[id^="ramobtn-"]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+
+// Mapa de subcategorias — aparece indentado sob o pai
+const RAMO_PARENTS = {
+  'Pensão': 'FAMILIA E SUCESSÕES',
+  'Registros Públicos': 'CIVIL',
+  'Trabalhista TRT2': 'Trabalhista',
+};
+
+function buildRamoFilter() {
+  const ramos = [...new Set(allProcessos.map(p => p.ramo).filter(Boolean))].sort();
+  const container = document.getElementById('ramoButtons');
+  const allBtn = document.getElementById('ramobtn-all');
+  allBtn.classList.add('active');
+
+  container.innerHTML = ramos.map(r => {
+    const isSub = RAMO_PARENTS[r];
+    const label = r.length > 22 ? r.substring(0,22)+'…' : r;
+    return `<button class="filter-btn${isSub ? ' ramo-sub' : ''}" 
+      id="ramobtn-${r.replace(/\s/g,'_')}" 
+      onclick="filterByRamo('${r}', this)"
+      style="${isSub ? 'padding-left:22px;font-size:12px;color:#7a84a8;' : ''}">
+      ${isSub ? '↳ ' : ''}${label}
+    </button>`;
+  }).join('');
+}
+
+function renderProcessos() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const sort = document.getElementById('sortSelect')?.value || 'prioridade';
+  const URGENCIA_ORDER = { critico: 0, urgente: 1, atencao: 2, normal: 3, monitorar: 4 };
+
+  let list = allProcessos.filter(p => {
+    // Filtro de ramo
+    if (currentRamo !== 'all' && p.ramo !== currentRamo) return false;
+
+    // Filtro de urgência / audiência / providência
+    if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
+    if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
+    if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
+
+    // Busca textual
+    if (q) {
+      const hay = [p.nome, p.processo, p.tipo, p.outra, p.ramo, p.ultima].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  // Ordenação
+  if (sort === 'prioridade') {
+    list.sort((a, b) => (URGENCIA_ORDER[a.urgencia] - URGENCIA_ORDER[b.urgencia]) || (a.prazo > 0 && b.prazo > 0 ? a.prazo - b.prazo : b.prazo - a.prazo));
+  } else if (sort === 'nome') {
+    list.sort((a, b) => a.nome.localeCompare(b.nome));
+  } else if (sort === 'prazo') {
+    list.sort((a, b) => {
+      if (a.prazo > 0 && b.prazo > 0) return a.prazo - b.prazo;
+      if (a.prazo > 0) return -1;
+      if (b.prazo > 0) return 1;
+      return 0;
+    });
+  }
+
+  filteredProcessos = list;
+  document.getElementById('processosCount').textContent = `${list.length} processo${list.length !== 1 ? 's' : ''}`;
+
+  const container = document.getElementById('processosList');
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>Nenhum processo encontrado</p></div>';
+    return;
+  }
+
+  container.innerHTML = list.map((p, idx) => renderCard(p, idx)).join('');
+}
+
+function renderCard(p, idx) {
+  const urgBadge = {
+    critico: 'badge-critico',
+    urgente: 'badge-urgente',
+    atencao: 'badge-atencao',
+    normal:  'badge-normal',
+    monitorar:'badge-monitorar'
+  }[p.urgencia];
+
+  const urgLabel = {
+    critico: 'Crítico',
+    urgente: 'Urgente',
+    atencao: 'Atenção',
+    normal:  'Normal',
+    monitorar:'Monitorar'
+  }[p.urgencia];
+
+  // Prazo display — usa diasPrazo ou prazoData
+  let prazoBadge = '<span class="prazo-badge prazo-sem">sem prazo</span>';
+  if (p.diasPrazo > 0) {
+    const cl = p.diasPrazo <= 5 ? 'prazo-vencido' : p.diasPrazo <= 15 ? 'prazo-hoje' : p.diasPrazo <= 30 ? 'prazo-breve' : 'prazo-ok';
+    prazoBadge = `<span class="prazo-badge ${cl}">${p.diasPrazo}d</span>`;
+  } else if (p.prazoData && p.prazoData.length > 3) {
+    const d = parseDate(p.prazoData);
+    if (d) {
+      const diff = Math.ceil((d - new Date()) / 86400000);
+      const cl = diff <= 5 ? 'prazo-vencido' : diff <= 15 ? 'prazo-hoje' : diff <= 30 ? 'prazo-breve' : 'prazo-ok';
+      prazoBadge = `<span class="prazo-badge ${cl}">${formatDate(p.prazoData)}</span>`;
+    }
+  }
+
+  // Audiência
+  let audienciaHtml = '';
+  if (p.dataAudi && p.dataAudi.length > 3) {
+    audienciaHtml = `
+      <div class="audiencia-highlight">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <div class="text">
+          <strong>Audiência: ${formatDate(p.dataAudi)}</strong>
+          ${p.horAudi ? ` às ${p.horAudi}` : ''}
+          ${p.localAudi ? ` — ${p.localAudi}` : ''}
+        </div>
+      </div>`;
+  }
+
+  // Providências
+  let providHtml = '';
+  if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
+    providHtml = `
+      <div class="providencias-box">
+        <div class="label">Prazo do cliente — aguardando providência</div>
+        <div class="text">Data limite: <strong>${formatDate(p.dataPrazoCliente)}</strong></div>
+      </div>`;
+  }
+
+  // Última atualização
+  let ultimaHtml = '';
+  if (p.ultima && p.ultima.length > 2) {
+    ultimaHtml = `
+      <div class="atualizacao-box">
+        <strong>Última movimentação:</strong><br>${escHtml(p.ultima)}
+        ${p.dataAtua ? `<br><span style="color:var(--muted);font-size:11px">${formatDate(p.dataAtua)}</span>` : ''}
+      </div>`;
+  }
+
+  const delay = Math.min(idx * 0.04, 0.8);
+
+  return `
+    <div class="processo-card" id="card-${p._uid}" style="animation-delay:${delay}s"
+         onclick="toggleCard(${p._uid})">
+      <div class="priority-bar priority-${p.urgencia}"></div>
+      <div class="processo-body">
+        <div class="processo-top">
+          <span class="processo-nome">${escHtml(p.nome)}</span>
+          <span class="badge badge-ramo">${escHtml(p.ramo || p.tipo)}</span>
+          <span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>
+          ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
+        </div>
+        <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
+        <div class="processo-meta">
+          <span class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            ${escHtml(p.parte || '—')}
+          </span>
+          ${p.outra ? `<span class="meta-item">vs ${escHtml(p.outra.substring(0,40))}${p.outra.length>40?'…':''}</span>` : ''}
+          ${p.tipo ? `<span class="meta-item">${escHtml(p.tipo)}</span>` : ''}
+          ${p.advParc ? `<span class="meta-item destaque">Parceiro: ${escHtml(p.advParc)}</span>` : ''}
+        </div>
+
+        <!-- DETALHE EXPANDIDO -->
+        <div class="processo-detail">
+          ${audienciaHtml}
+          ${providHtml}
+
+          <div class="detail-grid">
+            <div class="detail-block">
+              <div class="detail-label">Sistema / ID</div>
+              <div class="detail-value">${escHtml(p.sistema) || '—'} ${p.id ? `· ${escHtml(p.id)}` : ''}</div>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Parte contrária</div>
+              <div class="detail-value">${escHtml(p.outra) || '—'}</div>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Posição processual</div>
+              <div class="detail-value">${escHtml(p.parte) || '—'}</div>
+            </div>
+            ${p.diasPrazo > 0 ? `
+            <div class="detail-block">
+              <div class="detail-label">Dias para cumprimento</div>
+              <div class="detail-value" style="color:${p.diasPrazo <= 5 ? 'var(--red)' : p.diasPrazo <= 15 ? 'var(--orange)' : 'var(--text)'}">${p.diasPrazo} dias</div>
+            </div>` : ''}
+            ${p.prazoData && p.prazoData.length > 3 ? `
+            <div class="detail-block">
+              <div class="detail-label">Data do prazo</div>
+              <div class="detail-value" style="color:var(--accent)">${formatDate(p.prazoData)}</div>
+            </div>` : ''}
+            ${p.dataPrazoCliente && p.dataPrazoCliente.length > 3 ? `
+            <div class="detail-block">
+              <div class="detail-label">Prazo do cliente</div>
+              <div class="detail-value" style="color:var(--yellow)">${formatDate(p.dataPrazoCliente)}</div>
+            </div>` : ''}
+            ${p.advParc ? `
+            <div class="detail-block">
+              <div class="detail-label">Advogado parceiro</div>
+              <div class="detail-value">${escHtml(p.advParc)}</div>
+            </div>` : ''}
+            ${p.pastaDrive && p.pastaDrive.length > 3 ? `
+            <div class="detail-block">
+              <div class="detail-label">Pasta Drive</div>
+              <div class="detail-value"><a href="${escHtml(p.pastaDrive)}" target="_blank" style="color:var(--accent);text-decoration:none">Abrir pasta ↗</a></div>
+            </div>` : ''}
+            ${p.telefone ? `
+            <div class="detail-block">
+              <div class="detail-label">Telefone</div>
+              <div class="detail-value">${escHtml(p.telefone)}</div>
+            </div>` : ''}
+            ${p.email ? `
+            <div class="detail-block">
+              <div class="detail-label">E-mail</div>
+              <div class="detail-value">${escHtml(p.email)}</div>
+            </div>` : ''}
+          </div>
+
+          ${ultimaHtml}
+
+          ${p.obs && p.obs.length > 2 && p.obs !== p.ultima ? `
+          <div class="atualizacao-box" style="margin-top:8px">
+            <strong>Observações:</strong><br>${escHtml(p.obs)}
+          </div>` : ''}
+
+          <div class="detail-actions">
+            <button class="btn-action" style="background:rgba(200,169,110,0.08);border-color:rgba(200,169,110,0.3);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirRecibo(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Recibo
+            </button>
+            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('procuracao', this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Procuração
+            </button>
+            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('gratuidade', this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Gratuidade
+            </button>
+            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('contrato', this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+              Contrato
+            </button>
+            <button class="btn-action" style="background:rgba(200,169,110,0.15);border-color:rgba(200,169,110,0.4);color:var(--accent);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardAtendimento(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+              </svg>
+              Gerar card cliente
+            </button>
+            ${p.processo && p.sistema === 'ESAJ' ? `
+            <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              ESAJ
+            </a>` : ''}
+            ${p.processo && p.sistema === 'EPROC' ? `
+            <a class="btn-action" href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}" target="_blank">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              EPROC
+            </a>` : ''}
+            ${p.processo && p.sistema === 'PJE' ? `
+            <a class="btn-action" href="https://pje.trt2.jus.br/consultaprocessual/detalhe-processo/${encodeURIComponent(p.processo)}" target="_blank">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              PJE
+            </a>` : ''}
+            <button class="btn-action" onclick="event.stopPropagation();copyNumero('${escAttr(p.processo)}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+              Copiar número
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="processo-right">
+        ${prazoBadge}
+        ${p.sistema ? `<span class="sistema-badge">${escHtml(p.sistema)}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function toggleCard(uid) {
+  const card = document.getElementById(`card-${uid}`);
+  if (!card) return;
+  const wasExpanded = card.classList.contains('expanded');
+  document.querySelectorAll('.processo-card.expanded').forEach(c => c.classList.remove('expanded'));
+  if (!wasExpanded) card.classList.add('expanded');
+}
+
+function copyNumero(num) {
+  navigator.clipboard.writeText(num).then(() => {
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+    tmp.textContent = 'Número copiado!';
+    document.body.appendChild(tmp);
+    setTimeout(() => tmp.remove(), 2000);
+  });
+}
+
+// ─── STATS ────────────────────────────────────────────────────
+function updateStats() {
+  const criticos = allProcessos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
+  const audiencias = allProcessos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
+  const providencias = allProcessos.filter(p => (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3)).length;
+
+  const prazos = allProcessos.filter(p => p.diasPrazo > 0).map(p => p.diasPrazo);
+  const menorPrazo = prazos.length > 0 ? Math.min(...prazos) : 0;
+
+  document.getElementById('st-total').textContent = allProcessos.length;
+  document.getElementById('st-criticos').textContent = criticos;
+  document.getElementById('st-prazo').textContent = menorPrazo > 0 ? menorPrazo : '—';
+  document.getElementById('st-audiencia').textContent = audiencias;
+  document.getElementById('st-providencias').textContent = providencias;
+
+  // Contadores sidebar
+  ['critico','urgente','atencao','normal','monitorar'].forEach(u => {
+    document.getElementById(`cnt-${u}`).textContent = allProcessos.filter(p => p.urgencia === u).length;
+  });
+  document.getElementById('cnt-all').textContent = allProcessos.length;
+  document.getElementById('cnt-audiencia').textContent = audiencias;
+  document.getElementById('cnt-providencia').textContent = providencias;
+  // Atualiza label sidebar
+  const lblProv = document.querySelector('#cnt-providencia');
+  if (lblProv) lblProv.textContent = providencias;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const d = parseDate(str);
+  if (!d || isNaN(d)) return str;
+  return d.toLocaleDateString('pt-BR');
+}
+
+// ─── GERADORES DE DOCUMENTOS ─────────────────────────────────
+function dataExtenso() {
+  const d = new Date();
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho',
+    'julho','agosto','setembro','outubro','novembro','dezembro'];
+  return `São Paulo, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+function enderecoCompleto(p) {
+  let e = p.endereco || '';
+  if (p.complemento) e += `, ${p.complemento}`;
+  if (p.bairro) e += ` — ${p.bairro}`;
+  if (p.cidade) e += `, ${p.cidade}`;
+  if (p.estado) e += `/${p.estado}`;
+  if (p.cep) e += `, CEP ${p.cep}`;
+  return e || '_______________________________________________';
+}
+
+function campo(val, fallback) {
+  return val && val.length > 1 ? `<span class="doc-campo">${val}</span>` : `<span class="doc-campo">${fallback || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span>`;
+}
+
+function abrirDoc(tipo, uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
+  let titulo = '';
+  let html = '';
+
+  if (tipo === 'procuracao') {
+    titulo = 'Procuração';
+    const tipoproc = p.tipoProcuracao || 'Ad Judicia et Extra';
+    html = gerarProcuracao(p, tipoproc);
+  } else if (tipo === 'gratuidade') {
+    titulo = 'Declaração de Hipossuficiência';
+    html = gerarGratuidade(p);
+  } else if (tipo === 'contrato') {
+    titulo = 'Contrato de Prestação de Serviços Advocatícios';
+    html = gerarContrato(p);
+  }
+
+  document.getElementById('docToolbarTitle').textContent = titulo;
+  document.getElementById('docBody').innerHTML = html;
+  document.getElementById('modalDoc').classList.add('open');
+}
+
+function gerarProcuracao(p, tipo) {
+  const poderes = p.poderesEspeciais && p.poderesEspeciais.length > 2
+    ? p.poderesEspeciais
+    : 'os poderes gerais da lei, podendo praticar todos os atos necessários ao fiel desempenho do presente mandato';
+
+  return `
+  <div class="doc-cabecalho">
+    <div class="doc-titulo">Procuração</div>
+    <div class="doc-subtitulo">${tipo}</div>
+  </div>
+
+  <p class="doc-texto">
+    <strong>OUTORGANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
+    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    nascido(a) em ${campo(p.dataNasc)},
+    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
+    e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
+  </p>
+
+  <p class="doc-texto">
+    <strong>OUTORGADO:</strong> <strong>Dr. Adenilson Borges da Silva</strong>,
+    advogado inscrito na OAB/SP sob o n.º 335.600,
+    com escritório profissional na Rua Engenheiro Pegado, 945, Conjunto 1304,
+    Carrão, São Paulo/SP, CEP 03430-003,
+    e-mail: adeborges@gmail.com, telefone: (11) 99931-3712.
+  </p>
+
+  <p class="doc-texto">
+    <strong>OBJETO:</strong> Pelo presente instrumento particular de procuração, o(a) Outorgante
+    nomeia e constitui o(a) Outorgado(a) seu(sua) bastante procurador(a), para o foro em geral
+    ${p.processo ? `no processo n.º <strong>${p.processo}</strong> e em todos os seus incidentes` : 'e em todos os atos e termos que se fizerem necessários'},
+    conferindo-lhe ${poderes}, inclusive para: receber citação, confessar, reconhecer a procedência
+    do pedido, transigir, desistir, renunciar ao direito sobre que se funda a ação, receber e dar
+    quitação, firmar compromisso, substabelecer esta com ou sem reservas de iguais poderes,
+    e praticar todos os demais atos necessários ao fiel desempenho deste mandato.
+  </p>
+
+  <div class="doc-local-data">${dataExtenso()}.</div>
+
+  <div style="margin-top:48px;text-align:center">
+    <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
+      ${campo(p.nome)}<br>
+      <small>Outorgante</small>
+    </div>
+  </div>`;
+}
+
+function gerarGratuidade(p) {
+  const renda = p.rendaMensal && p.rendaMensal.length > 0
+    ? `R$ ${parseFloat(p.rendaMensal).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+    : '______________________';
+  const dep = p.numDependentes || '______';
+
+  return `
+  <div class="doc-cabecalho">
+    <div class="doc-titulo">Declaração de Hipossuficiência Econômica</div>
+    <div class="doc-subtitulo">Para fins de concessão de Gratuidade da Justiça — Art. 99, §3º, CPC</div>
+  </div>
+
+  <p class="doc-texto">
+    Eu, ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
+    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
+    DECLARO, sob as penas da lei, em especial do art. 99, §1º, do Código de Processo Civil,
+    que não possuo condições de arcar com as custas processuais e honorários advocatícios
+    sem prejuízo do próprio sustento e de minha família.
+  </p>
+
+  <p class="doc-texto">
+    Para tanto, declaro que minha renda mensal bruta é de aproximadamente <strong>${renda}</strong>,
+    que possuo <strong>${dep}</strong> dependente(s), e que meu patrimônio é insuficiente para
+    suportar as despesas processuais sem comprometer meu mínimo existencial.
+  </p>
+
+  <p class="doc-texto">
+    Declaro, ainda, estar ciente de que a falsidade desta declaração configura crime de
+    litigância de má-fé, nos termos do art. 80 do CPC, sujeitando-me às sanções legais cabíveis,
+    incluindo eventual condenação ao pagamento das custas e despesas processuais (art. 100, CPC).
+  </p>
+
+  <p class="doc-texto">
+    Por ser expressão da verdade, firmo a presente declaração.
+  </p>
+
+  <div class="doc-local-data">${dataExtenso()}.</div>
+
+  <div style="text-align:center;margin-top:48px">
+    <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
+      ${campo(p.nome)}<br>
+      <small>CPF: ${campo(p.cpfCnpj)}</small>
+    </div>
+  </div>`;
+}
+
+function gerarContrato(p) {
+  const valTotal = p.valorHonorarios
+    ? `R$ ${parseFloat(p.valorHonorarios).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+    : '______________________';
+  const parcelas = p.numParcelas || '______';
+  const valParcela = p.valorParcela
+    ? `R$ ${parseFloat(p.valorParcela).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+    : '______________________';
+  const vencimento = p.diaVencimento ? `dia ${p.diaVencimento} de cada mês` : '______________________';
+  const formaPag = p.formaPagamento || 'PIX';
+  const objeto = p.objetoContrato || (p.processo
+    ? `prestação de serviços advocatícios no processo n.º ${p.processo} — ${p.tipo || p.ramo || 'serviços jurídicos'}`
+    : '______________________');
+
+  return `
+  <div class="doc-cabecalho">
+    <div class="doc-titulo">Contrato de Prestação de Serviços Advocatícios</div>
+  </div>
+
+  <p class="doc-texto">
+    Pelo presente instrumento particular, as partes abaixo identificadas celebram o presente
+    Contrato de Prestação de Serviços Advocatícios, que se regerá pelas cláusulas e condições seguintes.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CONTRATANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
+    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
+    e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CONTRATADO:</strong> <strong>Dr. Adenilson Borges da Silva</strong>,
+    advogado inscrito na OAB/SP sob o n.º 335.600, com escritório profissional na
+    Rua Engenheiro Pegado, 945, Conjunto 1304, Carrão, São Paulo/SP, CEP 03430-003,
+    e-mail: adeborges@gmail.com, telefone: (11) 99931-3712.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CLÁUSULA 1ª — DO OBJETO.</strong>
+    O presente contrato tem por objeto a ${objeto}.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CLÁUSULA 2ª — DOS HONORÁRIOS.</strong>
+    Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
+    <strong>${valTotal}</strong>, a ser pago em <strong>${parcelas}</strong> parcela(s)
+    de <strong>${valParcela}</strong>, com vencimento no ${vencimento},
+    por meio de <strong>${formaPag}</strong>
+    ${formaPag.toUpperCase().includes('PIX') ? '(Chave PIX — CPF: 051.303.588-56)' : ''}.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CLÁUSULA 3ª — DA VIGÊNCIA.</strong>
+    O presente contrato vigorará até a conclusão dos serviços contratados,
+    podendo ser rescindido por qualquer das partes mediante notificação prévia de 15 (quinze) dias,
+    nos termos do art. 44 do Regulamento Geral da OAB.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CLÁUSULA 4ª — DAS DESPESAS PROCESSUAIS.</strong>
+    As custas judiciais, emolumentos, honorários periciais e demais despesas processuais
+    não estão incluídos nos honorários ora contratados, sendo de responsabilidade exclusiva
+    do(a) Contratante.
+  </p>
+
+  <p class="doc-texto">
+    <strong>CLÁUSULA 5ª — DO FORO.</strong>
+    Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias
+    oriundas do presente contrato.
+  </p>
+
+  <div class="doc-local-data">${dataExtenso()}.</div>
+
+  <div class="doc-assinaturas">
+    <div class="doc-assinatura-linha">
+      ${campo(p.nome)}<br>
+      <small>Contratante</small>
+    </div>
+    <div class="doc-assinatura-linha">
+      Dr. Adenilson Borges da Silva<br>
+      <small>Contratado — OAB/SP 335.600</small>
+    </div>
+  </div>`;
+}
+
+// ─── RECIBO ──────────────────────────────────────────────────
+function abrirRecibo(uid) {
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('recDataEmissao').value = hoje;
+  limparRecibo();
+
+  if (uid !== null && uid !== undefined) {
+    const uidNum = parseInt(uid);
+    const p = allProcessos.find(x => x._uid === uidNum);
+    if (p) {
+      document.getElementById('recNomeCliente').value = p.nome || '';
+      document.getElementById('recCpfCnpj').value = p.cpfCnpj || '';
+      document.getElementById('recTelefone').value = p.telefone || '';
+      // Endereço completo
+      let end = p.endereco || '';
+      if (p.bairro) end += `, ${p.bairro}`;
+      if (p.complemento) end += `, ${p.complemento}`;
+      if (p.cidade) end += ` — ${p.cidade}`;
+      if (p.estado) end += `/${p.estado}`;
+      if (p.cep) end += ` — CEP ${p.cep}`;
+      document.getElementById('recEndereco').value = end;
+      document.getElementById('recProcesso').value = p.processo || '';
+      // Vara/Tribunal
+      const varaTrib = [p.vara, p.tribunal].filter(Boolean).join(' — ');
+      document.getElementById('recVara').value = varaTrib;
+      // Descrição dos serviços
+      document.getElementById('recDescricao').value = p.objetoContrato ||
+        (p.processo ? `Honorários advocatícios referentes ao processo n.º ${p.processo} — ${p.tipo || p.ramo || 'serviços jurídicos'}` : '');
+      // Valor: usar valorParcela (valor da parcela sendo paga), não o total
+      const valPagar = parseFloat(p.valorParcela) || parseFloat(p.valorHonorarios) || 0;
+      document.getElementById('recHonorarios').value = valPagar;
+      if (p.formaPagamento) document.getElementById('recFormaPagamento').value = p.formaPagamento;
+      // numParcelas usado apenas no contrato, não no recibo
+    }
+  }
+
+  calcTotal();
+  document.getElementById('modalRecibo').classList.add('open');
+}
+
+function calcTotal() {
+  const hon = parseFloat(document.getElementById('recHonorarios').value) || 0;
+  const desp = parseFloat(document.getElementById('recDespesas').value) || 0;
+  const total = hon + desp;
+  document.getElementById('recTotal').textContent =
+    'R$ ' + total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const parcela = document.getElementById('recParcela')?.value?.trim() || '';
+  const info = document.getElementById('recParcelaInfo');
+  if (info) info.textContent = parcela ? `Parcela: ${parcela}` : '';
+}
+
+function limparRecibo() {
+  ['recDataEmissao','recDataPagamento','recNomeCliente','recCpfCnpj',
+   'recEndereco','recTelefone','recDescricao','recProcesso','recVara',
+   'recParcela','recObs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['recHonorarios','recDespesas'].forEach(id => {
+    document.getElementById(id).value = '0';
+  });
+  document.getElementById('recFormaPagamento').value = '';
+  calcTotal();
+}
+
+function imprimirRecibo() {
+  // Fechar todos os outros modais
+  document.getElementById('modalDoc').classList.remove('open');
+  document.getElementById('modalCard').classList.remove('open');
+  document.getElementById('modalConfig').classList.remove('open');
+
+  // Garantir que o modal do recibo está aberto
+  document.getElementById('modalRecibo').classList.add('open');
+
+  // Adicionar classe ao body para o @media print saber o que mostrar
+  document.body.classList.add('printing-recibo');
+
+  setTimeout(() => {
+    window.print();
+    document.body.classList.remove('printing-recibo');
+  }, 300);
+}
+
+// Fechar recibo clicando fora
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modalRecibo').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+
+// ─── CARD ATENDIMENTO ────────────────────────────────────────
+function abrirCardAtendimento(uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
+  // Preencher campos
+  document.getElementById('cardNome').textContent = p.nome.toUpperCase();
+  document.getElementById('cardProcesso').textContent = p.processo ? `Processo nº ${p.processo}` : '';
+  document.getElementById('cardTipo').textContent = p.tipo || '';
+  document.getElementById('cardParte').textContent = p.parte ? `Posição: ${p.parte}` : '';
+  document.getElementById('cardOutra').textContent = p.outra ? `Parte contrária: ${p.outra}` : '';
+
+  // Situação atual (Última Atualização — col L)
+  const situacao = p.ultima || '';
+  const situacaoSection = document.getElementById('cardSituacaoSection');
+  if (situacao.length > 2) {
+    document.getElementById('cardSituacao').textContent = situacao;
+    situacaoSection.style.display = '';
+  } else {
+    situacaoSection.style.display = 'none';
+  }
+
+  // Próximo passo Adv (col O)
+  const advSection = document.getElementById('cardAdvSection');
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) {
+    document.getElementById('cardAdv').textContent = p.proximoPassoAdv;
+    advSection.style.display = '';
+  } else {
+    advSection.style.display = 'none';
+  }
+
+  // Providências cliente (col M)
+  const clienteSection = document.getElementById('cardClienteSection');
+  if (p.providCliente && p.providCliente.length > 2) {
+    document.getElementById('cardCliente').textContent = p.providCliente;
+    clienteSection.style.display = '';
+  } else {
+    clienteSection.style.display = 'none';
+  }
+
+  // Audiência (cols R, S, T)
+  const audSection = document.getElementById('cardAudienciaSection');
+  if (p.dataAudi && p.dataAudi.length > 3) {
+    const dataFmt = formatDate(p.dataAudi);
+    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+    document.getElementById('cardAudienciaData').textContent = `${dataFmt}${hora}`;
+    document.getElementById('cardAudienciaLocal').textContent = p.localAudi ? `📍 ${p.localAudi}` : '';
+    audSection.style.display = '';
+  } else {
+    audSection.style.display = 'none';
+  }
+
+  document.getElementById('cardPreviewSub').textContent = `${p.nome} — pré-visualização`;
+  document.getElementById('modalCard').classList.add('open');
+
+  // Guardar nro atual para share
+  document.getElementById('modalCard').dataset.uid = uid;
+}
+
+function shareWhatsApp() {
+  const uid = document.getElementById('modalCard').dataset.uid;
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
+  let txt = `*ATUALIZAÇÃO PROCESSUAL*
+_Escritório Adenilson Borges_
+
+`;
+  txt += `*CLIENTE*
+${p.nome}
+`;
+  if (p.processo) txt += `Processo nº ${p.processo}
+`;
+  if (p.tipo) txt += `${p.tipo}
+`;
+  if (p.parte) txt += `Posição: ${p.parte}
+`;
+  if (p.outra) txt += `Parte contrária: ${p.outra}
+`;
+  if (p.ultima && p.ultima.length > 2) txt += `
+*SITUAÇÃO ATUAL*
+${p.ultima}
+`;
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += `
+*O QUE VAMOS FAZER POR VOCÊ*
+${p.proximoPassoAdv}
+`;
+  if (p.providCliente && p.providCliente.length > 2) txt += `
+*O QUE O SR(A). PRECISA FAZER*
+${p.providCliente}
+`;
+  if (p.dataAudi && p.dataAudi.length > 3) {
+    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+    txt += `
+*AUDIÊNCIA MARCADA*
+${formatDate(p.dataAudi)}${hora}`;
+    if (p.localAudi) txt += `\n📍 ${p.localAudi}`;
+    txt += '\n';
+  }
+  txt += `
+Dúvidas? Ligue ou envie mensagem.
+ADENILSON BORGES DA SILVA · OAB/SP 335.600 · (11) 99931-3712`;
+
+  const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
+  window.open(url, '_blank');
+}
+
+function copyCardText() {
+  const uid = document.getElementById('modalCard').dataset.uid;
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
+  let txt = `ATUALIZAÇÃO PROCESSUAL — Escritório Adenilson Borges
+
+`;
+  txt += `CLIENTE: ${p.nome}
+`;
+  if (p.processo) txt += `Processo nº ${p.processo}
+`;
+  if (p.tipo) txt += `${p.tipo}
+`;
+  if (p.ultima && p.ultima.length > 2) txt += `
+SITUAÇÃO ATUAL:
+${p.ultima}
+`;
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += `
+O QUE VAMOS FAZER:
+${p.proximoPassoAdv}
+`;
+  if (p.providCliente && p.providCliente.length > 2) txt += `
+O QUE O CLIENTE PRECISA FAZER:
+${p.providCliente}
+`;
+  if (p.dataAudi && p.dataAudi.length > 3) {
+    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+    txt += `
+AUDIÊNCIA: ${formatDate(p.dataAudi)}${hora}`;
+    if (p.localAudi) txt += ` — ${p.localAudi}`;
+  }
+
+  navigator.clipboard.writeText(txt).then(() => {
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+    tmp.textContent = 'Texto copiado!';
+    document.body.appendChild(tmp);
+    setTimeout(() => tmp.remove(), 2000);
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const cfg = getConfig();
+  if (cfg.sheetId) document.getElementById('inputSheetId').value = cfg.sheetId;
+  if (cfg.apiKey) document.getElementById('inputApiKey').value = cfg.apiKey;
+  if (cfg.sheetName) document.getElementById('inputSheetName').value = cfg.sheetName;
+
+  if (cfg.apiKey && cfg.sheetId) {
+    loadFromSheets();
+  }
+});
+
+// Fechar modais clicando fora
+document.getElementById('modalConfig').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+document.getElementById('modalCard').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+document.getElementById('modalDoc').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+</script>
+</body>
+</html>
