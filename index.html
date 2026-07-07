@@ -2623,7 +2623,7 @@ function gerarProcuracao(p, tipo) {
 
   <div style="margin-top:48px;text-align:center">
     <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
-      ${campo(p.nome)}<br>
+      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
       <small>Outorgante</small>
     </div>
   </div>`;
@@ -2670,8 +2670,8 @@ function gerarGratuidade(p) {
 
   <div style="text-align:center;margin-top:48px">
     <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
-      ${campo(p.nome)}<br>
-      <small>CPF: ${campo(p.cpfCnpj)}</small>
+      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
+      <small>CPF: ${escHtml(p.cpfCnpj)}</small>
     </div>
   </div>`;
 }
@@ -2684,6 +2684,9 @@ function gerarContrato(p) {
   const valParcela = p.valorParcela
     ? `R$ ${parseFloat(p.valorParcela).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
     : '______________________';
+  const valEntrada = p.valorEntrada
+    ? `R$ ${parseFloat(p.valorEntrada).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+    : '';
   const vencimento = p.diaVencimento ? `dia ${p.diaVencimento} de cada mês` : '______________________';
   const formaPag = p.formaPagamento || 'PIX';
   const objeto = p.objetoContrato || (p.processo
@@ -2752,7 +2755,7 @@ function gerarContrato(p) {
 
   <div class="doc-assinaturas">
     <div class="doc-assinatura-linha">
-      ${campo(p.nome)}<br>
+      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
       <small>Contratante</small>
     </div>
     <div class="doc-assinatura-linha">
