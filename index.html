@@ -1102,6 +1102,463 @@
     .layout, .header, .sidebar, .main { display: none !important; }
   }
 
+  /* MODAL CARD PARCEIRO */
+  .modal-parceiro-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 480;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-parceiro-overlay.open { display: flex; }
+
+  .parceiro-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 560px;
+    max-width: 96vw;
+    margin: auto;
+    overflow: hidden;
+  }
+
+  .parceiro-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .parceiro-toolbar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    color: var(--blue);
+    flex: 1;
+  }
+
+  /* CARD VISUAL PARCEIRO */
+  .parc-card {
+    background: #0d1525;
+    border: 1px solid rgba(91,141,238,0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 20px 16px;
+  }
+
+  .parc-header {
+    background: linear-gradient(135deg, #0d1a2e, #1a2a4a);
+    border-bottom: 2px solid #5b8dee;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .parc-header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #90B8F0;
+    letter-spacing: 0.3px;
+  }
+
+  .parc-header-sub {
+    font-size: 10px;
+    color: #4a6a9a;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .parc-urgencia {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .parc-urg-normal { background: rgba(76,175,125,0.15); color: #4caf7d; border: 1px solid rgba(76,175,125,0.3); }
+  .parc-urg-urgente { background: rgba(224,124,58,0.15); color: #e07c3a; border: 1px solid rgba(224,124,58,0.3); }
+  .parc-urg-critico { background: rgba(224,84,84,0.15); color: #e05454; border: 1px solid rgba(224,84,84,0.3); box-shadow: 0 0 8px rgba(224,84,84,0.2); }
+
+  .parc-body { padding: 16px 20px; }
+
+  .parc-section {
+    margin-bottom: 12px;
+  }
+
+  .parc-section-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #4a6a9a;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .parc-section-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 10px;
+    background: #5b8dee;
+    border-radius: 2px;
+  }
+
+  .parc-processo-nome {
+    font-size: 15px;
+    font-weight: 700;
+    color: #c8d8f0;
+    margin-bottom: 3px;
+  }
+
+  .parc-processo-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #5b8dee;
+    margin-bottom: 3px;
+  }
+
+  .parc-processo-meta {
+    font-size: 12px;
+    color: #6a8ab0;
+  }
+
+  .parc-box {
+    background: rgba(91,141,238,0.06);
+    border: 1px solid rgba(91,141,238,0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #b0c8e8;
+    line-height: 1.7;
+  }
+
+  .parc-tarefa-box {
+    background: rgba(200,169,110,0.08);
+    border: 2px solid rgba(200,169,110,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #e8c98e;
+    line-height: 1.7;
+    font-weight: 500;
+  }
+
+  .parc-prazo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(212,160,23,0.15);
+    border: 1px solid rgba(212,160,23,0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #d4a017;
+    margin-top: 6px;
+  }
+
+  .parc-footer {
+    background: rgba(0,0,0,0.3);
+    border-top: 1px solid rgba(91,141,238,0.1);
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 10px;
+    color: #3a5a7a;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Campos editáveis antes de enviar */
+  .parceiro-fields {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .parceiro-field-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .parceiro-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .parceiro-input:focus { border-color: var(--blue); }
+
+  .parceiro-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    resize: vertical;
+    min-height: 72px;
+    transition: border-color 0.2s;
+  }
+
+  .parceiro-textarea:focus { border-color: var(--blue); }
+
+  .parceiro-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .parceiro-actions {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-parc-wpp {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: #25d366;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-parc-wpp:hover { background: #20bd5a; }
+
+  .btn-parc-email {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: #1a3a6a;
+    color: #90B8F0;
+    border: 1px solid rgba(91,141,238,0.3);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-parc-email:hover { background: #1a4a8a; }
+
+  .btn-parc-img {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .btn-parc-img:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* MODAL EDIÇÃO / CADASTRO */
+  .modal-form-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 500;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-form-overlay.open { display: flex; }
+
+  .form-modal-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 720px;
+    max-width: 96vw;
+    margin: auto;
+    overflow: hidden;
+  }
+
+  .form-modal-header {
+    background: linear-gradient(135deg, #1a2a3a, #0d1f2d);
+    border-bottom: 2px solid var(--accent);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .form-modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--accent);
+  }
+
+  .form-modal-body {
+    padding: 24px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .form-section {
+    margin-bottom: 24px;
+  }
+
+  .form-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-full { grid-column: 1 / -1; }
+
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+
+  .form-field label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .form-field input:focus,
+  .form-field select:focus,
+  .form-field textarea:focus { border-color: var(--accent); }
+
+  .form-field textarea { resize: vertical; min-height: 72px; }
+
+  .form-field select option { background: var(--surface2); }
+
+  .form-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    background: var(--surface);
+  }
+
+  .btn-form-save {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-form-save:hover { background: var(--accent2); }
+  .btn-form-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-form-cancel {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .form-status {
+    padding: 10px 24px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .form-status.ok { color: var(--green); }
+  .form-status.erro { color: var(--red); }
+
   /* MODAL DOCUMENTOS (Procuração, Gratuidade, Contrato) */
   .modal-doc-overlay {
     display: none;
@@ -1487,6 +1944,12 @@
       </svg>
       Atualizar
     </button>
+    <button class="btn-sync" onclick="abrirCadastro()" style="border-color:rgba(76,175,125,0.4);color:var(--green)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      Novo
+    </button>
     <button class="btn-sync" onclick="document.getElementById('modalConfig').classList.add('open')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
@@ -1614,6 +2077,372 @@
     </div>
 
   </main>
+</div>
+
+<!-- MODAL CARD PARCEIRO -->
+<div class="modal-parceiro-overlay" id="modalParceiro">
+  <div class="parceiro-wrap">
+    <div class="parceiro-toolbar">
+      <div class="parceiro-toolbar-title" id="parceiroToolbarTitle">📨 Comunicação com Parceiro</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalParceiro').classList.remove('open')">✕</button>
+    </div>
+
+    <!-- Campos editáveis -->
+    <div class="parceiro-fields">
+      <div>
+        <div class="parceiro-field-label">Urgência</div>
+        <select class="parceiro-select" id="parc-urgencia" onchange="atualizarCardParceiro()">
+          <option value="normal">Normal</option>
+          <option value="urgente">Urgente</option>
+          <option value="critico">Crítico</option>
+        </select>
+      </div>
+      <div>
+        <div class="parceiro-field-label">Tarefa / Orientação para o parceiro</div>
+        <textarea class="parceiro-textarea" id="parc-tarefa" placeholder="Descreva a tarefa ou orientação..." oninput="atualizarCardParceiro()"></textarea>
+      </div>
+      <div>
+        <div class="parceiro-field-label">Prazo para execução</div>
+        <input type="date" class="parceiro-input" id="parc-prazo" onchange="atualizarCardParceiro()">
+      </div>
+    </div>
+
+    <!-- Preview do card -->
+    <div class="parc-card" id="parcCard">
+      <!-- preenchido via JS -->
+    </div>
+
+    <div class="parceiro-actions">
+      <button class="btn-parc-wpp" onclick="enviarParcWpp()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        WhatsApp
+      </button>
+      <button class="btn-parc-email" onclick="enviarParcEmail()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        E-mail
+      </button>
+      <button class="btn-parc-img" onclick="enviarParcImagem()">
+        📸 Foto
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIÇÃO DE PROCESSO -->
+<div class="modal-form-overlay" id="modalEdicao">
+  <div class="form-modal-wrap">
+    <div class="form-modal-header">
+      <div class="form-modal-title" id="edicaoTitulo">✏️ Editar Processo</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalEdicao').classList.remove('open')">✕</button>
+    </div>
+    <div class="form-modal-body">
+
+      <div class="form-section">
+        <div class="form-section-title">📋 Andamento Processual</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Última Atualização / Situação Atual</label>
+            <textarea id="ed-ultima" rows="4"></textarea>
+          </div>
+          <div class="form-field">
+            <label>Status</label>
+            <select id="ed-status">
+              <option value="ATIVO">ATIVO</option>
+              <option value="MONITORAR">MONITORAR</option>
+              <option value="SUSPENSO">SUSPENSO</option>
+              <option value="EXTINTO">EXTINTO</option>
+              <option value="RENUNCIA">RENUNCIA</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Data Atualização</label>
+            <input type="date" id="ed-dataAtua">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⚙️ Próximos Passos</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Próximo Passo do Advogado</label>
+            <textarea id="ed-proxAdv" rows="2"></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Providências para o Cliente Atender</label>
+            <textarea id="ed-provCliente" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label>Data Prazo do Cliente</label>
+            <input type="date" id="ed-dataPrazoCliente">
+          </div>
+          <div class="form-field">
+            <label>Dias para Cumprimento (diasPrazo)</label>
+            <input type="number" id="ed-diasPrazo" min="0">
+          </div>
+          <div class="form-field">
+            <label>Data do Prazo (prazoData)</label>
+            <input type="date" id="ed-prazoData">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📅 Audiência</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field">
+            <label>Data Audiência</label>
+            <input type="date" id="ed-dataAudi">
+          </div>
+          <div class="form-field">
+            <label>Horário</label>
+            <input type="time" id="ed-horAudi">
+          </div>
+          <div class="form-field">
+            <label>Local</label>
+            <input type="text" id="ed-localAudi">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📝 Observações</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Observações</label>
+            <textarea id="ed-obs" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div id="edicaoStatus" class="form-status"></div>
+    <div class="form-modal-footer">
+      <button class="btn-form-cancel" onclick="document.getElementById('modalEdicao').classList.remove('open')">Cancelar</button>
+      <button class="btn-form-save" id="btnSalvarEdicao" onclick="salvarEdicao()">💾 Salvar na planilha</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO PROCESSO -->
+<div class="modal-form-overlay" id="modalCadastro">
+  <div class="form-modal-wrap">
+    <div class="form-modal-header">
+      <div class="form-modal-title">➕ Novo Processo</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCadastro').classList.remove('open')">✕</button>
+    </div>
+    <div class="form-modal-body">
+
+      <div class="form-section">
+        <div class="form-section-title">👤 Dados do Cliente</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Nome completo *</label>
+            <input type="text" id="cad-nome" placeholder="Nome do cliente">
+          </div>
+          <div class="form-field">
+            <label>CPF / CNPJ</label>
+            <input type="text" id="cad-cpf" placeholder="000.000.000-00">
+          </div>
+          <div class="form-field">
+            <label>RG / Órgão emissor</label>
+            <input type="text" id="cad-rg">
+          </div>
+          <div class="form-field">
+            <label>Estado civil</label>
+            <select id="cad-estadoCivil">
+              <option value="">Selecionar</option>
+              <option>Solteiro(a)</option>
+              <option>Casado(a)</option>
+              <option>Divorciado(a)</option>
+              <option>Viúvo(a)</option>
+              <option>União estável</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Profissão</label>
+            <input type="text" id="cad-profissao">
+          </div>
+          <div class="form-field">
+            <label>Data de Nascimento</label>
+            <input type="date" id="cad-dataNasc">
+          </div>
+          <div class="form-field">
+            <label>Telefone</label>
+            <input type="text" id="cad-telefone" placeholder="(11) 99999-9999">
+          </div>
+          <div class="form-field">
+            <label>E-mail</label>
+            <input type="email" id="cad-email">
+          </div>
+          <div class="form-field form-full">
+            <label>Endereço - Rua e Número</label>
+            <input type="text" id="cad-endereco">
+          </div>
+          <div class="form-field">
+            <label>Bairro</label>
+            <input type="text" id="cad-bairro">
+          </div>
+          <div class="form-field">
+            <label>Complemento</label>
+            <input type="text" id="cad-complemento">
+          </div>
+          <div class="form-field">
+            <label>CEP</label>
+            <input type="text" id="cad-cep">
+          </div>
+          <div class="form-field">
+            <label>Cidade</label>
+            <input type="text" id="cad-cidade">
+          </div>
+          <div class="form-field">
+            <label>Estado (UF)</label>
+            <input type="text" id="cad-estado" maxlength="2" placeholder="SP">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⚖️ Dados do Processo</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Número do Processo</label>
+            <input type="text" id="cad-processo" placeholder="0000000-00.0000.0.00.0000">
+          </div>
+          <div class="form-field">
+            <label>Sistema</label>
+            <select id="cad-sistema">
+              <option value="">Selecionar</option>
+              <option>ESAJ</option>
+              <option>EPROC</option>
+              <option>PJE</option>
+              <option>EXTRAJUDICIAL</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Vara</label>
+            <input type="text" id="cad-vara">
+          </div>
+          <div class="form-field form-full">
+            <label>Tribunal e Fórum</label>
+            <input type="text" id="cad-tribunal">
+          </div>
+          <div class="form-field">
+            <label>Ramo do Direito</label>
+            <select id="cad-ramo">
+              <option value="">Selecionar</option>
+              <option>CIVIL</option>
+              <option>TRABALHISTA</option>
+              <option>CRIMINAL</option>
+              <option>FAMILIA E SUCESSÕES</option>
+              <option>ADMINISTRATIVO</option>
+              <option>TRIBUTÁRIO</option>
+              <option>EXTRAJUDICIAL</option>
+              <option>Pensão</option>
+              <option>Registros Públicos</option>
+              <option>Trabalhista TRT2</option>
+              <option>Mandado de Segurança</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Tipo de Ação</label>
+            <input type="text" id="cad-tipo" placeholder="Ex.: Cobrança, Divórcio...">
+          </div>
+          <div class="form-field">
+            <label>Parte (posição)</label>
+            <input type="text" id="cad-parte" placeholder="Autor(a), Réu(ré)...">
+          </div>
+          <div class="form-field">
+            <label>Outra Parte</label>
+            <input type="text" id="cad-outra">
+          </div>
+          <div class="form-field">
+            <label>Status</label>
+            <select id="cad-status">
+              <option value="ATIVO">ATIVO</option>
+              <option value="MONITORAR">MONITORAR</option>
+              <option value="SUSPENSO">SUSPENSO</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Advogado Parceiro</label>
+            <input type="text" id="cad-advParc">
+          </div>
+          <div class="form-field form-full">
+            <label>Última Atualização / Situação Atual</label>
+            <textarea id="cad-ultima" rows="3"></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Próximo Passo do Advogado</label>
+            <textarea id="cad-proxAdv" rows="2"></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Providências para o Cliente</label>
+            <textarea id="cad-provCliente" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label>Link Tribunal</label>
+            <input type="text" id="cad-linkTrib">
+          </div>
+          <div class="form-field">
+            <label>Pasta Drive</label>
+            <input type="text" id="cad-pastaDrive">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">💰 Honorários</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field">
+            <label>Valor Total (R$)</label>
+            <input type="number" id="cad-honorarios" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Nº de Parcelas</label>
+            <input type="number" id="cad-parcelas" min="1">
+          </div>
+          <div class="form-field">
+            <label>Valor da Entrada (R$)</label>
+            <input type="number" id="cad-entrada" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Valor da Parcela (R$)</label>
+            <input type="number" id="cad-valorParcela" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Dia do Vencimento</label>
+            <input type="text" id="cad-diaVenc" placeholder="Ex.: 10">
+          </div>
+          <div class="form-field">
+            <label>Forma de Pagamento</label>
+            <select id="cad-formaPag">
+              <option value="">Selecionar</option>
+              <option>PIX</option>
+              <option>Transferência bancária</option>
+              <option>Boleto</option>
+              <option>Dinheiro</option>
+            </select>
+          </div>
+          <div class="form-field form-full">
+            <label>Objeto do Contrato</label>
+            <textarea id="cad-objeto" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div id="cadastroStatus" class="form-status"></div>
+    <div class="form-modal-footer">
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCadastro').classList.remove('open')">Cancelar</button>
+      <button class="btn-form-save" id="btnSalvarCadastro" onclick="salvarCadastro()">💾 Cadastrar processo</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL DOCUMENTOS -->
@@ -1903,6 +2732,7 @@ let currentRamo = 'all';
 let expandedId = null;
 
 const CONFIG_KEY = 'lexflow_config';
+const URL_AS = 'https://script.google.com/macros/s/AKfycbxyu9Qt6zvbwqindl5HTn10x8ywhlLtfibt2gr4dau29TJ2ZjTqNPjSRkE6PFvNywQB/exec';
 
 // ─── CONFIG ───────────────────────────────────────────────────
 function getConfig() {
@@ -2406,6 +3236,21 @@ function renderCard(p, idx) {
           </div>` : ''}
 
           <div class="detail-actions">
+            ${p.advParc && p.advParc.length > 2 ? `
+            <button class="btn-action" style="background:rgba(155,109,255,0.12);border-color:rgba(155,109,255,0.3);color:var(--purple);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardParceiro(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+              Parceiro
+            </button>` : ''}
+            <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.35);color:var(--blue);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEdicao(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Editar
+            </button>
             <button class="btn-action" style="background:rgba(200,169,110,0.08);border-color:rgba(200,169,110,0.3);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirRecibo(this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -2651,7 +3496,7 @@ function gerarGratuidade(p) {
   </p>
 
   <p class="doc-texto">
-    Para tanto, declaro que minha renda mensal bruta é de aproximadamente <strong>${renda}</strong>,
+    Para tanto, declaro que minha renda mensal é de aproximadamente <strong>${renda}</strong>,
     que possuo <strong>${dep}</strong> dependente(s), e que meu patrimônio é insuficiente para
     suportar as despesas processuais sem comprometer meu mínimo existencial.
   </p>
@@ -2725,10 +3570,11 @@ function gerarContrato(p) {
   <p class="doc-texto">
     <strong>CLÁUSULA 2ª — DOS HONORÁRIOS.</strong>
     Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
-    <strong>${valTotal}</strong>, a ser pago em <strong>${parcelas}</strong> parcela(s)
-    de <strong>${valParcela}</strong>, com vencimento no ${vencimento},
-    por meio de <strong>${formaPag}</strong>
-    ${formaPag.toUpperCase().includes('PIX') ? '(Chave PIX — CPF: 051.303.588-56)' : ''}.
+    <strong>${valTotal}</strong>, a ser pago em <strong>${parcelas}</strong> parcela(s),
+    ${valEntrada
+      ? `sendo a primeira parcela no valor de <strong>${valEntrada}</strong> a ser paga em ${campo(p.diaVencimento) || '______'} e as demais parcelas no valor de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`
+      : `de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`}
+    por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX — CPF: 051.303.588-56)' : ''}.
   </p>
 
   <p class="doc-texto">
@@ -3089,6 +3935,423 @@ AUDIÊNCIA: ${formatDate(p.dataAudi)}${hora}`;
     setTimeout(() => tmp.remove(), 2000);
   });
 }
+
+// ─── CARD PARCEIRO ───────────────────────────────────────────
+let _parcProcesso = null;
+
+function abrirCardParceiro(uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+  _parcProcesso = p;
+
+  document.getElementById('parceiroToolbarTitle').textContent = `📨 Parceiro: ${p.advParc}`;
+  document.getElementById('parc-urgencia').value = p.urgencia === 'critico' ? 'critico' : p.urgencia === 'urgente' ? 'urgente' : 'normal';
+  document.getElementById('parc-tarefa').value = '';
+  document.getElementById('parc-prazo').value = '';
+
+  atualizarCardParceiro();
+  document.getElementById('modalParceiro').classList.add('open');
+}
+
+function atualizarCardParceiro() {
+  const p = _parcProcesso;
+  if (!p) return;
+
+  const urgencia = document.getElementById('parc-urgencia').value;
+  const tarefa = document.getElementById('parc-tarefa').value;
+  const prazo = document.getElementById('parc-prazo').value;
+
+  const urgLabels = { normal: 'Normal', urgente: 'Urgente', critico: 'CRÍTICO' };
+  const urgClasses = { normal: 'parc-urg-normal', urgente: 'parc-urg-urgente', critico: 'parc-urg-critico' };
+
+  const prazoFmt = prazo ? new Date(prazo + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+
+  let h = `
+  <div class="parc-header">
+    <div>
+      <div class="parc-header-title">Comunicação Interna — Processo</div>
+      <div class="parc-header-sub">Escritório Adenilson Borges · OAB/SP 335.600</div>
+    </div>
+    <span class="parc-urgencia ${urgClasses[urgencia]}">${urgLabels[urgencia]}</span>
+  </div>
+  <div class="parc-body">
+
+    <div class="parc-section">
+      <div class="parc-section-label">Processo</div>
+      <div class="parc-processo-nome">${escHtml(p.nome)}</div>
+      <div class="parc-processo-num">${escHtml(p.processo) || '(sem número)'}</div>
+      <div class="parc-processo-meta">
+        ${escHtml(p.tipo || '')}${p.outra ? ` · vs ${escHtml(p.outra)}` : ''}${p.parte ? ` · ${escHtml(p.parte)}` : ''}
+      </div>
+    </div>
+
+    ${p.ultima && p.ultima.length > 2 ? `
+    <div class="parc-section">
+      <div class="parc-section-label">Situação Atual</div>
+      <div class="parc-box">${escHtml(p.ultima)}</div>
+    </div>` : ''}
+
+    ${tarefa ? `
+    <div class="parc-section">
+      <div class="parc-section-label">Tarefa / Orientação</div>
+      <div class="parc-tarefa-box">${escHtml(tarefa)}${prazoFmt ? `<div class="parc-prazo">⏰ Prazo: ${prazoFmt}</div>` : ''}</div>
+    </div>` : ''}
+
+    ${p.dataAudi && p.dataAudi.length > 3 ? `
+    <div class="parc-section">
+      <div class="parc-section-label">Audiência Marcada</div>
+      <div class="parc-box" style="color:#90B8F0;font-weight:700">
+        📅 ${escHtml(p.dataAudi)}${p.horAudi ? ` às ${escHtml(p.horAudi)}` : ''}
+        ${p.localAudi ? `<div style="font-size:12px;color:#6a8ab0;font-weight:400;margin-top:3px">📍 ${escHtml(p.localAudi)}</div>` : ''}
+      </div>
+    </div>` : ''}
+
+  </div>
+  <div class="parc-footer">
+    Dr. Adenilson Borges da Silva · OAB/SP 335.600 · (11) 99931-3712
+  </div>`;
+
+  document.getElementById('parcCard').innerHTML = h;
+}
+
+function _parcTexto() {
+  const p = _parcProcesso;
+  const urgencia = document.getElementById('parc-urgencia').value;
+  const tarefa = document.getElementById('parc-tarefa').value;
+  const prazo = document.getElementById('parc-prazo').value;
+  const urgLabels = { normal: 'Normal', urgente: '⚠️ URGENTE', critico: '🔴 CRÍTICO' };
+  const prazoFmt = prazo ? new Date(prazo + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+
+  let txt = `*COMUNICAÇÃO INTERNA — PROCESSO*
+`;
+  txt += `Escritório Adenilson Borges · OAB/SP 335.600
+`;
+  txt += `Urgência: ${urgLabels[urgencia]}
+`;
+  txt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+  txt += `*PROCESSO:* ${p.nome}
+`;
+  if (p.processo) txt += `Nº ${p.processo}
+`;
+  if (p.tipo) txt += `${p.tipo}`;
+  if (p.outra) txt += ` · vs ${p.outra}`;
+  if (p.parte) txt += ` · ${p.parte}`;
+  txt += '
+';
+  if (p.ultima && p.ultima.length > 2) txt += `
+*SITUAÇÃO ATUAL:*
+${p.ultima}
+`;
+  if (tarefa) {
+    txt += `
+*TAREFA / ORIENTAÇÃO:*
+${tarefa}`;
+    if (prazoFmt) txt += `
+⏰ Prazo: ${prazoFmt}`;
+    txt += '
+';
+  }
+  if (p.dataAudi && p.dataAudi.length > 3) {
+    txt += `
+*AUDIÊNCIA:* ${p.dataAudi}`;
+    if (p.horAudi) txt += ` às ${p.horAudi}`;
+    if (p.localAudi) txt += `
+📍 ${p.localAudi}`;
+    txt += '
+';
+  }
+  txt += `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  txt += `Dr. Adenilson Borges · (11) 99931-3712`;
+  return txt;
+}
+
+function enviarParcWpp() {
+  const p = _parcProcesso;
+  if (!p) return;
+  const txt = _parcTexto();
+  // Usar telefone do advogado parceiro se disponível (remover não-dígitos)
+  const tel = ''; // campo não mapeado — abre seletor genérico
+  const url = tel
+    ? `https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}`
+    : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+  window.open(url, '_blank');
+}
+
+function enviarParcEmail() {
+  const p = _parcProcesso;
+  if (!p) return;
+  const urgencia = document.getElementById('parc-urgencia').value;
+  const urgPrefixo = urgencia === 'critico' ? '[CRÍTICO] ' : urgencia === 'urgente' ? '[URGENTE] ' : '';
+  const assunto = `${urgPrefixo}Processo ${p.nome} — ${p.processo || 'sem número'}`;
+  const corpo = _parcTexto().replace(/\*/g, '');
+  const mailtoUrl = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.open(mailtoUrl, '_blank');
+}
+
+function enviarParcImagem() {
+  const card = document.getElementById('parcCard');
+  const nome = _parcProcesso ? _parcProcesso.advParc.replace(/\s+/g,'_').toLowerCase() : 'parceiro';
+
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳';
+  btn.disabled = true;
+
+  html2canvas(card, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#0d1525',
+    logging: false,
+    windowWidth: card.scrollWidth,
+    windowHeight: card.scrollHeight,
+    onclone: function(doc) {
+      const el = doc.getElementById('parcCard');
+      if (el) el.style.fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+    }
+  }).then(function(canvas) {
+    return new Promise(function(resolve) {
+      canvas.toBlob(function(blob) {
+        const filename = `parceiro_${nome}_${new Date().toISOString().slice(0,10)}.png`;
+        resolve(new File([blob], filename, { type: 'image/png' }));
+      }, 'image/png');
+    });
+  }).then(function(file) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Comunicação Interna' });
+    } else {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    }
+  }).finally(function() {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  });
+}
+
+// ─── EDIÇÃO E CADASTRO ───────────────────────────────────────
+
+// Estado atual de edição
+let _edicaoLinha = null;
+
+function abrirEdicao(uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
+  _edicaoLinha = p._row + 1; // linha real na planilha
+
+  document.getElementById('edicaoTitulo').textContent = '✏️ Editar: ' + p.nome;
+
+  // Preencher campos
+  document.getElementById('ed-ultima').value = p.ultima || '';
+  document.getElementById('ed-status').value = p.status || 'ATIVO';
+  document.getElementById('ed-proxAdv').value = p.proximoPassoAdv || '';
+  document.getElementById('ed-provCliente').value = p.providCliente || '';
+  document.getElementById('ed-diasPrazo').value = p.diasPrazo || '';
+  document.getElementById('ed-obs').value = p.obs || '';
+
+  // Converter datas para formato input date (yyyy-mm-dd)
+  document.getElementById('ed-dataAtua').value = dataParaInput(p.dataAtua);
+  document.getElementById('ed-dataPrazoCliente').value = dataParaInput(p.dataPrazoCliente);
+  document.getElementById('ed-prazoData').value = dataParaInput(p.prazoData);
+  document.getElementById('ed-dataAudi').value = dataParaInput(p.dataAudi);
+  document.getElementById('ed-horAudi').value = p.horAudi ? p.horAudi.substring(0,5) : '';
+  document.getElementById('ed-localAudi').value = p.localAudi || '';
+
+  document.getElementById('edicaoStatus').textContent = '';
+  document.getElementById('modalEdicao').classList.add('open');
+}
+
+function dataParaInput(str) {
+  if (!str || str.length < 8) return '';
+  // Converter dd/MM/yyyy para yyyy-MM-dd
+  const parts = str.split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  }
+  // Já está no formato yyyy-MM-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  return '';
+}
+
+function inputParaData(str) {
+  if (!str) return '';
+  // Converter yyyy-MM-dd para dd/MM/yyyy
+  const parts = str.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return str;
+}
+
+async function salvarEdicao() {
+  if (!_edicaoLinha) return;
+
+  const btn = document.getElementById('btnSalvarEdicao');
+  const statusEl = document.getElementById('edicaoStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando...';
+  statusEl.className = 'form-status';
+  statusEl.textContent = '';
+
+  const campos = {
+    'Última Atualização': document.getElementById('ed-ultima').value,
+    'Status': document.getElementById('ed-status').value,
+    'Data Atualização': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
+    'proximoPassoAdv': document.getElementById('ed-proxAdv').value,
+    'Providências para o Cliente Atender': document.getElementById('ed-provCliente').value,
+    'dataPrazoCliente': inputParaData(document.getElementById('ed-dataPrazoCliente').value),
+    'diasPrazo': document.getElementById('ed-diasPrazo').value,
+    'prazoData': inputParaData(document.getElementById('ed-prazoData').value),
+    'Data Audiência': inputParaData(document.getElementById('ed-dataAudi').value),
+    'Horário Audiência': document.getElementById('ed-horAudi').value,
+    'Local da Audiência': document.getElementById('ed-localAudi').value,
+    'Observações': document.getElementById('ed-obs').value,
+  };
+
+  try {
+    const resp = await fetch(URL_AS, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'atualizar', linha: _edicaoLinha, campos })
+    });
+    const data = await resp.json();
+
+    if (data.ok) {
+      statusEl.className = 'form-status ok';
+      statusEl.textContent = '✓ Salvo com sucesso! Atualizando painel...';
+      setTimeout(() => {
+        document.getElementById('modalEdicao').classList.remove('open');
+        loadFromSheets(); // recarregar dados
+      }, 1500);
+    } else {
+      throw new Error(data.error || 'Erro desconhecido');
+    }
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar na planilha';
+  }
+}
+
+function abrirCadastro() {
+  // Limpar campos
+  ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
+   'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
+   'cad-processo','cad-vara','cad-tribunal','cad-tipo','cad-parte','cad-outra',
+   'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
+   'cad-pastaDrive','cad-objeto','cad-diaVenc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['cad-honorarios','cad-parcelas','cad-entrada','cad-valorParcela'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('cad-status').value = 'ATIVO';
+  document.getElementById('cad-dataNasc').value = '';
+
+  document.getElementById('cadastroStatus').textContent = '';
+  document.getElementById('modalCadastro').classList.add('open');
+}
+
+async function salvarCadastro() {
+  const nome = document.getElementById('cad-nome').value.trim();
+  if (!nome) {
+    document.getElementById('cadastroStatus').className = 'form-status erro';
+    document.getElementById('cadastroStatus').textContent = 'Nome do cliente é obrigatório.';
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarCadastro');
+  const statusEl = document.getElementById('cadastroStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando...';
+  statusEl.className = 'form-status';
+  statusEl.textContent = '';
+
+  const campos = {
+    'Nome': nome,
+    'CPF/CNPJ': document.getElementById('cad-cpf').value,
+    'RG/ Órgão emissor': document.getElementById('cad-rg').value,
+    'Estado civil': document.getElementById('cad-estadoCivil').value,
+    'Profissão': document.getElementById('cad-profissao').value,
+    'Data de Nascimento': inputParaData(document.getElementById('cad-dataNasc').value),
+    'Telefone': document.getElementById('cad-telefone').value,
+    'e-mail': document.getElementById('cad-email').value,
+    'Endereço - Rua e Número': document.getElementById('cad-endereco').value,
+    'Bairro': document.getElementById('cad-bairro').value,
+    'Complemento': document.getElementById('cad-complemento').value,
+    'CEP': document.getElementById('cad-cep').value,
+    'Cidade': document.getElementById('cad-cidade').value,
+    'Estado (UF)': document.getElementById('cad-estado').value,
+    'Número do Processo': document.getElementById('cad-processo').value,
+    'Sistema': document.getElementById('cad-sistema').value,
+    'Vara': document.getElementById('cad-vara').value,
+    'Tribunal e Fórum': document.getElementById('cad-tribunal').value,
+    'Ramo do Direito': document.getElementById('cad-ramo').value,
+    'Tipo de Ação': document.getElementById('cad-tipo').value,
+    'Parte': document.getElementById('cad-parte').value,
+    'Outra Parte': document.getElementById('cad-outra').value,
+    'Status': document.getElementById('cad-status').value,
+    'Advogado Parceiro': document.getElementById('cad-advParc').value,
+    'Última Atualização': document.getElementById('cad-ultima').value,
+    'proximoPassoAdv': document.getElementById('cad-proxAdv').value,
+    'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
+    'Link Tribunal': document.getElementById('cad-linkTrib').value,
+    'Pasta Drive': document.getElementById('cad-pastaDrive').value,
+    'Valor dos Honorários': document.getElementById('cad-honorarios').value,
+    'Número de parcelas': document.getElementById('cad-parcelas').value,
+    'Valor da parcela de entrada': document.getElementById('cad-entrada').value,
+    'Valor da Parcela': document.getElementById('cad-valorParcela').value,
+    'Dia do Vencimento': document.getElementById('cad-diaVenc').value,
+    'Forma de pagamento ': document.getElementById('cad-formaPag').value,
+    'Objeto do contrato (descrição dos Serviços)': document.getElementById('cad-objeto').value,
+  };
+
+  try {
+    const resp = await fetch(URL_AS, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'cadastrar', campos })
+    });
+    const data = await resp.json();
+
+    if (data.ok) {
+      statusEl.className = 'form-status ok';
+      statusEl.textContent = `✓ Processo cadastrado como nº ${data.nro}! Atualizando painel...`;
+      setTimeout(() => {
+        document.getElementById('modalCadastro').classList.remove('open');
+        loadFromSheets();
+      }, 2000);
+    } else {
+      throw new Error(data.error || 'Erro desconhecido');
+    }
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Cadastrar processo';
+  }
+}
+
+// Fechar modais de formulário clicando fora
+document.addEventListener('DOMContentLoaded', () => {
+  ['modalEdicao','modalCadastro','modalParceiro'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+  });
+});
 
 // ─── INIT ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
