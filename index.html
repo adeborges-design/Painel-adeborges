@@ -3925,9 +3925,8 @@ ${p.providCliente}
 `;
   if (p.dataAudi && p.dataAudi.length > 3) {
     const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
-    txt += `
-AUDIÊNCIA: ${formatDate(p.dataAudi)}${hora}`;
-    if (p.localAudi) txt += ` — ${p.localAudi}`;
+    txt += '\nAUDIENCIA: ' + formatDate(p.dataAudi) + hora;
+    if (p.localAudi) txt += ' - ' + p.localAudi;
   }
 
   navigator.clipboard.writeText(txt).then(() => {
@@ -4025,50 +4024,30 @@ function _parcTexto() {
   const urgLabels = { normal: 'Normal', urgente: '⚠️ URGENTE', critico: '🔴 CRÍTICO' };
   const prazoFmt = prazo ? new Date(prazo + 'T12:00:00').toLocaleDateString('pt-BR') : '';
 
-  let txt = `*COMUNICAÇÃO INTERNA — PROCESSO*
-`;
-  txt += `Escritório Adenilson Borges · OAB/SP 335.600
-`;
-  txt += `Urgência: ${urgLabels[urgencia]}
-`;
-  txt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-`;
-  txt += `*PROCESSO:* ${p.nome}
-`;
-  if (p.processo) txt += `Nº ${p.processo}
-`;
-  if (p.tipo) txt += `${p.tipo}`;
-  if (p.outra) txt += ` · vs ${p.outra}`;
-  if (p.parte) txt += ` · ${p.parte}`;
-  txt += '
-';
-  if (p.ultima && p.ultima.length > 2) txt += `
-*SITUAÇÃO ATUAL:*
-${p.ultima}
-`;
+  let txt = '*COMUNICACAO INTERNA - PROCESSO*\n';
+  txt += 'Escritorio Adenilson Borges - OAB/SP 335.600\n';
+  txt += 'Urgencia: ' + urgLabels[urgencia] + '\n';
+  txt += '==============================\n\n';
+  txt += '*PROCESSO:* ' + p.nome + '\n';
+  if (p.processo) txt += 'Nr. ' + p.processo + '\n';
+  if (p.tipo) txt += p.tipo;
+  if (p.outra) txt += ' vs ' + p.outra;
+  if (p.parte) txt += ' - ' + p.parte;
+  txt += '\n';
+  if (p.ultima && p.ultima.length > 2) txt += '\n*SITUACAO ATUAL:*\n' + p.ultima + '\n';
   if (tarefa) {
-    txt += `
-*TAREFA / ORIENTAÇÃO:*
-${tarefa}`;
-    if (prazoFmt) txt += `
-⏰ Prazo: ${prazoFmt}`;
-    txt += '
-';
+    txt += '\n*TAREFA:*\n' + tarefa;
+    if (prazoFmt) txt += '\nPrazo: ' + prazoFmt;
+    txt += '\n';
   }
   if (p.dataAudi && p.dataAudi.length > 3) {
-    txt += `
-*AUDIÊNCIA:* ${p.dataAudi}`;
-    if (p.horAudi) txt += ` às ${p.horAudi}`;
-    if (p.localAudi) txt += `
-📍 ${p.localAudi}`;
-    txt += '
-';
+    txt += '\n*AUDIENCIA:* ' + p.dataAudi;
+    if (p.horAudi) txt += ' as ' + p.horAudi;
+    if (p.localAudi) txt += '\nLocal: ' + p.localAudi;
+    txt += '\n';
   }
-  txt += `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
-  txt += `Dr. Adenilson Borges · (11) 99931-3712`;
+  txt += '\n==============================\n';
+  txt += 'Dr. Adenilson Borges - (11) 99931-3712';
   return txt;
 }
 
