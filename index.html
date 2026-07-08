@@ -2880,6 +2880,8 @@ function parseProcessos(rows) {
     const linkTrib         = get(row, 'Link Tribunal',    46);
     const telefone         = get(row, 'Telefone',         47);
     const email            = get(row, 'e-mail',           48);
+    const telParceiro      = get(row, 'Telefone Advogado Parceiro', 44);  // AS
+    const emailParceiro    = get(row, 'E-mail Advogado Parceiro',   45);  // AT
 
     // Só processa linhas com número (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -2910,6 +2912,7 @@ function parseProcessos(rows) {
       diasPrazo: diasPrazoNum, prazoData,
       dataAudi, horAudi, localAudi,
       advParc, obs, pastaDrive, linkTrib, telefone, email,
+      telParceiro, emailParceiro,
       urgencia,
       _row: i
     });
@@ -4073,10 +4076,9 @@ function enviarParcWpp() {
   const p = _parcProcesso;
   if (!p) return;
   const txt = _parcTexto();
-  // Usar telefone do advogado parceiro se disponível (remover não-dígitos)
-  const tel = ''; // campo não mapeado — abre seletor genérico
+  const tel = (p.telParceiro || '').replace(/[^\d]/g, '');
   const url = tel
-    ? `https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}`
+    ? `https://wa.me/55${tel}?text=${encodeURIComponent(txt)}`
     : `https://wa.me/?text=${encodeURIComponent(txt)}`;
   window.open(url, '_blank');
 }
@@ -4088,7 +4090,8 @@ function enviarParcEmail() {
   const urgPrefixo = urgencia === 'critico' ? '[CRÍTICO] ' : urgencia === 'urgente' ? '[URGENTE] ' : '';
   const assunto = `${urgPrefixo}Processo ${p.nome} — ${p.processo || 'sem número'}`;
   const corpo = _parcTexto().replace(/\*/g, '');
-  const mailtoUrl = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  const dest = p.emailParceiro || '';
+  const mailtoUrl = `mailto:${dest}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
   window.open(mailtoUrl, '_blank');
 }
 
