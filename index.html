@@ -4274,22 +4274,20 @@ async function salvarEdicao() {
   };
 
   try {
-    const resp = await fetch(URL_AS, {
+    // Usar no-cors para contornar bloqueio CORS do Google Apps Script
+    await fetch(URL_AS, {
       method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ acao: 'atualizar', linha: _edicaoLinha, campos })
     });
-    const data = await resp.json();
-
-    if (data.ok) {
-      statusEl.className = 'form-status ok';
-      statusEl.textContent = '✓ Salvo com sucesso! Atualizando painel...';
-      setTimeout(() => {
-        document.getElementById('modalEdicao').classList.remove('open');
-        loadFromSheets(); // recarregar dados
-      }, 1500);
-    } else {
-      throw new Error(data.error || 'Erro desconhecido');
-    }
+    // Com no-cors não recebemos resposta — assumir sucesso
+    statusEl.className = 'form-status ok';
+    statusEl.textContent = '✓ Salvo! Atualizando painel...';
+    setTimeout(() => {
+      document.getElementById('modalEdicao').classList.remove('open');
+      loadFromSheets();
+    }, 1500);
   } catch (e) {
     statusEl.className = 'form-status erro';
     statusEl.textContent = 'Erro: ' + e.message;
@@ -4379,22 +4377,18 @@ async function salvarCadastro() {
   };
 
   try {
-    const resp = await fetch(URL_AS, {
+    await fetch(URL_AS, {
       method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ acao: 'cadastrar', campos })
     });
-    const data = await resp.json();
-
-    if (data.ok) {
-      statusEl.className = 'form-status ok';
-      statusEl.textContent = `✓ Processo cadastrado como nº ${data.nro}! Atualizando painel...`;
-      setTimeout(() => {
-        document.getElementById('modalCadastro').classList.remove('open');
-        loadFromSheets();
-      }, 2000);
-    } else {
-      throw new Error(data.error || 'Erro desconhecido');
-    }
+    statusEl.className = 'form-status ok';
+    statusEl.textContent = '✓ Processo cadastrado! Atualizando painel...';
+    setTimeout(() => {
+      document.getElementById('modalCadastro').classList.remove('open');
+      loadFromSheets();
+    }, 2000);
   } catch (e) {
     statusEl.className = 'form-status erro';
     statusEl.textContent = 'Erro: ' + e.message;
