@@ -4096,7 +4096,7 @@ function abrirCardAtendimento(uid) {
   const audSection = document.getElementById('cardAudienciaSection');
   if (p.dataAudi && p.dataAudi.length > 3) {
     const dataFmt = formatDate(p.dataAudi);
-    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
     document.getElementById('cardAudienciaData').textContent = `${dataFmt}${hora}`;
     document.getElementById('cardAudienciaLocal').textContent = p.localAudi ? `📍 ${p.localAudi}` : '';
     audSection.style.display = '';
@@ -4202,35 +4202,18 @@ function shareWhatsApp() {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
 
-  let txt = `*ATUALIZAÇÃO PROCESSUAL*
-_Escritório Adenilson Borges_
-
-`;
-  txt += `*CLIENTE*
-${p.nome}
-`;
-  if (p.processo) txt += `Processo nº ${p.processo}
-`;
-  if (p.tipo) txt += `${p.tipo}
-`;
-  if (p.parte) txt += `Posição: ${p.parte}
-`;
-  if (p.outra) txt += `Parte contrária: ${p.outra}
-`;
-  if (p.ultima && p.ultima.length > 2) txt += `
-*SITUAÇÃO ATUAL*
-${p.ultima}
-`;
-  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += `
-*O QUE VAMOS FAZER POR VOCÊ*
-${p.proximoPassoAdv}
-`;
-  if (p.providCliente && p.providCliente.length > 2) txt += `
-*O QUE O SR(A). PRECISA FAZER*
-${p.providCliente}
-`;
+  let txt = '*ATUALIZACAO PROCESSUAL*\n';
+  txt += '_Escritorio Adenilson Borges_\n\n';
+  txt += '*CLIENTE*\n' + p.nome + '\n';
+  if (p.processo) txt += 'Processo nr. ' + p.processo + '\n';
+  if (p.tipo) txt += p.tipo + '\n';
+  if (p.parte) txt += 'Posicao: ' + p.parte + '\n';
+  if (p.outra) txt += 'Parte contraria: ' + p.outra + '\n';
+  if (p.ultima && p.ultima.length > 2) txt += '\n*SITUACAO ATUAL*\n' + p.ultima + '\n';
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\n*O QUE FAREMOS:*\n' + p.proximoPassoAdv + '\n';
+  if (p.providCliente && p.providCliente.length > 2) txt += '\n*O QUE O CLIENTE PRECISA:*\n' + p.providCliente + '\n';
   if (p.dataAudi && p.dataAudi.length > 3) {
-    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
     txt += `
 *AUDIÊNCIA MARCADA*
 ${formatDate(p.dataAudi)}${hora}`;
@@ -4243,36 +4226,19 @@ ADENILSON BORGES DA SILVA · OAB/SP 335.600 · (11) 99931-3712`;
 
   const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
   window.open(url, '_blank');
-}
-
-function copyCardText() {
-  const uid = document.getElementById('modalCard').dataset.uid;
-  const p = allProcessos.find(x => x._uid === parseInt(uid));
-  if (!p) return;
-
-  let txt = `ATUALIZAÇÃO PROCESSUAL — Escritório Adenilson Borges
-
-`;
+    txt += '\nAUDIENCIA MARCADA:\n' + formatDate(p.dataAudi) + hora + '\n';
+    if (p.localAudi) txt += 'Local: ' + p.localAudi + '\n';
+  }
+  txt += '\nDuvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
   txt += `CLIENTE: ${p.nome}
-`;
-  if (p.processo) txt += `Processo nº ${p.processo}
-`;
-  if (p.tipo) txt += `${p.tipo}
-`;
-  if (p.ultima && p.ultima.length > 2) txt += `
-SITUAÇÃO ATUAL:
-${p.ultima}
-`;
-  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += `
-O QUE VAMOS FAZER:
-${p.proximoPassoAdv}
-`;
-  if (p.providCliente && p.providCliente.length > 2) txt += `
-O QUE O CLIENTE PRECISA FAZER:
-${p.providCliente}
-`;
-  if (p.dataAudi && p.dataAudi.length > 3) {
-    const hora = p.horAudi ? ` às ${p.horAudi.substring(0,5)}` : '';
+  let txt = 'ATUALIZACAO PROCESSUAL - Escritorio Adenilson Borges\n\n';
+  txt += 'CLIENTE: ' + p.nome + '\n';
+  if (p.processo) txt += 'Processo nr. ' + p.processo + '\n';
+  if (p.tipo) txt += p.tipo + '\n';
+  if (p.ultima && p.ultima.length > 2) txt += '\nSITUACAO ATUAL:\n' + p.ultima + '\n';
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\nO QUE FAREMOS:\n' + p.proximoPassoAdv + '\n';
+  if (p.providCliente && p.providCliente.length > 2) txt += '\nO QUE O CLIENTE PRECISA:\n' + p.providCliente + '\n';
+    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
     txt += '\nAUDIENCIA: ' + formatDate(p.dataAudi) + hora;
     if (p.localAudi) txt += ' - ' + p.localAudi;
   }
@@ -4680,29 +4646,15 @@ function _repasseTexto() {
   const val = parseFloat(h['Valor Recebido']) || 0;
   const valRep = parseFloat(h['Valor Repasse Parceiro']) || 0;
   const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-  let txt = '*INFORMATIVO DE REPASSE*
-';
-  txt += 'Escritorio Adenilson Borges - OAB/SP 335.600
-
-';
-  txt += `*PROCESSO:* ${h['Cliente']}
-${h['Nº Processo']}
-
-`;
-  txt += `*PAGAMENTO RECEBIDO:* ${fmt(val)}
-`;
-  txt += `Parcela: ${h['Parcela Referência']} - Data: ${h['Data Pagamento']}
-
-`;
-  txt += `*SEU REPASSE:* ${fmt(valRep)}
-`;
-  txt += `Status: ${h['Status Repasse']}
-`;
-  if (h['Observações']) txt += `
-Obs: ${h['Observações']}
-`;
-  txt += '
-Dr. Adenilson Borges - (11) 99931-3712';
+  let txt = '*INFORMATIVO DE REPASSE*\n';
+  txt += 'Escritorio Adenilson Borges - OAB/SP 335.600\n\n';
+  txt += '*PROCESSO:* ' + h['Cliente'] + '\n' + h['Nr Processo'] + '\n\n';
+  txt += '*PAGAMENTO RECEBIDO:* ' + fmt(val) + '\n';
+  txt += 'Parcela: ' + h['Parcela Referencia'] + ' - Data: ' + h['Data Pagamento'] + '\n\n';
+  txt += '*SEU REPASSE:* ' + fmt(valRep) + '\n';
+  txt += 'Status: ' + h['Status Repasse'] + '\n';
+  if (h['Observacoes']) txt += '\nObs: ' + h['Observacoes'] + '\n';
+  txt += '\nDr. Adenilson Borges - (11) 99931-3712';
   return txt;
 }
 
@@ -4719,7 +4671,7 @@ function enviarRepasseWpp() {
 function enviarRepasseEmail() {
   const h = _repasseLanc;
   if (!h) return;
-  const assunto = `Repasse - ${h['Cliente']} - ${h['Parcela Referência']}`;
+  const assunto = 'Repasse - ' + h['Cliente'] + ' - ' + h['Parcela Referencia'];
   window.open(`mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(_repasseTexto().replace(/\*/g,''))}`, '_blank');
 }
 
@@ -4873,7 +4825,7 @@ function enviarParcEmail() {
   if (!p) return;
   const urgencia = document.getElementById('parc-urgencia').value;
   const urgPrefixo = urgencia === 'critico' ? '[CRÍTICO] ' : urgencia === 'urgente' ? '[URGENTE] ' : '';
-  const assunto = `${urgPrefixo}Processo ${p.nome} — ${p.processo || 'sem número'}`;
+  const assunto = urgPrefixo + 'Processo ' + p.nome + ' - ' + (p.processo || 'sem numero');
   const corpo = _parcTexto().replace(/\*/g, '');
   const dest = p.emailParceiro || '';
   const mailtoUrl = `mailto:${dest}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
