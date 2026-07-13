@@ -3456,8 +3456,8 @@ function renderCard(p, idx) {
         </svg>
         <div class="text">
           <strong>Audiência: ${formatDate(p.dataAudi)}</strong>
-          ${p.horAudi ? ` às ${p.horAudi}` : ''}
-          ${p.localAudi ? ` — ${p.localAudi}` : ''}
+          ${p.horAudi ? ' as ' + p.horAudi : ''}
+          ${p.localAudi ? ' - ' + p.localAudi : ''}
         </div>
       </div>`;
   }
@@ -3721,13 +3721,13 @@ function dataExtenso() {
   const d = new Date();
   const meses = ['janeiro','fevereiro','março','abril','maio','junho',
     'julho','agosto','setembro','outubro','novembro','dezembro'];
-  return `São Paulo, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  return 'Sao Paulo, ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear() + '.';
 }
 
 function enderecoCompleto(p) {
   let e = p.endereco || '';
   if (p.complemento) e += `, ${p.complemento}`;
-  if (p.bairro) e += ` — ${p.bairro}`;
+  if (p.bairro) e += ' - ' + p.bairro;
   if (p.cidade) e += `, ${p.cidade}`;
   if (p.estado) e += `/${p.estado}`;
   if (p.cep) e += `, CEP ${p.cep}`;
@@ -3873,10 +3873,10 @@ function gerarContrato(p) {
   const valEntrada = p.valorEntrada
     ? `R$ ${parseFloat(p.valorEntrada).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
     : '';
-  const vencimento = p.diaVencimento ? `dia ${p.diaVencimento} de cada mês` : '______________________';
+  const vencimento = p.diaVencimento ? 'dia ' + p.diaVencimento + ' de cada mes' : '______________________';
   const formaPag = p.formaPagamento || 'PIX';
   const objeto = p.objetoContrato || (p.processo
-    ? `prestação de serviços advocatícios no processo n.º ${p.processo} — ${p.tipo || p.ramo || 'serviços jurídicos'}`
+    ? 'prestacao de servicos advocaticios no processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos')
     : '______________________');
 
   return `
@@ -4217,12 +4217,12 @@ function shareWhatsApp() {
     txt += `
 *AUDIÊNCIA MARCADA*
 ${formatDate(p.dataAudi)}${hora}`;
-    if (p.localAudi) txt += `\n📍 ${p.localAudi}`;
+    if (p.localAudi) txt += '\nLocal: ' + p.localAudi;
     txt += '\n';
   }
   txt += `
 Dúvidas? Ligue ou envie mensagem.
-ADENILSON BORGES DA SILVA · OAB/SP 335.600 · (11) 99931-3712`;
+ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
 
   const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
   window.open(url, '_blank');
@@ -4265,7 +4265,7 @@ function abrirHonorarios() {
   allProcessos.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p._uid;
-    opt.textContent = p.nome + (p.processo ? ' · ' + p.processo : '');
+    opt.textContent = p.nome + (p.processo ? ' - ' + p.processo : '');
     sel.appendChild(opt);
   });
   // Data padrão hoje
