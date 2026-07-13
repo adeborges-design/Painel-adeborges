@@ -2000,6 +2000,12 @@
       </svg>
       Atualizar
     </button>
+    <button class="btn-sync" onclick="abrirHonorarios()" style="border-color:rgba(200,169,110,0.4);color:var(--accent)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+      </svg>
+      Honorários
+    </button>
     <button class="btn-sync" onclick="abrirCadastro()" style="border-color:rgba(76,175,125,0.4);color:var(--green)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
@@ -2133,6 +2139,269 @@
     </div>
 
   </main>
+</div>
+
+<!-- MÓDULO HONORÁRIOS -->
+<div class="hon-overlay" id="honOverlay">
+  <div class="hon-header">
+    <div class="hon-title">💰 Controle de Honorários</div>
+    <button class="btn-sync" onclick="carregarHonorarios()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+      Atualizar
+    </button>
+    <button class="btn-sync" onclick="document.getElementById('honOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+
+  <div class="hon-body">
+    <!-- COLUNA ESQUERDA: Resumo + Formulário -->
+    <div class="hon-resumo">
+
+      <!-- STATS -->
+      <div class="hon-stat verde">
+        <div class="hon-stat-label">Total Recebido</div>
+        <div class="hon-stat-value" id="honTotalRecebido">R$ 0,00</div>
+        <div class="hon-stat-sub" id="honTotalLancamentos">0 lançamentos</div>
+      </div>
+
+      <div class="hon-stat vermelho">
+        <div class="hon-stat-label">Repasses Pendentes</div>
+        <div class="hon-stat-value" id="honRepassePendente">R$ 0,00</div>
+        <div class="hon-stat-sub" id="honRepasseQtd">para parceiros</div>
+      </div>
+
+      <div class="hon-stat azul">
+        <div class="hon-stat-label">Recebido via Parceiro</div>
+        <div class="hon-stat-value" id="honViaParceiro">R$ 0,00</div>
+        <div class="hon-stat-sub">aguardando repasse</div>
+      </div>
+
+      <div class="hon-stat roxo">
+        <div class="hon-stat-label">Êxito Pendente</div>
+        <div class="hon-stat-value" id="honExito">R$ 0,00</div>
+        <div class="hon-stat-sub">honorários de êxito</div>
+      </div>
+
+      <!-- FORMULÁRIO NOVO LANÇAMENTO -->
+      <div class="hon-form">
+        <div class="hon-form-header">
+          <div class="hon-form-title">➕ Novo Lançamento</div>
+          <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px" onclick="toggleHonForm()">▼</button>
+        </div>
+        <div id="honFormBody" class="hon-form-body">
+
+          <div class="hon-field hon-form-full">
+            <label>Processo / Cliente *</label>
+            <select class="hon-select" id="hon-processo" onchange="honPreencherContrato()">
+              <option value="">Selecionar processo...</option>
+            </select>
+          </div>
+
+          <div class="hon-field hon-form-full">
+            <label>Responsável pelo Pagamento</label>
+            <input type="text" class="hon-input" id="hon-respPagamento" placeholder="Nome de quem paga (se diferente do cliente)">
+          </div>
+
+          <div class="hon-field">
+            <label>CPF/CNPJ do Pagador</label>
+            <input type="text" class="hon-input" id="hon-cpfPagador" placeholder="000.000.000-00">
+          </div>
+
+          <div class="hon-field">
+            <label>Telefone do Pagador</label>
+            <input type="text" class="hon-input" id="hon-telPagador" placeholder="(11) 99999-9999">
+          </div>
+
+          <div class="hon-field">
+            <label>Tipo de Contrato</label>
+            <select class="hon-select" id="hon-tipoContrato">
+              <option value="">Selecionar</option>
+              <option>Parcelado</option>
+              <option>Único</option>
+              <option>Êxito</option>
+              <option>Misto (parcelas + êxito)</option>
+              <option>Pro bono</option>
+            </select>
+          </div>
+
+          <div class="hon-field">
+            <label>Valor Total do Contrato (R$)</label>
+            <input type="number" class="hon-input" id="hon-valorContrato" min="0" step="0.01" placeholder="0,00">
+          </div>
+
+          <div class="hon-field">
+            <label>Número de Parcelas</label>
+            <input type="number" class="hon-input" id="hon-numParcelas" min="1" placeholder="Ex.: 3">
+          </div>
+
+          <div class="hon-field">
+            <label>Valor da Entrada (R$)</label>
+            <input type="number" class="hon-input" id="hon-valorEntrada" min="0" step="0.01" placeholder="0,00">
+          </div>
+
+          <div class="hon-field">
+            <label>Valor das Parcelas (R$)</label>
+            <input type="number" class="hon-input" id="hon-valorParcela" min="0" step="0.01" placeholder="0,00">
+          </div>
+
+          <div class="hon-field">
+            <label>Dia do Vencimento</label>
+            <input type="text" class="hon-input" id="hon-diaVenc" placeholder="Ex.: 10">
+          </div>
+
+          <div class="hon-field hon-form-full">
+            <label>Objeto do Contrato</label>
+            <textarea class="hon-textarea" id="hon-objeto" rows="2"></textarea>
+          </div>
+
+          <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Pagamento Recebido</div>
+          </div>
+
+          <div class="hon-field">
+            <label>Parcela Referência *</label>
+            <input type="text" class="hon-input" id="hon-parcelaRef" placeholder="Ex.: 01/03, Entrada, Êxito">
+          </div>
+
+          <div class="hon-field">
+            <label>Valor Recebido (R$) *</label>
+            <input type="number" class="hon-input" id="hon-valorRecebido" min="0" step="0.01" placeholder="0,00">
+          </div>
+
+          <div class="hon-field">
+            <label>Data do Pagamento *</label>
+            <input type="date" class="hon-input" id="hon-dataPagamento">
+          </div>
+
+          <div class="hon-field">
+            <label>Forma de Pagamento *</label>
+            <select class="hon-select" id="hon-formaPag">
+              <option value="">Selecionar</option>
+              <option>PIX</option>
+              <option>Depósito bancário</option>
+              <option>Cheque</option>
+              <option>Boleto</option>
+              <option>Cartão de crédito</option>
+              <option>Cartão de débito</option>
+              <option>Dinheiro</option>
+              <option>Transferência bancária</option>
+            </select>
+          </div>
+
+          <div class="hon-field">
+            <label>Nota Fiscal Nº</label>
+            <input type="text" class="hon-input" id="hon-nf" placeholder="Nº da NF">
+          </div>
+
+          <div class="hon-field">
+            <label>Recibo Nº</label>
+            <input type="text" class="hon-input" id="hon-recibo" placeholder="Nº do recibo">
+          </div>
+
+          <div class="hon-field">
+            <label>Quem Recebeu</label>
+            <select class="hon-select" id="hon-quemRecebeu" onchange="honToggleParceiro()">
+              <option value="Eu">Eu</option>
+              <option value="Parceiro">Parceiro</option>
+            </select>
+          </div>
+
+          <div class="hon-field" id="honParceiroFields" style="display:none">
+            <label>Parceiro</label>
+            <input type="text" class="hon-input" id="hon-parceiro" placeholder="Nome do parceiro">
+          </div>
+
+          <div class="hon-field" id="honRepasseFields" style="display:none">
+            <label>Valor Repasse ao Parceiro (R$)</label>
+            <input type="number" class="hon-input" id="hon-valorRepasse" min="0" step="0.01" placeholder="0,00">
+          </div>
+
+          <div class="hon-field" id="honStatusRepasseField" style="display:none">
+            <label>Status do Repasse</label>
+            <select class="hon-select" id="hon-statusRepasse">
+              <option value="Pendente">Pendente</option>
+              <option value="Pago">Pago</option>
+            </select>
+          </div>
+
+          <div class="hon-field hon-form-full">
+            <label>Observações</label>
+            <textarea class="hon-textarea" id="hon-obs" rows="2"></textarea>
+          </div>
+
+        </div>
+        <div id="honFormStatus" style="padding:8px 20px;font-size:13px;text-align:center"></div>
+        <div class="hon-form-footer">
+          <button class="btn-form-cancel" onclick="limparHonForm()">Limpar</button>
+          <button class="btn-form-save" id="btnSalvarHon" onclick="salvarHonorario()">💾 Lançar</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COLUNA DIREITA: Lista de lançamentos -->
+    <div class="hon-main">
+
+      <div class="hon-section-title">
+        <span>Lançamentos</span>
+        <span id="honContadorLanc" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)"></span>
+      </div>
+
+      <!-- Filtros -->
+      <div class="hon-filter-bar">
+        <input type="text" class="hon-filter-input" id="honBusca" placeholder="Buscar por cliente, processo, forma..." oninput="renderHonorarios()">
+        <select class="hon-filter-select" id="honFiltroForma" onchange="renderHonorarios()">
+          <option value="">Todas as formas</option>
+          <option>PIX</option>
+          <option>Depósito bancário</option>
+          <option>Cheque</option>
+          <option>Boleto</option>
+          <option>Cartão de crédito</option>
+          <option>Dinheiro</option>
+        </select>
+        <select class="hon-filter-select" id="honFiltroRepasse" onchange="renderHonorarios()">
+          <option value="">Todos os repasses</option>
+          <option value="Pendente">Repasse pendente</option>
+          <option value="Pago">Repasse pago</option>
+          <option value="Eu">Recebi eu</option>
+          <option value="Parceiro">Recebeu parceiro</option>
+        </select>
+      </div>
+
+      <div id="honLista">
+        <div class="hon-loading">
+          <div class="spinner"></div>
+          <p>Carregando lançamentos...</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARD REPASSE PARCEIRO -->
+<div class="modal-repasse-overlay" id="modalRepasse">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">💸 Card de Repasse ao Parceiro</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRepasse').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div class="parc-card" id="repasseCard"></div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn-parc-wpp" onclick="enviarRepasseWpp()">
+          📱 WhatsApp
+        </button>
+        <button class="btn-parc-email" onclick="enviarRepasseEmail()">
+          ✉️ E-mail
+        </button>
+        <button class="btn-parc-img" onclick="enviarRepasseImagem()">
+          📸 Foto
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL CARD PARCEIRO -->
@@ -4016,6 +4285,464 @@ ${p.providCliente}
     setTimeout(() => tmp.remove(), 2000);
   });
 }
+
+// ─── MÓDULO HONORÁRIOS ───────────────────────────────────────
+let allHonorarios = [];
+let _honEditId = null;
+let _repasseLanc = null;
+
+function abrirHonorarios() {
+  document.getElementById('honOverlay').classList.add('open');
+  // Preencher select de processos
+  const sel = document.getElementById('hon-processo');
+  sel.innerHTML = '<option value="">Selecionar processo...</option>';
+  allProcessos.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p._uid;
+    opt.textContent = p.nome + (p.processo ? ' · ' + p.processo : '');
+    sel.appendChild(opt);
+  });
+  // Data padrão hoje
+  document.getElementById('hon-dataPagamento').value = new Date().toISOString().split('T')[0];
+  carregarHonorarios();
+}
+
+async function carregarHonorarios() {
+  document.getElementById('honLista').innerHTML = '<div class="hon-loading"><div class="spinner"></div><p>Carregando...</p></div>';
+  try {
+    const cfg = getConfig();
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/HONORARIOS!A1:Z500?key=${cfg.apiKey}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Aba HONORARIOS não encontrada — crie ela via Apps Script primeiro');
+    const data = await resp.json();
+    const rows = data.values || [];
+    if (rows.length < 2) { allHonorarios = []; }
+    else {
+      const headers = rows[0];
+      allHonorarios = rows.slice(1).filter(r => r[0]).map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+        return obj;
+      });
+    }
+    calcHonStats();
+    renderHonorarios();
+  } catch (e) {
+    document.getElementById('honLista').innerHTML = `<div class="hon-empty">⚠️ ${e.message}</div>`;
+  }
+}
+
+function calcHonStats() {
+  let totalRecebido = 0, repassePend = 0, viaParceiro = 0, exito = 0;
+  allHonorarios.forEach(h => {
+    const val = parseFloat(h['Valor Recebido']) || 0;
+    totalRecebido += val;
+    if (h['Quem Recebeu'] === 'Parceiro') {
+      viaParceiro += val;
+      if (h['Status Repasse'] === 'Pendente') {
+        repassePend += parseFloat(h['Valor Repasse Parceiro']) || 0;
+      }
+    }
+    if ((h['Parcela Referência'] || '').toLowerCase().includes('exit') ||
+        (h['Tipo Contrato'] || '').toLowerCase().includes('exit')) {
+      exito += val;
+    }
+  });
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  document.getElementById('honTotalRecebido').textContent = fmt(totalRecebido);
+  document.getElementById('honTotalLancamentos').textContent = allHonorarios.length + ' lançamentos';
+  document.getElementById('honRepassePendente').textContent = fmt(repassePend);
+  document.getElementById('honRepasseQtd').textContent = allHonorarios.filter(h => h['Status Repasse'] === 'Pendente').length + ' pendentes';
+  document.getElementById('honViaParceiro').textContent = fmt(viaParceiro);
+  document.getElementById('honExito').textContent = fmt(exito);
+}
+
+function renderHonorarios() {
+  const busca = (document.getElementById('honBusca')?.value || '').toLowerCase();
+  const filtroForma = document.getElementById('honFiltroForma')?.value || '';
+  const filtroRepasse = document.getElementById('honFiltroRepasse')?.value || '';
+
+  let lista = allHonorarios.filter(h => {
+    if (busca) {
+      const hay = [h['Cliente'], h['Nº Processo'], h['Forma Pagamento'],
+                   h['Parceiro'], h['Responsável Pagamento'], h['Parcela Referência']].join(' ').toLowerCase();
+      if (!hay.includes(busca)) return false;
+    }
+    if (filtroForma && h['Forma Pagamento'] !== filtroForma) return false;
+    if (filtroRepasse) {
+      if (filtroRepasse === 'Pendente' && h['Status Repasse'] !== 'Pendente') return false;
+      if (filtroRepasse === 'Pago' && h['Status Repasse'] !== 'Pago') return false;
+      if (filtroRepasse === 'Eu' && h['Quem Recebeu'] !== 'Eu') return false;
+      if (filtroRepasse === 'Parceiro' && h['Quem Recebeu'] !== 'Parceiro') return false;
+    }
+    return true;
+  });
+
+  // Ordenar por data mais recente
+  lista.sort((a, b) => {
+    const da = parseData(a['Data Pagamento']);
+    const db = parseData(b['Data Pagamento']);
+    if (da && db) return db - da;
+    return 0;
+  });
+
+  document.getElementById('honContadorLanc').textContent = lista.length + ' registro(s)';
+
+  if (lista.length === 0) {
+    document.getElementById('honLista').innerHTML = '<div class="hon-empty">📂 Nenhum lançamento encontrado</div>';
+    return;
+  }
+
+  const badgeForma = f => {
+    const m = { 'PIX': 'hon-badge-pix', 'Depósito bancário': 'hon-badge-dep',
+                'Cheque': 'hon-badge-cheq', 'Cartão de crédito': 'hon-badge-card',
+                'Cartão de débito': 'hon-badge-card' };
+    return m[f] || 'hon-badge-dep';
+  };
+
+  document.getElementById('honLista').innerHTML = lista.map(h => {
+    const val = parseFloat(h['Valor Recebido']) || 0;
+    const valFmt = 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const viaParceiro = h['Quem Recebeu'] === 'Parceiro';
+    const repassePend = viaParceiro && h['Status Repasse'] === 'Pendente';
+    const valRepasse = parseFloat(h['Valor Repasse Parceiro']) || 0;
+
+    return `
+    <div class="hon-lancamento">
+      <div>
+        <div class="hon-lanc-top">
+          <span class="hon-lanc-cliente">${escHtml(h['Cliente'] || h['Nº Processo'])}</span>
+          <span class="hon-badge ${badgeForma(h['Forma Pagamento'])}">${escHtml(h['Forma Pagamento'])}</span>
+          ${h['Parcela Referência'] ? `<span class="hon-badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted)">${escHtml(h['Parcela Referência'])}</span>` : ''}
+          ${viaParceiro ? `<span class="hon-badge hon-badge-parceiro">Via Parceiro</span>` : ''}
+          ${h['Nota Fiscal Nº'] ? `<span class="hon-badge" style="background:rgba(76,175,125,0.1);color:var(--green);border:1px solid rgba(76,175,125,0.2)">NF ${escHtml(h['Nota Fiscal Nº'])}</span>` : ''}
+        </div>
+        <div class="hon-lanc-meta">
+          <span>${escHtml(h['Data Pagamento'] || '—')}</span>
+          ${h['Nº Processo'] ? `<span>${escHtml(h['Nº Processo'])}</span>` : ''}
+          ${h['Responsável Pagamento'] && h['Responsável Pagamento'] !== h['Cliente'] ? `<span>Pago por: ${escHtml(h['Responsável Pagamento'])}</span>` : ''}
+          ${h['Obs'] || h['Observações'] ? `<span>${escHtml((h['Obs'] || h['Observações']).substring(0,50))}...</span>` : ''}
+        </div>
+        ${repassePend ? `
+        <div class="hon-repasse-alert">
+          ⚠️ Repasse pendente ao parceiro <strong>${escHtml(h['Parceiro'])}</strong>:
+          R$ ${valRepasse.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          <button class="btn-hon-parceiro" style="margin-left:8px" onclick="abrirCardRepasse('${escAttr(h['ID'])}')">Card repasse</button>
+        </div>` : ''}
+        ${viaParceiro && h['Status Repasse'] === 'Pago' ? `
+        <div style="font-size:11px;color:var(--green);margin-top:4px">✓ Repasse pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
+      </div>
+      <div>
+        <div class="hon-lanc-valor">${valFmt}</div>
+        <div class="hon-acoes" style="margin-top:8px">
+          <button class="btn-hon-edit" onclick="editarHonorario('${escAttr(h['ID'])}')">✏️</button>
+          ${viaParceiro ? `<button class="btn-hon-parceiro" onclick="abrirCardRepasse('${escAttr(h['ID'])}')">💸</button>` : ''}
+          <button class="btn-hon-del" onclick="excluirHonorario('${escAttr(h['ID'])}')">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function parseData(str) {
+  if (!str || str.length < 8) return null;
+  const p = str.split('/');
+  if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return null;
+}
+
+function honPreencherContrato() {
+  const uid = parseInt(document.getElementById('hon-processo').value);
+  const p = allProcessos.find(x => x._uid === uid);
+  if (!p) return;
+  document.getElementById('hon-valorContrato').value = p.valorHonorarios || '';
+  document.getElementById('hon-numParcelas').value = p.numParcelas || '';
+  document.getElementById('hon-valorEntrada').value = p.valorEntrada || '';
+  document.getElementById('hon-valorParcela').value = p.valorParcela || '';
+  document.getElementById('hon-diaVenc').value = p.diaVencimento || '';
+  document.getElementById('hon-objeto').value = p.objetoContrato || '';
+  document.getElementById('hon-parceiro').value = p.advParc || '';
+  // Preencher dados do cliente como pagador padrão
+  document.getElementById('hon-respPagamento').value = p.nome || '';
+  document.getElementById('hon-cpfPagador').value = p.cpfCnpj || '';
+  document.getElementById('hon-telPagador').value = p.telefone || '';
+  // Forma de pagamento
+  if (p.formaPagamento) document.getElementById('hon-formaPag').value = p.formaPagamento;
+}
+
+function honToggleParceiro() {
+  const viaParceiro = document.getElementById('hon-quemRecebeu').value === 'Parceiro';
+  ['honParceiroFields','honRepasseFields','honStatusRepasseField'].forEach(id => {
+    document.getElementById(id).style.display = viaParceiro ? '' : 'none';
+  });
+}
+
+function toggleHonForm() {
+  const body = document.getElementById('honFormBody');
+  body.style.display = body.style.display === 'none' ? '' : 'none';
+}
+
+function limparHonForm() {
+  _honEditId = null;
+  document.getElementById('btnSalvarHon').textContent = '💾 Lançar';
+  ['hon-respPagamento','hon-cpfPagador','hon-telPagador','hon-parcelaRef',
+   'hon-nf','hon-recibo','hon-obs','hon-parceiro','hon-diaVenc','hon-objeto'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['hon-valorContrato','hon-numParcelas','hon-valorEntrada','hon-valorParcela',
+   'hon-valorRecebido','hon-valorRepasse'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('hon-processo').value = '';
+  document.getElementById('hon-tipoContrato').value = '';
+  document.getElementById('hon-formaPag').value = '';
+  document.getElementById('hon-quemRecebeu').value = 'Eu';
+  document.getElementById('hon-statusRepasse').value = 'Pendente';
+  document.getElementById('hon-dataPagamento').value = new Date().toISOString().split('T')[0];
+  honToggleParceiro();
+  document.getElementById('honFormStatus').textContent = '';
+}
+
+async function salvarHonorario() {
+  const uid = document.getElementById('hon-processo').value;
+  const valRecebido = document.getElementById('hon-valorRecebido').value;
+  const parcelaRef = document.getElementById('hon-parcelaRef').value;
+
+  if (!uid && !_honEditId) {
+    document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--red)">Selecione o processo.</span>';
+    return;
+  }
+  if (!valRecebido) {
+    document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--red)">Informe o valor recebido.</span>';
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarHon');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+
+  // Buscar dados do processo
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+
+  const campos = {
+    'Nº Processo': p ? p.processo : '',
+    'Cliente': p ? p.nome : '',
+    'Tipo Contrato': document.getElementById('hon-tipoContrato').value,
+    'Valor Total Contrato': document.getElementById('hon-valorContrato').value,
+    'Número de Parcelas': document.getElementById('hon-numParcelas').value,
+    'Valor da Entrada': document.getElementById('hon-valorEntrada').value,
+    'Valor da Parcela': document.getElementById('hon-valorParcela').value,
+    'Dia Vencimento': document.getElementById('hon-diaVenc').value,
+    'Objeto do Contrato': document.getElementById('hon-objeto').value,
+    'Responsável Pagamento': document.getElementById('hon-respPagamento').value,
+    'CPF/CNPJ Pagador': document.getElementById('hon-cpfPagador').value,
+    'Telefone Pagador': document.getElementById('hon-telPagador').value,
+    'Parcela Referência': parcelaRef,
+    'Valor Recebido': valRecebido,
+    'Data Pagamento': inputParaData(document.getElementById('hon-dataPagamento').value),
+    'Forma Pagamento': document.getElementById('hon-formaPag').value,
+    'Nota Fiscal Nº': document.getElementById('hon-nf').value,
+    'Recibo Nº': document.getElementById('hon-recibo').value,
+    'Quem Recebeu': document.getElementById('hon-quemRecebeu').value,
+    'Parceiro': document.getElementById('hon-parceiro').value,
+    'Valor Repasse Parceiro': document.getElementById('hon-valorRepasse').value,
+    'Status Repasse': document.getElementById('hon-statusRepasse').value,
+    'Observações': document.getElementById('hon-obs').value,
+  };
+
+  const acao = _honEditId ? 'atualizar_honorario' : 'lancar_honorario';
+  const body = _honEditId ? { acao, id: _honEditId, campos } : { acao, campos };
+
+  try {
+    await fetch(URL_AS, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body)
+    });
+    document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--green)">✓ Salvo! Atualizando...</span>';
+    limparHonForm();
+    setTimeout(() => carregarHonorarios(), 1500);
+  } catch (e) {
+    document.getElementById('honFormStatus').innerHTML = `<span style="color:var(--red)">Erro: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Lançar';
+  }
+}
+
+function editarHonorario(id) {
+  const h = allHonorarios.find(x => x['ID'] === id);
+  if (!h) return;
+  _honEditId = id;
+  document.getElementById('btnSalvarHon').textContent = '💾 Atualizar';
+
+  // Preencher campos
+  document.getElementById('hon-tipoContrato').value = h['Tipo Contrato'] || '';
+  document.getElementById('hon-valorContrato').value = h['Valor Total Contrato'] || '';
+  document.getElementById('hon-numParcelas').value = h['Número de Parcelas'] || '';
+  document.getElementById('hon-valorEntrada').value = h['Valor da Entrada'] || '';
+  document.getElementById('hon-valorParcela').value = h['Valor da Parcela'] || '';
+  document.getElementById('hon-diaVenc').value = h['Dia Vencimento'] || '';
+  document.getElementById('hon-objeto').value = h['Objeto do Contrato'] || '';
+  document.getElementById('hon-respPagamento').value = h['Responsável Pagamento'] || '';
+  document.getElementById('hon-cpfPagador').value = h['CPF/CNPJ Pagador'] || '';
+  document.getElementById('hon-telPagador').value = h['Telefone Pagador'] || '';
+  document.getElementById('hon-parcelaRef').value = h['Parcela Referência'] || '';
+  document.getElementById('hon-valorRecebido').value = h['Valor Recebido'] || '';
+  document.getElementById('hon-dataPagamento').value = dataParaInput(h['Data Pagamento']);
+  document.getElementById('hon-formaPag').value = h['Forma Pagamento'] || '';
+  document.getElementById('hon-nf').value = h['Nota Fiscal Nº'] || '';
+  document.getElementById('hon-recibo').value = h['Recibo Nº'] || '';
+  document.getElementById('hon-quemRecebeu').value = h['Quem Recebeu'] || 'Eu';
+  document.getElementById('hon-parceiro').value = h['Parceiro'] || '';
+  document.getElementById('hon-valorRepasse').value = h['Valor Repasse Parceiro'] || '';
+  document.getElementById('hon-statusRepasse').value = h['Status Repasse'] || 'Pendente';
+  document.getElementById('hon-obs').value = h['Observações'] || '';
+  honToggleParceiro();
+
+  // Scroll para o form
+  document.getElementById('honFormBody').style.display = '';
+  document.getElementById('honFormBody').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function excluirHonorario(id) {
+  if (!confirm('Excluir este lançamento? Esta ação não pode ser desfeita.')) return;
+  try {
+    await fetch(URL_AS, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'excluir_honorario', id })
+    });
+    setTimeout(() => carregarHonorarios(), 1000);
+  } catch (e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
+}
+
+function abrirCardRepasse(id) {
+  const h = allHonorarios.find(x => x['ID'] === id);
+  if (!h) return;
+  _repasseLanc = h;
+
+  const val = parseFloat(h['Valor Recebido']) || 0;
+  const valRep = parseFloat(h['Valor Repasse Parceiro']) || 0;
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+  document.getElementById('repasseCard').innerHTML = `
+  <div class="parc-header">
+    <div>
+      <div class="parc-header-title">Informativo de Repasse</div>
+      <div class="parc-header-sub">Escritório Adenilson Borges · OAB/SP 335.600</div>
+    </div>
+    <span class="parc-urgencia ${h['Status Repasse'] === 'Pago' ? 'parc-urg-normal' : 'parc-urg-urgente'}">
+      ${h['Status Repasse'] === 'Pago' ? 'Pago' : 'Pendente'}
+    </span>
+  </div>
+  <div class="parc-body">
+    <div class="parc-section">
+      <div class="parc-section-label">Processo / Cliente</div>
+      <div class="parc-processo-nome">${escHtml(h['Cliente'])}</div>
+      <div class="parc-processo-num">${escHtml(h['Nº Processo'])}</div>
+    </div>
+    <div class="parc-section">
+      <div class="parc-section-label">Pagamento Recebido</div>
+      <div class="parc-box">
+        <strong>${fmt(val)}</strong> — ${escHtml(h['Parcela Referência'])}<br>
+        Data: ${escHtml(h['Data Pagamento'])} · ${escHtml(h['Forma Pagamento'])}
+        ${h['Nota Fiscal Nº'] ? `<br>NF nº ${escHtml(h['Nota Fiscal Nº'])}` : ''}
+      </div>
+    </div>
+    <div class="parc-section">
+      <div class="parc-section-label">Seu Repasse</div>
+      <div class="parc-tarefa-box">
+        <strong>${fmt(valRep)}</strong>
+        ${h['Status Repasse'] === 'Pago' ? `<div style="color:var(--green);font-size:12px;margin-top:4px">✓ Pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
+      </div>
+    </div>
+    ${h['Observações'] ? `
+    <div class="parc-section">
+      <div class="parc-section-label">Observações</div>
+      <div class="parc-box">${escHtml(h['Observações'])}</div>
+    </div>` : ''}
+  </div>
+  <div class="parc-footer">Dr. Adenilson Borges da Silva · OAB/SP 335.600 · (11) 99931-3712</div>`;
+
+  document.getElementById('modalRepasse').classList.add('open');
+}
+
+function _repasseTexto() {
+  const h = _repasseLanc;
+  if (!h) return '';
+  const val = parseFloat(h['Valor Recebido']) || 0;
+  const valRep = parseFloat(h['Valor Repasse Parceiro']) || 0;
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  let txt = '*INFORMATIVO DE REPASSE*
+';
+  txt += 'Escritorio Adenilson Borges - OAB/SP 335.600
+
+';
+  txt += `*PROCESSO:* ${h['Cliente']}
+${h['Nº Processo']}
+
+`;
+  txt += `*PAGAMENTO RECEBIDO:* ${fmt(val)}
+`;
+  txt += `Parcela: ${h['Parcela Referência']} - Data: ${h['Data Pagamento']}
+
+`;
+  txt += `*SEU REPASSE:* ${fmt(valRep)}
+`;
+  txt += `Status: ${h['Status Repasse']}
+`;
+  if (h['Observações']) txt += `
+Obs: ${h['Observações']}
+`;
+  txt += '
+Dr. Adenilson Borges - (11) 99931-3712';
+  return txt;
+}
+
+function enviarRepasseWpp() {
+  const h = _repasseLanc;
+  if (!h) return;
+  const tel = (h['Telefone Parceiro'] || '').replace(/[^\d]/g, '');
+  const url = tel
+    ? `https://wa.me/55${tel}?text=${encodeURIComponent(_repasseTexto())}`
+    : `https://wa.me/?text=${encodeURIComponent(_repasseTexto())}`;
+  window.open(url, '_blank');
+}
+
+function enviarRepasseEmail() {
+  const h = _repasseLanc;
+  if (!h) return;
+  const assunto = `Repasse - ${h['Cliente']} - ${h['Parcela Referência']}`;
+  window.open(`mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(_repasseTexto().replace(/\*/g,''))}`, '_blank');
+}
+
+function enviarRepasseImagem() {
+  const card = document.getElementById('repasseCard');
+  html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#0d1525' })
+    .then(canvas => new Promise(res => canvas.toBlob(b => res(new File([b], 'repasse.png', { type: 'image/png' })), 'image/png')))
+    .then(file => {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Informativo de Repasse' });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+}
+
+// Fechar modal repasse
+document.addEventListener('DOMContentLoaded', () => {
+  const mr = document.getElementById('modalRepasse');
+  if (mr) mr.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+});
 
 // ─── CARD PARCEIRO ───────────────────────────────────────────
 let _parcProcesso = null;
