@@ -3056,7 +3056,7 @@
 </div>
 
 <script>
-// ─── ESTADO ───────────────────────────────────────────────────
+// --- ESTADO ---------------------------------------------------
 let allProcessos = [];
 let filteredProcessos = [];
 let currentFilter = 'all';
@@ -3066,11 +3066,11 @@ let expandedId = null;
 const CONFIG_KEY = 'lexflow_config';
 const URL_AS = 'https://script.google.com/macros/s/AKfycbwMjrcSwDSc8SWQRtbuH0UQKU3uopCWMiZTxwaGJR3V3j95iJjJxFt3t7UKCSwY7nhv/exec';
 
-// ─── CONFIG ───────────────────────────────────────────────────
+// --- CONFIG ---------------------------------------------------
 function getConfig() {
   try {
     return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
-  } catch { return {}; }
+  } catch(e) { return {}; }
 }
 
 function saveConfig() {
@@ -3088,7 +3088,7 @@ function saveConfig() {
   loadFromSheets();
 }
 
-// ─── CARGA DO SHEETS ──────────────────────────────────────────
+// --- CARGA DO SHEETS ------------------------------------------
 async function loadFromSheets() {
   const cfg = getConfig();
   if (!cfg.apiKey || !cfg.sheetId) {
@@ -3102,14 +3102,14 @@ async function loadFromSheets() {
 
   try {
     const sheetName = encodeURIComponent(cfg.sheetName || 'Planilha1');
-    // Lê colunas A a W (23 colunas conforme estrutura mapeada)
+    // Le colunas A a W (23 colunas conforme estrutura mapeada)
     const range = `${sheetName}!A1:BT300`;
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${range}?key=${cfg.apiKey}`;
 
     const resp = await fetch(url);
     if (!resp.ok) {
       const err = await resp.json();
-      throw new Error(err.error?.message || 'Erro na API');
+      throw new Error((err.error && err.error.message) || 'Erro na API');
     }
 
     const data = await resp.json();
@@ -3136,7 +3136,7 @@ async function loadFromSheets() {
   }
 }
 
-// ─── PARSE DOS DADOS ──────────────────────────────────────────
+// --- PARSE DOS DADOS ------------------------------------------
 function parseProcessos(rows) {
   if (rows.length < 2) {
     allProcessos = [];
@@ -3144,12 +3144,12 @@ function parseProcessos(rows) {
     return;
   }
 
-  // Mapear cabeçalhos por nome (robusto a colunas extras/faltantes)
+  // Mapear cabecalhos por nome (robusto a colunas extras/faltantes)
   const header = rows[0];
   const H = {};
   header.forEach((h, i) => { if (h) H[h.toString().trim()] = i; });
 
-  // Funcao auxiliar - busca por nome exato ou índice fallback (-1 = só por nome)
+  // Funcao auxiliar - busca por nome exato ou indice fallback (-1 = so por nome)
   const get = (row, name, fallback) => {
     if (H[name] !== undefined) return (row[H[name]] || '').toString().trim();
     if (fallback < 0) return '';
@@ -3162,7 +3162,7 @@ function parseProcessos(rows) {
     const row = rows[i];
     if (!row || row.length < 3) continue;
 
-    // Leitura por nome de coluna (com fallback numérico)
+    // Leitura por nome de coluna (com fallback numerico)
     const nro              = get(row, 'Nr ',              0);
     const nome             = get(row, 'Nome',             1);
     const processo         = get(row, 'Número do Processo', 2);
@@ -3215,17 +3215,17 @@ function parseProcessos(rows) {
     const telParceiro      = get(row, 'Telefone Advogado Parceiro', 44);  // AS
     const emailParceiro    = get(row, 'E-mail Advogado Parceiro',   45);  // AT
 
-    // Só processa linhas com número (processo real)
+    // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
 
-    // Só mostra ATIVO e MONITORAR
+    // So mostra ATIVO e MONITORAR
     const st = status.toUpperCase();
     if (st !== 'ATIVO' && st !== 'MONITORAR') continue;
     if (!nome || nome.length < 2) continue;
 
     const diasPrazoNum = parseInt(diasPrazo) || 0;
 
-    // Calcular urgência usando diasPrazo, prazoData, dataPrazoCliente e dataAudi
+    // Calcular urgencia usando diasPrazo, prazoData, dataPrazoCliente e dataAudi
     const urgencia = calcUrgencia(diasPrazoNum, prazoData, dataPrazoCliente, dataAudi, st, tipo);
 
     allProcessos.push({
@@ -3258,7 +3258,7 @@ function parseProcessos(rows) {
 function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, tipo) {
   const hoje = new Date();
 
-  // 1. Audiência próxima - maior prioridade
+  // 1. Audiencia proxima - maior prioridade
   if (dataAudi && dataAudi.length > 3) {
     const d = parseDate(dataAudi);
     if (d) {
@@ -3324,7 +3324,7 @@ function parseDate(str) {
   return null;
 }
 
-// ─── FILTROS E RENDER ─────────────────────────────────────────
+// --- FILTROS E RENDER -----------------------------------------
 function filterBy(type, btn) {
   currentFilter = type;
   document.querySelectorAll('.sidebar .filter-btn').forEach(b => b.classList.remove('active'));
@@ -3365,15 +3365,15 @@ function buildRamoFilter() {
 }
 
 function renderProcessos() {
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
-  const sort = document.getElementById('sortSelect')?.value || 'prioridade';
+  const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
+  const sort = (document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : '') || 'prioridade';
   const URGENCIA_ORDER = { critico: 0, urgente: 1, atencao: 2, normal: 3, monitorar: 4 };
 
   let list = allProcessos.filter(p => {
     // Filtro de ramo
     if (currentRamo !== 'all' && p.ramo !== currentRamo) return false;
 
-    // Filtro de urgência / audiência / providência
+    // Filtro de urgencia / audiencia / providencia
     if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
     if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
@@ -3445,7 +3445,7 @@ function renderCard(p, idx) {
     }
   }
 
-  // Audiência
+  // Audiencia
   let audienciaHtml = '';
   if (p.dataAudi && p.dataAudi.length > 3) {
     audienciaHtml = `
@@ -3462,7 +3462,7 @@ function renderCard(p, idx) {
       </div>`;
   }
 
-  // Providências
+  // Providencias
   let providHtml = '';
   if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
     providHtml = `
@@ -3671,7 +3671,7 @@ function copyNumero(num) {
   });
 }
 
-// ─── STATS ────────────────────────────────────────────────────
+// --- STATS ----------------------------------------------------
 function updateStats() {
   const criticos = allProcessos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
   const audiencias = allProcessos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
@@ -3698,7 +3698,7 @@ function updateStats() {
   if (lblProv) lblProv.textContent = providencias;
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────
+// --- HELPERS --------------------------------------------------
 function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3716,7 +3716,7 @@ function formatDate(str) {
   return d.toLocaleDateString('pt-BR');
 }
 
-// ─── GERADORES DE DOCUMENTOS ─────────────────────────────────
+// --- GERADORES DE DOCUMENTOS ---------------------------------
 function dataExtenso() {
   const d = new Date();
   const meses = ['janeiro','fevereiro','março','abril','maio','junho',
@@ -3764,7 +3764,7 @@ function abrirDoc(tipo, uid) {
   docBody.spellcheck = false;
   docBody.style.outline = 'none';
   document.getElementById('modalDoc').classList.add('open');
-  // Focar no documento após abrir
+  // Focar no documento apos abrir
   setTimeout(() => docBody.focus(), 300);
 }
 
@@ -3952,7 +3952,7 @@ function gerarContrato(p) {
   </div>`;
 }
 
-// ─── RECIBO ──────────────────────────────────────────────────
+// --- RECIBO --------------------------------------------------
 function abrirRecibo(uid) {
   const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('recDataEmissao').value = hoje;
@@ -3965,7 +3965,7 @@ function abrirRecibo(uid) {
       document.getElementById('recNomeCliente').value = p.nome || '';
       document.getElementById('recCpfCnpj').value = p.cpfCnpj || '';
       document.getElementById('recTelefone').value = p.telefone || '';
-      // Endereço completo
+      // Endereco completo
       let end = p.endereco || '';
       if (p.bairro) end += `, ${p.bairro}`;
       if (p.complemento) end += `, ${p.complemento}`;
@@ -3977,14 +3977,14 @@ function abrirRecibo(uid) {
       // Vara/Tribunal
       const varaTrib = [p.vara, p.tribunal].filter(Boolean).join(' - ');
       document.getElementById('recVara').value = varaTrib;
-      // Descricao dos serviços
+      // Descricao dos servicos
       document.getElementById('recDescricao').value = p.objetoContrato ||
         (p.processo ? 'Honorarios advocaticios referentes ao processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos') : '');
-      // Valor: usar valorParcela (valor da parcela sendo paga), não o total
+      // Valor: usar valorParcela (valor da parcela sendo paga), nao o total
       const valPagar = parseFloat(p.valorParcela) || parseFloat(p.valorHonorarios) || 0;
       document.getElementById('recHonorarios').value = valPagar;
       if (p.formaPagamento) document.getElementById('recFormaPagamento').value = p.formaPagamento;
-      // numParcelas usado apenas no contrato, não no recibo
+      // numParcelas usado apenas no contrato, nao no recibo
     }
   }
 
@@ -3998,7 +3998,7 @@ function calcTotal() {
   const total = hon + desp;
   document.getElementById('recTotal').textContent =
     'R$ ' + total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const parcela = document.getElementById('recParcela')?.value?.trim() || '';
+  const parcela = (document.getElementById('recParcela') ? document.getElementById('recParcela').value.trim() : '') || '';
   const info = document.getElementById('recParcelaInfo');
   if (info) info.textContent = parcela ? `Parcela: ${parcela}` : '';
 }
@@ -4033,7 +4033,7 @@ function imprimirRecibo() {
   document.getElementById('modalCard').classList.remove('open');
   document.getElementById('modalConfig').classList.remove('open');
 
-  // Garantir que o modal do recibo está aberto
+  // Garantir que o modal do recibo esta aberto
   document.getElementById('modalRecibo').classList.add('open');
 
   // Adicionar classe ao body para o @media print saber o que mostrar
@@ -4052,7 +4052,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ─── CARD ATENDIMENTO ────────────────────────────────────────
+// --- CARD ATENDIMENTO ----------------------------------------
 function abrirCardAtendimento(uid) {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
@@ -4074,7 +4074,7 @@ function abrirCardAtendimento(uid) {
     situacaoSection.style.display = 'none';
   }
 
-  // Próximo passo Adv (col O)
+  // Proximo passo Adv (col O)
   const advSection = document.getElementById('cardAdvSection');
   if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) {
     document.getElementById('cardAdv').textContent = p.proximoPassoAdv;
@@ -4083,7 +4083,7 @@ function abrirCardAtendimento(uid) {
     advSection.style.display = 'none';
   }
 
-  // Providências cliente (col M)
+  // Providencias cliente (col M)
   const clienteSection = document.getElementById('cardClienteSection');
   if (p.providCliente && p.providCliente.length > 2) {
     document.getElementById('cardCliente').textContent = p.providCliente;
@@ -4092,7 +4092,7 @@ function abrirCardAtendimento(uid) {
     clienteSection.style.display = 'none';
   }
 
-  // Audiência (cols R, S, T)
+  // Audiencia (cols R, S, T)
   const audSection = document.getElementById('cardAudienciaSection');
   if (p.dataAudi && p.dataAudi.length > 3) {
     const dataFmt = formatDate(p.dataAudi);
@@ -4141,7 +4141,7 @@ function gerarImagemCardFile() {
   });
 }
 
-// Botão 1: Compartilhar como foto (abre WhatsApp no celular)
+// Botao 1: Compartilhar como foto (abre WhatsApp no celular)
 function compartilharCardImagem() {
   const btn = document.getElementById('btnShareWpp');
   const statusEl = document.getElementById('cardShareStatus');
@@ -4162,7 +4162,7 @@ function compartilharCardImagem() {
         })
         .finally(function() { btn.disabled = false; btn.innerHTML = orig; });
     } else {
-      // Desktop: avisar que só funciona no celular
+      // Desktop: avisar que so funciona no celular
       if (statusEl) statusEl.innerHTML = '<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
       btn.disabled = false;
       btn.innerHTML = orig;
@@ -4174,7 +4174,7 @@ function compartilharCardImagem() {
   });
 }
 
-// Botão 2: Salvar PNG na galeria
+// Botao 2: Salvar PNG na galeria
 function salvarCardPng() {
   const btn = document.getElementById('btnSavePng');
   const statusEl = document.getElementById('cardShareStatus');
@@ -4251,7 +4251,7 @@ function copyCardText() {
   });
 }
 
-// ─── MÓDULO HONORÁRIOS ───────────────────────────────────────
+// --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
 let _honEditId = null;
 let _repasseLanc = null;
@@ -4267,7 +4267,7 @@ function abrirHonorarios() {
     opt.textContent = p.nome + (p.processo ? ' - ' + p.processo : '');
     sel.appendChild(opt);
   });
-  // Data padrão hoje
+  // Data padrao hoje
   document.getElementById('hon-dataPagamento').value = new Date().toISOString().split('T')[0];
   carregarHonorarios();
 }
@@ -4323,9 +4323,9 @@ function calcHonStats() {
 }
 
 function renderHonorarios() {
-  const busca = (document.getElementById('honBusca')?.value || '').toLowerCase();
-  const filtroForma = document.getElementById('honFiltroForma')?.value || '';
-  const filtroRepasse = document.getElementById('honFiltroRepasse')?.value || '';
+  const busca = ((document.getElementById('honBusca') ? document.getElementById('honBusca').value : '') || '').toLowerCase();
+  const filtroForma = (document.getElementById('honFiltroForma') ? document.getElementById('honFiltroForma').value : '') || '';
+  const filtroRepasse = (document.getElementById('honFiltroRepasse') ? document.getElementById('honFiltroRepasse').value : '') || '';
 
   let lista = allHonorarios.filter(h => {
     if (busca) {
@@ -4427,7 +4427,7 @@ function honPreencherContrato() {
   document.getElementById('hon-diaVenc').value = p.diaVencimento || '';
   document.getElementById('hon-objeto').value = p.objetoContrato || '';
   document.getElementById('hon-parceiro').value = p.advParc || '';
-  // Preencher dados do cliente como pagador padrão
+  // Preencher dados do cliente como pagador padrao
   document.getElementById('hon-respPagamento').value = p.nome || '';
   document.getElementById('hon-cpfPagador').value = p.cpfCnpj || '';
   document.getElementById('hon-telPagador').value = p.telefone || '';
@@ -4695,7 +4695,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mr) mr.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ─── CARD PARCEIRO ───────────────────────────────────────────
+// --- CARD PARCEIRO -------------------------------------------
 let _parcProcesso = null;
 
 function abrirCardParceiro(uid) {
@@ -4873,7 +4873,7 @@ function enviarParcImagem() {
   });
 }
 
-// ─── EDIÇÃO E CADASTRO ───────────────────────────────────────
+// --- EDIÇÃO E CADASTRO ---------------------------------------
 
 // Estado atual de edicao
 let _edicaoLinha = null;
@@ -4913,7 +4913,7 @@ function dataParaInput(str) {
   if (parts.length === 3 && parts[2].length === 4) {
     return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
   }
-  // Já está no formato yyyy-MM-dd
+  // Ja esta no formato yyyy-MM-dd
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   return '';
 }
@@ -4959,7 +4959,7 @@ async function salvarEdicao() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ acao: 'atualizar', linha: _edicaoLinha, campos })
     });
-    // Com no-cors não recebemos resposta - assumir sucesso
+    // Com no-cors nao recebemos resposta - assumir sucesso
     statusEl.className = 'form-status ok';
     statusEl.textContent = ' Salvo! Atualizando painel...';
     setTimeout(() => {
@@ -5076,7 +5076,7 @@ async function salvarCadastro() {
   }
 }
 
-// Fechar modais de formulário clicando fora
+// Fechar modais de formulario clicando fora
 document.addEventListener('DOMContentLoaded', () => {
   ['modalEdicao','modalCadastro','modalParceiro'].forEach(id => {
     const el = document.getElementById(id);
@@ -5086,7 +5086,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ─── INIT ─────────────────────────────────────────────────────
+// --- INIT -----------------------------------------------------
 window.addEventListener('DOMContentLoaded', () => {
   const cfg = getConfig();
   if (cfg.sheetId) document.getElementById('inputSheetId').value = cfg.sheetId;
