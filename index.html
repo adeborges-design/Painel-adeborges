@@ -2384,7 +2384,7 @@
 <div class="modal-repasse-overlay" id="modalRepasse">
   <div class="repasse-wrap">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">💸 Card de Repasse ao Parceiro</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)"> Card de Repasse ao Parceiro</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalRepasse').classList.remove('open')">✕</button>
     </div>
     <div style="padding:20px">
@@ -2816,7 +2816,7 @@
       <div class="recibo-header-box">
         <div>
           <div class="recibo-nome-adv">Dr. Adenilson Borges da Silva</div>
-          <div class="recibo-sub-adv">Advocacia &amp; Consultoria Jurídica</div>
+          <div class="recibo-sub-adv">Advocacia &amp; Consultoria Juridica</div>
         </div>
         <div class="recibo-oab">
           OAB/SP<strong>335.600</strong>
@@ -2868,7 +2868,7 @@
       <div class="recibo-grid recibo-grid-2" style="margin-bottom:16px">
         <div class="recibo-field">
           <label class="recibo-label">Endereço do Cliente</label>
-          <textarea class="recibo-textarea" id="recEndereco" rows="2" placeholder="Rua, n.º, complemento — Cidade/UF" style="min-height:52px;resize:none"></textarea>
+          <textarea class="recibo-textarea" id="recEndereco" rows="2" placeholder="Rua, nr., complemento — Cidade/UF" style="min-height:52px;resize:none"></textarea>
         </div>
         <div class="recibo-field">
           <label class="recibo-label">Telefone</label>
@@ -2879,7 +2879,7 @@
       <div class="recibo-grid" style="margin-bottom:16px">
         <div class="recibo-field">
           <label class="recibo-label">Referente a / Descrição dos Serviços</label>
-          <textarea class="recibo-textarea" id="recDescricao" placeholder="Ex.: Honorários advocatícios referentes à propositura de ação de cobrança, processo n.º ..., relativo ao mês de ..."></textarea>
+          <textarea class="recibo-textarea" id="recDescricao" placeholder="Ex.: Honorários advocaticios referentes à propositura de ação de cobrança, processo nr. ..., relativo ao mês de ..."></textarea>
         </div>
       </div>
 
@@ -2890,7 +2890,7 @@
         </div>
         <div class="recibo-field">
           <label class="recibo-label">Vara / Tribunal</label>
-          <input type="text" class="recibo-input" id="recVara" placeholder="Ex.: 1ª Vara Cível — Foro Regional VIII">
+          <input type="text" class="recibo-input" id="recVara" placeholder="Ex.: 1a Vara Cível — Foro Regional VIII">
         </div>
       </div>
 
@@ -2941,7 +2941,7 @@
 
       <div class="recibo-footer-doc">
         Documento emitido por Dr. Adenilson Borges da Silva — OAB/SP 335.600 |
-        Este recibo tem validade como comprovante de pagamento de honorários advocatícios
+        Este recibo tem validade como comprovante de pagamento de honorários advocaticios
       </div>
 
     </div>
@@ -2996,7 +2996,7 @@
       </div>
       <div class="atend-footer">
         Dúvidas? Ligue ou envie mensagem.<br>
-        <strong>ADENILSON BORGES DA SILVA · OAB/SP 335.600 · (11) 99931-3712</strong>
+        <strong>ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712</strong>
       </div>
     </div>
 
@@ -3096,9 +3096,9 @@ async function loadFromSheets() {
     return;
   }
 
-  document.getElementById('syncStatus').textContent = 'carregando…';
+  document.getElementById('syncStatus').textContent = 'carregando...';
   const listEl = document.getElementById('processosList');
-  listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Sincronizando com Google Sheets…</p></div>';
+  listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Sincronizando com Google Sheets...</p></div>';
 
   try {
     const sheetName = encodeURIComponent(cfg.sheetName || 'Planilha1');
@@ -3149,7 +3149,7 @@ function parseProcessos(rows) {
   const H = {};
   header.forEach((h, i) => { if (h) H[h.toString().trim()] = i; });
 
-  // Função auxiliar — busca por nome exato ou índice fallback (-1 = só por nome)
+  // Funcao auxiliar - busca por nome exato ou índice fallback (-1 = só por nome)
   const get = (row, name, fallback) => {
     if (H[name] !== undefined) return (row[H[name]] || '').toString().trim();
     if (fallback < 0) return '';
@@ -3163,7 +3163,7 @@ function parseProcessos(rows) {
     if (!row || row.length < 3) continue;
 
     // Leitura por nome de coluna (com fallback numérico)
-    const nro              = get(row, 'Nº ',              0);
+    const nro              = get(row, 'Nr ',              0);
     const nome             = get(row, 'Nome',             1);
     const processo         = get(row, 'Número do Processo', 2);
     const sistema          = get(row, 'Sistema',          3);
@@ -3186,18 +3186,18 @@ function parseProcessos(rows) {
     const valorParcela     = get(row, 'Valor da Parcela', 20);
     const diaVencimento    = get(row, 'Dia do Vencimento', 21);
     const formaPagamento   = get(row, 'Forma de pagamento ', 22);
-    const objetoContrato   = get(row, 'Objeto do contrato (descrição dos Serviços)', 23);
-    const tipoProcuracao   = get(row, 'Tipo de Procuração', 24);
+    const objetoContrato   = get(row, 'Objeto do contrato (descricao dos Serviços)', 23);
+    const tipoProcuracao   = get(row, 'Tipo de Procuracao', 24);
     const poderesEspeciais = get(row, 'Poderes Especiais (texto livre para poderes especificos)', 25);
     const rendaMensal      = get(row, 'Renda mensal declarada', 26);
     const numDependentes   = get(row, 'Número de Dependendes', 27);
     const outra            = get(row, 'Outra Parte',      28);
     const parte            = get(row, 'Parte',            29);
     const ramo             = get(row, 'Ramo do Direito',  30);
-    const tipo             = get(row, 'Tipo de Ação',     31);
+    const tipo             = get(row, 'Tipo de Acao',     31);
     const status           = get(row, 'Status',           32);
-    const dataAtua         = get(row, 'Data Atualização', 33);
-    const ultima           = get(row, 'Última Atualização', 34);
+    const dataAtua         = get(row, 'Data Atualizacao', 33);
+    const ultima           = get(row, 'Última Atualizacao', 34);
     const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
     const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
     const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
@@ -3207,7 +3207,7 @@ function parseProcessos(rows) {
     const horAudi          = get(row, 'Horário Audiência', 41);
     const localAudi        = get(row, 'Local da Audiência', 42);
     const advParc          = get(row, 'Advogado Parceiro', 43);
-    const obs              = get(row, 'Observações',      44);
+    const obs              = get(row, 'Observacoes',      44);
     const pastaDrive       = get(row, 'Pasta Drive',      45);
     const linkTrib         = get(row, 'Link Tribunal',    46);
     const telefone         = get(row, 'Telefone',         47);
@@ -3258,7 +3258,7 @@ function parseProcessos(rows) {
 function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, tipo) {
   const hoje = new Date();
 
-  // 1. Audiência próxima — maior prioridade
+  // 1. Audiência próxima - maior prioridade
   if (dataAudi && dataAudi.length > 3) {
     const d = parseDate(dataAudi);
     if (d) {
@@ -3268,7 +3268,7 @@ function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, 
     }
   }
 
-  // 2. prazoData — data do prazo processual
+  // 2. prazoData - data do prazo processual
   if (prazoData && prazoData.length > 3) {
     const d = parseDate(prazoData);
     if (d) {
@@ -3279,18 +3279,18 @@ function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, 
     }
   }
 
-  // 3. diasPrazo — dias restantes informados manualmente
+  // 3. diasPrazo - dias restantes informados manualmente
   if (diasPrazo > 0) {
     if (diasPrazo <= 5) return 'critico';
     if (diasPrazo <= 15) return 'urgente';
     if (diasPrazo <= 30) return 'atencao';
   }
 
-  // 4. Tipo de ação urgente
+  // 4. Tipo de acao urgente
   const tipoUp = (tipo || '').toUpperCase();
   if (tipoUp.includes('LIMINAR') || tipoUp.includes('AGRAVO')) return 'urgente';
 
-  // 5. dataPrazoCliente — cliente tem tarefa pendente
+  // 5. dataPrazoCliente - cliente tem tarefa pendente
   if (dataPrazoCliente && dataPrazoCliente.length > 3) {
     const d = parseDate(dataPrazoCliente);
     if (d) {
@@ -3339,7 +3339,7 @@ function filterByRamo(ramo, btn) {
   renderProcessos();
 }
 
-// Mapa de subcategorias — aparece indentado sob o pai
+// Mapa de subcategorias - aparece indentado sob o pai
 const RAMO_PARENTS = {
   'Pensão': 'FAMILIA E SUCESSÕES',
   'Registros Públicos': 'CIVIL',
@@ -3354,7 +3354,7 @@ function buildRamoFilter() {
 
   container.innerHTML = ramos.map(r => {
     const isSub = RAMO_PARENTS[r];
-    const label = r.length > 22 ? r.substring(0,22)+'…' : r;
+    const label = r.length > 22 ? r.substring(0,22)+'...' : r;
     return `<button class="filter-btn${isSub ? ' ramo-sub' : ''}" 
       id="ramobtn-${r.replace(/\s/g,'_')}" 
       onclick="filterByRamo('${r}', this)"
@@ -3387,7 +3387,7 @@ function renderProcessos() {
     return true;
   });
 
-  // Ordenação
+  // Ordenacao
   if (sort === 'prioridade') {
     list.sort((a, b) => (URGENCIA_ORDER[a.urgencia] - URGENCIA_ORDER[b.urgencia]) || (a.prazo > 0 && b.prazo > 0 ? a.prazo - b.prazo : b.prazo - a.prazo));
   } else if (sort === 'nome') {
@@ -3426,12 +3426,12 @@ function renderCard(p, idx) {
   const urgLabel = {
     critico: 'Crítico',
     urgente: 'Urgente',
-    atencao: 'Atenção',
+    atencao: 'Atencao',
     normal:  'Normal',
     monitorar:'Monitorar'
   }[p.urgencia];
 
-  // Prazo display — usa diasPrazo ou prazoData
+  // Prazo display - usa diasPrazo ou prazoData
   let prazoBadge = '<span class="prazo-badge prazo-sem">sem prazo</span>';
   if (p.diasPrazo > 0) {
     const cl = p.diasPrazo <= 5 ? 'prazo-vencido' : p.diasPrazo <= 15 ? 'prazo-hoje' : p.diasPrazo <= 30 ? 'prazo-breve' : 'prazo-ok';
@@ -3467,17 +3467,17 @@ function renderCard(p, idx) {
   if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
     providHtml = `
       <div class="providencias-box">
-        <div class="label">Prazo do cliente — aguardando providência</div>
+        <div class="label">Prazo do cliente - aguardando providência</div>
         <div class="text">Data limite: <strong>${formatDate(p.dataPrazoCliente)}</strong></div>
       </div>`;
   }
 
-  // Última atualização
+  // Última atualizacao
   let ultimaHtml = '';
   if (p.ultima && p.ultima.length > 2) {
     ultimaHtml = `
       <div class="atualizacao-box">
-        <strong>Última movimentação:</strong><br>${escHtml(p.ultima)}
+        <strong>Última movimentacao:</strong><br>${escHtml(p.ultima)}
         ${p.dataAtua ? `<br><span style="color:var(--muted);font-size:11px">${formatDate(p.dataAtua)}</span>` : ''}
       </div>`;
   }
@@ -3501,9 +3501,9 @@ function renderCard(p, idx) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            ${escHtml(p.parte || '—')}
+            ${escHtml(p.parte || '-')}
           </span>
-          ${p.outra ? `<span class="meta-item">vs ${escHtml(p.outra.substring(0,40))}${p.outra.length>40?'…':''}</span>` : ''}
+          ${p.outra ? `<span class="meta-item">vs ${escHtml(p.outra.substring(0,40))}${p.outra.length>40?'...':''}</span>` : ''}
           ${p.tipo ? `<span class="meta-item">${escHtml(p.tipo)}</span>` : ''}
           ${p.advParc ? `<span class="meta-item destaque">Parceiro: ${escHtml(p.advParc)}</span>` : ''}
         </div>
@@ -3516,15 +3516,15 @@ function renderCard(p, idx) {
           <div class="detail-grid">
             <div class="detail-block">
               <div class="detail-label">Sistema / ID</div>
-              <div class="detail-value">${escHtml(p.sistema) || '—'} ${p.id ? `· ${escHtml(p.id)}` : ''}</div>
+              <div class="detail-value">${escHtml(p.sistema) || '-'} ${p.id ? `- ${escHtml(p.id)}` : ''}</div>
             </div>
             <div class="detail-block">
               <div class="detail-label">Parte contrária</div>
-              <div class="detail-value">${escHtml(p.outra) || '—'}</div>
+              <div class="detail-value">${escHtml(p.outra) || '-'}</div>
             </div>
             <div class="detail-block">
-              <div class="detail-label">Posição processual</div>
-              <div class="detail-value">${escHtml(p.parte) || '—'}</div>
+              <div class="detail-label">Posicao processual</div>
+              <div class="detail-value">${escHtml(p.parte) || '-'}</div>
             </div>
             ${p.diasPrazo > 0 ? `
             <div class="detail-block">
@@ -3567,7 +3567,7 @@ function renderCard(p, idx) {
 
           ${p.obs && p.obs.length > 2 && p.obs !== p.ultima ? `
           <div class="atualizacao-box" style="margin-top:8px">
-            <strong>Observações:</strong><br>${escHtml(p.obs)}
+            <strong>Observacoes:</strong><br>${escHtml(p.obs)}
           </div>` : ''}
 
           <div class="detail-actions">
@@ -3596,7 +3596,7 @@ function renderCard(p, idx) {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-              Procuração
+              Procuracao
             </button>
             <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('gratuidade', this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3682,7 +3682,7 @@ function updateStats() {
 
   document.getElementById('st-total').textContent = allProcessos.length;
   document.getElementById('st-criticos').textContent = criticos;
-  document.getElementById('st-prazo').textContent = menorPrazo > 0 ? menorPrazo : '—';
+  document.getElementById('st-prazo').textContent = menorPrazo > 0 ? menorPrazo : '-';
   document.getElementById('st-audiencia').textContent = audiencias;
   document.getElementById('st-providencias').textContent = providencias;
 
@@ -3746,14 +3746,14 @@ function abrirDoc(tipo, uid) {
   let html = '';
 
   if (tipo === 'procuracao') {
-    titulo = 'Procuração';
+    titulo = 'Procuracao';
     const tipoproc = p.tipoProcuracao || 'Ad Judicia et Extra';
     html = gerarProcuracao(p, tipoproc);
   } else if (tipo === 'gratuidade') {
-    titulo = 'Declaração de Hipossuficiência';
+    titulo = 'Declaracao de Hipossuficiência';
     html = gerarGratuidade(p);
   } else if (tipo === 'contrato') {
-    titulo = 'Contrato de Prestação de Serviços Advocatícios';
+    titulo = 'Contrato de Prestacao de Serviços Advocatícios';
     html = gerarContrato(p);
   }
 
@@ -3775,13 +3775,13 @@ function gerarProcuracao(p, tipo) {
 
   return `
   <div class="doc-cabecalho">
-    <div class="doc-titulo">Procuração</div>
+    <div class="doc-titulo">Procuracao</div>
     <div class="doc-subtitulo">${tipo}</div>
   </div>
 
   <p class="doc-texto">
     <strong>OUTORGANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
     nascido(a) em ${campo(p.dataNasc)},
     residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
     e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
@@ -3789,19 +3789,19 @@ function gerarProcuracao(p, tipo) {
 
   <p class="doc-texto">
     <strong>OUTORGADO:</strong> <strong>Dr. Adenilson Borges da Silva</strong>,
-    advogado inscrito na OAB/SP sob o n.º 335.600,
+    advogado inscrito na OAB/SP sob o nr. 335.600,
     com escritório profissional na Rua Engenheiro Pegado, 945, Conjunto 1304,
     Carrão, São Paulo/SP, CEP 03430-003,
     e-mail: adeborges@gmail.com, telefone: (11) 99931-3712.
   </p>
 
   <p class="doc-texto">
-    <strong>OBJETO:</strong> Pelo presente instrumento particular de procuração, o(a) Outorgante
+    <strong>OBJETO:</strong> Pelo presente instrumento particular de procuracao, o(a) Outorgante
     nomeia e constitui o(a) Outorgado(a) seu(sua) bastante procurador(a), para o foro em geral
-    ${p.processo ? `no processo n.º <strong>${p.processo}</strong> e em todos os seus incidentes` : 'e em todos os atos e termos que se fizerem necessários'},
-    conferindo-lhe ${poderes}, inclusive para: receber citação, confessar, reconhecer a procedência
-    do pedido, transigir, desistir, renunciar ao direito sobre que se funda a ação, receber e dar
-    quitação, firmar compromisso, substabelecer esta com ou sem reservas de iguais poderes,
+    ${p.processo ? `no processo nr. <strong>${p.processo}</strong> e em todos os seus incidentes` : 'e em todos os atos e termos que se fizerem necessarios'},
+    conferindo-lhe ${poderes}, inclusive para: receber citacao, confessar, reconhecer a procedência
+    do pedido, transigir, desistir, renunciar ao direito sobre que se funda a acao, receber e dar
+    quitacao, firmar compromisso, substabelecer esta com ou sem reservas de iguais poderes,
     e praticar todos os demais atos necessários ao fiel desempenho deste mandato.
   </p>
 
@@ -3823,16 +3823,16 @@ function gerarGratuidade(p) {
 
   return `
   <div class="doc-cabecalho">
-    <div class="doc-titulo">Declaração de Hipossuficiência Econômica</div>
-    <div class="doc-subtitulo">Para fins de concessão de Gratuidade da Justiça — Art. 99, §3º, CPC</div>
+    <div class="doc-titulo">Declaracao de Hipossuficiência Econômica</div>
+    <div class="doc-subtitulo">Para fins de concessão de Gratuidade da Justiça - Art. 99, §3o, CPC</div>
   </div>
 
   <p class="doc-texto">
     Eu, ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
     residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
-    DECLARO, sob as penas da lei, em especial do art. 99, §1º, do Código de Processo Civil,
-    que não possuo condições de arcar com as custas processuais e honorários advocatícios
+    DECLARO, sob as penas da lei, em especial do art. 99, §1o, do Código de Processo Civil,
+    que não possuo condicoes de arcar com as custas processuais e honorários advocaticios
     sem prejuízo do próprio sustento e de minha família.
   </p>
 
@@ -3843,13 +3843,13 @@ function gerarGratuidade(p) {
   </p>
 
   <p class="doc-texto">
-    Declaro, ainda, estar ciente de que a falsidade desta declaração configura crime de
-    litigância de má-fé, nos termos do art. 80 do CPC, sujeitando-me às sanções legais cabíveis,
-    incluindo eventual condenação ao pagamento das custas e despesas processuais (art. 100, CPC).
+    Declaro, ainda, estar ciente de que a falsidade desta declaracao configura crime de
+    litigância de má-fé, nos termos do art. 80 do CPC, sujeitando-me as sancoes legais cabíveis,
+    incluindo eventual condenacao ao pagamento das custas e despesas processuais (art. 100, CPC).
   </p>
 
   <p class="doc-texto">
-    Por ser expressão da verdade, firmo a presente declaração.
+    Por ser expressão da verdade, firmo a presente declaracao.
   </p>
 
   <div class="doc-local-data">${dataExtenso()}.</div>
@@ -3881,60 +3881,60 @@ function gerarContrato(p) {
 
   return `
   <div class="doc-cabecalho">
-    <div class="doc-titulo">Contrato de Prestação de Serviços Advocatícios</div>
+    <div class="doc-titulo">Contrato de Prestacao de Serviços Advocatícios</div>
   </div>
 
   <p class="doc-texto">
     Pelo presente instrumento particular, as partes abaixo identificadas celebram o presente
-    Contrato de Prestação de Serviços Advocatícios, que se regerá pelas cláusulas e condições seguintes.
+    Contrato de Prestacao de Serviços Advocatícios, que se regerá pelas cláusulas e condicoes seguintes.
   </p>
 
   <p class="doc-texto">
     <strong>CONTRATANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG n.º ${campo(p.rg)} e CPF/MF n.º ${campo(p.cpfCnpj)},
+    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
     residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
     e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
   </p>
 
   <p class="doc-texto">
     <strong>CONTRATADO:</strong> <strong>Dr. Adenilson Borges da Silva</strong>,
-    advogado inscrito na OAB/SP sob o n.º 335.600, com escritório profissional na
+    advogado inscrito na OAB/SP sob o nr. 335.600, com escritório profissional na
     Rua Engenheiro Pegado, 945, Conjunto 1304, Carrão, São Paulo/SP, CEP 03430-003,
     e-mail: adeborges@gmail.com, telefone: (11) 99931-3712.
   </p>
 
   <p class="doc-texto">
-    <strong>CLÁUSULA 1ª — DO OBJETO.</strong>
+    <strong>CLAUSULA 1a - DO OBJETO.</strong>
     O presente contrato tem por objeto a ${objeto}.
   </p>
 
   <p class="doc-texto">
-    <strong>CLÁUSULA 2ª — DOS HONORÁRIOS.</strong>
+    <strong>CLAUSULA 2a - DOS HONORÁRIOS.</strong>
     Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
     <strong>${valTotal}</strong>, a ser pago em <strong>${parcelas}</strong> parcela(s),
     ${valEntrada
       ? `sendo a primeira parcela no valor de <strong>${valEntrada}</strong> a ser paga em ${campo(p.diaVencimento) || '______'} e as demais parcelas no valor de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`
       : `de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`}
-    por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX — CPF: 051.303.588-56)' : ''}.
+    por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX - CPF: 051.303.588-56)' : ''}.
   </p>
 
   <p class="doc-texto">
-    <strong>CLÁUSULA 3ª — DA VIGÊNCIA.</strong>
+    <strong>CLAUSULA 3a - DA VIGÊNCIA.</strong>
     O presente contrato vigorará até a conclusão dos serviços contratados,
-    podendo ser rescindido por qualquer das partes mediante notificação prévia de 15 (quinze) dias,
+    podendo ser rescindido por qualquer das partes mediante notificacao previa de 15 (quinze) dias,
     nos termos do art. 44 do Regulamento Geral da OAB.
   </p>
 
   <p class="doc-texto">
-    <strong>CLÁUSULA 4ª — DAS DESPESAS PROCESSUAIS.</strong>
+    <strong>CLAUSULA 4a - DAS DESPESAS PROCESSUAIS.</strong>
     As custas judiciais, emolumentos, honorários periciais e demais despesas processuais
     não estão incluídos nos honorários ora contratados, sendo de responsabilidade exclusiva
     do(a) Contratante.
   </p>
 
   <p class="doc-texto">
-    <strong>CLÁUSULA 5ª — DO FORO.</strong>
-    Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias
+    <strong>CLAUSULA 5a - DO FORO.</strong>
+    Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controversias
     oriundas do presente contrato.
   </p>
 
@@ -3947,7 +3947,7 @@ function gerarContrato(p) {
     </div>
     <div class="doc-assinatura-linha">
       Dr. Adenilson Borges da Silva<br>
-      <small>Contratado — OAB/SP 335.600</small>
+      <small>Contratado - OAB/SP 335.600</small>
     </div>
   </div>`;
 }
@@ -3977,7 +3977,7 @@ function abrirRecibo(uid) {
       // Vara/Tribunal
       const varaTrib = [p.vara, p.tribunal].filter(Boolean).join(' - ');
       document.getElementById('recVara').value = varaTrib;
-      // Descrição dos serviços
+      // Descricao dos serviços
       document.getElementById('recDescricao').value = p.objetoContrato ||
         (p.processo ? 'Honorarios advocaticios referentes ao processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos') : '');
       // Valor: usar valorParcela (valor da parcela sendo paga), não o total
@@ -4064,7 +4064,7 @@ function abrirCardAtendimento(uid) {
   document.getElementById('cardParte').textContent = p.parte ? 'Posicao: ' + p.parte : '';
   document.getElementById('cardOutra').textContent = p.outra ? 'Parte contraria: ' + p.outra : '';
 
-  // Situação atual (Última Atualização — col L)
+  // Situacao atual (Última Atualizacao - col L)
   const situacao = p.ultima || '';
   const situacaoSection = document.getElementById('cardSituacaoSection');
   if (situacao.length > 2) {
@@ -4154,7 +4154,7 @@ function compartilharCardImagem() {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title: 'Atualizacao Processual' })
         .then(function() {
-          if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';
+          if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> Compartilhado.</div>';
         })
         .catch(function(e) {
           if (e.name !== 'AbortError' && statusEl)
@@ -4188,7 +4188,7 @@ function salvarCardPng() {
     const a = document.createElement('a');
     a.href = url; a.download = file.name; a.click();
     URL.revokeObjectURL(url);
-    if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo na galeria.</div>';
+    if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> PNG salvo na galeria.</div>';
   }).catch(function(e) {
     if (statusEl) statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + e.message + '</div>';
   }).finally(function() {
@@ -4214,9 +4214,7 @@ function shareWhatsApp() {
   if (p.providCliente && p.providCliente.length > 2) txt += '\n*O QUE O CLIENTE PRECISA:*\n' + p.providCliente + '\n';
   if (p.dataAudi && p.dataAudi.length > 3) {
     const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
-    txt += `
-*AUDIÊNCIA MARCADA*
-${formatDate(p.dataAudi)}${hora}`;
+    txt += '\nAUDIENCIA MARCADA:\n' + formatDate(p.dataAudi) + hora + '\n';
     if (p.localAudi) txt += '\nLocal: ' + p.localAudi;
     txt += '\n';
   }
@@ -4306,7 +4304,7 @@ function calcHonStats() {
         repassePend += parseFloat(h['Valor Repasse Parceiro']) || 0;
       }
     }
-    if ((h['Parcela Referência'] || '').toLowerCase().includes('exit') ||
+    if ((h['Parcela Referencia'] || '').toLowerCase().includes('exit') ||
         (h['Tipo Contrato'] || '').toLowerCase().includes('exit')) {
       exito += val;
     }
@@ -4327,8 +4325,8 @@ function renderHonorarios() {
 
   let lista = allHonorarios.filter(h => {
     if (busca) {
-      const hay = [h['Cliente'], h['Nº Processo'], h['Forma Pagamento'],
-                   h['Parceiro'], h['Responsável Pagamento'], h['Parcela Referência']].join(' ').toLowerCase();
+      const hay = [h['Cliente'], h['Nr Processo'], h['Forma Pagamento'],
+                   h['Parceiro'], h['Responsavel Pagamento'], h['Parcela Referencia']].join(' ').toLowerCase();
       if (!hay.includes(busca)) return false;
     }
     if (filtroForma && h['Forma Pagamento'] !== filtroForma) return false;
@@ -4374,17 +4372,17 @@ function renderHonorarios() {
     <div class="hon-lancamento">
       <div>
         <div class="hon-lanc-top">
-          <span class="hon-lanc-cliente">${escHtml(h['Cliente'] || h['Nº Processo'])}</span>
+          <span class="hon-lanc-cliente">${escHtml(h['Cliente'] || h['Nr Processo'])}</span>
           <span class="hon-badge ${badgeForma(h['Forma Pagamento'])}">${escHtml(h['Forma Pagamento'])}</span>
-          ${h['Parcela Referência'] ? `<span class="hon-badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted)">${escHtml(h['Parcela Referência'])}</span>` : ''}
+          ${h['Parcela Referencia'] ? `<span class="hon-badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted)">${escHtml(h['Parcela Referencia'])}</span>` : ''}
           ${viaParceiro ? `<span class="hon-badge hon-badge-parceiro">Via Parceiro</span>` : ''}
-          ${h['Nota Fiscal Nº'] ? `<span class="hon-badge" style="background:rgba(76,175,125,0.1);color:var(--green);border:1px solid rgba(76,175,125,0.2)">NF ${escHtml(h['Nota Fiscal Nº'])}</span>` : ''}
+          ${h['Nota Fiscal Nr'] ? `<span class="hon-badge" style="background:rgba(76,175,125,0.1);color:var(--green);border:1px solid rgba(76,175,125,0.2)">NF ${escHtml(h['Nota Fiscal Nr'])}</span>` : ''}
         </div>
         <div class="hon-lanc-meta">
-          <span>${escHtml(h['Data Pagamento'] || '—')}</span>
-          ${h['Nº Processo'] ? `<span>${escHtml(h['Nº Processo'])}</span>` : ''}
-          ${h['Responsável Pagamento'] && h['Responsável Pagamento'] !== h['Cliente'] ? `<span>Pago por: ${escHtml(h['Responsável Pagamento'])}</span>` : ''}
-          ${h['Obs'] || h['Observações'] ? `<span>${escHtml((h['Obs'] || h['Observações']).substring(0,50))}...</span>` : ''}
+          <span>${escHtml(h['Data Pagamento'] || '-')}</span>
+          ${h['Nr Processo'] ? `<span>${escHtml(h['Nr Processo'])}</span>` : ''}
+          ${h['Responsavel Pagamento'] && h['Responsavel Pagamento'] !== h['Cliente'] ? `<span>Pago por: ${escHtml(h['Responsavel Pagamento'])}</span>` : ''}
+          ${h['Obs'] || h['Observacoes'] ? `<span>${escHtml((h['Obs'] || h['Observacoes']).substring(0,50))}...</span>` : ''}
         </div>
         ${repassePend ? `
         <div class="hon-repasse-alert">
@@ -4393,13 +4391,13 @@ function renderHonorarios() {
           <button class="btn-hon-parceiro" style="margin-left:8px" onclick="abrirCardRepasse('${escAttr(h['ID'])}')">Card repasse</button>
         </div>` : ''}
         ${viaParceiro && h['Status Repasse'] === 'Pago' ? `
-        <div style="font-size:11px;color:var(--green);margin-top:4px">✓ Repasse pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
+        <div style="font-size:11px;color:var(--green);margin-top:4px"> Repasse pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
       </div>
       <div>
         <div class="hon-lanc-valor">${valFmt}</div>
         <div class="hon-acoes" style="margin-top:8px">
           <button class="btn-hon-edit" onclick="editarHonorario('${escAttr(h['ID'])}')">✏️</button>
-          ${viaParceiro ? `<button class="btn-hon-parceiro" onclick="abrirCardRepasse('${escAttr(h['ID'])}')">💸</button>` : ''}
+          ${viaParceiro ? `<button class="btn-hon-parceiro" onclick="abrirCardRepasse('${escAttr(h['ID'])}')"></button>` : ''}
           <button class="btn-hon-del" onclick="excluirHonorario('${escAttr(h['ID'])}')">🗑️</button>
         </div>
       </div>
@@ -4490,7 +4488,7 @@ async function salvarHonorario() {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
 
   const campos = {
-    'Nº Processo': p ? p.processo : '',
+    'Nr Processo': p ? p.processo : '',
     'Cliente': p ? p.nome : '',
     'Tipo Contrato': document.getElementById('hon-tipoContrato').value,
     'Valor Total Contrato': document.getElementById('hon-valorContrato').value,
@@ -4499,20 +4497,20 @@ async function salvarHonorario() {
     'Valor da Parcela': document.getElementById('hon-valorParcela').value,
     'Dia Vencimento': document.getElementById('hon-diaVenc').value,
     'Objeto do Contrato': document.getElementById('hon-objeto').value,
-    'Responsável Pagamento': document.getElementById('hon-respPagamento').value,
+    'Responsavel Pagamento': document.getElementById('hon-respPagamento').value,
     'CPF/CNPJ Pagador': document.getElementById('hon-cpfPagador').value,
     'Telefone Pagador': document.getElementById('hon-telPagador').value,
-    'Parcela Referência': parcelaRef,
+    'Parcela Referencia': parcelaRef,
     'Valor Recebido': valRecebido,
     'Data Pagamento': inputParaData(document.getElementById('hon-dataPagamento').value),
     'Forma Pagamento': document.getElementById('hon-formaPag').value,
-    'Nota Fiscal Nº': document.getElementById('hon-nf').value,
-    'Recibo Nº': document.getElementById('hon-recibo').value,
+    'Nota Fiscal Nr': document.getElementById('hon-nf').value,
+    'Recibo Nr': document.getElementById('hon-recibo').value,
     'Quem Recebeu': document.getElementById('hon-quemRecebeu').value,
     'Parceiro': document.getElementById('hon-parceiro').value,
     'Valor Repasse Parceiro': document.getElementById('hon-valorRepasse').value,
     'Status Repasse': document.getElementById('hon-statusRepasse').value,
-    'Observações': document.getElementById('hon-obs').value,
+    'Observacoes': document.getElementById('hon-obs').value,
   };
 
   const acao = _honEditId ? 'atualizar_honorario' : 'lancar_honorario';
@@ -4525,7 +4523,7 @@ async function salvarHonorario() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(body)
     });
-    document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--green)">✓ Salvo! Atualizando...</span>';
+    document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--green)"> Salvo! Atualizando...</span>';
     limparHonForm();
     setTimeout(() => carregarHonorarios(), 1500);
   } catch (e) {
@@ -4550,20 +4548,20 @@ function editarHonorario(id) {
   document.getElementById('hon-valorParcela').value = h['Valor da Parcela'] || '';
   document.getElementById('hon-diaVenc').value = h['Dia Vencimento'] || '';
   document.getElementById('hon-objeto').value = h['Objeto do Contrato'] || '';
-  document.getElementById('hon-respPagamento').value = h['Responsável Pagamento'] || '';
+  document.getElementById('hon-respPagamento').value = h['Responsavel Pagamento'] || '';
   document.getElementById('hon-cpfPagador').value = h['CPF/CNPJ Pagador'] || '';
   document.getElementById('hon-telPagador').value = h['Telefone Pagador'] || '';
-  document.getElementById('hon-parcelaRef').value = h['Parcela Referência'] || '';
+  document.getElementById('hon-parcelaRef').value = h['Parcela Referencia'] || '';
   document.getElementById('hon-valorRecebido').value = h['Valor Recebido'] || '';
   document.getElementById('hon-dataPagamento').value = dataParaInput(h['Data Pagamento']);
   document.getElementById('hon-formaPag').value = h['Forma Pagamento'] || '';
-  document.getElementById('hon-nf').value = h['Nota Fiscal Nº'] || '';
-  document.getElementById('hon-recibo').value = h['Recibo Nº'] || '';
+  document.getElementById('hon-nf').value = h['Nota Fiscal Nr'] || '';
+  document.getElementById('hon-recibo').value = h['Recibo Nr'] || '';
   document.getElementById('hon-quemRecebeu').value = h['Quem Recebeu'] || 'Eu';
   document.getElementById('hon-parceiro').value = h['Parceiro'] || '';
   document.getElementById('hon-valorRepasse').value = h['Valor Repasse Parceiro'] || '';
   document.getElementById('hon-statusRepasse').value = h['Status Repasse'] || 'Pendente';
-  document.getElementById('hon-obs').value = h['Observações'] || '';
+  document.getElementById('hon-obs').value = h['Observacoes'] || '';
   honToggleParceiro();
 
   // Scroll para o form
@@ -4572,7 +4570,7 @@ function editarHonorario(id) {
 }
 
 async function excluirHonorario(id) {
-  if (!confirm('Excluir este lançamento? Esta ação não pode ser desfeita.')) return;
+  if (!confirm('Excluir este lançamento? Esta acao não pode ser desfeita.')) return;
   try {
     await fetch(URL_AS, {
       method: 'POST',
@@ -4599,7 +4597,7 @@ function abrirCardRepasse(id) {
   <div class="parc-header">
     <div>
       <div class="parc-header-title">Informativo de Repasse</div>
-      <div class="parc-header-sub">Escritório Adenilson Borges · OAB/SP 335.600</div>
+      <div class="parc-header-sub">Escritório Adenilson Borges - OAB/SP 335.600</div>
     </div>
     <span class="parc-urgencia ${h['Status Repasse'] === 'Pago' ? 'parc-urg-normal' : 'parc-urg-urgente'}">
       ${h['Status Repasse'] === 'Pago' ? 'Pago' : 'Pendente'}
@@ -4609,30 +4607,30 @@ function abrirCardRepasse(id) {
     <div class="parc-section">
       <div class="parc-section-label">Processo / Cliente</div>
       <div class="parc-processo-nome">${escHtml(h['Cliente'])}</div>
-      <div class="parc-processo-num">${escHtml(h['Nº Processo'])}</div>
+      <div class="parc-processo-num">${escHtml(h['Nr Processo'])}</div>
     </div>
     <div class="parc-section">
       <div class="parc-section-label">Pagamento Recebido</div>
       <div class="parc-box">
-        <strong>${fmt(val)}</strong> — ${escHtml(h['Parcela Referência'])}<br>
-        Data: ${escHtml(h['Data Pagamento'])} · ${escHtml(h['Forma Pagamento'])}
-        ${h['Nota Fiscal Nº'] ? `<br>NF nº ${escHtml(h['Nota Fiscal Nº'])}` : ''}
+        <strong>${fmt(val)}</strong> - ${escHtml(h['Parcela Referencia'])}<br>
+        Data: ${escHtml(h['Data Pagamento'])} - ${escHtml(h['Forma Pagamento'])}
+        ${h['Nota Fiscal Nr'] ? `<br>NF nr ${escHtml(h['Nota Fiscal Nr'])}` : ''}
       </div>
     </div>
     <div class="parc-section">
       <div class="parc-section-label">Seu Repasse</div>
       <div class="parc-tarefa-box">
         <strong>${fmt(valRep)}</strong>
-        ${h['Status Repasse'] === 'Pago' ? `<div style="color:var(--green);font-size:12px;margin-top:4px">✓ Pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
+        ${h['Status Repasse'] === 'Pago' ? `<div style="color:var(--green);font-size:12px;margin-top:4px"> Pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
       </div>
     </div>
-    ${h['Observações'] ? `
+    ${h['Observacoes'] ? `
     <div class="parc-section">
-      <div class="parc-section-label">Observações</div>
-      <div class="parc-box">${escHtml(h['Observações'])}</div>
+      <div class="parc-section-label">Observacoes</div>
+      <div class="parc-box">${escHtml(h['Observacoes'])}</div>
     </div>` : ''}
   </div>
-  <div class="parc-footer">Dr. Adenilson Borges da Silva · OAB/SP 335.600 · (11) 99931-3712</div>`;
+  <div class="parc-footer">Dr. Adenilson Borges da Silva - OAB/SP 335.600 - (11) 99931-3712</div>`;
 
   document.getElementById('modalRepasse').classList.add('open');
 }
@@ -4726,8 +4724,8 @@ function atualizarCardParceiro() {
   let h = `
   <div class="parc-header">
     <div>
-      <div class="parc-header-title">Comunicação Interna — Processo</div>
-      <div class="parc-header-sub">Escritório Adenilson Borges · OAB/SP 335.600</div>
+      <div class="parc-header-title">Comunicacao Interna - Processo</div>
+      <div class="parc-header-sub">Escritório Adenilson Borges - OAB/SP 335.600</div>
     </div>
     <span class="parc-urgencia ${urgClasses[urgencia]}">${urgLabels[urgencia]}</span>
   </div>
@@ -4738,34 +4736,34 @@ function atualizarCardParceiro() {
       <div class="parc-processo-nome">${escHtml(p.nome)}</div>
       <div class="parc-processo-num">${escHtml(p.processo) || '(sem número)'}</div>
       <div class="parc-processo-meta">
-        ${escHtml(p.tipo || '')}${p.outra ? ` · vs ${escHtml(p.outra)}` : ''}${p.parte ? ` · ${escHtml(p.parte)}` : ''}
+        ${escHtml(p.tipo || '')}${p.outra ? ` - vs ${escHtml(p.outra)}` : ''}${p.parte ? ` - ${escHtml(p.parte)}` : ''}
       </div>
     </div>
 
     ${p.ultima && p.ultima.length > 2 ? `
     <div class="parc-section">
-      <div class="parc-section-label">Situação Atual</div>
+      <div class="parc-section-label">Situacao Atual</div>
       <div class="parc-box">${escHtml(p.ultima)}</div>
     </div>` : ''}
 
     ${tarefa ? `
     <div class="parc-section">
-      <div class="parc-section-label">Tarefa / Orientação</div>
-      <div class="parc-tarefa-box">${escHtml(tarefa)}${prazoFmt ? `<div class="parc-prazo">⏰ Prazo: ${prazoFmt}</div>` : ''}</div>
+      <div class="parc-section-label">Tarefa / Orientacao</div>
+      <div class="parc-tarefa-box">${escHtml(tarefa)}${prazoFmt ? `<div class="parc-prazo"> Prazo: ${prazoFmt}</div>` : ''}</div>
     </div>` : ''}
 
     ${p.dataAudi && p.dataAudi.length > 3 ? `
     <div class="parc-section">
       <div class="parc-section-label">Audiência Marcada</div>
       <div class="parc-box" style="color:#90B8F0;font-weight:700">
-        📅 ${escHtml(p.dataAudi)}${p.horAudi ? ` às ${escHtml(p.horAudi)}` : ''}
-        ${p.localAudi ? `<div style="font-size:12px;color:#6a8ab0;font-weight:400;margin-top:3px">📍 ${escHtml(p.localAudi)}</div>` : ''}
+         ${escHtml(p.dataAudi)}${p.horAudi ? ` as ${escHtml(p.horAudi)}` : ''}
+        ${p.localAudi ? `<div style="font-size:12px;color:#6a8ab0;font-weight:400;margin-top:3px"> ${escHtml(p.localAudi)}</div>` : ''}
       </div>
     </div>` : ''}
 
   </div>
   <div class="parc-footer">
-    Dr. Adenilson Borges da Silva · OAB/SP 335.600 · (11) 99931-3712
+    Dr. Adenilson Borges da Silva - OAB/SP 335.600 - (11) 99931-3712
   </div>`;
 
   document.getElementById('parcCard').innerHTML = h;
@@ -4858,7 +4856,7 @@ function enviarParcImagem() {
     });
   }).then(function(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Comunicação Interna' });
+      navigator.share({ files: [file], title: 'Comunicacao Interna' });
     } else {
       const url = URL.createObjectURL(file);
       const a = document.createElement('a');
@@ -4873,7 +4871,7 @@ function enviarParcImagem() {
 
 // ─── EDIÇÃO E CADASTRO ───────────────────────────────────────
 
-// Estado atual de edição
+// Estado atual de edicao
 let _edicaoLinha = null;
 
 function abrirEdicao(uid) {
@@ -4935,9 +4933,9 @@ async function salvarEdicao() {
   statusEl.textContent = '';
 
   const campos = {
-    'Última Atualização': document.getElementById('ed-ultima').value,
+    'Última Atualizacao': document.getElementById('ed-ultima').value,
     'Status': document.getElementById('ed-status').value,
-    'Data Atualização': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
+    'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
     'proximoPassoAdv': document.getElementById('ed-proxAdv').value,
     'Providências para o Cliente Atender': document.getElementById('ed-provCliente').value,
     'dataPrazoCliente': inputParaData(document.getElementById('ed-dataPrazoCliente').value),
@@ -4946,7 +4944,7 @@ async function salvarEdicao() {
     'Data Audiência': inputParaData(document.getElementById('ed-dataAudi').value),
     'Horário Audiência': document.getElementById('ed-horAudi').value,
     'Local da Audiência': document.getElementById('ed-localAudi').value,
-    'Observações': document.getElementById('ed-obs').value,
+    'Observacoes': document.getElementById('ed-obs').value,
   };
 
   try {
@@ -4957,9 +4955,9 @@ async function salvarEdicao() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ acao: 'atualizar', linha: _edicaoLinha, campos })
     });
-    // Com no-cors não recebemos resposta — assumir sucesso
+    // Com no-cors não recebemos resposta - assumir sucesso
     statusEl.className = 'form-status ok';
-    statusEl.textContent = '✓ Salvo! Atualizando painel...';
+    statusEl.textContent = ' Salvo! Atualizando painel...';
     setTimeout(() => {
       document.getElementById('modalEdicao').classList.remove('open');
       loadFromSheets();
@@ -5033,12 +5031,12 @@ async function salvarCadastro() {
     'Vara': document.getElementById('cad-vara').value,
     'Tribunal e Fórum': document.getElementById('cad-tribunal').value,
     'Ramo do Direito': document.getElementById('cad-ramo').value,
-    'Tipo de Ação': document.getElementById('cad-tipo').value,
+    'Tipo de Acao': document.getElementById('cad-tipo').value,
     'Parte': document.getElementById('cad-parte').value,
     'Outra Parte': document.getElementById('cad-outra').value,
     'Status': document.getElementById('cad-status').value,
     'Advogado Parceiro': document.getElementById('cad-advParc').value,
-    'Última Atualização': document.getElementById('cad-ultima').value,
+    'Última Atualizacao': document.getElementById('cad-ultima').value,
     'proximoPassoAdv': document.getElementById('cad-proxAdv').value,
     'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
     'Link Tribunal': document.getElementById('cad-linkTrib').value,
@@ -5049,7 +5047,7 @@ async function salvarCadastro() {
     'Valor da Parcela': document.getElementById('cad-valorParcela').value,
     'Dia do Vencimento': document.getElementById('cad-diaVenc').value,
     'Forma de pagamento ': document.getElementById('cad-formaPag').value,
-    'Objeto do contrato (descrição dos Serviços)': document.getElementById('cad-objeto').value,
+    'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
   };
 
   try {
@@ -5060,7 +5058,7 @@ async function salvarCadastro() {
       body: JSON.stringify({ acao: 'cadastrar', campos })
     });
     statusEl.className = 'form-status ok';
-    statusEl.textContent = '✓ Processo cadastrado! Atualizando painel...';
+    statusEl.textContent = ' Processo cadastrado! Atualizando painel...';
     setTimeout(() => {
       document.getElementById('modalCadastro').classList.remove('open');
       loadFromSheets();
