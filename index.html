@@ -4222,10 +4222,13 @@ function shareWhatsApp() {
 
   const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
   window.open(url, '_blank');
-    txt += '\nAUDIENCIA MARCADA:\n' + formatDate(p.dataAudi) + hora + '\n';
-    if (p.localAudi) txt += 'Local: ' + p.localAudi + '\n';
-  }
-  txt += '\nDuvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
+}  // fim shareWhatsApp
+
+function copyCardText() {
+  const uid = document.getElementById('modalCard').dataset.uid;
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+
   let txt = 'ATUALIZACAO PROCESSUAL - Escritorio Adenilson Borges\n\n';
   txt += 'CLIENTE: ' + p.nome + '\n';
   if (p.processo) txt += 'Processo nr. ' + p.processo + '\n';
@@ -4233,6 +4236,7 @@ function shareWhatsApp() {
   if (p.ultima && p.ultima.length > 2) txt += '\nSITUACAO ATUAL:\n' + p.ultima + '\n';
   if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\nO QUE FAREMOS:\n' + p.proximoPassoAdv + '\n';
   if (p.providCliente && p.providCliente.length > 2) txt += '\nO QUE O CLIENTE PRECISA:\n' + p.providCliente + '\n';
+  if (p.dataAudi && p.dataAudi.length > 3) {
     const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
     txt += '\nAUDIENCIA: ' + formatDate(p.dataAudi) + hora;
     if (p.localAudi) txt += ' - ' + p.localAudi;
