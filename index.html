@@ -4294,7 +4294,7 @@ async function carregarHonorarios() {
     calcHonStats();
     renderHonorarios();
   } catch (e) {
-    document.getElementById('honLista').innerHTML = `<div class="hon-empty">⚠️ ${e.message}</div>`;
+    document.getElementById('honLista').innerHTML = '<div class="hon-empty">Erro: ' + e.message + '</div>';
   }
 }
 
@@ -4704,7 +4704,7 @@ function abrirCardParceiro(uid) {
   if (!p) return;
   _parcProcesso = p;
 
-  document.getElementById('parceiroToolbarTitle').textContent = `📨 Parceiro: ${p.advParc}`;
+  document.getElementById('parceiroToolbarTitle').textContent = 'Parceiro: ' + p.advParc;
   document.getElementById('parc-urgencia').value = p.urgencia === 'critico' ? 'critico' : p.urgencia === 'urgente' ? 'urgente' : 'normal';
   document.getElementById('parc-tarefa').value = '';
   document.getElementById('parc-prazo').value = '';
