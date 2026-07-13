@@ -3969,17 +3969,17 @@ function abrirRecibo(uid) {
       let end = p.endereco || '';
       if (p.bairro) end += `, ${p.bairro}`;
       if (p.complemento) end += `, ${p.complemento}`;
-      if (p.cidade) end += ` — ${p.cidade}`;
+      if (p.cidade) end += ' - ' + p.cidade;
       if (p.estado) end += `/${p.estado}`;
-      if (p.cep) end += ` — CEP ${p.cep}`;
+      if (p.cep) end += ' - CEP ' + p.cep;
       document.getElementById('recEndereco').value = end;
       document.getElementById('recProcesso').value = p.processo || '';
       // Vara/Tribunal
-      const varaTrib = [p.vara, p.tribunal].filter(Boolean).join(' — ');
+      const varaTrib = [p.vara, p.tribunal].filter(Boolean).join(' - ');
       document.getElementById('recVara').value = varaTrib;
       // Descrição dos serviços
       document.getElementById('recDescricao').value = p.objetoContrato ||
-        (p.processo ? `Honorários advocatícios referentes ao processo n.º ${p.processo} — ${p.tipo || p.ramo || 'serviços jurídicos'}` : '');
+        (p.processo ? 'Honorarios advocaticios referentes ao processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos') : '');
       // Valor: usar valorParcela (valor da parcela sendo paga), não o total
       const valPagar = parseFloat(p.valorParcela) || parseFloat(p.valorHonorarios) || 0;
       document.getElementById('recHonorarios').value = valPagar;
@@ -4059,10 +4059,10 @@ function abrirCardAtendimento(uid) {
 
   // Preencher campos
   document.getElementById('cardNome').textContent = p.nome.toUpperCase();
-  document.getElementById('cardProcesso').textContent = p.processo ? `Processo nº ${p.processo}` : '';
+  document.getElementById('cardProcesso').textContent = p.processo ? 'Processo nr. ' + p.processo : '';
   document.getElementById('cardTipo').textContent = p.tipo || '';
-  document.getElementById('cardParte').textContent = p.parte ? `Posição: ${p.parte}` : '';
-  document.getElementById('cardOutra').textContent = p.outra ? `Parte contrária: ${p.outra}` : '';
+  document.getElementById('cardParte').textContent = p.parte ? 'Posicao: ' + p.parte : '';
+  document.getElementById('cardOutra').textContent = p.outra ? 'Parte contraria: ' + p.outra : '';
 
   // Situação atual (Última Atualização — col L)
   const situacao = p.ultima || '';
@@ -4098,13 +4098,13 @@ function abrirCardAtendimento(uid) {
     const dataFmt = formatDate(p.dataAudi);
     const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
     document.getElementById('cardAudienciaData').textContent = `${dataFmt}${hora}`;
-    document.getElementById('cardAudienciaLocal').textContent = p.localAudi ? `📍 ${p.localAudi}` : '';
+    document.getElementById('cardAudienciaLocal').textContent = p.localAudi ? p.localAudi : '';
     audSection.style.display = '';
   } else {
     audSection.style.display = 'none';
   }
 
-  document.getElementById('cardPreviewSub').textContent = `${p.nome} — pré-visualização`;
+  document.getElementById('cardPreviewSub').textContent = p.nome + ' - pre-visualizacao';
   document.getElementById('modalCard').classList.add('open');
 
   // Guardar nro atual para share
@@ -4152,7 +4152,7 @@ function compartilharCardImagem() {
 
   gerarImagemCardFile().then(function(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Atualização Processual' })
+      navigator.share({ files: [file], title: 'Atualizacao Processual' })
         .then(function() {
           if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';
         })
@@ -4279,7 +4279,7 @@ async function carregarHonorarios() {
     const cfg = getConfig();
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/HONORARIOS!A1:Z500?key=${cfg.apiKey}`;
     const resp = await fetch(url);
-    if (!resp.ok) throw new Error('Aba HONORARIOS não encontrada — crie ela via Apps Script primeiro');
+    if (!resp.ok) throw new Error('Aba HONORARIOS nao encontrada. Crie ela via Apps Script primeiro.');
     const data = await resp.json();
     const rows = data.values || [];
     if (rows.length < 2) { allHonorarios = []; }
