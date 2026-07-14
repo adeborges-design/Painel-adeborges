@@ -5172,9 +5172,9 @@ document.getElementById('modalDoc').addEventListener('click', function(e) {
 </style>
 
 <script>
-/* ===== MODULO PARCELAS E VENCIMENTOS + AUTOFILL FIX (v2) ===== */
+/* ===== MODULO PARCELAS E VENCIMENTOS + AUTOFILL FIX (v3) ===== */
 (function(){
-var css='#honVencimentos{margin-top:26px}'
+var css='#honVencimentos{margin-top:0}'
 +'#honVencimentos .hv-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}'
 +'#honVencimentos .hv-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}'
 +'#honVencimentos .hv-card .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'
@@ -5194,6 +5194,8 @@ var css='#honVencimentos{margin-top:26px}'
 +'.hv-badge-paga{background:rgba(76,175,125,.12);color:var(--green);border:1px solid rgba(76,175,125,.25)}'
 +'.hv-badge-fut{background:var(--surface2);color:var(--muted);border:1px solid var(--border2)}'
 +'.hv-repasse{padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--orange)}'
++'#honVencimentos{grid-column:1/-1;margin-top:10px}'
++'input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.85;cursor:pointer}'
 +'@media(max-width:900px){#honVencimentos .hv-sum{grid-template-columns:repeat(2,1fr)}}';
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
@@ -5210,7 +5212,7 @@ window.renderVencimentos=function(){
  var body=document.querySelector('#honOverlay .hon-body');if(!body)return;
  var main=body.querySelector('.hon-main');
  var host=document.getElementById('honVencimentos');
- if(!host){host=document.createElement('div');host.id='honVencimentos';body.insertBefore(host,main);}
+ if(!host){host=document.createElement('div');host.id='honVencimentos';var resumo=body.querySelector('.hon-resumo');var form=resumo?resumo.querySelector('.hon-form'):null;if(resumo&&form){resumo.insertBefore(host,form);}else{body.insertBefore(host,main);}}
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
  var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0;
