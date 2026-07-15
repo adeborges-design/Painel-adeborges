@@ -5395,3 +5395,13 @@ if(typeof renderHonorarios==='function'){var _r=window.renderHonorarios;window.r
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId&&typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}},3500);});
 })();
 </script>
+
+<script>
+/* ===== v5: recibo acima do painel de honorarios + data de emissao ===== */
+(function(){var f=window.reciboDoLancamento;if(typeof f!=='function')return;
+window.reciboDoLancamento=function(id){f(id);
+ var md=document.getElementById('modalRecibo');if(md)md.style.zIndex=1300;
+ var de=document.getElementById('recDataEmissao');
+ if(de&&!de.value){var n=new Date();de.value=n.getFullYear()+'-'+('0'+(n.getMonth()+1)).slice(-2)+'-'+('0'+n.getDate()).slice(-2);}
+};})();
+</script>
