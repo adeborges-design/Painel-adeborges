@@ -5292,3 +5292,106 @@ if(typeof honPreencherContrato==='function'){
 }
 })();
 </script>
+
+<script>
+/* ===== MODULO RECIBO DO LANCAMENTO + ALERTA DE VENCIMENTOS (v4) ===== */
+(function(){
+function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
+function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
+function fdt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+function fmr(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2});}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+function pad2(n){return ('0'+n).slice(-2);}
+function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
+function refKey(s){s=String(s||'').toLowerCase().trim();if(!s)return null;if(s.indexOf('entr')===0)return 'E';if(s.indexOf('contrato')===0)return 'C';var m=s.match(/^([0-9]{1,2})/);return m?parseInt(m[1],10):null;}
+function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);return m?m[1]:'';}
+function calcAlertas(){
+ var hoje=new Date();hoje.setHours(0,0,0,0);
+ var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
+ var atras=[],sem=[];
+ Object.keys(groups).forEach(function(k){
+  var rows=groups[k],h0=rows[rows.length-1];
+  var cli=h0['Cliente']||h0['Nr Processo']||'(sem nome)';
+  var vTotal=0,vParc=0,vEntr=0,dia=0,nParc=0;
+  rows.forEach(function(r){vTotal=Math.max(vTotal,nbr(r['Valor Total Contrato']));vParc=Math.max(vParc,nbr(r['Valor da Parcela']));vEntr=Math.max(vEntr,nbr(r['Valor da Entrada']));dia=dia||parseInt(diaOnly(r['Dia Vencimento']))||0;nParc=nParc||parseInt(r['Número de Parcelas'])||0;});
+  if(!vParc&&nParc>0)vParc=Math.max((vTotal-vEntr)/nParc,0);
+  var pags=rows.filter(function(r){return nbr(r['Valor Recebido'])>0;});
+  var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
+  var start=datas[0]||hoje;
+  var plano=[];
+  if(vEntr>0)plano.push({ref:'Entrada',key:'E',valor:vEntr,venc:start});
+  if(nParc>0){var off=(vEntr>0||(dia&&dia<=start.getDate()))?1:0;for(var i=1;i<=nParc;i++){plano.push({ref:pad2(i)+'/'+pad2(nParc),key:i,valor:vParc,venc:clampDay(start.getFullYear(),start.getMonth()+off+(i-1),dia||start.getDate())});}}
+  var usados=[];
+  plano.forEach(function(p){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])===p.key;});if(m){p.pago=m;usados.push(m);}});
+  plano.forEach(function(p){if(!p.pago){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])==null;});if(m){p.pago=m;usados.push(m);}}});
+  plano.forEach(function(p){
+   if(p.pago)return;
+   var diff=Math.round((p.venc-hoje)/86400000);
+   if(diff<0)atras.push({cli:cli,ref:p.ref,valor:p.valor,venc:p.venc,dias:-diff});
+   else if(diff<=7)sem.push({cli:cli,ref:p.ref,valor:p.valor,venc:p.venc,dias:diff});
+  });
+ });
+ atras.sort(function(a,b){return b.dias-a.dias});sem.sort(function(a,b){return a.dias-b.dias});
+ return {atras:atras,sem:sem};
+}
+window.reciboDoLancamento=function(id){
+ var h=(typeof allHonorarios!=='undefined'?allHonorarios:[]).find(function(x){return String(x['ID'])===String(id);});
+ if(!h){alert('Lançamento não encontrado');return;}
+ var ps=(typeof allProcessos!=='undefined'?allProcessos:[]);
+ var p=null;
+ if(h['Nr Processo'])p=ps.find(function(x){return x.processo===h['Nr Processo'];});
+ if(!p&&h['Cliente'])p=ps.find(function(x){return x.nome===h['Cliente'];});
+ if(typeof abrirRecibo==='function')abrirRecibo(p?p._uid:null);
+ try{
+  if(!p){
+   var nc=document.getElementById('recNomeCliente');if(nc)nc.value=h['Cliente']||h['Responsavel Pagamento']||'';
+   var cc=document.getElementById('recCpfCnpj');if(cc)cc.value=h['CPF/CNPJ Pagador']||'';
+   var tt=document.getElementById('recTelefone');if(tt)tt.value=h['Telefone Pagador']||'';
+   var pr=document.getElementById('recProcesso');if(pr)pr.value=h['Nr Processo']||'';
+  }
+  var d=dbr(h['Data Pagamento']);
+  if(d){document.getElementById('recDataPagamento').value=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+  var fp=document.getElementById('recFormaPagamento');if(fp&&h['Forma Pagamento'])fp.value=h['Forma Pagamento'];
+  var pc=document.getElementById('recParcela');if(pc)pc.value=h['Parcela Referencia']||'';
+  var hv=document.getElementById('recHonorarios');
+  if(hv){hv.value=nbr(h['Valor Recebido'])||'';hv.dispatchEvent(new Event('input',{bubbles:true}));hv.dispatchEvent(new Event('change',{bubbles:true}));}
+  var ds=document.getElementById('recDescricao');
+  if(ds&&!ds.value)ds.value=(h['Objeto do Contrato']||'Honorários advocatícios')+(h['Parcela Referencia']?' — Parcela '+h['Parcela Referencia']:'');
+  var ob=document.getElementById('recObs');
+  var rp=h['Responsavel Pagamento'];
+  if(ob&&rp&&rp!==h['Cliente']&&h['Cliente'])ob.value=(ob.value?ob.value+String.fromCharCode(10):'')+'Pagamento efetuado por: '+rp;
+ }catch(e){console.error('recibo-fill',e);}
+};
+function addBtns(){
+ var lista=document.getElementById('honLista');if(!lista)return;
+ lista.querySelectorAll('.hon-acoes').forEach(function(ac){
+  if(ac.querySelector('.btn-hon-rec'))return;
+  var ed=ac.querySelector('.btn-hon-edit');if(!ed)return;
+  var mm=String(ed.getAttribute('onclick')||'').match(/editarHonorario\('([^']+)'\)/);if(!mm)return;
+  var b=document.createElement('button');
+  b.className='btn-hon-edit btn-hon-rec';b.title='Gerar recibo deste pagamento';b.textContent='🧾';
+  b.setAttribute('onclick',"reciboDoLancamento('"+mm[1]+"')");
+  ac.insertBefore(b,ed);
+ });
+}
+function upBanner(){
+ var r=calcAlertas();
+ var el=document.getElementById('vencBanner');
+ if(!r.atras.length&&!r.sem.length){if(el)el.remove();return;}
+ if(!el){
+  el=document.createElement('div');el.id='vencBanner';
+  el.style.cssText='position:fixed;top:70px;right:16px;z-index:800;background:var(--surface2,#1a1e28);border-radius:12px;padding:12px 16px;max-width:340px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--text,#e8eaf0)';
+  el.onclick=function(){if(typeof abrirHonorarios==='function')abrirHonorarios();};
+  document.body.appendChild(el);
+ }
+ el.style.border='1px solid '+(r.atras.length?'#e05454':'#e07c3a');
+ var html='';
+ if(r.atras.length){html+='<div style="color:#e05454;font-weight:700;margin-bottom:4px">&#9888;&#65039; '+r.atras.length+' parcela(s) EM ATRASO</div>'+r.atras.slice(0,3).map(function(i){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(i.cli)+' — '+esc(i.ref)+' '+fmr(i.valor)+' (venceu '+fdt(i.venc)+', há '+i.dias+'d)</div>';}).join('');if(r.atras.length>3)html+='<div style="color:#9ba3c0">+'+(r.atras.length-3)+' outra(s)...</div>';}
+ if(r.sem.length){html+='<div style="color:#e07c3a;font-weight:700;margin:6px 0 4px">&#128276; '+r.sem.length+' vence(m) nos próximos 7 dias</div>'+r.sem.slice(0,3).map(function(i){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(i.cli)+' — '+esc(i.ref)+' '+fmr(i.valor)+' ('+(i.dias===0?'HOJE':fdt(i.venc))+')</div>';}).join('');if(r.sem.length>3)html+='<div style="color:#9ba3c0">+'+(r.sem.length-3)+' outra(s)...</div>';}
+ html+='<div style="color:#5b8dee;margin-top:6px;font-size:11px">clique para abrir o Controle de Honorários</div>';
+ el.innerHTML=html;
+}
+if(typeof renderHonorarios==='function'){var _r=window.renderHonorarios;window.renderHonorarios=function(){_r();try{addBtns();upBanner();}catch(e){console.error('v4',e);}};}
+window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId&&typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}},3500);});
+})();
+</script>
