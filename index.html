@@ -5461,3 +5461,145 @@ addBtnContrato();
 window.addEventListener('load',addBtnContrato);
 })();
 </script>
+
+<script>
+/* ===== MODULO CONTAS A PAGAR (v7) ===== */
+(function(){
+var css='#contasPagar{margin-top:30px}'
++'#contasPagar .cp-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}'
++'#contasPagar .cp-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}'
++'#contasPagar .cp-card .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'
++'#contasPagar .cp-card .v{font-size:19px;font-weight:700;margin-top:4px}'
++'.cp-form{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}'
++'.cp-field{display:flex;flex-direction:column;gap:5px;min-width:0}'
++'.cp-field label{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}'
++'.cp-field input,.cp-field select{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font:inherit;font-size:13px;padding:8px 10px;outline:none;width:100%}'
++'.cp-full{grid-column:1/-1}'
++'.cp-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 16px;margin-bottom:8px}'
++'.cp-item .desc{font-size:13.5px;font-weight:600;color:var(--text)}'
++'.cp-item .meta{font-size:11.5px;color:var(--muted)}'
++'.cp-item .val{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}'
++'.cp-item.paga{opacity:.55}'
++'.cp-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);cursor:pointer;font-size:12px;padding:5px 9px}'
++'.cp-btn.pg:hover{border-color:var(--green);color:var(--green)}'
++'.cp-btn.ex:hover{border-color:var(--red);color:var(--red)}'
++'@media(max-width:900px){#contasPagar .cp-sum,.cp-form{grid-template-columns:repeat(2,1fr)}}';
+var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
+function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
+function fdt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+function fmr(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2});}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
+window.allContas=[];
+window.carregarContas=async function(){
+ try{
+  var cfg=getConfig();if(!cfg||!cfg.apiKey||!cfg.sheetId)return;
+  var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/CONTAS_PAGAR!A1:L500?key='+cfg.apiKey);
+  if(!r.ok){renderContas();return;}
+  var data=await r.json();var rows=data.values||[];
+  if(rows.length<2){allContas=[];}
+  else{var hd=rows[0];allContas=rows.slice(1).filter(function(x){return x[0];}).map(function(row){var o={};hd.forEach(function(h,i){o[h]=row[i]||'';});return o;});}
+  renderContas();
+ }catch(e){console.error('contas',e);}
+};
+function renderContas(){
+ var body=document.querySelector('#honOverlay .hon-body');if(!body)return;
+ var host=document.getElementById('contasPagar');
+ if(!host){
+  host=document.createElement('div');host.id='contasPagar';
+  var main=body.querySelector('.hon-main');
+  body.insertBefore(host,main);
+  host.innerHTML='<div class="hon-section-title">💸 Contas a Pagar</div>'
+  +'<div class="cp-sum"><div class="cp-card"><div class="l">Vencidas</div><div class="v" style="color:var(--red)" id="cpVencidas">R$ 0,00</div></div>'
+  +'<div class="cp-card"><div class="l">A vencer (30 dias)</div><div class="v" style="color:var(--orange)" id="cpAvencer">R$ 0,00</div></div>'
+  +'<div class="cp-card"><div class="l">Pagas no mês</div><div class="v" style="color:var(--green)" id="cpPagasMes">R$ 0,00</div></div>'
+  +'<div class="cp-card"><div class="l">Total em aberto</div><div class="v" style="color:var(--accent2)" id="cpAberto">R$ 0,00</div></div></div>'
+  +'<div class="cp-form">'
+  +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
+  +'<div class="cp-field"><label>Categoria</label><select id="cp-cat"><option>Aluguel</option><option>Condomínio</option><option>Luz/Água</option><option>Internet/Telefone</option><option>Software/Assinaturas</option><option>Anuidade OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option selected>Outros</option></select></div>'
+  +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
+  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
+  +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec"><option>Única</option><option>Mensal</option></select></div>'
+  +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
+  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" onclick="cpLancar()" style="background:var(--accent);color:#111;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
+  +'</div><div id="cpLista"></div>';
+ }
+ var hoje=new Date();hoje.setHours(0,0,0,0);
+ var vencidas=0,avencer=0,pagasMes=0,aberto=0,html='';
+ var abertas=allContas.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';});
+ var pagas=allContas.filter(function(c){return String(c['Status']).toLowerCase()==='paga';});
+ abertas.sort(function(a,b){return (dbr(a['Data Vencimento'])||hoje)-(dbr(b['Data Vencimento'])||hoje);});
+ abertas.concat(pagas).forEach(function(c){
+  var v=nbr(c['Valor']);var dv=dbr(c['Data Vencimento']);var paga=String(c['Status']).toLowerCase()==='paga';
+  var stH='';
+  if(paga){var dp=dbr(c['Data Pagamento']);if(dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
+  else{aberto+=v;
+   if(dv){var diff=Math.round((dv-hoje)/86400000);
+    if(diff<0){vencidas+=v;stH='<span class="hon-badge hv-badge-atraso">VENCIDA há '+(-diff)+'d</span>';}
+    else if(diff===0){avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';}
+    else{if(diff<=30)avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
+  }
+  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+'</div>'
+  +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
+  +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
+  +'<span style="display:flex;gap:6px">'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
+  +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button></span></div>';
+ });
+ document.getElementById('cpVencidas').textContent=fmr(vencidas);
+ document.getElementById('cpAvencer').textContent=fmr(avencer);
+ document.getElementById('cpPagasMes').textContent=fmr(pagasMes);
+ document.getElementById('cpAberto').textContent=fmr(aberto);
+ document.getElementById('cpLista').innerHTML=html||'<div class="hon-empty">Nenhuma conta cadastrada</div>';
+ // alerta flutuante
+ var atras=abertas.filter(function(c){var d=dbr(c['Data Vencimento']);return d&&d<hoje;});
+ var sem=abertas.filter(function(c){var d=dbr(c['Data Vencimento']);if(!d)return false;var f=Math.round((d-hoje)/86400000);return f>=0&&f<=7;});
+ var el=document.getElementById('cpBanner');
+ if(!atras.length&&!sem.length){if(el)el.remove();}
+ else{
+  if(!el){el=document.createElement('div');el.id='cpBanner';el.style.cssText='position:fixed;bottom:20px;right:16px;z-index:800;background:var(--surface2,#1a1e28);border-radius:12px;padding:12px 16px;max-width:340px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--text,#e8eaf0)';el.onclick=function(){if(typeof abrirHonorarios==='function')abrirHonorarios();};document.body.appendChild(el);}
+  el.style.border='1px solid '+(atras.length?'#e05454':'#e07c3a');
+  var h2='';
+  if(atras.length)h2+='<div style="color:#e05454;font-weight:700;margin-bottom:4px">💸 '+atras.length+' conta(s) VENCIDA(S)</div>'+atras.slice(0,3).map(function(c){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(c['Descricao'])+' — '+fmr(nbr(c['Valor']))+' ('+esc(c['Data Vencimento'])+')</div>';}).join('');
+  if(sem.length)h2+='<div style="color:#e07c3a;font-weight:700;margin:6px 0 4px">📅 '+sem.length+' conta(s) vence(m) em 7 dias</div>'+sem.slice(0,3).map(function(c){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(c['Descricao'])+' — '+fmr(nbr(c['Valor']))+' ('+esc(c['Data Vencimento'])+')</div>';}).join('');
+  el.innerHTML=h2;
+ }
+}
+function dtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+window.cpLancar=async function(){
+ var d=document.getElementById('cp-desc').value.trim();
+ var v=document.getElementById('cp-valor').value;
+ var dv=document.getElementById('cp-venc').value;
+ var stEl=document.getElementById('cpStatus');
+ if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
+ stEl.textContent='⏳ salvando...';
+ var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Status':'Em aberto','Observacoes':document.getElementById('cp-obs').value};
+ try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:campos})});
+  stEl.innerHTML='<span style="color:var(--green)">Salvo!</span>';
+  ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs'].forEach(function(id){document.getElementById(id).value='';});
+  setTimeout(carregarContas,1800);
+ }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
+};
+window.cpPagar=async function(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
+ var hoje=new Date();
+ await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(hoje)}})});
+ if(c['Recorrencia']==='Mensal'){
+  var dv=dbr(c['Data Vencimento'])||hoje;
+  var prox=clampDay(dv.getFullYear(),dv.getMonth()+1,dv.getDate());
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes']}})});
+ }
+ setTimeout(carregarContas,1800);
+};
+window.cpExcluir=async function(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});
+ if(!confirm('Excluir a conta "'+(c?c['Descricao']:id)+'"?'))return;
+ await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_conta',id:id})});
+ setTimeout(carregarContas,1800);
+};
+if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
+window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
+})();
+</script>
