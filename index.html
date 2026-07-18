@@ -5907,3 +5907,612 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
 
 </body>
 </html>
+
+<!-- ============================================================= -->
+<!-- MÓDULO CONTROLE DE ALUGUÉIS (LexFlow) — sincronizado c/ Sheets -->
+<!-- Lê as abas LOC_CONTRATOS e LOC_LANCAMENTOS ao vivo.            -->
+<!-- ============================================================= -->
+<style>
+  .loc-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:920;overflow-y:auto}
+  .loc-overlay.open{display:block}
+  .loc-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .loc-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);min-width:180px}
+  .loc-sync{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;flex:1}
+  .loc-sync .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .loc-sync .dot.live{background:var(--green)} .loc-sync .dot.local{background:var(--yellow)} .loc-sync .dot.load{background:var(--yellow);animation:pulse 1s infinite}
+  .loc-mes-wrap{display:flex;align-items:center;gap:8px}
+  .loc-mes-wrap label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .loc-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer}
+  .loc-select:focus{border-color:var(--accent)}
+  .loc-body{max-width:1280px;margin:0 auto;padding:24px 28px 70px}
+  .loc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+  .loc-stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+  .loc-stat-label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .loc-stat-value{font-size:23px;font-weight:700;color:var(--text)}
+  .loc-stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .loc-stat.verde{border-left:3px solid var(--green)} .loc-stat.verde .loc-stat-value{color:var(--green)}
+  .loc-stat.dourado{border-left:3px solid var(--accent)} .loc-stat.dourado .loc-stat-value{color:var(--accent2)}
+  .loc-stat.azul{border-left:3px solid var(--blue)} .loc-stat.azul .loc-stat-value{color:var(--blue)}
+  .loc-stat.vermelho{border-left:3px solid var(--red)} .loc-stat.vermelho .loc-stat-value{color:var(--red)}
+  .loc-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .loc-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+  .loc-chip b{font-family:'DM Sans',sans-serif}
+  .loc-chip.pago b{color:var(--green)} .loc-chip.pend b{color:var(--yellow)} .loc-chip.atras b{color:var(--red)} .loc-chip.ativos b{color:var(--blue)}
+  .loc-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .loc-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
+  .loc-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .loc-btn.primary{background:var(--accent);color:#111;font-weight:700;border-color:var(--accent)}
+  .loc-btn.primary:hover{background:var(--accent2);color:#111}
+  .loc-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin:8px 0 12px}
+  .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
+  table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:960px}
+  .loc-table thead th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600}
+  .loc-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+  .loc-table tbody tr:last-child td{border-bottom:none}
+  .loc-table tbody tr:hover{background:var(--surface2)}
+  .loc-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+  .loc-locatario{font-weight:600}
+  .loc-endereco{font-size:11px;color:var(--muted);max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .loc-money{font-family:'DM Mono',monospace;text-align:right;white-space:nowrap}
+  .loc-money.rep{color:var(--accent2)}
+  .loc-row-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
+  .loc-row-date{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 6px;border-radius:6px;font-size:11px;outline:none;font-family:'DM Mono',monospace}
+  .loc-repasse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:6px}
+  .loc-rep-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .loc-rep-card .nome{font-weight:600;margin-bottom:8px;font-size:13px}
+  .loc-rep-card .linha{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:3px 0}
+  .loc-rep-card .linha .v{font-family:'DM Mono',monospace;color:var(--text)}
+  .loc-rep-card .total{border-top:1px solid var(--border);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-weight:700}
+  .loc-rep-card .total .v{font-family:'DM Mono',monospace;color:var(--accent2)}
+  .loc-note{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.6;background:var(--surface2);border-radius:8px;padding:10px 14px;border-left:3px solid var(--accent)}
+  .loc-hidden{display:none}
+  .loc-cform{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .loc-cform .full{grid-column:1/-1}
+  .loc-cform .half{grid-column:span 2}
+  .loc-cfield{display:flex;flex-direction:column;gap:4px}
+  .loc-cfield label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .loc-cinput{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
+  .loc-cinput:focus{border-color:var(--accent)}
+  .loc-cform-actions{grid-column:1/-1;display:flex;gap:10px;align-items:center}
+  .loc-cform-actions .msg{margin-right:auto;font-size:12px;color:var(--muted)}
+  .loc-btn-edit{background:var(--surface2);border:1px solid var(--border2);color:var(--muted);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .loc-btn-edit:hover{border-color:var(--accent);color:var(--accent)}
+  @media(max-width:900px){.loc-stats{grid-template-columns:repeat(2,1fr)}.loc-endereco{max-width:140px}.loc-cform{grid-template-columns:repeat(2,1fr)}.loc-cform .half{grid-column:span 1}}
+  @media(max-width:640px){.loc-stats{grid-template-columns:1fr}.loc-body{padding:16px 12px 60px}.loc-cform{grid-template-columns:1fr}.loc-cform .half,.loc-cform .full{grid-column:1/-1}}
+</style>
+
+<div class="loc-overlay" id="locOverlay">
+  <div class="loc-header">
+    <div class="loc-title">🏠 Controle de Aluguéis</div>
+    <div class="loc-sync"><span class="dot" id="locSyncDot"></span><span id="locSyncTxt">—</span></div>
+    <button class="loc-btn" onclick="carregarAlugueis()">🔄 Atualizar</button>
+    <div class="loc-mes-wrap">
+      <label>Mês</label>
+      <select class="loc-select" id="locMesSel" onchange="locRender()"></select>
+    </div>
+    <button class="loc-btn" onclick="document.getElementById('locOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+  <div class="loc-body">
+    <div class="loc-stats" id="locStats"></div>
+    <div class="loc-chips" id="locChips"></div>
+    <div class="loc-toolbar">
+      <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
+      <button class="loc-btn" onclick="locToggleContratos()">📋 Contratos</button>
+      <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
+      <button class="loc-btn" onclick="locToggleRepasse()">👥 Repasse por locador</button>
+      <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
+      <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
+    </div>
+
+    <div id="locContratosSection" class="loc-hidden">
+      <div class="loc-section-title" id="locCFormTitle">Novo contrato</div>
+      <div class="loc-cform">
+        <input type="hidden" id="lc-id">
+        <div class="loc-cfield half"><label>Nº do Contrato *</label><input class="loc-cinput" id="lc-contrato" placeholder="Ex.: 42.150.1"></div>
+        <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Taxa Adm (%) *</label><input class="loc-cinput" id="lc-taxa" type="number" step="0.01" placeholder="Ex.: 6"></div>
+        <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" placeholder="Nome do dono do imóvel"></div>
+        <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
+        <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
+        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
+        <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
+        <div class="loc-cfield"><label>&nbsp;</label><input class="loc-cinput" id="lc-spacer" style="visibility:hidden"></div>
+        <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="lc-msg"></span>
+          <button class="loc-btn" onclick="locNovoContrato()">Limpar</button>
+          <button class="loc-btn primary" onclick="locSalvarContrato()">💾 Salvar contrato</button>
+        </div>
+      </div>
+      <div class="loc-table-wrap">
+        <table class="loc-table"><thead><tr><th>Contrato</th><th>Locador</th><th>Locatário</th><th>Endereço</th><th style="text-align:right">Aluguel</th><th style="text-align:center">Taxa%</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
+        <tbody id="locContratosTbody"></tbody></table>
+      </div>
+    </div>
+
+    <div id="locRepasseSection" class="loc-hidden">
+      <div class="loc-section-title">Repasse líquido por locador (mês selecionado)</div>
+      <div class="loc-repasse-grid" id="locRepasseGrid"></div>
+    </div>
+    <div class="loc-section-title">Lançamentos do mês</div>
+    <div class="loc-table-wrap">
+      <table class="loc-table">
+        <thead><tr>
+          <th>Contrato</th><th>Locatário</th><th>Locador</th><th>Endereço</th>
+          <th style="text-align:center">Venc.</th>
+          <th style="text-align:right">Aluguel</th><th style="text-align:right">Taxa Adm</th><th style="text-align:right">Repasse</th>
+          <th>Status</th><th>Data pgto/repasse</th><th>Banco</th>
+        </tr></thead>
+        <tbody id="locTbody"></tbody>
+      </table>
+    </div>
+    <div class="loc-note" id="locNote"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  window.LOC_SEED={"contratos":[{"id":"1.0","contrato":"15125.2","locador":"Regina Helena Scalambrino Marotto","locatario":"MA Conde Drogaria LTDA - EPP","end":"Av. Mateo Bei 3490 e Rua Ernesto Manograsso Salas 04 e 05","aluguel":28045.16,"taxaPct":6.0,"venc":5,"rep":10,"ativo":true,"obs":"Co-proprietarios: Regina Helena Scalambrino Marotto, Paulo, Julio Cesas, Carlos Cesar, Ana Paula Scalambrino Marotto"},{"id":"2.0","contrato":"58.129.1","locador":"Alexandre Moreira de Medeiros","locatario":"Barbosa & Castro Adv","end":"Av. Conselheiro Carrao 1961 Sala 96","aluguel":1500.0,"taxaPct":6.0,"venc":6,"rep":11,"ativo":true,"obs":""},{"id":"3.0","contrato":"30.52.1","locador":"Everton Henrique da Silva","locatario":"Gilberto Oliveira Guanaes","end":"Rua Serra de Braganca 1555 Apto 214B","aluguel":2439.72,"taxaPct":6.0,"venc":8,"rep":12,"ativo":true,"obs":""},{"id":"4.0","contrato":"16.39.1","locador":"Ribagorza Participacoes S.A.","locatario":"Antonio Pedro de Fontoura Filho","end":"Rua Prof. Joao de Oliveira Torres 580 Apto 122","aluguel":5026.53,"taxaPct":5.0,"venc":8,"rep":12,"ativo":true,"obs":""},{"id":"5.0","contrato":"19.136.2","locador":"Ribagorza Participacoes S.A.","locatario":"Leonardo Serafim Matos Braggion","end":"Rua Coronel Irineu de Castro 43 Sala 1106","aluguel":3001.61,"taxaPct":5.0,"venc":10,"rep":12,"ativo":true,"obs":""},{"id":"6.0","contrato":"43.147.2","locador":"Ribagorza Participacoes S.A.","locatario":"Luigi Greco Florio","end":"Rua Maria Otilia","aluguel":2900.0,"taxaPct":5.0,"venc":10,"rep":13,"ativo":true,"obs":""},{"id":"7.0","contrato":"59.151.2","locador":"Valeria Martins Spassapam dos Santos","locatario":"Gerci Souza Santos","end":"Lutecia 1094","aluguel":1400.0,"taxaPct":8.0,"venc":10,"rep":17,"ativo":true,"obs":""},{"id":"8.0","contrato":"55.148.3","locador":"Valeria Martins Spassapam dos Santos","locatario":"Mariana Lorrane Andrade Silva","end":"Rua Gamil 62","aluguel":2000.0,"taxaPct":8.0,"venc":14,"rep":17,"ativo":true,"obs":""},{"id":"9.0","contrato":"31.122.2","locador":"Everton Henrique da Silva","locatario":"Gustavo Ribeiro Santos","end":"Rua Dona Maria Candida Lima 150 Ap 83 Torre 2","aluguel":1800.0,"taxaPct":6.0,"venc":16,"rep":15,"ativo":true,"obs":""},{"id":"10.0","contrato":"27.49.1","locador":"Francisco da Silva Ribeiro","locatario":"Ana Aparecida Pereira Pontes","end":"Rua Bernardino Pantaleao 75","aluguel":1200.0,"taxaPct":5.25,"venc":10,"rep":15,"ativo":true,"obs":""},{"id":"11.0","contrato":"35.128.2","locador":"Cachirulo Participacoes","locatario":"Espaco Adriana","end":"Rua Coronel Irineu de Castro 43 Sala 402","aluguel":2610.63,"taxaPct":5.0,"venc":10,"rep":18,"ativo":true,"obs":""},{"id":"12.0","contrato":"29.100.2","locador":"Cachirulo Participacoes","locatario":"Arpoz Capital","end":"Rua Coronel Irineu de Castro 43 Sala 206","aluguel":5576.17,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"13.0","contrato":"26.48.1","locador":"Cachirulo Participacoes","locatario":"Simone Parre","end":"Rua Coronel Irineu de Castro 43 Sala 403","aluguel":2624.03,"taxaPct":5.0,"venc":13,"rep":18,"ativo":true,"obs":""},{"id":"14.0","contrato":"13.15.1","locador":"Cachirulo Participacoes","locatario":"Luciane Elia","end":"Rua Butia 175 Apto 163","aluguel":3700.0,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"15.0","contrato":"49.85.1","locador":"Cachirulo Participacoes","locatario":"Ester","end":"Rua Coronel Irineu de Castro 43 Sala 205","aluguel":4100.0,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"16.0","contrato":"60.140.1","locador":"Cachirulo Participacoes","locatario":"Dominio","end":"Rua Silveira Bueno","aluguel":50000.0,"taxaPct":3.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"17.0","contrato":"21.97.2","locador":"Cachirulo Participacoes","locatario":"W Dugan","end":"Rua Coronel Irineu de Castro 43 Sala 406","aluguel":2989.04,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"18.0","contrato":"23.145.4","locador":"Cachirulo Participacoes","locatario":"Pradom","end":"Rua Coronel Irineu de Castro 43 Sala 404","aluguel":3290.56,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"19.0","contrato":"39.146.2","locador":"Cachirulo Participacoes","locatario":"Alessandra Rosa Andre","end":"Rua Coronel Irineu de Castro 43 Sala 401","aluguel":3084.9,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"20.0","contrato":"32.54.1","locador":"Meire Eveli Tamen","locatario":"Wesley Moiseis Mendes","end":"Rua Armindo Guarana 09","aluguel":12632.39,"taxaPct":6.0,"venc":15,"rep":25,"ativo":true,"obs":""},{"id":"21.0","contrato":"14.37.1","locador":"Takako Oshiro","locatario":"Antonio Acassio Kertesz","end":"Rua Jose Zappi 224 Loja Vila Prudente","aluguel":3515.82,"taxaPct":6.0,"venc":18,"rep":23,"ativo":true,"obs":""},{"id":"22.0","contrato":"53.105.1","locador":"Quesia Deise Martins Spartapam","locatario":"Ewerton Sampaio de Lima","end":"Rua Gamil 78","aluguel":2048.8,"taxaPct":8.0,"venc":20,"rep":25,"ativo":true,"obs":""}],"lancamentos":[{"id":"1.0","mes":"05/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"status":"Pago","dataPag":"10/05/2026","banco":"Itau","dataRep":"10/05/2026"},{"id":"2.0","mes":"05/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"status":"Pago","dataPag":"11/05/2026","banco":"Itau","dataRep":"11/05/2026"},{"id":"3.0","mes":"05/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"4.0","mes":"05/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"5.0","mes":"05/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"6.0","mes":"05/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"status":"Pago","dataPag":"13/05/2026","banco":"Itau","dataRep":"13/05/2026"},{"id":"7.0","mes":"05/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"status":"Pago","dataPag":"17/05/2026","banco":"Itau","dataRep":"17/05/2026"},{"id":"8.0","mes":"05/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"status":"Pago","dataPag":"17/05/2026","banco":"Seguradora","dataRep":"17/05/2026"},{"id":"9.0","mes":"05/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"status":"Pago","dataPag":"15/05/2026","banco":"Itau","dataRep":"15/05/2026"},{"id":"10.0","mes":"05/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"status":"Pago","dataPag":"15/05/2026","banco":"Itau","dataRep":"15/05/2026"},{"id":"11.0","mes":"05/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"12.0","mes":"05/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"13.0","mes":"05/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"14.0","mes":"05/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"15.0","mes":"05/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"16.0","mes":"05/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"status":"Pago","dataPag":"22/06/2026","banco":"Itau","dataRep":"22/06/2026"},{"id":"17.0","mes":"05/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"18.0","mes":"05/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"19.0","mes":"05/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"20.0","mes":"05/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"status":"Pago","dataPag":"30/05/2026","banco":"Itau","dataRep":"30/05/2026"},{"id":"21.0","mes":"05/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"status":"Pago","dataPag":"30/05/2026","banco":"Itau","dataRep":"30/05/2026"},{"id":"22.0","mes":"05/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"status":"Pago","dataPag":"25/05/2026","banco":"Itau","dataRep":"25/05/2026"},{"id":"23.0","mes":"06/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"status":"Pago","dataPag":"10/06/2026","banco":"Itau","dataRep":"10/06/2026"},{"id":"24.0","mes":"06/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"status":"Pago","dataPag":"17/06/2026","banco":"Itau","dataRep":"17/06/2026"},{"id":"25.0","mes":"06/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"26.0","mes":"06/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"27.0","mes":"06/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"28.0","mes":"06/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"29.0","mes":"06/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"status":"Pago","dataPag":"17/06/2026","banco":"Itau","dataRep":"17/06/2026"},{"id":"30.0","mes":"06/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"status":"Pago","dataPag":"17/06/2026","banco":"Seguradora","dataRep":"17/06/2026"},{"id":"31.0","mes":"06/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"status":"Pago","dataPag":"16/06/2026","banco":"Itau","dataRep":"16/06/2026"},{"id":"32.0","mes":"06/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"status":"Pago","dataPag":"22/06/2026","banco":"Itau","dataRep":"22/06/2026"},{"id":"33.0","mes":"06/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"34.0","mes":"06/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"35.0","mes":"06/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"36.0","mes":"06/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"37.0","mes":"06/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"38.0","mes":"06/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"status":"Atrasado","dataPag":"","banco":"","dataRep":""},{"id":"39.0","mes":"06/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"status":"Atrasado","dataPag":"","banco":"","dataRep":""},{"id":"40.0","mes":"06/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"41.0","mes":"06/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"42.0","mes":"06/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"status":"Pago","dataPag":"06/07/2026","banco":"Itau","dataRep":"06/07/2026"},{"id":"43.0","mes":"06/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"status":"Pago","dataPag":"26/06/2026","banco":"Itau","dataRep":"26/06/2026"},{"id":"44.0","mes":"06/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"status":"Pago","dataPag":"26/06/2026","banco":"Itau","dataRep":"26/06/2026"},{"id":"45.0","mes":"07/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"status":"Pago","dataPag":"08/07/2026","banco":"Itau","dataRep":"08/07/2026"},{"id":"46.0","mes":"07/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"47.0","mes":"07/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"48.0","mes":"07/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"49.0","mes":"07/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"50.0","mes":"07/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"51.0","mes":"07/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"52.0","mes":"07/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"53.0","mes":"07/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"54.0","mes":"07/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"55.0","mes":"07/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"56.0","mes":"07/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"57.0","mes":"07/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"58.0","mes":"07/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"59.0","mes":"07/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"60.0","mes":"07/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"61.0","mes":"07/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"62.0","mes":"07/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"63.0","mes":"07/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"64.0","mes":"07/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"65.0","mes":"07/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"66.0","mes":"07/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"status":"Pendente","dataPag":"","banco":"","dataRep":""}],"desmembramento":{"15125.2":["Regina Helena Scalambrino Marotto","Paulo","Julio Cesas","Carlos Cesar","Ana Paula Scalambrino Marotto"]}};
+  var LS_KEY='lexflow_loc_v1';
+  var SEED=window.LOC_SEED||{contratos:[],lancamentos:[],desmembramento:{}};
+  var DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+  var live=false, lastSync='', selMes=null, showRepasse=false;
+
+  function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
+  function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
+  function saveState(s){try{localStorage.setItem(LS_KEY,JSON.stringify(s));}catch(e){}}
+  function state(){var s=loadState();s.overrides=s.overrides||{};s.extra=s.extra||[];return s;}
+  function keyOf(l){return l.mes+'|'+l.contrato;}
+  function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+  function num(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf('/')>=0)return 0;/* célula corrompida (data) => inválida */if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
+  function mesRef(s){s=String(s||'').trim();if(s.indexOf('/')>=0){var p=s.split('/');if(p.length===3)return ('0'+p[1]).slice(-2)+'/'+p[2];if(p.length===2)return ('0'+p[0]).slice(-2)+'/'+p[1];}return s;}
+
+  var contratosById={};
+  function indexContratos(){contratosById={};DATA.contratos.forEach(function(c){contratosById[c.contrato]=c;});}
+  indexContratos();
+
+  // ---------- LEITURA AO VIVO (Google Sheets) ----------
+  function hidx(header){var m={};header.forEach(function(h,i){m[String(h).trim()]=i;});return m;}
+  function cell(row,m,name){var i=m[name];return (i==null||row[i]==null)?'':row[i];}
+
+  window.carregarAlugueis=async function(){
+    var c=cfg();
+    var dot=document.getElementById('locSyncDot'), txt=document.getElementById('locSyncTxt');
+    if(!c||!c.apiKey||!c.sheetId){
+      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+      indexContratos();
+      if(dot){dot.className='dot local';} if(txt)txt.textContent='dados locais (configure a planilha em Config para sincronizar)';
+      locRefreshMeses(); locRender(); return;
+    }
+    if(dot){dot.className='dot load';} if(txt)txt.textContent='sincronizando…';
+    try{
+      var base='https://sheets.googleapis.com/v4/spreadsheets/'+c.sheetId+'/values/';
+      var k='?key='+c.apiKey;
+      var r1=await fetch(base+encodeURIComponent('LOC_CONTRATOS!A1:Z500')+k);
+      var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:Z3000')+k);
+      if(!r1.ok||!r2.ok) throw new Error('HTTP '+r1.status+'/'+r2.status);
+      var d1=await r1.json(), d2=await r2.json();
+      var rc=d1.values||[], rl=d2.values||[];
+      if(rc.length<2||rl.length<2) throw new Error('abas vazias');
+      var mc=hidx(rc[0]);
+      var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
+        var obs=String(cell(row,mc,'Observacoes')||'');
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs};
+      });
+      var ml=hidx(rl[0]);
+      var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
+        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
+      });
+      var desm={};
+      contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
+      DATA={contratos:contratos,lancamentos:lancamentos,desmembramento:desm};
+      indexContratos(); live=true;
+      var now=new Date(); lastSync=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
+      if(dot){dot.className='dot live';} if(txt)txt.textContent='sincronizado com a planilha às '+lastSync;
+    }catch(e){
+      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+      indexContratos();
+      if(dot){dot.className='dot local';} if(txt)txt.textContent='falha ao ler a planilha ('+e.message+') — usando dados locais';
+    }
+    locRefreshMeses(); locRender();
+  };
+
+  // ---------- LISTA / OVERRIDES ----------
+  function workingList(){
+    var s=state();
+    var base=DATA.lancamentos.concat(live?[]:(s.extra||[]));
+    return base.map(function(l){
+      var o=s.overrides[keyOf(l)];
+      // Auto-correção: se o Aluguel/Taxa do lançamento vier vazio ou corrompido
+      // (ex.: célula gravada como data na planilha), usa o valor do contrato.
+      var ct=contratosById[l.contrato]||{};
+      var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
+      var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
+      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,status:l.status,dataPag:l.dataPag||'',banco:l.banco||''};
+      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;}
+      return r;
+    });
+  }
+  function mesesDisponiveis(){var set={};workingList().forEach(function(l){set[l.mes]=1;});return Object.keys(set).sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return (pa[1]+pa[0]).localeCompare(pb[1]+pb[0]);});}
+  function mesAtual(){var d=new Date();return ('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+  function locRefreshMeses(){
+    var meses=mesesDisponiveis();
+    if(!selMes||meses.indexOf(selMes)<0){selMes=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];}
+    var sel=document.getElementById('locMesSel');
+    sel.innerHTML=meses.map(function(m){return '<option value="'+m+'"'+(m===selMes?' selected':'')+'>'+m+'</option>';}).join('');
+  }
+
+  window.abrirAlugueis=function(){document.getElementById('locOverlay').classList.add('open');carregarAlugueis();};
+
+  window.locRender=function(){
+    var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
+    var lst=workingList().filter(function(l){return l.mes===selMes;});
+    lst.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
+    var alug=0,taxa=0,repLiq=0,aReceber=0,cPago=0,cPend=0,cAtras=0;
+    lst.forEach(function(l){alug+=l.aluguel;taxa+=l.taxa;var rep=l.aluguel-l.taxa;if(l.status==='Pago'){repLiq+=rep;cPago++;}else if(l.status==='Atrasado'){aReceber+=l.aluguel;cAtras++;}else{aReceber+=l.aluguel;cPend++;}});
+    var ativos=DATA.contratos.filter(function(c){return c.ativo;}).length;
+    document.getElementById('locStats').innerHTML=
+      card('dourado','Aluguéis do mês',BRL(alug),lst.length+' lançamentos')+
+      card('azul','Taxa de adm. do mês',BRL(taxa),'sua receita de administração')+
+      card('verde','Repasse líquido (pagos)',BRL(repLiq),'já repassável aos locadores')+
+      card('vermelho','A receber',BRL(aReceber),(cPend+cAtras)+' aluguéis em aberto');
+    document.getElementById('locChips').innerHTML=chip('pago','Pagos',cPago)+chip('pend','Pendentes',cPend)+chip('atras','Atrasados',cAtras)+chip('ativos','Contratos ativos',ativos);
+    var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
+    document.getElementById('locTbody').innerHTML=lst.map(function(l){
+      var c=contratosById[l.contrato]||{};var rep=l.aluguel-l.taxa;
+      var coprop=(DATA.desmembramento&&DATA.desmembramento[l.contrato])?' <span class="loc-num" title="Repasse dividido entre '+E(DATA.desmembramento[l.contrato].join(', '))+'">▸ '+DATA.desmembramento[l.contrato].length+' co-prop.</span>':'';
+      return '<tr>'+
+        '<td class="loc-num">'+E(l.contrato)+'</td>'+
+        '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
+        '<td>'+E(c.locador||'-')+coprop+'</td>'+
+        '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
+        '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
+        '<td class="loc-money">'+BRL(l.aluguel)+'</td>'+
+        '<td class="loc-money" style="color:var(--muted)">-'+BRL(l.taxa)+'</td>'+
+        '<td class="loc-money rep">'+BRL(rep)+'</td>'+
+        '<td><select class="loc-row-select" onchange="locSetStatus(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Pago','Atrasado'].map(function(s){return '<option'+(s===l.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
+        '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
+      '</tr>';
+    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
+    if(showRepasse)renderRepasse(lst);
+    var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
+    document.getElementById('locNote').innerHTML=origem+' O <b>Repasse líquido</b> soma apenas os aluguéis com status <b>Pago</b> (Aluguel − Taxa de adm.).';
+  };
+  function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
+  function chip(cls,l,n){return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';}
+
+  function renderRepasse(lst){
+    var byLoc={};
+    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var nome=c.locador||'—';byLoc[nome]=byLoc[nome]||{pago:0,itens:[]};var rep=l.aluguel-l.taxa;if(l.status==='Pago')byLoc[nome].pago+=rep;byLoc[nome].itens.push({loc:c.locatario||l.contrato,rep:rep,st:l.status});});
+    document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Pago'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>A repassar (pagos)</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
+  }
+  window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
+
+  // ---------- BAIXAS (local + Apps Script) ----------
+  function setOverride(contrato,patch){var s=state();var k=selMes+'|'+contrato;s.overrides[k]=Object.assign({},s.overrides[k]||{},patch);saveState(s);}
+  function lancDoMes(contrato){return DATA.lancamentos.filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];}
+  function gravarSheet(contrato){
+    if(!live)return; var c=cfg(); if(!c)return;
+    var l=lancDoMes(contrato); if(!l||!l.id)return;
+    var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
+    var ct=contratosById[contrato]||{};
+    var rep=(w.aluguel-w.taxa);
+    var campos={'Status':w.status,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.status==='Pago'?(w.dataPag||''):''};
+    try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_loc',aba:'LOC_LANCAMENTOS',id:l.id,campos:campos})});}catch(e){}
+  }
+  window.locSetStatus=function(contrato,val){var patch={status:val};if(val==='Pago'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
+  window.locSetData=function(contrato,iso){setOverride(contrato,{dataPag:isoToBr(iso)});gravarSheet(contrato);locRender();};
+  window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
+
+  function fmtHoje(){var d=new Date();return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+  function brToIso(s){if(!s)return '';var p=String(s).split('/');if(p.length!==3)return '';return p[2]+'-'+('0'+p[1]).slice(-2)+'-'+('0'+p[0]).slice(-2);}
+  function isoToBr(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)return '';return p[2]+'/'+p[1]+'/'+p[0];}
+
+  window.locGerarProximoMes=function(){
+    var meses=mesesDisponiveis();var ultimo=meses[meses.length-1];var p=ultimo.split('/');var m=parseInt(p[0],10),y=parseInt(p[1],10);m++;if(m>12){m=1;y++;}var novo=('0'+m).slice(-2)+'/'+y;
+    if(meses.indexOf(novo)>=0){alert('O mês '+novo+' já existe.');selMes=novo;locRefreshMeses();locRender();return;}
+    var ativos=DATA.contratos.filter(function(c){return c.ativo;});
+    if(!confirm('Gerar lançamentos de '+novo+' para os '+ativos.length+' contratos ativos (todos como Pendente)?'))return;
+    if(live){
+      var c=cfg();var refData='01/'+novo;
+      ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;var campos={'Mes Ref':refData,'Contrato':ct.contrato,'Locador':ct.locador,'Locatario':ct.locatario,'Endereco':ct.end,'Aluguel':ct.aluguel,'Taxa Adm':taxa,'Valor Repasse':ct.aluguel-taxa,'Dia Vencimento':ct.venc,'Dia Repasse':ct.rep,'Status':'Pendente','Data Pagamento':'','Origem Pgto':'','Data Repasse':''};try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_loc',aba:'LOC_LANCAMENTOS',campos:campos})});}catch(e){}});
+      alert('Enviado para a planilha. Aguarde alguns segundos e clique em Atualizar.');
+      setTimeout(carregarAlugueis,2500);
+    }else{
+      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,status:'Pendente',dataPag:'',banco:''});});saveState(s);selMes=novo;locRefreshMeses();locRender();
+    }
+  };
+  window.locReset=function(){if(!confirm('Isto apaga as alterações locais (baixas ainda não sincronizadas e meses gerados localmente). Os dados da planilha não são afetados. Continuar?'))return;localStorage.removeItem(LS_KEY);selMes=null;carregarAlugueis();};
+
+  window.locExportCSV=function(){
+    var lst=workingList().slice().sort(function(a,b){return a.mes.localeCompare(b.mes);});
+    var head=['Mes/Ano Ref.','Contrato','Locador','Locatario','Endereco','Dia Vencto','Aluguel (R$)','Taxa Adm (R$)','Repasse (R$)','Status','Data Pgto/Repasse','Banco'];
+    var lines=[head.join(';')];
+    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var rep=l.aluguel-l.taxa;lines.push([l.mes,l.contrato,csv(c.locador),csv(c.locatario),csv(c.end),c.venc||'',n2(l.aluguel),n2(-l.taxa),n2(rep),l.status,l.dataPag||'',l.banco||''].join(';'));});
+    var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='controle_locacoes_atualizado.csv';a.click();
+  };
+  function csv(s){s=String(s==null?'':s);return s.indexOf(';')>=0?'"'+s.replace(/"/g,'""')+'"':s;}
+  function n2(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+  // ---------- CONTRATOS (cadastro / edição) ----------
+  window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);if(!hide)locRenderContratos();};
+  function locRenderContratos(){
+    var tb=document.getElementById('locContratosTbody');
+    tb.innerHTML=DATA.contratos.map(function(c){
+      return '<tr>'+
+        '<td class="loc-num">'+E(c.contrato)+'</td>'+
+        '<td>'+E(c.locador||'-')+'</td>'+
+        '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
+        '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
+        '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
+        '<td style="text-align:center">'+E(c.taxaPct)+'%</td>'+
+        '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
+        '<td><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button></td>'+
+      '</tr>';
+    }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
+  }
+  window.locNovoContrato=function(){
+    var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
+    document.getElementById('locCFormTitle').textContent='Novo contrato';
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-end','lc-aluguel','lc-venc','lc-rep','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
+    locRenderContratos();document.getElementById('lc-contrato').focus();
+  };
+  window.locEditarContrato=function(contrato){
+    var c=contratosById[contrato];if(!c)return;
+    document.getElementById('locCFormTitle').textContent='Editar contrato '+contrato;
+    document.getElementById('lc-id').value=c.id||'';
+    document.getElementById('lc-contrato').value=c.contrato||'';
+    document.getElementById('lc-locador').value=c.locador||'';
+    document.getElementById('lc-locatario').value=c.locatario||'';
+    document.getElementById('lc-end').value=c.end||'';
+    document.getElementById('lc-aluguel').value=num(c.aluguel)||'';
+    document.getElementById('lc-taxa').value=num(c.taxaPct)||'';
+    document.getElementById('lc-venc').value=c.venc||'';
+    document.getElementById('lc-rep').value=c.rep||'';
+    document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
+    document.getElementById('lc-obs').value=c.obs||'';
+    document.getElementById('lc-msg').textContent='';
+    document.getElementById('locContratoForm')||0;
+    document.getElementById('locContratosSection').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  window.locSalvarContrato=function(){
+    var msg=document.getElementById('lc-msg');
+    var campos={
+      'Contrato':document.getElementById('lc-contrato').value.trim(),
+      'Locador':document.getElementById('lc-locador').value.trim(),
+      'Locatario':document.getElementById('lc-locatario').value.trim(),
+      'Endereco':document.getElementById('lc-end').value.trim(),
+      'Aluguel':num(document.getElementById('lc-aluguel').value),
+      'Taxa Perc':num(document.getElementById('lc-taxa').value),
+      'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
+      'Dia Repasse':document.getElementById('lc-rep').value.trim(),
+      'Ativo':document.getElementById('lc-ativo').value,
+      'Observacoes':document.getElementById('lc-obs').value.trim()
+    };
+    if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Aluguel){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel.';return;}
+    var id=document.getElementById('lc-id').value;
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,end:campos.Endereco,aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes};
+    // atualização local imediata (sessão)
+    var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
+    if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
+    indexContratos();
+    if(live){
+      var c=cfg();
+      var acao=id?'atualizar_contrato':'novo_contrato';
+      var body={acao:acao,aba:'LOC_CONTRATOS',campos:campos};if(id)body.id=id;
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});}catch(e){}
+      msg.style.color='var(--green)';msg.textContent='Enviado à planilha. Clique em Atualizar em alguns segundos.';
+      setTimeout(carregarAlugueis,2500);
+    }else{
+      msg.style.color='var(--yellow)';msg.textContent='Salvo apenas nesta sessão (configure a planilha em Config para gravar de forma permanente).';
+    }
+    locRenderContratos();locRender();
+  };
+
+  // resumo p/ o dashboard inicial
+  window.locResumo=function(){
+    var meses=mesesDisponiveis();var m=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];
+    var lst=workingList().filter(function(l){return l.mes===m;});
+    var alug=0,pend=0,atras=0,repLiq=0;
+    lst.forEach(function(l){alug+=l.aluguel;if(l.status==='Pago')repLiq+=(l.aluguel-l.taxa);else if(l.status==='Atrasado')atras++;else pend++;});
+    return {mes:m,alugueis:alug,repasseLiquido:repLiq,pendentes:pend,atrasados:atras,contratos:DATA.contratos.filter(function(c){return c.ativo;}).length,live:live};
+  };
+
+  // botão no header
+  function injectBtn(){
+    var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnAlugueis'))return;
+    var honBtn=Array.prototype.slice.call(hr.querySelectorAll('button')).find(function(b){return /Honor/.test(b.textContent);});
+    var b=document.createElement('button');b.id='btnAlugueis';b.className='btn-sync';b.style.cssText='border-color:rgba(91,141,238,0.5);color:var(--blue)';b.setAttribute('onclick','abrirAlugueis()');
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg> Aluguéis';
+    if(honBtn&&honBtn.nextSibling){hr.insertBefore(b,honBtn.nextSibling);}else{hr.appendChild(b);}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',injectBtn);else injectBtn();
+  window.addEventListener('load',injectBtn);
+})();
+</script>
+
+
+<!-- ============================================================= -->
+<!-- REORGANIZAÇÃO: Dashboard inicial + navegação + Contas separada -->
+<!-- ============================================================= -->
+<style>
+  .home-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:880;overflow-y:auto}
+  .home-overlay.open{display:block}
+  .home-header{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .home-brand{display:flex;flex-direction:column}
+  .home-logo{font-family:'DM Serif Display',serif;font-size:24px;color:var(--accent);line-height:1}
+  .home-logo em{font-style:italic}
+  .home-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px}
+  .home-oab{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right}
+  .home-wrap{max-width:1100px;margin:0 auto;padding:40px 32px 60px}
+  .home-hello{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);margin-bottom:6px}
+  .home-date{font-size:13px;color:var(--muted);margin-bottom:32px}
+  .home-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  .home-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px 28px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+  .home-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .home-card .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
+  .home-card .ctitle{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);margin-bottom:4px}
+  .home-card .cdesc{font-size:12px;color:var(--muted);margin-bottom:18px}
+  .home-card .cnums{display:flex;gap:24px;flex-wrap:wrap}
+  .home-card .cnum .v{font-family:'DM Serif Display',serif;font-size:24px;line-height:1}
+  .home-card .cnum .l{font-size:11px;color:var(--muted);margin-top:3px}
+  .home-card .arrow{position:absolute;top:26px;right:26px;color:var(--muted);transition:all .18s}
+  .home-card:hover .arrow{color:var(--accent);transform:translateX(3px)}
+  .home-card.proc .ic{background:rgba(200,169,110,.15);color:var(--accent2)}
+  .home-card.loc .ic{background:rgba(91,141,238,.15);color:var(--blue)}
+  .home-card.cont .ic{background:rgba(224,124,58,.15);color:var(--orange)}
+  .home-card.hon .ic{background:rgba(76,175,125,.15);color:var(--green)}
+  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)}
+  .home-config{margin-top:28px;font-size:12px;color:var(--muted)}
+  .home-config a{color:var(--accent);cursor:pointer;text-decoration:underline}
+  @media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-wrap{padding:28px 16px 50px}}
+</style>
+
+<div class="home-overlay open" id="homeOverlay">
+  <div class="home-header">
+    <div class="home-brand">
+      <div class="home-logo">Lex<em>Flow</em></div>
+      <div class="home-sub">Painel Jurídico</div>
+    </div>
+    <div class="home-oab">Adenilson Borges da Silva<br>OAB/SP 335.600</div>
+  </div>
+  <div class="home-wrap">
+    <div class="home-hello">Bom dia, Dr. Adenilson</div>
+    <div class="home-date" id="homeDate">—</div>
+    <div class="home-grid">
+      <div class="home-card proc" onclick="openProcessos()">
+        <div class="arrow">→</div>
+        <div class="ic">⚖️</div>
+        <div class="ctitle">Processos</div>
+        <div class="cdesc">Andamentos, prazos e audiências</div>
+        <div class="cnums">
+          <div class="cnum"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div></div>
+          <div class="cnum"><div class="v" id="hc-proc-crit" style="color:var(--red)">—</div><div class="l">crítico/urgente</div></div>
+        </div>
+      </div>
+      <div class="home-card loc" onclick="openAlugueisHome()">
+        <div class="arrow">→</div>
+        <div class="ic">🏠</div>
+        <div class="ctitle">Locações</div>
+        <div class="cdesc">Aluguéis, repasses e contratos</div>
+        <div class="cnums">
+          <div class="cnum"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div></div>
+          <div class="cnum"><div class="v" id="hc-loc-pend" style="color:var(--yellow)">—</div><div class="l">em aberto</div></div>
+        </div>
+      </div>
+      <div class="home-card cont" onclick="openContas()">
+        <div class="arrow">→</div>
+        <div class="ic">💸</div>
+        <div class="ctitle">Contas a Pagar</div>
+        <div class="cdesc">Despesas do escritório</div>
+        <div class="cnums">
+          <div class="cnum"><div class="v" id="hc-cont-aberto" style="color:var(--orange)">—</div><div class="l">em aberto</div></div>
+          <div class="cnum"><div class="v" id="hc-cont-venc" style="color:var(--red)">—</div><div class="l">vencidas</div></div>
+        </div>
+      </div>
+      <div class="home-card hon" onclick="openHonorariosHome()">
+        <div class="arrow">→</div>
+        <div class="ic">💰</div>
+        <div class="ctitle">Honorários</div>
+        <div class="cdesc">Recebimentos e repasses</div>
+        <div class="cnums">
+          <div class="cnum"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div></div>
+          <div class="cnum"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="home-config" id="homeConfigMsg"></div>
+  </div>
+</div>
+
+<!-- CONTAS A PAGAR — módulo próprio -->
+<div class="hon-overlay" id="contasOverlay" style="z-index:905">
+  <div class="hon-header">
+    <div class="hon-title">💸 Contas a Pagar</div>
+    <button class="btn-sync" onclick="carregarContas()">🔄 Atualizar</button>
+    <button class="btn-sync" onclick="goHome()">🏠 Início</button>
+    <button class="btn-sync" onclick="goHome()">✕ Fechar</button>
+  </div>
+  <div class="hon-body"><div id="contasHostBody"></div></div>
+</div>
+
+<script>
+(function(){
+  var BRLf=function(v){return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
+  function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
+
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+
+  window.goHome=function(){closeOverlays();document.getElementById('homeOverlay').classList.add('open');homeRefresh();};
+  window.openProcessos=function(){closeOverlays();/* revela o layout base de processos */try{if(typeof updateStats==='function')updateStats();}catch(e){}};
+  window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}};
+  window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
+  window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
+
+  // ---- Contas a Pagar: relocar para o overlay próprio (tirar de Honorários) ----
+  function relocateContas(){var host=document.getElementById('contasPagar');var dest=document.getElementById('contasHostBody');if(host&&dest&&host.parentNode!==dest)dest.appendChild(host);}
+  function patchCarregarContas(){
+    if(window.__contasPatched)return; if(typeof window.carregarContas!=='function')return;
+    var _cc=window.carregarContas;
+    window.carregarContas=async function(){try{await _cc.apply(this,arguments);}catch(e){} relocateContas();};
+    window.__contasPatched=true;
+  }
+
+  // ---- Dashboard: números ----
+  function homeRefresh(){
+    // Processos
+    try{if(typeof allProcessos!=='undefined'){document.getElementById('hc-proc-total').textContent=allProcessos.length||0;document.getElementById('hc-proc-crit').textContent=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;}}catch(e){}
+    // Honorários
+    try{if(typeof allHonorarios!=='undefined'){var tot=0;allHonorarios.forEach(function(h){tot+=parseFloat(h['Valor Recebido'])||0;});document.getElementById('hc-hon-total').textContent=BRLf(tot);document.getElementById('hc-hon-qtd').textContent=allHonorarios.length;}}catch(e){}
+    // Contas
+    try{var ac=window.allContas||[];var hoje=new Date();hoje.setHours(0,0,0,0);var aberto=0,venc=0;ac.forEach(function(c){if(String(c['Status']).toLowerCase()!=='paga'){var v=nbr(c['Valor']);aberto+=v;var d=dbr(c['Data Vencimento']);if(d&&d<hoje)venc++;}});document.getElementById('hc-cont-aberto').textContent=BRLf(aberto);document.getElementById('hc-cont-venc').textContent=venc;}catch(e){}
+    // Locações
+    try{if(typeof window.locResumo==='function'){var r=window.locResumo();document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);document.getElementById('hc-loc-pend').textContent=(r.pendentes+r.atrasados);}}catch(e){}
+    // config msg
+    var cfg=(typeof getConfig==='function')?getConfig():null;
+    var m=document.getElementById('homeConfigMsg');
+    if(!cfg||!cfg.apiKey||!cfg.sheetId){m.innerHTML='⚠️ Planilha não configurada — os números aparecem após configurar. <a onclick="document.getElementById(\'modalConfig\').classList.add(\'open\')">Abrir Config</a>';}
+    else{m.innerHTML='';}
+  }
+  window.homeRefresh=homeRefresh;
+
+  function fmtData(){try{var d=new Date();var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];var mes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];document.getElementById('homeDate').textContent=dias[d.getDay()]+', '+d.getDate()+' de '+mes[d.getMonth()]+' de '+d.getFullYear();}catch(e){}}
+
+  // ---- Botões de navegação no header ----
+  function injectNav(){
+    var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnInicio'))return;
+    var first=hr.firstChild;
+    function mk(id,label,color,onclick){var b=document.createElement('button');b.id=id;b.className='btn-sync';if(color)b.style.cssText='border-color:'+color+';';b.setAttribute('onclick',onclick);b.textContent=label;return b;}
+    hr.insertBefore(mk('btnInicio','🏠 Início','rgba(200,169,110,0.5)','goHome()'),first);
+    hr.insertBefore(mk('btnProcessos','⚖️ Processos','',"openProcessos()"),document.getElementById('btnInicio').nextSibling);
+    // Contas a Pagar (após Honorários se existir)
+    var honBtn=Array.prototype.slice.call(hr.querySelectorAll('button')).find(function(b){return /Honor/.test(b.textContent);});
+    var bc=mk('btnContas','💸 Contas','rgba(224,124,58,0.5)','openContas()');
+    if(honBtn&&honBtn.nextSibling)hr.insertBefore(bc,honBtn.nextSibling);else hr.appendChild(bc);
+  }
+
+  // ---- Fechar dos overlays volta para o Início ----
+  function patchCloses(){
+    ['honOverlay','locOverlay'].forEach(function(id){var ov=document.getElementById(id);if(!ov)return;ov.querySelectorAll('button').forEach(function(b){if(/Fechar/.test(b.textContent)){b.setAttribute('onclick','');b.onclick=function(){ov.classList.remove('open');goHome();};}});});
+  }
+
+  function init(){
+    injectNav(); patchCarregarContas(); patchCloses(); fmtData();
+    // dispara carregamentos p/ popular o dashboard (se configurado)
+    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();}}catch(e){}},800);
+    // atualiza números periodicamente enquanto o Início estiver aberto
+    setInterval(function(){var h=document.getElementById('homeOverlay');if(h&&h.classList.contains('open'))homeRefresh();},2500);
+    homeRefresh();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+  window.addEventListener('load',function(){injectNav();patchCarregarContas();patchCloses();setTimeout(homeRefresh,1500);});
+})();
+</script>
+
+</body>
+</html>
