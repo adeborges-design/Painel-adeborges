@@ -6022,6 +6022,22 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     return {mes:m,alugueis:alug,repasseLiquido:repLiq,pendentes:pend,atrasados:atras,contratos:DATA.contratos.filter(function(c){return c.ativo;}).length,live:live};
   };
 
+  // aluguéis em atraso p/ o quadro de avisos do dashboard
+  window.locAvisos=function(){
+    var meses=mesesDisponiveis();var m=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];
+    var hoje=new Date();var diaHoje=hoje.getDate();
+    var mp=m.split('/');var ehMesCorrente=(parseInt(mp[0],10)===(hoje.getMonth()+1))&&(parseInt(mp[1],10)===hoje.getFullYear());
+    var lst=workingList().filter(function(l){return l.mes===m;});
+    var out=[];
+    lst.forEach(function(l){
+      var c=contratosById[l.contrato]||{};
+      var atrasado=(l.status==='Atrasado');
+      var pendVencido=(l.status==='Pendente'&&ehMesCorrente&&num(c.venc)>0&&num(c.venc)<diaHoje);
+      if(atrasado||pendVencido) out.push({contrato:l.contrato,locatario:c.locatario||l.contrato,aluguel:l.aluguel,venc:c.venc,status:atrasado?'atrasado':'vencido'});
+    });
+    return {mes:m,itens:out};
+  };
+
   // botão no header
   function injectBtn(){
     var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnAlugueis'))return;
@@ -6095,6 +6111,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   <div class="home-wrap">
     <div class="home-hello">Bom dia, Dr. Adenilson</div>
     <div class="home-date" id="homeDate">—</div>
+    <div class="home-alertas" id="homeAlertProc" onclick="openProcessos()"></div>
+    <div class="home-alertas" id="homeAlertLoc" onclick="openAlugueisHome()"></div>
     <div class="home-alertas" id="homeAlertas" onclick="openContas()"></div>
     <div class="home-grid">
       <div class="home-card proc" onclick="openProcessos()">
@@ -6187,6 +6205,37 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     try{var ac=window.allContas||[];var hoje=new Date();hoje.setHours(0,0,0,0);var aberto=0,venc=0;ac.forEach(function(c){if(String(c['Status']).toLowerCase()!=='paga'){var v=nbr(c['Valor']);aberto+=v;var d=dbr(c['Data Vencimento']);if(d&&d<hoje)venc++;}});document.getElementById('hc-cont-aberto').textContent=BRLf(aberto);document.getElementById('hc-cont-venc').textContent=venc;}catch(e){}
     // Locações
     try{if(typeof window.locResumo==='function'){var r=window.locResumo();document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);document.getElementById('hc-loc-pend').textContent=(r.pendentes+r.atrasados);}}catch(e){}
+    // Quadro de aviso: PROCESSOS (prazos + audiências)
+    try{
+      var ap=window.allProcessos||[];var hp=new Date();hp.setHours(0,0,0,0);
+      var prazos=[],audi=[];
+      ap.forEach(function(p){
+        var pd=dbr(p.prazoData);if(pd){var df=Math.round((pd-hp)/86400000);if(df<=7)prazos.push({p:p,df:df});}
+        var ad=dbr(p.dataAudi);if(ad){var da=Math.round((ad-hp)/86400000);if(da>=0&&da<=15)audi.push({p:p,da:da});}
+      });
+      prazos.sort(function(a,b){return a.df-b.df;});audi.sort(function(a,b){return a.da-b.da;});
+      var bp=document.getElementById('homeAlertProc');
+      if(!prazos.length&&!audi.length){bp.style.display='none';}
+      else{
+        var h='';
+        if(prazos.length)h+='<div class="ha-tit venc">⏰ '+prazos.length+' prazo(s) crítico(s)</div>'+prazos.slice(0,6).map(function(x){var t=x.df<0?('vencido há '+(-x.df)+'d'):(x.df===0?'vence hoje':'vence em '+x.df+'d');return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+t+(x.p.prazoData?' ('+E(x.p.prazoData)+')':'')+'</div>';}).join('');
+        if(audi.length)h+='<div class="ha-tit" style="color:var(--purple);margin-top:12px">⚖️ '+audi.length+' audiência(s) próxima(s)</div>'+audi.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+E(x.p.dataAudi)+(x.p.horAudi?' às '+E(x.p.horAudi):'')+'</div>';}).join('');
+        h+='<div class="ha-cta">→ clique para abrir Processos</div>';
+        bp.innerHTML=h;bp.style.display='block';bp.style.borderColor=prazos.length?'var(--red)':'var(--purple)';
+      }
+    }catch(e){}
+    // Quadro de aviso: LOCAÇÕES (aluguéis em atraso)
+    try{
+      if(typeof window.locAvisos==='function'){
+        var la=window.locAvisos();var bl=document.getElementById('homeAlertLoc');
+        if(!la.itens.length){bl.style.display='none';}
+        else{
+          var hl='<div class="ha-tit venc">🏠 '+la.itens.length+' aluguel(éis) em atraso ('+la.mes+')</div>'+la.itens.slice(0,8).map(function(i){return '<div class="ha-item"><b>'+E(i.locatario)+'</b> — '+BRLf(i.aluguel)+' (venc. dia '+E(i.venc)+' · '+E(i.status)+')</div>';}).join('');
+          hl+='<div class="ha-cta">→ clique para abrir Aluguéis</div>';
+          bl.innerHTML=hl;bl.style.display='block';bl.style.borderColor='var(--red)';
+        }
+      }
+    }catch(e){}
     // Quadro de aviso: contas vencidas / a vencer em 7 dias
     try{
       var ac2=window.allContas||[];var hj=new Date();hj.setHours(0,0,0,0);
