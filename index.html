@@ -6113,6 +6113,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     <div class="home-date" id="homeDate">—</div>
     <div class="home-alertas" id="homeAlertProc" onclick="openProcessos()"></div>
     <div class="home-alertas" id="homeAlertLoc" onclick="openAlugueisHome()"></div>
+    <div class="home-alertas" id="homeAlertHon" onclick="openHonorariosHome()"></div>
     <div class="home-alertas" id="homeAlertas" onclick="openContas()"></div>
     <div class="home-grid">
       <div class="home-card proc" onclick="openProcessos()">
@@ -6207,21 +6208,41 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     try{if(typeof window.locResumo==='function'){var r=window.locResumo();document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);document.getElementById('hc-loc-pend').textContent=(r.pendentes+r.atrasados);}}catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
     try{
-      var ap=window.allProcessos||[];var hp=new Date();hp.setHours(0,0,0,0);
+      var ap=window.allProcessos||[];
+      // se ainda não carregou os processos, dispara a carga uma vez
+      if(!ap.length){var cf=(typeof getConfig==='function')?getConfig():null;if(cf&&cf.apiKey&&cf.sheetId&&typeof loadFromSheets==='function'&&!window.__procKick){window.__procKick=1;try{loadFromSheets();}catch(e){}}}
+      var PD=(typeof window.parseDate==='function')?window.parseDate:dbr;
+      var hp=new Date();hp.setHours(0,0,0,0);
       var prazos=[],audi=[];
       ap.forEach(function(p){
-        var pd=dbr(p.prazoData);if(pd){var df=Math.round((pd-hp)/86400000);if(df<=7)prazos.push({p:p,df:df});}
-        var ad=dbr(p.dataAudi);if(ad){var da=Math.round((ad-hp)/86400000);if(da>=0&&da<=15)audi.push({p:p,da:da});}
+        var pd=(p.prazoData&&String(p.prazoData).length>3)?PD(p.prazoData):null;
+        if(pd){var df=Math.round((pd-hp)/86400000);if(df<=10)prazos.push({p:p,df:df,txt:(df<0?'vencido há '+(-df)+'d':(df===0?'vence hoje':'vence em '+df+'d'))});}
+        else if(p.urgencia==='critico'||p.urgencia==='urgente'){prazos.push({p:p,df:900,txt:'prazo '+p.urgencia});}
+        var ad=(p.dataAudi&&String(p.dataAudi).length>3)?PD(p.dataAudi):null;
+        if(ad){var da=Math.round((ad-hp)/86400000);if(da>=0&&da<=30)audi.push({p:p,da:da});}
       });
       prazos.sort(function(a,b){return a.df-b.df;});audi.sort(function(a,b){return a.da-b.da;});
       var bp=document.getElementById('homeAlertProc');
       if(!prazos.length&&!audi.length){bp.style.display='none';}
       else{
         var h='';
-        if(prazos.length)h+='<div class="ha-tit venc">⏰ '+prazos.length+' prazo(s) crítico(s)</div>'+prazos.slice(0,6).map(function(x){var t=x.df<0?('vencido há '+(-x.df)+'d'):(x.df===0?'vence hoje':'vence em '+x.df+'d');return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+t+(x.p.prazoData?' ('+E(x.p.prazoData)+')':'')+'</div>';}).join('');
+        if(prazos.length)h+='<div class="ha-tit venc">⏰ '+prazos.length+' prazo(s) a vencer</div>'+prazos.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+x.txt+(x.p.prazoData?' ('+E(x.p.prazoData)+')':'')+'</div>';}).join('');
         if(audi.length)h+='<div class="ha-tit" style="color:var(--purple);margin-top:12px">⚖️ '+audi.length+' audiência(s) próxima(s)</div>'+audi.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+E(x.p.dataAudi)+(x.p.horAudi?' às '+E(x.p.horAudi):'')+'</div>';}).join('');
         h+='<div class="ha-cta">→ clique para abrir Processos</div>';
         bp.innerHTML=h;bp.style.display='block';bp.style.borderColor=prazos.length?'var(--red)':'var(--purple)';
+      }
+    }catch(e){}
+    // Quadro de aviso: HONORÁRIOS (repasses pendentes a parceiros)
+    try{
+      var ah=window.allHonorarios||[];
+      var pend=ah.filter(function(h){return String(h['Quem Recebeu'])==='Parceiro'&&String(h['Status Repasse'])==='Pendente';});
+      var bh=document.getElementById('homeAlertHon');
+      if(!pend.length){bh.style.display='none';}
+      else{
+        var tot=pend.reduce(function(a,h){return a+nbr(h['Valor Repasse Parceiro']);},0);
+        var hh='<div class="ha-tit" style="color:var(--purple)">🤝 '+pend.length+' repasse(s) de honorários pendente(s) — '+BRLf(tot)+'</div>'+pend.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x['Cliente']||x['Nr Processo']||'-')+'</b> — '+BRLf(nbr(x['Valor Repasse Parceiro']))+(x['Parceiro']?' → repassar a '+E(x['Parceiro']):'')+'</div>';}).join('');
+        hh+='<div class="ha-cta">→ clique para abrir Honorários</div>';
+        bh.innerHTML=hh;bh.style.display='block';bh.style.borderColor='var(--purple)';
       }
     }catch(e){}
     // Quadro de aviso: LOCAÇÕES (aluguéis em atraso)
