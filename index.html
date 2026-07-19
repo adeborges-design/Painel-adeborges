@@ -6208,7 +6208,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     try{if(typeof window.locResumo==='function'){var r=window.locResumo();document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);document.getElementById('hc-loc-pend').textContent=(r.pendentes+r.atrasados);}}catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
     try{
-      var ap=window.allProcessos||[];
+      var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
       // se ainda não carregou os processos, dispara a carga uma vez
       if(!ap.length){var cf=(typeof getConfig==='function')?getConfig():null;if(cf&&cf.apiKey&&cf.sheetId&&typeof loadFromSheets==='function'&&!window.__procKick){window.__procKick=1;try{loadFromSheets();}catch(e){}}}
       var PD=(typeof window.parseDate==='function')?window.parseDate:dbr;
@@ -6234,7 +6234,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     }catch(e){}
     // Quadro de aviso: HONORÁRIOS (parcelas vencidas/a vencer + repasses a parceiros)
     try{
-      var ah=window.allHonorarios||[];
+      var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
       var PD2=(typeof window.parseDate==='function')?window.parseDate:dbr;
       var h0=new Date();h0.setHours(0,0,0,0);
       // agrupa por processo/cliente para reconstruir o parcelamento
