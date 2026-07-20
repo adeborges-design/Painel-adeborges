@@ -5522,8 +5522,12 @@ function renderContas(){
   +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
   +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
-  +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec"><option>Única</option><option>Mensal</option></select></div>'
+  +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option></select></div>'
+  +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
+  +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
   +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa</option><option>Itaú Mastercard</option><option>Leroy Merlin</option><option>XP</option><option>Sicredi</option></select></div>'
+  +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
   +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#111;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
   +'</div><div id="cpLista"></div>';
@@ -5543,7 +5547,7 @@ function renderContas(){
     else if(diff===0){avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';}
     else{if(diff<=30)avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
   }
-  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">💳 '+esc(c['Forma Pagamento'])+'</span>':'')+'</div>'
+  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(c['Cartao']?' <span class="hon-badge hv-badge-fut">💳 '+esc(c['Cartao'])+'</span>':'')+'</div>'
   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
@@ -5572,13 +5576,14 @@ function renderContas(){
 function dtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 var _cpEditId=null;
 var CP_CARTOES=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi'];
+window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
 function cpLimites(){try{return JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){return {};}}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}cpRenderCartoes();};
 function cpRenderCartoes(){
  var grid=document.getElementById('cpCartoesGrid');if(!grid)return;
  var lim=cpLimites();
  grid.innerHTML=CP_CARTOES.map(function(nome){
-  var saldo=(allContas||[]).filter(function(c){return String(c['Forma Pagamento'])===nome&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
+  var saldo=(allContas||[]).filter(function(c){return (String(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
   var L=nbr(lim[nome]);var disp=L-saldo;var pct=L>0?Math.min(100,Math.round(saldo/L*100)):0;
   var cor=pct>=90?'var(--red)':(pct>=70?'var(--orange)':'var(--green)');
   return '<div class="cp-cc-card"><div class="cc-nome">'+esc(nome)+'</div>'
@@ -5597,7 +5602,13 @@ window.cpEditar=function(id){
  document.getElementById('cp-valor').value=nbr(c['Valor'])||'';
  var dvv=dbr(c['Data Vencimento']);document.getElementById('cp-venc').value=dvv?(dvv.getFullYear()+'-'+('0'+(dvv.getMonth()+1)).slice(-2)+'-'+('0'+dvv.getDate()).slice(-2)):'';
  document.getElementById('cp-rec').value=c['Recorrencia']||'Única';
- var cartEl=document.getElementById('cp-cartao');if(cartEl)cartEl.value=c['Forma Pagamento']||'';
+ var fEl=document.getElementById('cp-forma'),bEl=document.getElementById('cp-banco'),cartEl=document.getElementById('cp-cartao');
+ var fp=c['Forma Pagamento']||'',cart=c['Cartao']||'';
+ if(!cart&&CP_CARTOES.indexOf(fp)>=0){cart=fp;fp='Cartão de crédito';}
+ if(fEl)fEl.value=fp;if(bEl)bEl.value=c['Banco']||'';if(cartEl)cartEl.value=cart;
+ var t1=document.getElementById('cp-totdiv');if(t1)t1.value=nbr(c['Valor Total Divida'])||'';
+ var s1=document.getElementById('cp-saldodiv');if(s1)s1.value=nbr(c['Saldo Devedor'])||'';
+ try{cpToggleParc();}catch(e){}
  document.getElementById('cp-obs').value=c['Observacoes']||'';
  var btn=document.getElementById('cpLancarBtn');if(btn)btn.textContent='💾 Salvar alteração';
  document.getElementById('cpStatus').innerHTML='<span style="color:var(--accent)">Editando conta #'+esc(id)+'…</span>';
@@ -5611,15 +5622,23 @@ window.cpLancar=async function(){
  if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
  stEl.textContent='⏳ salvando...';
  var cartEl=document.getElementById('cp-cartao');
- var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Observacoes':document.getElementById('cp-obs').value,'Forma Pagamento':cartEl?cartEl.value:''};
+ var forma=(document.getElementById('cp-forma')||{}).value||'';
+ var cart=cartEl?cartEl.value:'';
+ if(cart&&!forma)forma='Cartão de crédito';
+ var totd=(document.getElementById('cp-totdiv')||{}).value||'';
+ var sald=(document.getElementById('cp-saldodiv')||{}).value||'';
+ if(document.getElementById('cp-rec').value==='Parcelada'&&totd&&!sald)sald=totd;
+ var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Observacoes':document.getElementById('cp-obs').value,'Forma Pagamento':forma,'Banco':(document.getElementById('cp-banco')||{}).value||'','Cartao':cart,'Valor Total Divida':totd,'Saldo Devedor':sald};
  var payload;
  if(_cpEditId){payload={acao:'atualizar_conta',id:_cpEditId,campos:campos};}
  else{campos['Status']='Em aberto';payload={acao:'lancar_conta',campos:campos};}
  try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
   stEl.innerHTML='<span style="color:var(--green)">'+(_cpEditId?'Alterado!':'Salvo!')+'</span>';
   _cpEditId=null;var btn=document.getElementById('cpLancarBtn');if(btn)btn.textContent='💾 Lançar conta';
-  ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs'].forEach(function(id){document.getElementById(id).value='';});
+  ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs','cp-totdiv','cp-saldodiv'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(cartEl)cartEl.value='';
+  var fx=document.getElementById('cp-forma');if(fx)fx.value='';
+  var bx=document.getElementById('cp-banco');if(bx)bx.value='';
   setTimeout(carregarContas,1800);
  }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
 };
@@ -5631,7 +5650,17 @@ window.cpPagar=async function(id){
  if(c['Recorrencia']==='Mensal'){
   var dv=dbr(c['Data Vencimento'])||hoje;
   var prox=clampDay(dv.getFullYear(),dv.getMonth()+1,dv.getDate());
-  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes']}})});
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||''}})});
+ }
+ if(c['Recorrencia']==='Parcelada'){
+  var saldoAtu=nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida']);
+  var novoSaldo=Math.max(Math.round((saldoAtu-nbr(c['Valor']))*100)/100,0);
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')}})});
+  if(novoSaldo>0.005){
+   var dvp=dbr(c['Data Vencimento'])||hoje;
+   var proxp=clampDay(dvp.getFullYear(),dvp.getMonth()+1,dvp.getDate());
+   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxp),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Valor Total Divida':c['Valor Total Divida']||'','Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')}})});
+  } else { setTimeout(function(){alert('🎉 Dívida "'+c['Descricao']+'" QUITADA!');},500); }
  }
  setTimeout(carregarContas,1800);
 };
