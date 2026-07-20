@@ -5518,7 +5518,7 @@ function renderContas(){
   +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title">💳 Cartões de Crédito</div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
   +'<div class="cp-form">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
-  +'<div class="cp-field"><label>Categoria</label><select id="cp-cat"><option>Aluguel</option><option>Condomínio</option><option>Luz/Água</option><option>Internet/Telefone</option><option>Software/Assinaturas</option><option>Anuidade OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option selected>Outros</option></select></div>'
+  +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
   +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
   +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
@@ -5559,6 +5559,7 @@ function renderContas(){
  document.getElementById('cpAberto').textContent=fmr(aberto);
  document.getElementById('cpLista').innerHTML=html||'<div class="hon-empty">Nenhuma conta cadastrada</div>';
  try{cpRenderCartoes();}catch(e){}
+ try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
  // alerta flutuante
  var atras=abertas.filter(function(c){var d=dbr(c['Data Vencimento']);return d&&d<hoje;});
  var sem=abertas.filter(function(c){var d=dbr(c['Data Vencimento']);if(!d)return false;var f=Math.round((d-hoje)/86400000);return f>=0&&f<=7;});
@@ -5597,7 +5598,7 @@ window.cpEditar=function(id){
  var c=(allContas||[]).find(function(x){return String(x['ID'])===String(id);});if(!c)return;
  _cpEditId=id;
  document.getElementById('cp-desc').value=c['Descricao']||'';
- document.getElementById('cp-cat').value=c['Categoria']||'Outros';
+ document.getElementById('cp-cat').value=c['Categoria']||'';
  document.getElementById('cp-forn').value=c['Fornecedor']||'';
  document.getElementById('cp-valor').value=nbr(c['Valor'])||'';
  var dvv=dbr(c['Data Vencimento']);document.getElementById('cp-venc').value=dvv?(dvv.getFullYear()+'-'+('0'+(dvv.getMonth()+1)).slice(-2)+'-'+('0'+dvv.getDate()).slice(-2)):'';
@@ -5654,6 +5655,13 @@ window.cpPagar=async function(id){
  }
  if(c['Recorrencia']==='Parcelada'){
   var saldoAtu=nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida']);
+  if(saldoAtu<=0){
+   var dvx=dbr(c['Data Vencimento'])||hoje;
+   var proxx=clampDay(dvx.getFullYear(),dvx.getMonth()+1,dvx.getDate());
+   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxx),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||''}})});
+   setTimeout(function(){alert('Parcela do mês seguinte criada. Atenção: preencha o Valor total da dívida e o Saldo devedor (botão ✎ editar) para o abatimento automático funcionar.');},500);
+   setTimeout(carregarContas,1800);return;
+  }
   var novoSaldo=Math.max(Math.round((saldoAtu-nbr(c['Valor']))*100)/100,0);
   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')}})});
   if(novoSaldo>0.005){
