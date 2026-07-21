@@ -6147,6 +6147,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .home-hello{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);margin-bottom:6px}
   .home-date{font-size:13px;color:var(--muted);margin-bottom:32px}
   .home-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  .home-module{display:flex;flex-direction:column;gap:10px}
   .home-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px 28px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
   .home-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
   .home-card .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
@@ -6164,14 +6165,20 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)}
   .home-config{margin-top:28px;font-size:12px;color:var(--muted)}
   .home-config a{color:var(--accent);cursor:pointer;text-decoration:underline}
-  .home-alertas{display:none;background:var(--surface);border:1px solid var(--red);border-radius:14px;padding:16px 20px;margin-bottom:24px;cursor:pointer;transition:all .18s}
-  .home-alertas:hover{box-shadow:0 8px 24px rgba(224,84,84,.15)}
-  .home-alertas .ha-tit{font-weight:700;margin-bottom:4px;font-size:13px}
+  .home-alertas{display:none;background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:0;margin-bottom:0;transition:all .18s;overflow:hidden}
+  .home-alertas .ha-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;cursor:pointer}
+  .home-alertas .ha-head:hover{background:rgba(255,255,255,.03)}
+  .home-alertas .ha-summary{font-weight:700;font-size:12px}
+  .home-alertas .ha-chevron{color:var(--muted);font-size:10px;transition:transform .15s;flex-shrink:0}
+  .home-alertas.open .ha-chevron{transform:rotate(90deg)}
+  .home-alertas .ha-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border)}
+  .home-alertas.open .ha-body{display:block;padding-top:12px}
+  .home-alertas .ha-tit{font-weight:700;margin-bottom:4px;font-size:12.5px}
   .home-alertas .ha-tit.venc{color:var(--red)}
   .home-alertas .ha-tit.prox{color:var(--orange);margin-top:12px}
   .home-alertas .ha-item{font-size:12px;color:var(--muted);margin:3px 0}
   .home-alertas .ha-item b{color:var(--text)}
-  .home-alertas .ha-cta{font-size:11px;color:var(--accent);margin-top:12px}
+  .home-alertas .ha-cta{font-size:11px;color:var(--accent);margin-top:12px;cursor:pointer}
   #cpBanner{display:none!important}
   .cp-cartoes{margin:6px 0 18px}
   .cp-cc-title{font-size:14px;font-family:'DM Serif Display',serif;color:var(--text);margin-bottom:10px}
@@ -6200,51 +6207,59 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   <div class="home-wrap">
     <div class="home-hello">Bom dia, Dr. Adenilson</div>
     <div class="home-date" id="homeDate">—</div>
-    <div class="home-alertas" id="homeAlertProc" onclick="openProcessos()"></div>
-    <div class="home-alertas" id="homeAlertLoc" onclick="openAlugueisHome()"></div>
-    <div class="home-alertas" id="homeAlertHon" onclick="openHonorariosHome()"></div>
-    <div class="home-alertas" id="homeAlertas" onclick="openContas()"></div>
-    <div class="home-alertas" id="homeAlertCartoes" onclick="openContas()"></div>
     <div class="home-grid">
-      <div class="home-card proc" onclick="openProcessos()">
-        <div class="arrow">→</div>
-        <div class="ic">⚖️</div>
-        <div class="ctitle">Processos</div>
-        <div class="cdesc">Andamentos, prazos e audiências</div>
-        <div class="cnums">
-          <div class="cnum"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div></div>
-          <div class="cnum"><div class="v" id="hc-proc-crit" style="color:var(--red)">—</div><div class="l">crítico/urgente</div></div>
+      <div class="home-module">
+        <div class="home-card proc" onclick="openProcessos()">
+          <div class="arrow">→</div>
+          <div class="ic">⚖️</div>
+          <div class="ctitle">Processos</div>
+          <div class="cdesc">Andamentos, prazos e audiências</div>
+          <div class="cnums">
+            <div class="cnum"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div></div>
+            <div class="cnum"><div class="v" id="hc-proc-crit" style="color:var(--red)">—</div><div class="l">crítico/urgente</div></div>
+          </div>
         </div>
+        <div class="home-alertas" id="homeAlertProc"></div>
       </div>
-      <div class="home-card loc" onclick="openAlugueisHome()">
-        <div class="arrow">→</div>
-        <div class="ic">🏠</div>
-        <div class="ctitle">Locações</div>
-        <div class="cdesc">Aluguéis, repasses e contratos</div>
-        <div class="cnums">
-          <div class="cnum"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div></div>
-          <div class="cnum"><div class="v" id="hc-loc-pend" style="color:var(--yellow)">—</div><div class="l">em aberto</div></div>
+      <div class="home-module">
+        <div class="home-card loc" onclick="openAlugueisHome()">
+          <div class="arrow">→</div>
+          <div class="ic">🏠</div>
+          <div class="ctitle">Locações</div>
+          <div class="cdesc">Aluguéis, repasses e contratos</div>
+          <div class="cnums">
+            <div class="cnum"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div></div>
+            <div class="cnum"><div class="v" id="hc-loc-pend" style="color:var(--yellow)">—</div><div class="l">em aberto</div></div>
+          </div>
         </div>
+        <div class="home-alertas" id="homeAlertLoc"></div>
       </div>
-      <div class="home-card cont" onclick="openContas()">
-        <div class="arrow">→</div>
-        <div class="ic">💸</div>
-        <div class="ctitle">Contas a Pagar</div>
-        <div class="cdesc">Despesas do escritório</div>
-        <div class="cnums">
-          <div class="cnum"><div class="v" id="hc-cont-aberto" style="color:var(--orange)">—</div><div class="l">em aberto</div></div>
-          <div class="cnum"><div class="v" id="hc-cont-venc" style="color:var(--red)">—</div><div class="l">vencidas</div></div>
+      <div class="home-module">
+        <div class="home-card cont" onclick="openContas()">
+          <div class="arrow">→</div>
+          <div class="ic">💸</div>
+          <div class="ctitle">Contas a Pagar</div>
+          <div class="cdesc">Despesas do escritório</div>
+          <div class="cnums">
+            <div class="cnum"><div class="v" id="hc-cont-aberto" style="color:var(--orange)">—</div><div class="l">em aberto</div></div>
+            <div class="cnum"><div class="v" id="hc-cont-venc" style="color:var(--red)">—</div><div class="l">vencidas</div></div>
+          </div>
         </div>
+        <div class="home-alertas" id="homeAlertas"></div>
+        <div class="home-alertas" id="homeAlertCartoes"></div>
       </div>
-      <div class="home-card hon" onclick="openHonorariosHome()">
-        <div class="arrow">→</div>
-        <div class="ic">💰</div>
-        <div class="ctitle">Honorários</div>
-        <div class="cdesc">Recebimentos e repasses</div>
-        <div class="cnums">
-          <div class="cnum"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div></div>
-          <div class="cnum"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div></div>
+      <div class="home-module">
+        <div class="home-card hon" onclick="openHonorariosHome()">
+          <div class="arrow">→</div>
+          <div class="ic">💰</div>
+          <div class="ctitle">Honorários</div>
+          <div class="cdesc">Recebimentos e repasses</div>
+          <div class="cnums">
+            <div class="cnum"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div></div>
+            <div class="cnum"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div></div>
+          </div>
         </div>
+        <div class="home-alertas" id="homeAlertHon"></div>
       </div>
     </div>
     <div class="home-config" id="homeConfigMsg"></div>
@@ -6268,6 +6283,18 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
   function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
   function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+
+  // ---- Accordion dos avisos: fechado por padrão, mantém estado entre refreshes ----
+  window.toggleAlertBox=function(id){var b=document.getElementById(id);if(b)b.classList.toggle('open');};
+  function setAlertBox(id,resumo,cor,detalheHtml,ctaLabel,ctaFn){
+    var box=document.getElementById(id);if(!box)return;
+    if(!resumo){box.style.display='none';box.classList.remove('open');return;}
+    var wasOpen=box.classList.contains('open');
+    box.innerHTML='<div class="ha-head" onclick="toggleAlertBox(\''+id+'\')"><span class="ha-summary" style="color:'+cor+'">'+resumo+'</span><span class="ha-chevron">▸</span></div>'
+      +'<div class="ha-body">'+detalheHtml+'<div class="ha-cta" onclick="'+ctaFn+'">→ '+ctaLabel+'</div></div>';
+    box.style.display='block';box.style.borderColor=cor;
+    if(wasOpen)box.classList.add('open');else box.classList.remove('open');
+  }
 
   function closeOverlays(){['honOverlay','locOverlay','contasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
@@ -6312,14 +6339,13 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         if(ad){var da=Math.round((ad-hp)/86400000);if(da>=0)audi.push({p:p,da:da});}
       });
       prazos.sort(function(a,b){return a.df-b.df;});audi.sort(function(a,b){return a.da-b.da;});
-      var bp=document.getElementById('homeAlertProc');
-      if(!prazos.length&&!audi.length){bp.style.display='none';}
+      if(!prazos.length&&!audi.length){setAlertBox('homeAlertProc',null);}
       else{
-        var h='';
-        if(prazos.length)h+='<div class="ha-tit venc">⏰ '+prazos.length+' prazo(s) a vencer</div>'+prazos.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+x.txt+(x.p.prazoData?' ('+E(x.p.prazoData)+')':'')+'</div>';}).join('');
-        if(audi.length)h+='<div class="ha-tit" style="color:var(--purple);margin-top:12px">⚖️ '+audi.length+' audiência(s) próxima(s)</div>'+audi.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+E(x.p.dataAudi)+(x.p.horAudi?' às '+E(x.p.horAudi):'')+'</div>';}).join('');
-        h+='<div class="ha-cta">→ clique para abrir Processos</div>';
-        bp.innerHTML=h;bp.style.display='block';bp.style.borderColor=prazos.length?'var(--red)':'var(--purple)';
+        var resumoP=(prazos.length?'⏰ '+prazos.length+' prazo(s) a vencer':'')+(prazos.length&&audi.length?' · ':'')+(audi.length?'⚖️ '+audi.length+' audiência(s)':'');
+        var detP='';
+        if(prazos.length)detP+='<div class="ha-tit venc">⏰ '+prazos.length+' prazo(s) a vencer</div>'+prazos.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+x.txt+(x.p.prazoData?' ('+E(x.p.prazoData)+')':'')+'</div>';}).join('');
+        if(audi.length)detP+='<div class="ha-tit" style="color:var(--purple);margin-top:12px">⚖️ '+audi.length+' audiência(s) próxima(s)</div>'+audi.slice(0,6).map(function(x){return '<div class="ha-item"><b>'+E(x.p.nome||x.p.processo||'-')+'</b> — '+E(x.p.dataAudi)+(x.p.horAudi?' às '+E(x.p.horAudi):'')+'</div>';}).join('');
+        setAlertBox('homeAlertProc',resumoP,prazos.length?'var(--red)':'var(--purple)',detP,'abrir Processos','openProcessos()');
       }
     }catch(e){}
     // Quadro de aviso: HONORÁRIOS (parcelas vencidas/a vencer + repasses a parceiros)
@@ -6350,25 +6376,23 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       });
       parcAvisos.sort(function(a,b){return a.diff-b.diff;});
       var pend=ah.filter(function(h){return String(h['Quem Recebeu'])==='Parceiro'&&String(h['Status Repasse'])==='Pendente';});
-      var bh=document.getElementById('homeAlertHon');
-      if(!parcAvisos.length&&!pend.length){bh.style.display='none';}
+      if(!parcAvisos.length&&!pend.length){setAlertBox('homeAlertHon',null);}
       else{
+        var resumoH=(parcAvisos.length?'💵 '+parcAvisos.length+' parcela(s) a vencer':'')+(parcAvisos.length&&pend.length?' · ':'')+(pend.length?'🤝 '+pend.length+' repasse(s) pendente(s)':'');
         var hh='';
         if(parcAvisos.length)hh+='<div class="ha-tit venc">💵 '+parcAvisos.length+' parcela(s) de honorários vencida(s)/a vencer</div>'+parcAvisos.slice(0,6).map(function(x){var t=x.diff<0?('vencida há '+(-x.diff)+'d'):(x.diff===0?'vence hoje':'vence em '+x.diff+'d');return '<div class="ha-item"><b>'+E(x.cli)+'</b> — parcela '+E(x.parc)+' · '+BRLf(x.valor)+' ('+t+')</div>';}).join('');
         if(pend.length){var tot=pend.reduce(function(a,h){return a+nbr(h['Valor Repasse Parceiro']);},0);hh+='<div class="ha-tit" style="color:var(--purple);margin-top:12px">🤝 '+pend.length+' repasse(s) a parceiro pendente(s) — '+BRLf(tot)+'</div>'+pend.slice(0,5).map(function(x){return '<div class="ha-item"><b>'+E(x['Cliente']||'-')+'</b> — '+BRLf(nbr(x['Valor Repasse Parceiro']))+(x['Parceiro']?' → '+E(x['Parceiro']):'')+'</div>';}).join('');}
-        hh+='<div class="ha-cta">→ clique para abrir Honorários</div>';
-        bh.innerHTML=hh;bh.style.display='block';bh.style.borderColor=parcAvisos.some(function(x){return x.diff<0;})?'var(--red)':'var(--orange)';
+        setAlertBox('homeAlertHon',resumoH,parcAvisos.some(function(x){return x.diff<0;})?'var(--red)':'var(--orange)',hh,'abrir Honorários','openHonorariosHome()');
       }
     }catch(e){}
     // Quadro de aviso: LOCAÇÕES (aluguéis em atraso)
     try{
       if(typeof window.locAvisos==='function'){
-        var la=window.locAvisos();var bl=document.getElementById('homeAlertLoc');
-        if(!la.itens.length){bl.style.display='none';}
+        var la=window.locAvisos();
+        if(!la.itens.length){setAlertBox('homeAlertLoc',null);}
         else{
           var hl='<div class="ha-tit venc">🏠 '+la.itens.length+' aluguel(éis) em atraso ('+la.mes+')</div>'+la.itens.slice(0,8).map(function(i){return '<div class="ha-item"><b>'+E(i.locatario)+'</b> — '+BRLf(i.aluguel)+' (venc. dia '+E(i.venc)+' · '+E(i.status)+')</div>';}).join('');
-          hl+='<div class="ha-cta">→ clique para abrir Aluguéis</div>';
-          bl.innerHTML=hl;bl.style.display='block';bl.style.borderColor='var(--red)';
+          setAlertBox('homeAlertLoc','🏠 '+la.itens.length+' aluguel(éis) em atraso','var(--red)',hl,'abrir Locações','openAlugueisHome()');
         }
       }
     }catch(e){}
@@ -6378,15 +6402,14 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var abertas=ac2.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';});
       var venc=[],prox=[];
       abertas.forEach(function(c){var d=dbr(c['Data Vencimento']);if(!d)return;var diff=Math.round((d-hj)/86400000);if(diff<0)venc.push(c);else if(diff<=7)prox.push(c);});
-      var box=document.getElementById('homeAlertas');
-      if(!venc.length&&!prox.length){box.style.display='none';}
+      if(!venc.length&&!prox.length){setAlertBox('homeAlertas',null);}
       else{
         function linha(c){return '<div class="ha-item"><b>'+E(c['Descricao'])+'</b> — '+BRLf(nbr(c['Valor']))+' ('+E(c['Data Vencimento'])+')</div>';}
+        var resumoC=(venc.length?'💸 '+venc.length+' vencida(s)':'')+(venc.length&&prox.length?' · ':'')+(prox.length?'📅 '+prox.length+' em 7 dias':'');
         var h='';
         if(venc.length)h+='<div class="ha-tit venc">💸 '+venc.length+' conta(s) VENCIDA(S)</div>'+venc.slice(0,6).map(linha).join('');
         if(prox.length)h+='<div class="ha-tit prox">📅 '+prox.length+' conta(s) vence(m) em 7 dias</div>'+prox.slice(0,6).map(linha).join('');
-        h+='<div class="ha-cta">→ clique para abrir Contas a Pagar</div>';
-        box.innerHTML=h;box.style.display='block';box.style.borderColor=venc.length?'var(--red)':'var(--orange)';
+        setAlertBox('homeAlertas',resumoC,venc.length?'var(--red)':'var(--orange)',h,'abrir Contas a Pagar','openContas()');
       }
     }catch(e){}
     // Quadro de aviso: CARTÕES DE CRÉDITO (disponível / estouro)
@@ -6404,11 +6427,10 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         var cor=(L>0&&disp<0)?'var(--red)':((pct!=null&&pct>=80)?'var(--orange)':'var(--green)');
         linhas.push('<div class="ha-item"><b>'+E(nome)+'</b> — disponível <b style="color:'+cor+'">'+BRLf(disp)+'</b>'+(pct!=null?' ('+pct+'% usado)':' (defina o limite)')+'</div>');
       });
-      var bc=document.getElementById('homeAlertCartoes');
-      if(!linhas.length){bc.style.display='none';}
+      if(!linhas.length){setAlertBox('homeAlertCartoes',null);}
       else{
-        var hc=(algumEstouro?'<div class="ha-tit venc">💳 Cartão(ões) acima do limite</div>':'<div class="ha-tit" style="color:var(--accent2)">💳 Cartões de crédito</div>')+linhas.join('')+'<div class="ha-cta">→ clique para abrir Contas a Pagar</div>';
-        bc.innerHTML=hc;bc.style.display='block';bc.style.borderColor=algumEstouro?'var(--red)':'var(--border2)';
+        var hc=(algumEstouro?'<div class="ha-tit venc">💳 Cartão(ões) acima do limite</div>':'<div class="ha-tit" style="color:var(--accent2)">💳 Cartões de crédito</div>')+linhas.join('');
+        setAlertBox('homeAlertCartoes',algumEstouro?'💳 Cartão(ões) acima do limite':'💳 Cartões de crédito',algumEstouro?'var(--red)':'var(--border2)',hc,'abrir Contas a Pagar','openContas()');
       }
     }catch(e){}
     // config msg
