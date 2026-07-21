@@ -8,21 +8,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root {
-    --bg: #0d0f14;
-    --surface: #13161d;
-    --surface2: #1a1e28;
-    --border: #252a38;
-    --border2: #2f3548;
-    --text: #e8eaf0;
-    --muted: #9ba3c0;
-    --accent: #c8a96e;
-    --accent2: #e8c98e;
-    --red: #e05454;
-    --orange: #e07c3a;
-    --yellow: #d4a017;
-    --green: #4caf7d;
-    --blue: #5b8dee;
-    --purple: #9b6dff;
+    --bg: #eef3f9;
+    --surface: #ffffff;
+    --surface2: #eef4fb;
+    --border: #dde7f3;
+    --border2: #c7d7ea;
+    --text: #16233a;
+    --muted: #5c6f8a;
+    --accent: #2f6fb3;
+    --accent2: #1b3a5c;
+    --red: #d1454a;
+    --orange: #d9772f;
+    --yellow: #c99a1c;
+    --green: #2f9d68;
+    --blue: #3b7dd8;
+    --purple: #7d5cd6;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -198,7 +198,7 @@
   /* Todos ativos */
   .filter-btn.active { color: var(--text); font-weight: 600; }
   .filter-btn[data-filter="all"].active { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.3); }
-  .filter-btn[data-filter="all"].active .count { background: var(--accent); color: #000; }
+  .filter-btn[data-filter="all"].active .count { background: var(--accent); color: #fff; }
 
   /* Crítico */
   .filter-btn[data-filter="critico"].active { background: rgba(224,84,84,0.12); border-color: rgba(224,84,84,0.4); color: var(--red); }
@@ -723,7 +723,7 @@
   .btn-primary {
     flex: 1;
     background: var(--accent);
-    color: #000;
+    color: #fff;
     border: none;
     padding: 10px;
     border-radius: 8px;
@@ -1525,7 +1525,7 @@
 
   .btn-form-save {
     background: var(--accent);
-    color: #000;
+    color: #fff;
     border: none;
     padding: 10px 24px;
     border-radius: 8px;
@@ -5529,7 +5529,7 @@ function renderContas(){
   +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
-  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#111;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
+  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
   +'</div><div id="cpLista"></div>';
  }
  var hoje=new Date();hoje.setHours(0,0,0,0);
@@ -5716,8 +5716,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
   .loc-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
   .loc-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .loc-btn.primary{background:var(--accent);color:#111;font-weight:700;border-color:var(--accent)}
-  .loc-btn.primary:hover{background:var(--accent2);color:#111}
+  .loc-btn.primary{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent)}
+  .loc-btn.primary:hover{background:var(--accent2);color:#fff}
   .loc-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin:8px 0 12px}
   .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
   table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:960px}
