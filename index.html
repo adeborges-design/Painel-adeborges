@@ -2468,6 +2468,142 @@
     <div class="form-modal-body">
 
       <div class="form-section">
+        <div class="form-section-title">👤 Dados do Cliente</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Nome completo *</label>
+            <input type="text" id="ed-nome" placeholder="Nome do cliente">
+          </div>
+          <div class="form-field">
+            <label>CPF / CNPJ</label>
+            <input type="text" id="ed-cpf" placeholder="000.000.000-00">
+          </div>
+          <div class="form-field">
+            <label>RG / Órgão emissor</label>
+            <input type="text" id="ed-rg">
+          </div>
+          <div class="form-field">
+            <label>Estado civil</label>
+            <select id="ed-estadoCivil">
+              <option value="">Selecionar</option>
+              <option>Solteiro(a)</option>
+              <option>Casado(a)</option>
+              <option>Divorciado(a)</option>
+              <option>Viúvo(a)</option>
+              <option>União estável</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Profissão</label>
+            <input type="text" id="ed-profissao">
+          </div>
+          <div class="form-field">
+            <label>Data de Nascimento</label>
+            <input type="date" id="ed-dataNasc">
+          </div>
+          <div class="form-field">
+            <label>Telefone</label>
+            <input type="text" id="ed-telefone" placeholder="(11) 99999-9999">
+          </div>
+          <div class="form-field">
+            <label>E-mail</label>
+            <input type="email" id="ed-email">
+          </div>
+          <div class="form-field form-full">
+            <label>Endereço - Rua e Número</label>
+            <input type="text" id="ed-endereco">
+          </div>
+          <div class="form-field">
+            <label>Bairro</label>
+            <input type="text" id="ed-bairro">
+          </div>
+          <div class="form-field">
+            <label>Complemento</label>
+            <input type="text" id="ed-complemento">
+          </div>
+          <div class="form-field">
+            <label>CEP</label>
+            <input type="text" id="ed-cep">
+          </div>
+          <div class="form-field">
+            <label>Cidade</label>
+            <input type="text" id="ed-cidade">
+          </div>
+          <div class="form-field">
+            <label>Estado (UF)</label>
+            <input type="text" id="ed-estado" maxlength="2" placeholder="SP">
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">⚖️ Dados do Processo</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Número do Processo</label>
+            <input type="text" id="ed-processo" placeholder="0000000-00.0000.0.00.0000">
+          </div>
+          <div class="form-field">
+            <label>Sistema</label>
+            <select id="ed-sistema">
+              <option value="">Selecionar</option>
+              <option>ESAJ</option>
+              <option>EPROC</option>
+              <option>PJE</option>
+              <option>EXTRAJUDICIAL</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Vara</label>
+            <input type="text" id="ed-vara">
+          </div>
+          <div class="form-field form-full">
+            <label>Tribunal e Fórum</label>
+            <input type="text" id="ed-tribunal">
+          </div>
+          <div class="form-field">
+            <label>Ramo do Direito</label>
+            <select id="ed-ramo">
+              <option value="">Selecionar</option>
+              <option>CIVIL</option>
+              <option>TRABALHISTA</option>
+              <option>CRIMINAL</option>
+              <option>FAMILIA E SUCESSÕES</option>
+              <option>ADMINISTRATIVO</option>
+              <option>TRIBUTÁRIO</option>
+              <option>EXTRAJUDICIAL</option>
+              <option>Pensão</option>
+              <option>Registros Públicos</option>
+              <option>Trabalhista TRT2</option>
+              <option>Mandado de Segurança</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Tipo de Ação</label>
+            <input type="text" id="ed-tipo" placeholder="Ex.: Cobrança, Divórcio...">
+          </div>
+          <div class="form-field">
+            <label>Parte (posição)</label>
+            <input type="text" id="ed-parte" placeholder="Autor(a), Réu(ré)...">
+          </div>
+          <div class="form-field">
+            <label>Outra Parte</label>
+            <input type="text" id="ed-outra">
+          </div>
+          <div class="form-field">
+            <label>Advogado Parceiro</label>
+            <input type="text" id="ed-advParc">
+          </div>
+          <div class="form-field">
+            <label>Link Tribunal</label>
+            <input type="text" id="ed-linkTrib">
+          </div>
+          <div class="form-field">
+            <label>Pasta Drive</label>
+            <input type="text" id="ed-pastaDrive">
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
         <div class="form-section-title">📋 Andamento Processual</div>
         <div class="form-grid">
           <div class="form-field form-full">
@@ -4886,7 +5022,36 @@ function abrirEdicao(uid) {
 
   document.getElementById('edicaoTitulo').textContent = '✏️ Editar: ' + p.nome;
 
-  // Preencher campos
+  // Preencher campos - Dados do Cliente
+  document.getElementById('ed-nome').value = p.nome || '';
+  document.getElementById('ed-cpf').value = p.cpfCnpj || '';
+  document.getElementById('ed-rg').value = p.rg || '';
+  document.getElementById('ed-estadoCivil').value = p.estadoCivil || '';
+  document.getElementById('ed-profissao').value = p.profissao || '';
+  document.getElementById('ed-dataNasc').value = dataParaInput(p.dataNasc);
+  document.getElementById('ed-telefone').value = p.telefone || '';
+  document.getElementById('ed-email').value = p.email || '';
+  document.getElementById('ed-endereco').value = p.endereco || '';
+  document.getElementById('ed-bairro').value = p.bairro || '';
+  document.getElementById('ed-complemento').value = p.complemento || '';
+  document.getElementById('ed-cep').value = p.cep || '';
+  document.getElementById('ed-cidade').value = p.cidade || '';
+  document.getElementById('ed-estado').value = p.estado || '';
+
+  // Preencher campos - Dados do Processo
+  document.getElementById('ed-processo').value = p.processo || '';
+  document.getElementById('ed-sistema').value = p.sistema || '';
+  document.getElementById('ed-vara').value = p.vara || '';
+  document.getElementById('ed-tribunal').value = p.tribunal || '';
+  document.getElementById('ed-ramo').value = p.ramo || '';
+  document.getElementById('ed-tipo').value = p.tipo || '';
+  document.getElementById('ed-parte').value = p.parte || '';
+  document.getElementById('ed-outra').value = p.outra || '';
+  document.getElementById('ed-advParc').value = p.advParc || '';
+  document.getElementById('ed-linkTrib').value = p.linkTrib || '';
+  document.getElementById('ed-pastaDrive').value = p.pastaDrive || '';
+
+  // Preencher campos - Andamento Processual
   document.getElementById('ed-ultima').value = p.ultima || '';
   document.getElementById('ed-status').value = p.status || 'ATIVO';
   document.getElementById('ed-proxAdv').value = p.proximoPassoAdv || '';
@@ -4937,6 +5102,31 @@ async function salvarEdicao() {
   statusEl.textContent = '';
 
   const campos = {
+    'Nome': document.getElementById('ed-nome').value,
+    'CPF/CNPJ': document.getElementById('ed-cpf').value,
+    'RG/ Órgão emissor': document.getElementById('ed-rg').value,
+    'Estado civil': document.getElementById('ed-estadoCivil').value,
+    'Profissão': document.getElementById('ed-profissao').value,
+    'Data de Nascimento': inputParaData(document.getElementById('ed-dataNasc').value),
+    'Telefone': document.getElementById('ed-telefone').value,
+    'e-mail': document.getElementById('ed-email').value,
+    'Endereço - Rua e Número': document.getElementById('ed-endereco').value,
+    'Bairro': document.getElementById('ed-bairro').value,
+    'Complemento': document.getElementById('ed-complemento').value,
+    'CEP': document.getElementById('ed-cep').value,
+    'Cidade': document.getElementById('ed-cidade').value,
+    'Estado (UF)': document.getElementById('ed-estado').value,
+    'Número do Processo': document.getElementById('ed-processo').value,
+    'Sistema': document.getElementById('ed-sistema').value,
+    'Vara': document.getElementById('ed-vara').value,
+    'Tribunal e Fórum': document.getElementById('ed-tribunal').value,
+    'Ramo do Direito': document.getElementById('ed-ramo').value,
+    'Tipo de Acao': document.getElementById('ed-tipo').value,
+    'Parte': document.getElementById('ed-parte').value,
+    'Outra Parte': document.getElementById('ed-outra').value,
+    'Advogado Parceiro': document.getElementById('ed-advParc').value,
+    'Link Tribunal': document.getElementById('ed-linkTrib').value,
+    'Pasta Drive': document.getElementById('ed-pastaDrive').value,
     'Última Atualizacao': document.getElementById('ed-ultima').value,
     'Status': document.getElementById('ed-status').value,
     'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
