@@ -4245,6 +4245,32 @@ function abrirCardAtendimento(uid) {
 
   // Guardar nro atual para share
   document.getElementById('modalCard').dataset.uid = uid;
+
+  // Pre-gerar a imagem em segundo plano para que o compartilhamento
+  // no WhatsApp (navigator.share) seja disparado quase instantaneamente
+  // ao clicar - navegadores exigem que share() ocorra dentro do gesto
+  // do usuario, e a geracao da imagem pode ser lenta demais para isso.
+  _atendImgCache = null;
+  _atendImgCacheUid = uid;
+  setTimeout(function() {
+    if (document.getElementById('modalCard').dataset.uid !== String(uid)) return;
+    gerarImagemCardFile().then(function(file) {
+      if (document.getElementById('modalCard').dataset.uid === String(uid)) {
+        _atendImgCache = file;
+      }
+    }).catch(function(){});
+  }, 80);
+}
+
+let _atendImgCache = null;
+let _atendImgCacheUid = null;
+
+function getAtendImagemCardFile() {
+  if (_atendImgCache) return Promise.resolve(_atendImgCache);
+  return gerarImagemCardFile().then(function(file) {
+    _atendImgCache = file;
+    return file;
+  });
 }
 
 function gerarImagemCardFile() {
@@ -4286,7 +4312,7 @@ function compartilharCardImagem() {
   btn.innerHTML = '⏳ Gerando...';
   if (statusEl) statusEl.innerHTML = '';
 
-  gerarImagemCardFile().then(function(file) {
+  getAtendImagemCardFile().then(function(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title: 'Atualizacao Processual' })
         .then(function() {
@@ -4319,7 +4345,7 @@ function salvarCardPng() {
   btn.innerHTML = '⏳ Gerando...';
   if (statusEl) statusEl.innerHTML = '';
 
-  gerarImagemCardFile().then(function(file) {
+  getAtendImagemCardFile().then(function(file) {
     const url = URL.createObjectURL(file);
     const a = document.createElement('a');
     a.href = url; a.download = file.name; a.click();
@@ -4773,6 +4799,34 @@ function abrirCardRepasse(id) {
   <div class="parc-footer">Dr. Adenilson Borges da Silva - OAB/SP 335.600 - (11) 99931-3712</div>`;
 
   document.getElementById('modalRepasse').classList.add('open');
+
+  // Pre-gerar imagem em segundo plano para o compartilhamento via WhatsApp
+  // funcionar mesmo se a geracao demorar mais que a "janela" do gesto do usuario.
+  _repasseImgCache = null;
+  _repasseImgCacheId = id;
+  setTimeout(function() {
+    if (!_repasseLanc || _repasseLanc['ID'] !== id) return;
+    gerarRepasseImagemFile().then(function(file) {
+      if (_repasseLanc && _repasseLanc['ID'] === id) _repasseImgCache = file;
+    }).catch(function(){});
+  }, 80);
+}
+
+let _repasseImgCache = null;
+let _repasseImgCacheId = null;
+
+function gerarRepasseImagemFile() {
+  const card = document.getElementById('repasseCard');
+  return html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#0d1525' })
+    .then(canvas => new Promise(res => canvas.toBlob(b => res(new File([b], 'repasse.png', { type: 'image/png' })), 'image/png')));
+}
+
+function getRepasseImagemFile() {
+  if (_repasseImgCache) return Promise.resolve(_repasseImgCache);
+  return gerarRepasseImagemFile().then(function(file) {
+    _repasseImgCache = file;
+    return file;
+  });
 }
 
 function _repasseTexto() {
@@ -4811,18 +4865,15 @@ function enviarRepasseEmail() {
 }
 
 function enviarRepasseImagem() {
-  const card = document.getElementById('repasseCard');
-  html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#0d1525' })
-    .then(canvas => new Promise(res => canvas.toBlob(b => res(new File([b], 'repasse.png', { type: 'image/png' })), 'image/png')))
-    .then(file => {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: 'Informativo de Repasse' });
-      } else {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
-        URL.revokeObjectURL(url);
-      }
-    });
+  getRepasseImagemFile().then(file => {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Informativo de Repasse' }).catch(function(){});
+    } else {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    }
+  });
 }
 
 // Fechar modal repasse
@@ -4846,6 +4897,48 @@ function abrirCardParceiro(uid) {
 
   atualizarCardParceiro();
   document.getElementById('modalParceiro').classList.add('open');
+}
+
+// Cache da imagem do card parceiro, para o compartilhamento via WhatsApp
+// (navigator.share) nao falhar por demorar mais que o gesto do usuario.
+let _parcImgCache = null;
+let _parcImgWarmTimer = null;
+
+function schedulePrewarmParcImg() {
+  _parcImgCache = null;
+  clearTimeout(_parcImgWarmTimer);
+  _parcImgWarmTimer = setTimeout(function() {
+    gerarParcImagemFile().then(function(file) { _parcImgCache = file; }).catch(function(){});
+  }, 500);
+}
+
+function gerarParcImagemFile() {
+  const card = document.getElementById('parcCard');
+  const nome = _parcProcesso ? _parcProcesso.advParc.replace(/\s+/g,'_').toLowerCase() : 'parceiro';
+  return html2canvas(card, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#0d1525',
+    logging: false,
+    windowWidth: card.scrollWidth,
+    windowHeight: card.scrollHeight,
+    onclone: function(doc) {
+      const el = doc.getElementById('parcCard');
+      if (el) el.style.fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+    }
+  }).then(function(canvas) {
+    return new Promise(function(resolve) {
+      canvas.toBlob(function(blob) {
+        const filename = `parceiro_${nome}_${new Date().toISOString().slice(0,10)}.png`;
+        resolve(new File([blob], filename, { type: 'image/png' }));
+      }, 'image/png');
+    });
+  });
+}
+
+function getParcImagemFile() {
+  if (_parcImgCache) return Promise.resolve(_parcImgCache);
+  return gerarParcImagemFile().then(function(file) { _parcImgCache = file; return file; });
 }
 
 function atualizarCardParceiro() {
@@ -4907,6 +5000,7 @@ function atualizarCardParceiro() {
   </div>`;
 
   document.getElementById('parcCard').innerHTML = h;
+  schedulePrewarmParcImg();
 }
 
 function _parcTexto() {
@@ -4968,35 +5062,14 @@ function enviarParcEmail() {
 }
 
 function enviarParcImagem() {
-  const card = document.getElementById('parcCard');
-  const nome = _parcProcesso ? _parcProcesso.advParc.replace(/\s+/g,'_').toLowerCase() : 'parceiro';
-
   const btn = event.target.closest('button');
   const orig = btn.innerHTML;
   btn.innerHTML = '⏳';
   btn.disabled = true;
 
-  html2canvas(card, {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: '#0d1525',
-    logging: false,
-    windowWidth: card.scrollWidth,
-    windowHeight: card.scrollHeight,
-    onclone: function(doc) {
-      const el = doc.getElementById('parcCard');
-      if (el) el.style.fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
-    }
-  }).then(function(canvas) {
-    return new Promise(function(resolve) {
-      canvas.toBlob(function(blob) {
-        const filename = `parceiro_${nome}_${new Date().toISOString().slice(0,10)}.png`;
-        resolve(new File([blob], filename, { type: 'image/png' }));
-      }, 'image/png');
-    });
-  }).then(function(file) {
+  getParcImagemFile().then(function(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Comunicacao Interna' });
+      navigator.share({ files: [file], title: 'Comunicacao Interna' }).catch(function(){});
     } else {
       const url = URL.createObjectURL(file);
       const a = document.createElement('a');
