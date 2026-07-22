@@ -5977,6 +5977,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
   .loc-chip b{font-family:'DM Sans',sans-serif}
   .loc-chip.pago b{color:var(--green)} .loc-chip.pend b{color:var(--yellow)} .loc-chip.atras b{color:var(--red)} .loc-chip.ativos b{color:var(--blue)}
+  .loc-chips-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .loc-chips-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-right:2px}
   .loc-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
   .loc-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
   .loc-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -5985,7 +5987,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin:22px 0 12px}
   .loc-section-title:first-of-type{margin-top:8px}
   .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
-  table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1120px}
+  table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1280px}
   .loc-table thead th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600}
   .loc-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
   .loc-table tbody tr:last-child td{border-bottom:none}
@@ -6060,10 +6062,11 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         <thead><tr>
           <th>Contrato</th><th>Locatário</th><th>Locador</th><th>Endereço</th>
           <th style="text-align:center">Venc.</th>
+          <th>Status Aluguel</th>
           <th style="text-align:center">Dia Repasse</th>
           <th style="text-align:right">Repasse (R$)</th>
           <th style="text-align:center">Atraso repasse</th>
-          <th>Status</th><th>Data pgto/repasse</th><th>Banco</th>
+          <th>Status Repasse</th><th>Data pgto/repasse</th><th>Banco</th>
         </tr></thead>
         <tbody id="locTbody"></tbody>
       </table>
@@ -6126,7 +6129,17 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   window.LOC_SEED={"contratos":[{"id":"1.0","contrato":"15125.2","locador":"Regina Helena Scalambrino Marotto","locatario":"MA Conde Drogaria LTDA - EPP","end":"Av. Mateo Bei 3490 e Rua Ernesto Manograsso Salas 04 e 05","aluguel":28045.16,"taxaPct":6.0,"venc":5,"rep":10,"ativo":true,"obs":"Co-proprietarios: Regina Helena Scalambrino Marotto, Paulo, Julio Cesas, Carlos Cesar, Ana Paula Scalambrino Marotto"},{"id":"2.0","contrato":"58.129.1","locador":"Alexandre Moreira de Medeiros","locatario":"Barbosa & Castro Adv","end":"Av. Conselheiro Carrao 1961 Sala 96","aluguel":1500.0,"taxaPct":6.0,"venc":6,"rep":11,"ativo":true,"obs":""},{"id":"3.0","contrato":"30.52.1","locador":"Everton Henrique da Silva","locatario":"Gilberto Oliveira Guanaes","end":"Rua Serra de Braganca 1555 Apto 214B","aluguel":2439.72,"taxaPct":6.0,"venc":8,"rep":12,"ativo":true,"obs":""},{"id":"4.0","contrato":"16.39.1","locador":"Ribagorza Participacoes S.A.","locatario":"Antonio Pedro de Fontoura Filho","end":"Rua Prof. Joao de Oliveira Torres 580 Apto 122","aluguel":5026.53,"taxaPct":5.0,"venc":8,"rep":12,"ativo":true,"obs":""},{"id":"5.0","contrato":"19.136.2","locador":"Ribagorza Participacoes S.A.","locatario":"Leonardo Serafim Matos Braggion","end":"Rua Coronel Irineu de Castro 43 Sala 1106","aluguel":3001.61,"taxaPct":5.0,"venc":10,"rep":12,"ativo":true,"obs":""},{"id":"6.0","contrato":"43.147.2","locador":"Ribagorza Participacoes S.A.","locatario":"Luigi Greco Florio","end":"Rua Maria Otilia","aluguel":2900.0,"taxaPct":5.0,"venc":10,"rep":13,"ativo":true,"obs":""},{"id":"7.0","contrato":"59.151.2","locador":"Valeria Martins Spassapam dos Santos","locatario":"Gerci Souza Santos","end":"Lutecia 1094","aluguel":1400.0,"taxaPct":8.0,"venc":10,"rep":17,"ativo":true,"obs":""},{"id":"8.0","contrato":"55.148.3","locador":"Valeria Martins Spassapam dos Santos","locatario":"Mariana Lorrane Andrade Silva","end":"Rua Gamil 62","aluguel":2000.0,"taxaPct":8.0,"venc":14,"rep":17,"ativo":true,"obs":""},{"id":"9.0","contrato":"31.122.2","locador":"Everton Henrique da Silva","locatario":"Gustavo Ribeiro Santos","end":"Rua Dona Maria Candida Lima 150 Ap 83 Torre 2","aluguel":1800.0,"taxaPct":6.0,"venc":16,"rep":15,"ativo":true,"obs":""},{"id":"10.0","contrato":"27.49.1","locador":"Francisco da Silva Ribeiro","locatario":"Ana Aparecida Pereira Pontes","end":"Rua Bernardino Pantaleao 75","aluguel":1200.0,"taxaPct":5.25,"venc":10,"rep":15,"ativo":true,"obs":""},{"id":"11.0","contrato":"35.128.2","locador":"Cachirulo Participacoes","locatario":"Espaco Adriana","end":"Rua Coronel Irineu de Castro 43 Sala 402","aluguel":2610.63,"taxaPct":5.0,"venc":10,"rep":18,"ativo":true,"obs":""},{"id":"12.0","contrato":"29.100.2","locador":"Cachirulo Participacoes","locatario":"Arpoz Capital","end":"Rua Coronel Irineu de Castro 43 Sala 206","aluguel":5576.17,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"13.0","contrato":"26.48.1","locador":"Cachirulo Participacoes","locatario":"Simone Parre","end":"Rua Coronel Irineu de Castro 43 Sala 403","aluguel":2624.03,"taxaPct":5.0,"venc":13,"rep":18,"ativo":true,"obs":""},{"id":"14.0","contrato":"13.15.1","locador":"Cachirulo Participacoes","locatario":"Luciane Elia","end":"Rua Butia 175 Apto 163","aluguel":3700.0,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"15.0","contrato":"49.85.1","locador":"Cachirulo Participacoes","locatario":"Ester","end":"Rua Coronel Irineu de Castro 43 Sala 205","aluguel":4100.0,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"16.0","contrato":"60.140.1","locador":"Cachirulo Participacoes","locatario":"Dominio","end":"Rua Silveira Bueno","aluguel":50000.0,"taxaPct":3.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"17.0","contrato":"21.97.2","locador":"Cachirulo Participacoes","locatario":"W Dugan","end":"Rua Coronel Irineu de Castro 43 Sala 406","aluguel":2989.04,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"18.0","contrato":"23.145.4","locador":"Cachirulo Participacoes","locatario":"Pradom","end":"Rua Coronel Irineu de Castro 43 Sala 404","aluguel":3290.56,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"19.0","contrato":"39.146.2","locador":"Cachirulo Participacoes","locatario":"Alessandra Rosa Andre","end":"Rua Coronel Irineu de Castro 43 Sala 401","aluguel":3084.9,"taxaPct":5.0,"venc":15,"rep":18,"ativo":true,"obs":""},{"id":"20.0","contrato":"32.54.1","locador":"Meire Eveli Tamen","locatario":"Wesley Moiseis Mendes","end":"Rua Armindo Guarana 09","aluguel":12632.39,"taxaPct":6.0,"venc":15,"rep":25,"ativo":true,"obs":""},{"id":"21.0","contrato":"14.37.1","locador":"Takako Oshiro","locatario":"Antonio Acassio Kertesz","end":"Rua Jose Zappi 224 Loja Vila Prudente","aluguel":3515.82,"taxaPct":6.0,"venc":18,"rep":23,"ativo":true,"obs":""},{"id":"22.0","contrato":"53.105.1","locador":"Quesia Deise Martins Spartapam","locatario":"Ewerton Sampaio de Lima","end":"Rua Gamil 78","aluguel":2048.8,"taxaPct":8.0,"venc":20,"rep":25,"ativo":true,"obs":""}],"lancamentos":[{"id":"1.0","mes":"05/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"valorRepasse":26362.45,"status":"Pago","dataPag":"10/05/2026","banco":"Itau","dataRep":"10/05/2026"},{"id":"2.0","mes":"05/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"valorRepasse":1410.0,"status":"Pago","dataPag":"11/05/2026","banco":"Itau","dataRep":"11/05/2026"},{"id":"3.0","mes":"05/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"valorRepasse":2293.34,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"4.0","mes":"05/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"valorRepasse":4775.2,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"5.0","mes":"05/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"valorRepasse":2851.53,"status":"Pago","dataPag":"12/05/2026","banco":"Itau","dataRep":"12/05/2026"},{"id":"6.0","mes":"05/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"valorRepasse":2755.0,"status":"Pago","dataPag":"13/05/2026","banco":"Itau","dataRep":"13/05/2026"},{"id":"7.0","mes":"05/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"valorRepasse":1288.0,"status":"Pago","dataPag":"17/05/2026","banco":"Itau","dataRep":"17/05/2026"},{"id":"8.0","mes":"05/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"valorRepasse":1840.0,"status":"Pago","dataPag":"17/05/2026","banco":"Seguradora","dataRep":"17/05/2026"},{"id":"9.0","mes":"05/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"valorRepasse":1692.0,"status":"Pago","dataPag":"15/05/2026","banco":"Itau","dataRep":"15/05/2026"},{"id":"10.0","mes":"05/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"valorRepasse":1137.0,"status":"Pago","dataPag":"15/05/2026","banco":"Itau","dataRep":"15/05/2026"},{"id":"11.0","mes":"05/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"valorRepasse":2480.1,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"12.0","mes":"05/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"valorRepasse":5297.36,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"13.0","mes":"05/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"valorRepasse":2492.83,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"14.0","mes":"05/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"valorRepasse":3515.0,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"15.0","mes":"05/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"valorRepasse":3895.0,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"16.0","mes":"05/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"valorRepasse":48500.0,"status":"Pago","dataPag":"22/06/2026","banco":"Itau","dataRep":"22/06/2026"},{"id":"17.0","mes":"05/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"valorRepasse":2839.59,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"18.0","mes":"05/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"valorRepasse":3126.03,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"19.0","mes":"05/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"valorRepasse":2930.65,"status":"Pago","dataPag":"18/05/2026","banco":"Itau","dataRep":"18/05/2026"},{"id":"20.0","mes":"05/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"valorRepasse":11874.45,"status":"Pago","dataPag":"30/05/2026","banco":"Itau","dataRep":"30/05/2026"},{"id":"21.0","mes":"05/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"valorRepasse":3304.87,"status":"Pago","dataPag":"30/05/2026","banco":"Itau","dataRep":"30/05/2026"},{"id":"22.0","mes":"05/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"valorRepasse":1884.9,"status":"Pago","dataPag":"25/05/2026","banco":"Itau","dataRep":"25/05/2026"},{"id":"23.0","mes":"06/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"valorRepasse":26362.45,"status":"Pago","dataPag":"10/06/2026","banco":"Itau","dataRep":"10/06/2026"},{"id":"24.0","mes":"06/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"valorRepasse":1410.0,"status":"Pago","dataPag":"17/06/2026","banco":"Itau","dataRep":"17/06/2026"},{"id":"25.0","mes":"06/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"valorRepasse":2293.34,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"26.0","mes":"06/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"valorRepasse":4775.2,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"27.0","mes":"06/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"valorRepasse":2851.53,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"28.0","mes":"06/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"valorRepasse":2755.0,"status":"Pago","dataPag":"15/06/2026","banco":"Itau","dataRep":"15/06/2026"},{"id":"29.0","mes":"06/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"valorRepasse":1288.0,"status":"Pago","dataPag":"17/06/2026","banco":"Itau","dataRep":"17/06/2026"},{"id":"30.0","mes":"06/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"valorRepasse":1840.0,"status":"Pago","dataPag":"17/06/2026","banco":"Seguradora","dataRep":"17/06/2026"},{"id":"31.0","mes":"06/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"valorRepasse":1692.0,"status":"Pago","dataPag":"16/06/2026","banco":"Itau","dataRep":"16/06/2026"},{"id":"32.0","mes":"06/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"valorRepasse":1137.0,"status":"Pago","dataPag":"22/06/2026","banco":"Itau","dataRep":"22/06/2026"},{"id":"33.0","mes":"06/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"valorRepasse":2480.1,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"34.0","mes":"06/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"valorRepasse":5297.36,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"35.0","mes":"06/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"valorRepasse":2492.83,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"36.0","mes":"06/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"valorRepasse":3515.0,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"37.0","mes":"06/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"valorRepasse":3895.0,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"38.0","mes":"06/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"valorRepasse":48500.0,"status":"Atrasado","dataPag":"","banco":"","dataRep":""},{"id":"39.0","mes":"06/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"valorRepasse":2839.59,"status":"Atrasado","dataPag":"","banco":"","dataRep":""},{"id":"40.0","mes":"06/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"valorRepasse":3126.03,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"41.0","mes":"06/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"valorRepasse":2930.65,"status":"Pago","dataPag":"18/06/2026","banco":"Itau","dataRep":"18/06/2026"},{"id":"42.0","mes":"06/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"valorRepasse":11874.45,"status":"Pago","dataPag":"06/07/2026","banco":"Itau","dataRep":"06/07/2026"},{"id":"43.0","mes":"06/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"valorRepasse":3304.87,"status":"Pago","dataPag":"26/06/2026","banco":"Itau","dataRep":"26/06/2026"},{"id":"44.0","mes":"06/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"valorRepasse":1884.9,"status":"Pago","dataPag":"26/06/2026","banco":"Itau","dataRep":"26/06/2026"},{"id":"45.0","mes":"07/2026","contrato":"15125.2","aluguel":28045.16,"taxa":1682.71,"valorRepasse":26362.45,"status":"Pago","dataPag":"08/07/2026","banco":"Itau","dataRep":"08/07/2026"},{"id":"46.0","mes":"07/2026","contrato":"58.129.1","aluguel":1500.0,"taxa":90.0,"valorRepasse":1410.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"47.0","mes":"07/2026","contrato":"30.52.1","aluguel":2439.72,"taxa":146.38,"valorRepasse":2293.34,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"48.0","mes":"07/2026","contrato":"16.39.1","aluguel":5026.53,"taxa":251.33,"valorRepasse":4775.2,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"49.0","mes":"07/2026","contrato":"19.136.2","aluguel":3001.61,"taxa":150.08,"valorRepasse":2851.53,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"50.0","mes":"07/2026","contrato":"43.147.2","aluguel":2900.0,"taxa":145.0,"valorRepasse":2755.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"51.0","mes":"07/2026","contrato":"59.151.2","aluguel":1400.0,"taxa":112.0,"valorRepasse":1288.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"52.0","mes":"07/2026","contrato":"55.148.3","aluguel":2000.0,"taxa":160.0,"valorRepasse":1840.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"53.0","mes":"07/2026","contrato":"31.122.2","aluguel":1800.0,"taxa":108.0,"valorRepasse":1692.0,"status":"Pago","dataPag":"16/07/2026","banco":"Itau","dataRep":"16/07/2026"},{"id":"54.0","mes":"07/2026","contrato":"27.49.1","aluguel":1200.0,"taxa":63.0,"valorRepasse":1137.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"55.0","mes":"07/2026","contrato":"35.128.2","aluguel":2610.63,"taxa":130.53,"valorRepasse":2480.1,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"56.0","mes":"07/2026","contrato":"29.100.2","aluguel":5576.17,"taxa":278.81,"valorRepasse":5297.36,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"57.0","mes":"07/2026","contrato":"26.48.1","aluguel":0.0,"taxa":131.2,"valorRepasse":2492.83,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"58.0","mes":"07/2026","contrato":"13.15.1","aluguel":3700.0,"taxa":185.0,"valorRepasse":3515.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"59.0","mes":"07/2026","contrato":"49.85.1","aluguel":4100.0,"taxa":205.0,"valorRepasse":3895.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"60.0","mes":"07/2026","contrato":"60.140.1","aluguel":50000.0,"taxa":1500.0,"valorRepasse":48500.0,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"61.0","mes":"07/2026","contrato":"21.97.2","aluguel":0.0,"taxa":149.45,"valorRepasse":2839.59,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"62.0","mes":"07/2026","contrato":"23.145.4","aluguel":3290.56,"taxa":164.53,"valorRepasse":3126.03,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"63.0","mes":"07/2026","contrato":"39.146.2","aluguel":0.0,"taxa":154.25,"valorRepasse":2930.65,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"64.0","mes":"07/2026","contrato":"32.54.1","aluguel":12632.39,"taxa":757.94,"valorRepasse":11874.45,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"65.0","mes":"07/2026","contrato":"14.37.1","aluguel":3515.82,"taxa":210.95,"valorRepasse":3304.87,"status":"Pendente","dataPag":"","banco":"","dataRep":""},{"id":"66.0","mes":"07/2026","contrato":"53.105.1","aluguel":0.0,"taxa":163.9,"valorRepasse":1884.9,"status":"Pendente","dataPag":"","banco":"","dataRep":""}],"desmembramento":{"15125.2":["Regina Helena Scalambrino Marotto","Paulo","Julio Cesas","Carlos Cesar","Ana Paula Scalambrino Marotto"]}};
   var LS_KEY='lexflow_loc_v1';
   var SEED=window.LOC_SEED||{contratos:[],lancamentos:[],desmembramento:{}};
-  var DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+  // Dados de exemplo (modo local) usam um único "status" antigo; converte para
+  // statusAluguel/statusRep separados, no mesmo critério da migração da planilha.
+  function seedLancamentos(){
+    return (SEED.lancamentos||[]).map(function(l){
+      var l2={}; for(var k in l) l2[k]=l[k];
+      l2.statusAluguel=l.status||'Pendente';
+      l2.statusRep=(l.status==='Pago')?'Repassado':'Pendente';
+      return l2;
+    });
+  }
+  var DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
   var live=false, lastSync='', selMes=null, showRepasse=false;
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
@@ -6141,7 +6154,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   // Repasse efetivo: usa o Valor Repasse lançado manualmente (inclusive R$ 0,00); se nunca foi lançado, sugere Aluguel − Taxa.
   function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)-(l.taxa||0));}
 
-  function stCls(s){return s==='Pago'?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
+  function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
   function diaMes(dayNum,mesStr){
     var mp=String(mesStr||'').split('/'); if(mp.length!==2)return null;
@@ -6173,7 +6186,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var c=cfg();
     var dot=document.getElementById('locSyncDot'), txt=document.getElementById('locSyncTxt');
     if(!c||!c.apiKey||!c.sheetId){
-      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
       indexContratos();
       if(dot){dot.className='dot local';} if(txt)txt.textContent='dados locais (configure a planilha em Config para sincronizar)';
       locRefreshMeses(); locRender(); return;
@@ -6196,7 +6209,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
         var valorRepasseRaw=cell(row,ml,'Valor Repasse');
-        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
+        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -6205,7 +6218,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var now=new Date(); lastSync=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
       if(dot){dot.className='dot live';} if(txt)txt.textContent='sincronizado com a planilha às '+lastSync;
     }catch(e){
-      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:SEED.lancamentos.slice(),desmembramento:SEED.desmembramento||{}};
+      live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
       indexContratos();
       if(dot){dot.className='dot local';} if(txt)txt.textContent='falha ao ler a planilha ('+e.message+') — usando dados locais';
     }
@@ -6223,8 +6236,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var ct=contratosById[l.contrato]||{};
       var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
-      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,status:l.status,dataPag:l.dataPag||'',banco:l.banco||''};
-      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}}
+      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
+      if(o){if(o.statusAluguel)r.statusAluguel=o.statusAluguel;if(o.statusRep)r.statusRep=o.statusRep;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}}
       return r;
     });
   }
@@ -6243,22 +6256,33 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
     var lst=workingList().filter(function(l){return l.mes===selMes;});
     lst.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
-    var alug=0,taxa=0,repTotal=0,repLiq=0,aReceber=0,cPago=0,cPend=0,cAtras=0;
-    lst.forEach(function(l){alug+=l.aluguel;taxa+=l.taxa;var rep=effRep(l);repTotal+=rep;if(l.status==='Pago'){repLiq+=rep;cPago++;}else if(l.status==='Atrasado'){aReceber+=l.aluguel;cAtras++;}else{aReceber+=l.aluguel;cPend++;}});
+    var alug=0,taxa=0,repLiq=0,emCaixa=0,aReceber=0;
+    var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0;
+    lst.forEach(function(l){
+      alug+=l.aluguel;taxa+=l.taxa;
+      var rep=effRep(l);
+      var recebeu=(l.statusAluguel==='Recebido');
+      var repassou=(l.statusRep==='Repassado');
+      if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado'){aReceber+=l.aluguel;cAlAtras++;}else{aReceber+=l.aluguel;cAlPend++;}
+      if(repassou){repLiq+=rep;cRepFeito++;}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
+      if(recebeu&&!repassou)emCaixa+=rep;
+    });
     var ativos=DATA.contratos.filter(function(c){return c.ativo;}).length;
     document.getElementById('locStats').innerHTML=
       card('dourado','Aluguéis do mês',BRL(alug),lst.length+' lançamentos')+
       card('azul','Taxa de adm. do mês',BRL(taxa),'sua receita de administração')+
-      card('roxo','Valor a repassar (mês)',BRL(repTotal),'total devido aos locadores, pago + pendente')+
-      card('verde','Repasse líquido (pagos)',BRL(repLiq),'já repassável aos locadores')+
-      card('vermelho','A receber',BRL(aReceber),(cPend+cAtras)+' aluguéis em aberto');
-    document.getElementById('locChips').innerHTML=chip('pago','Pagos',cPago)+chip('pend','Pendentes',cPend)+chip('atras','Atrasados',cAtras)+chip('ativos','Contratos ativos',ativos);
+      card('vermelho','A receber dos locatários',BRL(aReceber),(cAlPend+cAlAtras)+' aluguéis ainda não recebidos')+
+      card('roxo','Em caixa, aguardando repasse',BRL(emCaixa),'já recebido do locatário, falta repassar')+
+      card('verde','Já repassado aos locadores',BRL(repLiq),'repasses concluídos no mês');
+    document.getElementById('locChips').innerHTML=
+      '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec)+chip('pend','Pendentes',cAlPend)+chip('atras','Atrasados',cAlAtras)+chip('ativos','Contratos ativos',ativos)+'</div>'+
+      '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito)+chip('pend','Pendentes',cRepPend)+chip('atras','Atrasados',cRepAtras)+'</div>';
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
     document.getElementById('locTbody').innerHTML=lst.map(function(l){
       var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=l.repManual;
-      var pago=(l.status==='Pago');
+      var repassou=(l.statusRep==='Repassado');
       var repDate=diaMes(c.rep,selMes);
-      var atrasoRepasse=diasAtrasoFrom(repDate,pago);
+      var atrasoRepasse=diasAtrasoFrom(repDate,repassou);
       var coprop=(DATA.desmembramento&&DATA.desmembramento[l.contrato])?' <span class="loc-num" title="Repasse dividido entre '+E(DATA.desmembramento[l.contrato].join(', '))+'">▸ '+DATA.desmembramento[l.contrato].length+' co-prop.</span>':'';
       return '<tr>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
@@ -6266,26 +6290,27 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         '<td>'+E(c.locador||'-')+coprop+'</td>'+
         '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
         '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
+        '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
-        '<td><select class="loc-row-select '+stCls(l.status)+'" onchange="locSetStatus(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Pago','Atrasado'].map(function(s){return '<option'+(s===l.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td><select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
+    }).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
     if(showRepasse)renderRepasse(lst);
     renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
-    document.getElementById('locNote').innerHTML=origem+' A coluna <b>Repasse</b> é editável: o painel sugere Aluguel − Taxa de adm., mas você lança o valor real apenas quando recebe o aluguel. O valor digitado é gravado em <b>Valor Repasse</b> na planilha. A coluna <b>Dia Repasse</b> vem do contrato (mesmo campo usado no cadastro) — para alterá-la, edite o contrato em <b>📋 Contratos</b>. A coluna <b>Atraso repasse</b> mostra os dias corridos após o dia previsto, enquanto o lançamento não estiver <b>Pago</b>. O <b>Repasse líquido</b> soma os repasses dos aluguéis com status <b>Pago</b>, e o <b>Valor a repassar (mês)</b> soma todos os repasses do mês, pagos ou não.';
+    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel − Taxa de adm., mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
   function chip(cls,l,n){return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';}
 
   function renderRepasse(lst){
     var byLoc={};
-    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var nome=c.locador||'—';byLoc[nome]=byLoc[nome]||{pago:0,itens:[]};var rep=effRep(l);if(l.status==='Pago')byLoc[nome].pago+=rep;byLoc[nome].itens.push({loc:c.locatario||l.contrato,rep:rep,st:l.status});});
-    document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Pago'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>A repassar (pagos)</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
+    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var nome=c.locador||'—';byLoc[nome]=byLoc[nome]||{pago:0,itens:[]};var rep=effRep(l);if(l.statusRep==='Repassado')byLoc[nome].pago+=rep;byLoc[nome].itens.push({loc:c.locatario||l.contrato,rep:rep,st:l.statusRep});});
+    document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Repassado'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>Já repassado</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
   }
   window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
 
@@ -6325,10 +6350,11 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
-    var campos={'Status':w.status,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.status==='Pago'?(w.dataPag||''):''};
+    var campos={'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
-  window.locSetStatus=function(contrato,val){var patch={status:val};if(val==='Pago'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
+  window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
+  window.locSetStatusRepasse=function(contrato,val){var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
   window.locSetData=function(contrato,iso){setOverride(contrato,{dataPag:isoToBr(iso)});gravarSheet(contrato);locRender();};
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
   window.locSetRepasse=function(contrato,val){
@@ -6354,16 +6380,16 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       alert('Solicitada a geração de '+novo+' na planilha. Aguarde alguns segundos e clique em 🔄 Atualizar.');
       setTimeout(carregarAlugueis,2800);
     }else{
-      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,status:'Pendente',dataPag:'',banco:''});});saveState(s);selMes=novo;locRefreshMeses();locRender();
+      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:''});});saveState(s);selMes=novo;locRefreshMeses();locRender();
     }
   };
   window.locReset=function(){if(!confirm('Isto apaga as alterações locais (baixas ainda não sincronizadas e meses gerados localmente). Os dados da planilha não são afetados. Continuar?'))return;localStorage.removeItem(LS_KEY);selMes=null;carregarAlugueis();};
 
   window.locExportCSV=function(){
     var lst=workingList().slice().sort(function(a,b){return a.mes.localeCompare(b.mes);});
-    var head=['Mes/Ano Ref.','Contrato','Locador','Locatario','Endereco','Dia Vencto','Aluguel (R$)','Taxa Adm (R$)','Repasse (R$)','Status','Data Pgto/Repasse','Banco'];
+    var head=['Mes/Ano Ref.','Contrato','Locador','Locatario','Endereco','Dia Vencto','Aluguel (R$)','Taxa Adm (R$)','Repasse (R$)','Status Aluguel','Status Repasse','Data Pgto/Repasse','Banco'];
     var lines=[head.join(';')];
-    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var rep=effRep(l);lines.push([l.mes,l.contrato,csv(c.locador),csv(c.locatario),csv(c.end),c.venc||'',n2(l.aluguel),n2(-l.taxa),n2(rep),l.status,l.dataPag||'',l.banco||''].join(';'));});
+    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var rep=effRep(l);lines.push([l.mes,l.contrato,csv(c.locador),csv(c.locatario),csv(c.end),c.venc||'',n2(l.aluguel),n2(-l.taxa),n2(rep),l.statusAluguel,l.statusRep,l.dataPag||'',l.banco||''].join(';'));});
     var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='controle_locacoes_atualizado.csv';a.click();
   };
   function csv(s){s=String(s==null?'':s);return s.indexOf(';')>=0?'"'+s.replace(/"/g,'""')+'"':s;}
@@ -6449,7 +6475,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var meses=mesesDisponiveis();var m=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];
     var lst=workingList().filter(function(l){return l.mes===m;});
     var alug=0,pend=0,atras=0,repLiq=0;
-    lst.forEach(function(l){alug+=l.aluguel;if(l.status==='Pago')repLiq+=effRep(l);else if(l.status==='Atrasado')atras++;else pend++;});
+    lst.forEach(function(l){alug+=l.aluguel;if(l.statusRep==='Repassado')repLiq+=effRep(l);if(l.statusAluguel==='Atrasado')atras++;else if(l.statusAluguel!=='Recebido')pend++;});
     return {mes:m,alugueis:alug,repasseLiquido:repLiq,pendentes:pend,atrasados:atras,contratos:DATA.contratos.filter(function(c){return c.ativo;}).length,live:live};
   };
 
@@ -6462,8 +6488,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var out=[];
     lst.forEach(function(l){
       var c=contratosById[l.contrato]||{};
-      var atrasado=(l.status==='Atrasado');
-      var pendVencido=(l.status==='Pendente'&&ehMesCorrente&&num(c.venc)>0&&num(c.venc)<diaHoje);
+      var atrasado=(l.statusAluguel==='Atrasado');
+      var pendVencido=(l.statusAluguel==='Pendente'&&ehMesCorrente&&num(c.venc)>0&&num(c.venc)<diaHoje);
       if(atrasado||pendVencido) out.push({contrato:l.contrato,locatario:c.locatario||l.contrato,aluguel:l.aluguel,venc:c.venc,status:atrasado?'atrasado':'vencido'});
     });
     return {mes:m,itens:out};
