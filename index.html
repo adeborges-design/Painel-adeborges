@@ -6006,6 +6006,11 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-row-select.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d;font-weight:700}
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
+  .loc-status-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;cursor:default;white-space:nowrap}
+  .loc-status-badge.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d}
+  .loc-status-badge.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f}
+  .loc-status-badge.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red)}
+  .loc-status-badge .lock{opacity:.6;font-size:10px}
   .loc-atraso{color:var(--red);font-weight:700;font-family:'DM Mono',monospace;font-size:11px}
   .loc-atraso-ok{color:var(--muted);font-family:'DM Mono',monospace;font-size:11px}
   .loc-repasse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:6px}
@@ -6296,7 +6301,10 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
-        '<td><select class="loc-row-select '+stCls(l.statusRep)+'"'+(l.statusAluguel!=='Recebido'?' disabled title="Acompanha o Status Aluguel automaticamente até o locatário pagar"':'')+' onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td>'+(l.statusAluguel!=='Recebido'?
+          '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
+          :'<select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+        )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
       '</tr>';
