@@ -5985,7 +5985,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin:22px 0 12px}
   .loc-section-title:first-of-type{margin-top:8px}
   .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
-  table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1220px}
+  table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:980px}
   .loc-table thead th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600}
   .loc-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
   .loc-table tbody tr:last-child td{border-bottom:none}
@@ -6004,8 +6004,6 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .loc-row-select.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d;font-weight:700}
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
-  .loc-atraso{color:var(--red);font-weight:700;font-family:'DM Mono',monospace;font-size:11px}
-  .loc-atraso-ok{color:var(--muted);font-family:'DM Mono',monospace;font-size:11px}
   .loc-repasse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:6px}
   .loc-rep-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
   .loc-rep-card .nome{font-weight:600;margin-bottom:8px;font-size:13px}
@@ -6060,10 +6058,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         <thead><tr>
           <th>Contrato</th><th>Locatário</th><th>Locador</th><th>Endereço</th>
           <th style="text-align:center">Venc.</th>
-          <th style="text-align:center">Atraso aluguel</th>
           <th style="text-align:right">Repasse (R$)</th>
-          <th style="text-align:center">Data prevista repasse</th>
-          <th style="text-align:center">Atraso repasse</th>
           <th>Status</th><th>Data pgto/repasse</th><th>Banco</th>
         </tr></thead>
         <tbody id="locTbody"></tbody>
@@ -6142,27 +6137,6 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   // Repasse efetivo: usa o Valor Repasse lançado manualmente; se vazio, sugere Aluguel − Taxa.
   function effRep(l){return (l.valorRepasse&&l.valorRepasse>0)?l.valorRepasse:((l.aluguel||0)-(l.taxa||0));}
 
-  // ---------- HELPERS DE DATA / ATRASO ----------
-  // Constrói a data (dia informado, dentro do mês "MM/AAAA") — usada como vencimento padrão.
-  function diaMes(dayNum,mesStr){
-    var mp=String(mesStr||'').split('/'); if(mp.length!==2)return null;
-    var mm=parseInt(mp[0],10), yy=parseInt(mp[1],10), d=parseInt(dayNum,10);
-    if(!mm||!yy||!d)return null;
-    var dim=new Date(yy,mm,0).getDate(); d=Math.min(d,dim);
-    return new Date(yy,mm-1,d);
-  }
-  function parseBr(s){if(!s)return null;var p=String(s).split('/');if(p.length!==3)return null;var d=new Date(parseInt(p[2],10),parseInt(p[1],10)-1,parseInt(p[0],10));return isNaN(d.getTime())?null:d;}
-  function isoFromDate(d){if(!d)return '';return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
-  // Dias de atraso em relação a uma data-alvo; se já pago/quitado, não há atraso a exibir.
-  function diasAtrasoFrom(dataAlvo,jaConcluido){
-    if(jaConcluido)return 0;
-    if(!dataAlvo)return null;
-    var hoje=new Date(); hoje.setHours(0,0,0,0);
-    var alvo=new Date(dataAlvo.getFullYear(),dataAlvo.getMonth(),dataAlvo.getDate());
-    var diff=Math.floor((hoje-alvo)/86400000);
-    return diff>0?diff:0;
-  }
-  function fmtAtraso(dias){return (dias?('<span class="loc-atraso">'+dias+'d</span>'):'<span class="loc-atraso-ok">-</span>');}
   function stCls(s){return s==='Pago'?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
 
   var contratosById={};
@@ -6199,7 +6173,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
-        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(cell(row,ml,'Valor Repasse')),status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||'',dataPrevRep:cell(row,ml,'Data Prevista Repasse')||''};
+        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(cell(row,ml,'Valor Repasse')),status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -6226,8 +6200,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var ct=contratosById[l.contrato]||{};
       var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
-      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),status:l.status,dataPag:l.dataPag||'',banco:l.banco||'',dataPrevRep:l.dataPrevRep||''};
-      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null)r.valorRepasse=o.valorRepasse;if(o.dataPrevRep!=null)r.dataPrevRep=o.dataPrevRep;}
+      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),status:l.status,dataPag:l.dataPag||'',banco:l.banco||''};
+      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null)r.valorRepasse=o.valorRepasse;}
       return r;
     });
   }
@@ -6259,12 +6233,6 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
     document.getElementById('locTbody').innerHTML=lst.map(function(l){
       var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=(l.valorRepasse&&l.valorRepasse>0);
-      var pago=(l.status==='Pago');
-      var vencDate=diaMes(c.venc,selMes);
-      var atrasoAluguel=diasAtrasoFrom(vencDate,pago);
-      var prevRepDate=l.dataPrevRep?parseBr(l.dataPrevRep):diaMes(c.rep,selMes);
-      var atrasoRepasse=diasAtrasoFrom(prevRepDate,pago);
-      var prevRepIso=l.dataPrevRep?brToIso(l.dataPrevRep):isoFromDate(prevRepDate);
       var coprop=(DATA.desmembramento&&DATA.desmembramento[l.contrato])?' <span class="loc-num" title="Repasse dividido entre '+E(DATA.desmembramento[l.contrato].join(', '))+'">▸ '+DATA.desmembramento[l.contrato].length+' co-prop.</span>':'';
       return '<tr>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
@@ -6272,19 +6240,16 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         '<td>'+E(c.locador||'-')+coprop+'</td>'+
         '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
         '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
-        '<td style="text-align:center">'+fmtAtraso(atrasoAluguel)+'</td>'+
         '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa). Edite para lançar o valor real.')+'" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
-        '<td><input class="loc-row-date" type="date" value="'+prevRepIso+'" onchange="locSetDataPrevRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
-        '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td><select class="loc-row-select '+stCls(l.status)+'" onchange="locSetStatus(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Pago','Atrasado'].map(function(s){return '<option'+(s===l.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
+    }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
     if(showRepasse)renderRepasse(lst);
     renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
-    document.getElementById('locNote').innerHTML=origem+' A coluna <b>Repasse</b> é editável: fica em branco/sugerida até você digitar o valor real recebido do aluguel — o painel sugere Aluguel − Taxa de adm., mas você lança o valor definitivo apenas quando recebe. O valor digitado é gravado em <b>Valor Repasse</b> na planilha. A coluna <b>Data prevista repasse</b> também é editável (parte do dia de repasse cadastrado no contrato) e alimenta a coluna <b>Atraso repasse</b>. O <b>Repasse líquido</b> soma os repasses dos aluguéis com status <b>Pago</b>, e o <b>Valor a repassar (mês)</b> soma todos os repasses do mês, pagos ou não.';
+    document.getElementById('locNote').innerHTML=origem+' A coluna <b>Repasse</b> é editável: o painel sugere Aluguel − Taxa de adm., mas você lança o valor real apenas quando recebe o aluguel. O valor digitado é gravado em <b>Valor Repasse</b> na planilha. O <b>Repasse líquido</b> soma os repasses dos aluguéis com status <b>Pago</b>, e o <b>Valor a repassar (mês)</b> soma todos os repasses do mês, pagos ou não.';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
   function chip(cls,l,n){return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';}
@@ -6332,14 +6297,13 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
-    var campos={'Status':w.status,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.status==='Pago'?(w.dataPag||''):'','Data Prevista Repasse':w.dataPrevRep||''};
+    var campos={'Status':w.status,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.status==='Pago'?(w.dataPag||''):''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
   window.locSetStatus=function(contrato,val){var patch={status:val};if(val==='Pago'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
   window.locSetData=function(contrato,iso){setOverride(contrato,{dataPag:isoToBr(iso)});gravarSheet(contrato);locRender();};
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
   window.locSetRepasse=function(contrato,val){setOverride(contrato,{valorRepasse:num(val)});gravarSheet(contrato);locRender();};
-  window.locSetDataPrevRepasse=function(contrato,iso){setOverride(contrato,{dataPrevRep:isoToBr(iso)});gravarSheet(contrato);locRender();};
 
   function fmtHoje(){var d=new Date();return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
   function brToIso(s){if(!s)return '';var p=String(s).split('/');if(p.length!==3)return '';return p[2]+'-'+('0'+p[1]).slice(-2)+'-'+('0'+p[0]).slice(-2);}
