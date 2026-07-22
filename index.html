@@ -6138,8 +6138,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   function num(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf('/')>=0)return 0;/* célula corrompida (data) => inválida */if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
   function mesRef(s){s=String(s||'').trim();if(s.indexOf('/')>=0){var p=s.split('/');if(p.length===3)return ('0'+p[1]).slice(-2)+'/'+p[2];if(p.length===2)return ('0'+p[0]).slice(-2)+'/'+p[1];}return s;}
-  // Repasse efetivo: usa o Valor Repasse lançado manualmente; se vazio, sugere Aluguel − Taxa.
-  function effRep(l){return (l.valorRepasse&&l.valorRepasse>0)?l.valorRepasse:((l.aluguel||0)-(l.taxa||0));}
+  // Repasse efetivo: usa o Valor Repasse lançado manualmente (inclusive R$ 0,00); se nunca foi lançado, sugere Aluguel − Taxa.
+  function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)-(l.taxa||0));}
 
   function stCls(s){return s==='Pago'?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
@@ -6195,7 +6195,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
-        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(cell(row,ml,'Valor Repasse')),status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
+        var valorRepasseRaw=cell(row,ml,'Valor Repasse');
+        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',status:cell(row,ml,'Status')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -6222,8 +6223,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var ct=contratosById[l.contrato]||{};
       var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
-      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),status:l.status,dataPag:l.dataPag||'',banco:l.banco||''};
-      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null)r.valorRepasse=o.valorRepasse;}
+      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,status:l.status,dataPag:l.dataPag||'',banco:l.banco||''};
+      if(o){if(o.status)r.status=o.status;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}}
       return r;
     });
   }
@@ -6254,7 +6255,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     document.getElementById('locChips').innerHTML=chip('pago','Pagos',cPago)+chip('pend','Pendentes',cPend)+chip('atras','Atrasados',cAtras)+chip('ativos','Contratos ativos',ativos);
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
     document.getElementById('locTbody').innerHTML=lst.map(function(l){
-      var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=(l.valorRepasse&&l.valorRepasse>0);
+      var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=l.repManual;
       var pago=(l.status==='Pago');
       var repDate=diaMes(c.rep,selMes);
       var atrasoRepasse=diasAtrasoFrom(repDate,pago);
