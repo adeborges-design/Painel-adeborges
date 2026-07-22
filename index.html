@@ -6238,6 +6238,9 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
       var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
       if(o){if(o.statusAluguel)r.statusAluguel=o.statusAluguel;if(o.statusRep)r.statusRep=o.statusRep;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}}
+      // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar:
+      // só faz sentido repassar depois de receber. O valor real (quando Recebido) fica preservado acima.
+      if(r.statusAluguel!=='Recebido')r.statusRep=r.statusAluguel;
       return r;
     });
   }
@@ -6256,14 +6259,14 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
     var lst=workingList().filter(function(l){return l.mes===selMes;});
     lst.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
-    var alug=0,taxa=0,repLiq=0,emCaixa=0,aReceber=0;
+    var alug=0,taxa=0,repLiq=0,emCaixa=0;
     var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0;
     lst.forEach(function(l){
       alug+=l.aluguel;taxa+=l.taxa;
       var rep=effRep(l);
       var recebeu=(l.statusAluguel==='Recebido');
       var repassou=(l.statusRep==='Repassado');
-      if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado'){aReceber+=l.aluguel;cAlAtras++;}else{aReceber+=l.aluguel;cAlPend++;}
+      if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado')cAlAtras++;else cAlPend++;
       if(repassou){repLiq+=rep;cRepFeito++;}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
       if(recebeu&&!repassou)emCaixa+=rep;
     });
@@ -6271,7 +6274,6 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     document.getElementById('locStats').innerHTML=
       card('dourado','Aluguéis do mês',BRL(alug),lst.length+' lançamentos')+
       card('azul','Taxa de adm. do mês',BRL(taxa),'sua receita de administração')+
-      card('vermelho','A receber dos locatários',BRL(aReceber),(cAlPend+cAlAtras)+' aluguéis ainda não recebidos')+
       card('roxo','Em caixa, aguardando repasse',BRL(emCaixa),'já recebido do locatário, falta repassar')+
       card('verde','Já repassado aos locadores',BRL(repLiq),'repasses concluídos no mês');
     document.getElementById('locChips').innerHTML=
@@ -6294,7 +6296,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
-        '<td><select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td><select class="loc-row-select '+stCls(l.statusRep)+'"'+(l.statusAluguel!=='Recebido'?' disabled title="Acompanha o Status Aluguel automaticamente até o locatário pagar"':'')+' onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
       '</tr>';
@@ -6354,7 +6356,11 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
   window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
-  window.locSetStatusRepasse=function(contrato,val){var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
+  window.locSetStatusRepasse=function(contrato,val){
+    var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
+    if(atual&&atual.statusAluguel!=='Recebido'){locRender();return;}
+    var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();
+  };
   window.locSetData=function(contrato,iso){setOverride(contrato,{dataPag:isoToBr(iso)});gravarSheet(contrato);locRender();};
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
   window.locSetRepasse=function(contrato,val){
