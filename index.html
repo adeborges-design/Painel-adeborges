@@ -5880,10 +5880,13 @@ function renderContas(){
  abertas.sort(function(a,b){return (dbr(a['Data Vencimento'])||hoje)-(dbr(b['Data Vencimento'])||hoje);});
  abertas.concat(pagas).forEach(function(c){
   var v=nbr(c['Valor']);var dv=dbr(c['Data Vencimento']);var paga=String(c['Status']).toLowerCase()==='paga';
-  // compra individual feita no cartão (campo "Cartão" preenchido): esse valor já está embutido na fatura
-  // consolidada (o lançamento do total da fatura, esse sem "Cartão" preenchido) — por isso NÃO soma nos
-  // totais gerais de Contas a Pagar (evita contar o mesmo valor duas vezes). Ainda soma no card do cartão.
-  var isCartaoItem=!!c['Cartao'];
+  // fatura consolidada do cartão (a conta que de fato sai do banco, ex.: "Cartão de Crédito - Itaú
+  // Mastercard"): identificada pela Categoria = "Cartão de Crédito". Essa SEMPRE entra nos totais gerais.
+  var isFaturaCartao=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  // compra individual feita no cartão (campo "Cartão" preenchido e não é a fatura): esse valor já está
+  // embutido na fatura consolidada acima — por isso NÃO soma nos totais gerais de Contas a Pagar (evita
+  // contar o mesmo valor duas vezes). Ainda soma no card do cartão (limite) e na conferência da fatura.
+  var isCartaoItem=!!c['Cartao']&&!isFaturaCartao;
   var stH='';
   if(paga){var dp=dbr(c['Data Pagamento']);if(!isCartaoItem&&dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
   else{if(!isCartaoItem)aberto+=v;
@@ -5892,8 +5895,16 @@ function renderContas(){
     else if(diff===0){if(!isCartaoItem)avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';}
     else{if(diff<=30&&!isCartaoItem)avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
   }
-  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(c['Cartao'])+' · na fatura</span>':'')+'</div>'
-  +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
+  var confHtml='';
+  if(isFaturaCartao&&c['Cartao']){
+   var conf=cpConferirFatura(c);
+   if(conf){
+    if(Math.abs(conf.diff)<0.01)confHtml='<div style="margin-top:3px;font-size:11px;color:var(--green)">✓ confere com os lançamentos no cartão (R$ '+fmr(conf.soma)+')</div>';
+    else confHtml='<div style="margin-top:3px;font-size:11px;color:var(--red)">⚠ diverge dos lançamentos no cartão: soma R$ '+fmr(conf.soma)+' ('+(conf.diff>0?'faltam R$ '+fmr(conf.diff)+' lançar':'R$ '+fmr(-conf.diff)+' lançados a mais')+')</div>';
+   } else confHtml='<div style="margin-top:3px;font-size:11px;color:var(--muted)">Sem vencimento para conferir os lançamentos do mês.</div>';
+  }
+  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(c['Cartao'])+' · na fatura</span>':'')+(isFaturaCartao&&c['Cartao']?' <span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(c['Cartao'])+'</span>':'')+'</div>'
+  +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div>'+confHtml+'</div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button></span></div>';
@@ -5920,6 +5931,23 @@ function renderContas(){
  }
 }
 function dtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+// Compara o valor de uma fatura consolidada de cartão (c) com a soma dos lançamentos individuais
+// feitos nesse mesmo cartão, com vencimento no mesmo mês/ano — para o usuário conferir se lançou tudo.
+function cpConferirFatura(c){
+ if(!c||!c['Cartao'])return null;
+ var dv=dbr(c['Data Vencimento']);if(!dv)return null;
+ var mes=dv.getMonth(),ano=dv.getFullYear();
+ var soma=(allContas||[]).filter(function(x){
+  if(x===c)return false;
+  if(String(x['Cartao']||'')!==String(c['Cartao']))return false;
+  if(/^cart[aã]o de cr[eé]dito$/i.test(String(x['Categoria']||'').trim()))return false;
+  var xdv=dbr(x['Data Vencimento']);if(!xdv)return false;
+  return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
+ }).reduce(function(a,x){return a+nbr(x['Valor']);},0);
+ soma=Math.round(soma*100)/100;
+ var diff=Math.round((nbr(c['Valor'])-soma)*100)/100;
+ return {soma:soma,diff:diff};
+}
 var _cpEditId=null;
 var CP_CARTOES=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi'];
 window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
@@ -5934,7 +5962,11 @@ function cpRenderCartoes(){
   // à medida que as parcelas são pagas — por isso usamos o Saldo Devedor (que cpPagar já abate a
   // cada parcela paga), caindo para Valor Total da Dívida e por fim para o Valor da parcela se
   // esses campos ainda não tiverem sido preenchidos.
-  var saldo=(allContas||[]).filter(function(c){return (String(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){
+  var saldo=(allContas||[]).filter(function(c){
+   var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+   if(ehFatura)return false; // a fatura em si não conta pro limite — quem conta são as compras que a compõem
+   return (String(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';
+  }).reduce(function(a,c){
    var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
    return a+vUso;
   },0);
