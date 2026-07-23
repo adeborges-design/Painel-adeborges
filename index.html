@@ -6491,7 +6491,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);if(!hide)locRenderContratos();};
   function locRenderContratos(){
     var tb=document.getElementById('locContratosTbody');
-    tb.innerHTML=DATA.contratos.map(function(c){
+    var listaOrdenada=DATA.contratos.slice().sort(function(a,b){return String(a.locador||'').localeCompare(String(b.locador||''),'pt-BR',{sensitivity:'base'});});
+    tb.innerHTML=listaOrdenada.map(function(c){
       return '<tr>'+
         '<td class="loc-num">'+E(c.contrato)+'</td>'+
         '<td>'+E(c.locador||'-')+'</td>'+
