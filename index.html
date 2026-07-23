@@ -3398,6 +3398,7 @@ function parseProcessos(rows) {
 
     // Calcular urgencia usando diasPrazo, prazoData, dataPrazoCliente e dataAudi
     const urgencia = calcUrgencia(diasPrazoNum, prazoData, dataPrazoCliente, dataAudi, st, tipo);
+    const prazoInfo = resolvePrazoCritico(diasPrazoNum, prazoData, dataPrazoCliente, dataAudi);
 
     allProcessos.push({
       nro: parseInt(nro),
@@ -3417,6 +3418,7 @@ function parseProcessos(rows) {
       advParc, obs, pastaDrive, linkTrib, telefone, email,
       telParceiro, emailParceiro,
       urgencia,
+      prazoInfo,
       _row: i
     });
   }
@@ -3424,6 +3426,49 @@ function parseProcessos(rows) {
   buildRamoFilter();
   updateStats();
   renderProcessos();
+}
+
+// Contador regressivo do prazo processual: resolve a "data critica" do processo
+// seguindo a mesma prioridade do calcUrgencia (audiencia > prazoData > diasPrazo > dataPrazoCliente)
+// e devolve dias restantes + texto + cor prontos para exibir.
+function resolvePrazoCritico(diasPrazo, prazoData, dataPrazoCliente, dataAudi) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  function diasAte(dataStr) {
+    const d = parseDate(dataStr);
+    if (!d) return null;
+    const dd = new Date(d);
+    dd.setHours(0, 0, 0, 0);
+    return Math.round((dd - hoje) / 86400000);
+  }
+
+  function classificar(dias) {
+    if (dias < 0)  return { cls: 'prazo-vencido', texto: `Venceu há ${Math.abs(dias)}d` };
+    if (dias === 0) return { cls: 'prazo-vencido', texto: 'Vence hoje' };
+    if (dias <= 5)  return { cls: 'prazo-vencido', texto: `Faltam ${dias}d` };
+    if (dias <= 15) return { cls: 'prazo-hoje',    texto: `Faltam ${dias}d` };
+    if (dias <= 30) return { cls: 'prazo-breve',   texto: `Faltam ${dias}d` };
+    return { cls: 'prazo-ok', texto: `Faltam ${dias}d` };
+  }
+
+  if (dataAudi && dataAudi.length > 3) {
+    const dias = diasAte(dataAudi);
+    if (dias !== null) { const c = classificar(dias); return { dias, cls: c.cls, texto: c.texto, fonte: 'Audiência', dataStr: dataAudi }; }
+  }
+  if (prazoData && prazoData.length > 3) {
+    const dias = diasAte(prazoData);
+    if (dias !== null) { const c = classificar(dias); return { dias, cls: c.cls, texto: c.texto, fonte: 'Prazo processual', dataStr: prazoData }; }
+  }
+  if (diasPrazo > 0) {
+    const c = classificar(diasPrazo);
+    return { dias: diasPrazo, cls: c.cls, texto: c.texto, fonte: 'Prazo processual', dataStr: null };
+  }
+  if (dataPrazoCliente && dataPrazoCliente.length > 3) {
+    const dias = diasAte(dataPrazoCliente);
+    if (dias !== null) { const c = classificar(dias); return { dias, cls: c.cls, texto: c.texto, fonte: 'Providência do cliente', dataStr: dataPrazoCliente }; }
+  }
+  return { dias: null, cls: 'prazo-sem', texto: 'sem prazo', fonte: null, dataStr: null };
 }
 
 function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, tipo) {
@@ -3559,15 +3604,20 @@ function renderProcessos() {
   });
 
   // Ordenacao
+  const diasOf = p => (p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined) ? p.prazoInfo.dias : null;
   if (sort === 'prioridade') {
-    list.sort((a, b) => (URGENCIA_ORDER[a.urgencia] - URGENCIA_ORDER[b.urgencia]) || (a.prazo > 0 && b.prazo > 0 ? a.prazo - b.prazo : b.prazo - a.prazo));
+    list.sort((a, b) => {
+      const da = diasOf(a), db = diasOf(b);
+      return (URGENCIA_ORDER[a.urgencia] - URGENCIA_ORDER[b.urgencia]) || (da !== null && db !== null ? da - db : 0);
+    });
   } else if (sort === 'nome') {
     list.sort((a, b) => a.nome.localeCompare(b.nome));
   } else if (sort === 'prazo') {
     list.sort((a, b) => {
-      if (a.prazo > 0 && b.prazo > 0) return a.prazo - b.prazo;
-      if (a.prazo > 0) return -1;
-      if (b.prazo > 0) return 1;
+      const da = diasOf(a), db = diasOf(b);
+      if (da !== null && db !== null) return da - db;
+      if (da !== null) return -1;
+      if (db !== null) return 1;
       return 0;
     });
   }
@@ -3602,19 +3652,10 @@ function renderCard(p, idx) {
     monitorar:'Monitorar'
   }[p.urgencia];
 
-  // Prazo display - usa diasPrazo ou prazoData
-  let prazoBadge = '<span class="prazo-badge prazo-sem">sem prazo</span>';
-  if (p.diasPrazo > 0) {
-    const cl = p.diasPrazo <= 5 ? 'prazo-vencido' : p.diasPrazo <= 15 ? 'prazo-hoje' : p.diasPrazo <= 30 ? 'prazo-breve' : 'prazo-ok';
-    prazoBadge = `<span class="prazo-badge ${cl}">${p.diasPrazo}d</span>`;
-  } else if (p.prazoData && p.prazoData.length > 3) {
-    const d = parseDate(p.prazoData);
-    if (d) {
-      const diff = Math.ceil((d - new Date()) / 86400000);
-      const cl = diff <= 5 ? 'prazo-vencido' : diff <= 15 ? 'prazo-hoje' : diff <= 30 ? 'prazo-breve' : 'prazo-ok';
-      prazoBadge = `<span class="prazo-badge ${cl}">${formatDate(p.prazoData)}</span>`;
-    }
-  }
+  // Prazo display - contador regressivo baseado na data critica do processo
+  const pc = p.prazoInfo || resolvePrazoCritico(p.diasPrazo, p.prazoData, p.dataPrazoCliente, p.dataAudi);
+  const prazoTitle = pc.fonte ? (pc.fonte + (pc.dataStr ? ' - ' + formatDate(pc.dataStr) : '')) : '';
+  const prazoBadge = `<span class="prazo-badge ${pc.cls}"${prazoTitle ? ' title="' + escHtml(prazoTitle) + '"' : ''}>${pc.texto}</span>`;
 
   // Audiencia
   let audienciaHtml = '';
@@ -3848,12 +3889,14 @@ function updateStats() {
   const audiencias = allProcessos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
   const providencias = allProcessos.filter(p => (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3)).length;
 
-  const prazos = allProcessos.filter(p => p.diasPrazo > 0).map(p => p.diasPrazo);
-  const menorPrazo = prazos.length > 0 ? Math.min(...prazos) : 0;
+  const prazos = allProcessos
+    .map(p => p.prazoInfo && p.prazoInfo.dias)
+    .filter(d => d !== null && d !== undefined && d >= 0);
+  const menorPrazo = prazos.length > 0 ? Math.min(...prazos) : null;
 
   document.getElementById('st-total').textContent = allProcessos.length;
   document.getElementById('st-criticos').textContent = criticos;
-  document.getElementById('st-prazo').textContent = menorPrazo > 0 ? menorPrazo : '-';
+  document.getElementById('st-prazo').textContent = menorPrazo !== null ? menorPrazo : '-';
   document.getElementById('st-audiencia').textContent = audiencias;
   document.getElementById('st-providencias').textContent = providencias;
 
