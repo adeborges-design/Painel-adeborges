@@ -2012,12 +2012,6 @@
       </svg>
       Novo
     </button>
-    <button class="btn-sync" onclick="document.getElementById('modalConfig').classList.add('open')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
-      </svg>
-      Config
-    </button>
   </div>
 </header>
 
@@ -3222,6 +3216,11 @@ function saveConfig() {
   localStorage.setItem(CONFIG_KEY, JSON.stringify({ sheetId, apiKey, sheetName }));
   document.getElementById('modalConfig').classList.remove('open');
   loadFromSheets();
+  // Recarrega também os demais módulos (antes só Processos era atualizado ao trocar a planilha)
+  try{if(typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}
+  try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
+  try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
+  try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
 }
 
 // --- CARGA DO SHEETS ------------------------------------------
@@ -6609,6 +6608,12 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     </div>
     <div style="display:flex;align-items:center;gap:16px">
       <div class="home-oab">Adenilson Borges da Silva<br>OAB/SP 335.600</div>
+      <button class="btn-sync" onclick="document.getElementById('modalConfig').classList.add('open')" title="Configurar planilha">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+        </svg>
+        Config
+      </button>
     </div>
   </div>
   <div class="home-wrap">
