@@ -1980,6 +1980,42 @@
 </head>
 <body>
 
+<!-- LEXFLOW GATE (senha de acesso) -->
+<div id="lexflowGate" style="position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',Arial,sans-serif;">
+  <form id="lexflowGateForm" style="background:#fff;border-radius:14px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
+    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#0d1f35;margin-bottom:4px;">Lex<em>Flow</em></div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Acesso restrito</div>
+    <input id="lexflowGatePw" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;">
+    <div id="lexflowGateErr" style="display:none;color:#dc2626;font-size:12px;margin-bottom:10px;">Senha incorreta.</div>
+    <button type="submit" style="width:100%;padding:11px;border:none;border-radius:8px;background:#0d1f35;color:#c8a96e;font-weight:700;font-size:14px;cursor:pointer;">Entrar</button>
+  </form>
+</div>
+<script>
+(function(){
+  var HASH = '4a330ac133adc3335296a11b39d8d5f7d5eb03ab27bb6ba933a2e76cc3d01c5b';
+  var AUTH_KEY = 'lexflow_auth_ok';
+  var gate = document.getElementById('lexflowGate');
+  function unlock(){ gate.style.display = 'none'; }
+  if (localStorage.getItem(AUTH_KEY) === '1') { unlock(); }
+  async function sha256Hex(msg){
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+  document.getElementById('lexflowGateForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var pw = document.getElementById('lexflowGatePw').value;
+    var h = await sha256Hex(pw);
+    if (h === HASH) {
+      localStorage.setItem(AUTH_KEY, '1');
+      document.getElementById('lexflowGateErr').style.display = 'none';
+      unlock();
+    } else {
+      document.getElementById('lexflowGateErr').style.display = 'block';
+    }
+  });
+})();
+</script>
+
 <!-- HEADER -->
 <header class="header">
   <div class="header-left">
