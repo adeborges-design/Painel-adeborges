@@ -5836,7 +5836,7 @@ window.allContas=[];
 window.carregarContas=async function(){
  try{
   var cfg=getConfig();if(!cfg||!cfg.apiKey||!cfg.sheetId)return;
-  var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/CONTAS_PAGAR!A1:L500?key='+cfg.apiKey);
+  var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/CONTAS_PAGAR!A1:P500?key='+cfg.apiKey);
   if(!r.ok){renderContas();return;}
   var data=await r.json();var rows=data.values||[];
   if(rows.length<2){allContas=[];}
