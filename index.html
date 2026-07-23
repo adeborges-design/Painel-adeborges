@@ -5880,15 +5880,19 @@ function renderContas(){
  abertas.sort(function(a,b){return (dbr(a['Data Vencimento'])||hoje)-(dbr(b['Data Vencimento'])||hoje);});
  abertas.concat(pagas).forEach(function(c){
   var v=nbr(c['Valor']);var dv=dbr(c['Data Vencimento']);var paga=String(c['Status']).toLowerCase()==='paga';
+  // compra individual feita no cartão (campo "Cartão" preenchido): esse valor já está embutido na fatura
+  // consolidada (o lançamento do total da fatura, esse sem "Cartão" preenchido) — por isso NÃO soma nos
+  // totais gerais de Contas a Pagar (evita contar o mesmo valor duas vezes). Ainda soma no card do cartão.
+  var isCartaoItem=!!c['Cartao'];
   var stH='';
-  if(paga){var dp=dbr(c['Data Pagamento']);if(dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
-  else{aberto+=v;
+  if(paga){var dp=dbr(c['Data Pagamento']);if(!isCartaoItem&&dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
+  else{if(!isCartaoItem)aberto+=v;
    if(dv){var diff=Math.round((dv-hoje)/86400000);
-    if(diff<0){vencidas+=v;stH='<span class="hon-badge hv-badge-atraso">VENCIDA há '+(-diff)+'d</span>';}
-    else if(diff===0){avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';}
-    else{if(diff<=30)avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
+    if(diff<0){if(!isCartaoItem)vencidas+=v;stH='<span class="hon-badge hv-badge-atraso">VENCIDA há '+(-diff)+'d</span>';}
+    else if(diff===0){if(!isCartaoItem)avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';}
+    else{if(diff<=30&&!isCartaoItem)avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
   }
-  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(c['Cartao']?' <span class="hon-badge hv-badge-fut">💳 '+esc(c['Cartao'])+'</span>':'')+'</div>'
+  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(c['Cartao'])+' · na fatura</span>':'')+'</div>'
   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
@@ -5962,11 +5966,12 @@ window.cpLancar=async function(){
  var dv=document.getElementById('cp-venc').value;
  var stEl=document.getElementById('cpStatus');
  if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
- stEl.textContent='⏳ salvando...';
  var cartEl=document.getElementById('cp-cartao');
  var forma=(document.getElementById('cp-forma')||{}).value||'';
  var cart=cartEl?cartEl.value:'';
  if(cart&&!forma)forma='Cartão de crédito';
+ if(/cart[aã]o/i.test(forma)&&!cart){stEl.innerHTML='<span style="color:var(--red)">Selecione qual cartão foi usado (campo "Cartão"), para o saldo do cartão ser atualizado corretamente.</span>';return;}
+ stEl.textContent='⏳ salvando...';
  var totd=(document.getElementById('cp-totdiv')||{}).value||'';
  var sald=(document.getElementById('cp-saldodiv')||{}).value||'';
  if(document.getElementById('cp-rec').value==='Parcelada'&&totd&&!sald)sald=totd;
