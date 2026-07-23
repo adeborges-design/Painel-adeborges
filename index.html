@@ -6584,6 +6584,21 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .cp-cc-card .cc-bar{height:6px;background:var(--surface2);border-radius:3px;margin-top:8px;overflow:hidden}
   .cp-cc-card .cc-fill{height:100%;border-radius:3px;transition:width .3s}
   @media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-wrap{padding:28px 16px 50px}}
+  .home-agenda{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+  .ha-day{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px}
+  .ha-day.hoje{border-color:var(--accent)}
+  .ha-day-label{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .ha-day-label .tag{font-size:10px;font-weight:700;background:var(--accent);color:#fff;padding:2px 8px;border-radius:20px;letter-spacing:.03em}
+  .ha-sec-tit{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin:12px 0 6px}
+  .ha-sec-tit:first-of-type{margin-top:0}
+  .ha-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border2);font-size:12.5px}
+  .ha-item:last-child{border-bottom:none}
+  .ha-hora{font-family:'DM Mono',monospace;color:var(--accent2);font-weight:700;flex-shrink:0;min-width:40px}
+  .ha-tit-ev{color:var(--text)}
+  .ha-loc{color:var(--muted);font-size:11px;margin-top:1px}
+  .ha-empty{font-size:12px;color:var(--muted);padding:4px 0}
+  .ha-err{font-size:12px;color:var(--orange)}
+  @media(max-width:760px){.home-agenda{grid-template-columns:1fr}}
 </style>
 
 <div class="home-overlay open" id="homeOverlay">
@@ -6599,6 +6614,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   <div class="home-wrap">
     <div class="home-hello">Bom dia, Dr. Adenilson</div>
     <div class="home-date" id="homeDate">—</div>
+    <div class="home-agenda" id="homeAgenda"></div>
     <div class="home-grid">
       <div class="home-module">
         <div class="home-card proc" onclick="openProcessos()">
@@ -6835,6 +6851,34 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
 
   function fmtData(){try{var d=new Date();var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];var mes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];document.getElementById('homeDate').textContent=dias[d.getDay()]+', '+d.getDate()+' de '+mes[d.getMonth()]+' de '+d.getFullYear();}catch(e){}}
 
+  // ---- Agenda (Google Calendar via Apps Script: compromissos + tarefas de hoje e do próximo dia útil) ----
+  window.carregarAgenda=function(){
+    var el=document.getElementById('homeAgenda'); if(!el)return;
+    el.innerHTML='<div class="ha-day"><div class="ha-empty">Carregando agenda…</div></div>';
+    fetch(URL_AS+'?acao=agenda').then(function(r){return r.json();}).then(function(d){
+      if(!d||!d.ok||!d.dias)throw new Error(d&&d.erro?d.erro:'resposta inesperada');
+      renderAgenda(d.dias);
+    }).catch(function(e){
+      el.innerHTML='<div class="ha-day"><div class="ha-err">Não foi possível carregar a agenda do Google Calendar agora'+(e&&e.message?' ('+E(e.message)+')':'')+'.</div></div>';
+    });
+  };
+  function renderAgenda(dias){
+    var el=document.getElementById('homeAgenda'); if(!el)return;
+    el.innerHTML=dias.map(function(dia,i){
+      var comp=(dia.compromissos||[]).map(function(ev){
+        return '<div class="ha-item"><span class="ha-hora">'+E(ev.hora||'dia todo')+'</span><div><div class="ha-tit-ev">'+E(ev.titulo)+'</div>'+(ev.local?'<div class="ha-loc">📍 '+E(ev.local)+'</div>':'')+'</div></div>';
+      }).join('')||'<div class="ha-empty">Sem compromissos.</div>';
+      var tar=(dia.tarefas||[]).map(function(ev){
+        return '<div class="ha-item"><span class="ha-hora">'+E(ev.hora||'•')+'</span><div class="ha-tit-ev">'+E(ev.titulo)+'</div></div>';
+      }).join('')||'<div class="ha-empty">Sem tarefas.</div>';
+      return '<div class="ha-day'+(i===0?' hoje':'')+'">'+
+        '<div class="ha-day-label">'+(i===0?'<span class="tag">HOJE</span> ':'')+E(dia.label)+'</div>'+
+        '<div class="ha-sec-tit">📅 Compromissos</div>'+comp+
+        '<div class="ha-sec-tit">✅ Tarefas</div>'+tar+
+        '</div>';
+    }).join('');
+  }
+
   // ---- Botões de navegação no header ----
   function injectNav(){
     var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnInicio'))return;
@@ -6857,12 +6901,15 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
     setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();}}catch(e){}},800);
+    // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
+    setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
     setInterval(function(){var h=document.getElementById('homeOverlay');if(h&&h.classList.contains('open'))homeRefresh();},2500);
+    setInterval(function(){var h=document.getElementById('homeOverlay');if(h&&h.classList.contains('open'))carregarAgenda();},5*60*1000);
     homeRefresh();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.addEventListener('load',function(){injectNav();patchCarregarContas();patchCloses();setTimeout(homeRefresh,1500);});
+  window.addEventListener('load',function(){injectNav();patchCarregarContas();patchCloses();setTimeout(homeRefresh,1500);setTimeout(function(){try{carregarAgenda();}catch(e){}},1200);});
 })();
 </script>
 
