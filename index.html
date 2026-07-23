@@ -5929,7 +5929,15 @@ function cpRenderCartoes(){
  var grid=document.getElementById('cpCartoesGrid');if(!grid)return;
  var lim=cpLimites();
  grid.innerHTML=CP_CARTOES.map(function(nome){
-  var saldo=(allContas||[]).filter(function(c){return (String(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
+  // compras "Única"/"Mensal" consomem o limite pelo valor do lançamento (é o que sai por mês).
+  // compras "Parcelada" consomem o limite pelo valor TOTAL da compra, e esse valor vai reduzindo
+  // à medida que as parcelas são pagas — por isso usamos o Saldo Devedor (que cpPagar já abate a
+  // cada parcela paga), caindo para Valor Total da Dívida e por fim para o Valor da parcela se
+  // esses campos ainda não tiverem sido preenchidos.
+  var saldo=(allContas||[]).filter(function(c){return (String(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){
+   var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
+   return a+vUso;
+  },0);
   var L=nbr(lim[nome]);var disp=L-saldo;var pct=L>0?Math.min(100,Math.round(saldo/L*100)):0;
   var cor=pct>=90?'var(--red)':(pct>=70?'var(--orange)':'var(--green)');
   return '<div class="cp-cc-card"><div class="cc-nome">'+esc(nome)+'</div>'
