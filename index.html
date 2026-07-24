@@ -6617,6 +6617,25 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     return {mes:m,alugueis:alug,repasseLiquido:repLiq,pendentes:pend,atrasados:atras,contratos:DATA.contratos.filter(function(c){return c.ativo;}).length,live:live};
   };
 
+  // fluxo mensal de locações p/ o gráfico de fluxo de caixa do dashboard: por mês, taxa de
+  // administração já recebida (receita própria do escritório) e repasse já pago aos locadores.
+  window.locFluxoMensal=function(n){
+    n=n||6;
+    var todos=workingList();
+    var mesesSet={};todos.forEach(function(l){mesesSet[l.mes]=1;});
+    var meses=Object.keys(mesesSet).sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return (pa[1]+pa[0]).localeCompare(pb[1]+pb[0]);});
+    var ultimos=meses.slice(-n);
+    return ultimos.map(function(m){
+      var lst=todos.filter(function(l){return l.mes===m;});
+      var alug=0,taxa=0,repasse=0;
+      lst.forEach(function(l){
+        if(l.statusAluguel==='Recebido'){alug+=l.aluguel;taxa+=l.taxa;}
+        if(l.statusRep==='Repassado')repasse+=effRep(l);
+      });
+      return {mes:m,alugueis:alug,taxa:taxa,repasse:repasse};
+    });
+  };
+
   // aluguéis em atraso p/ o quadro de avisos do dashboard
   window.locAvisos=function(){
     var meses=mesesDisponiveis();var m=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];
@@ -6723,6 +6742,24 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .ha-empty{font-size:12px;color:var(--muted);padding:4px 0}
   .ha-err{font-size:12px;color:var(--orange)}
   @media(max-width:760px){.home-agenda{grid-template-columns:1fr}}
+  .fc-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:28px}
+  .fc-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+  .fc-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text)}
+  .fc-legend{display:flex;gap:16px;font-size:11px;color:var(--muted)}
+  .fc-legend span{display:inline-flex;align-items:center;gap:5px}
+  .fc-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .fc-empty{font-size:12px;color:var(--muted);padding:10px 0}
+  .fc-bars{display:flex;align-items:flex-end;gap:14px;height:150px;padding-top:10px}
+  .fc-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .fc-pair{display:flex;align-items:flex-end;gap:3px;height:100%;width:100%;justify-content:center}
+  .fc-bar{width:34%;max-width:22px;border-radius:4px 4px 0 0;min-height:2px;transition:height .3s}
+  .fc-bar.rec{background:var(--green,#4caf7d)}
+  .fc-bar.desp{background:var(--red,#e05454)}
+  .fc-mlabel{font-size:10.5px;color:var(--muted);font-family:'DM Mono',monospace}
+  .fc-saldo{font-size:10px;font-family:'DM Mono',monospace;margin-top:2px}
+  .fc-totais{display:flex;gap:28px;margin-top:18px;flex-wrap:wrap;border-top:1px solid var(--border2);padding-top:14px}
+  .fc-tot .v{font-family:'DM Serif Display',serif;font-size:20px}
+  .fc-tot .l{font-size:11px;color:var(--muted);margin-top:2px}
 </style>
 
 <div class="home-overlay open" id="homeOverlay">
@@ -6745,6 +6782,16 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     <div class="home-hello">Bom dia, Dr. Adenilson</div>
     <div class="home-date" id="homeDate">—</div>
     <div class="home-agenda" id="homeAgenda"></div>
+    <div class="fc-card">
+      <div class="fc-head">
+        <div class="fc-title">📈 Fluxo de Caixa — últimos 6 meses</div>
+        <div class="fc-legend">
+          <span><span class="fc-dot" style="background:var(--green,#4caf7d)"></span>Receitas</span>
+          <span><span class="fc-dot" style="background:var(--red,#e05454)"></span>Despesas</span>
+        </div>
+      </div>
+      <div id="fcBody"></div>
+    </div>
     <div class="home-grid">
       <div class="home-module">
         <div class="home-card proc" onclick="openProcessos()">
@@ -6852,7 +6899,60 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   }
 
   // ---- Dashboard: números ----
+  // ---- Fluxo de Caixa: últimos 6 meses (receitas = honorários recebidos + taxa de administração
+  // das locações recebida; despesas = contas a pagar pagas do escritório, sem contar de novo as
+  // compras individuais de cartão já embutidas na fatura consolidada) ----
+  function ultimosMeses(n){
+    var out=[];var d=new Date();d.setDate(1);
+    for(var i=n-1;i>=0;i--){var dt=new Date(d.getFullYear(),d.getMonth()-i,1);out.push(('0'+(dt.getMonth()+1)).slice(-2)+'/'+dt.getFullYear());}
+    return out;
+  }
+  function mesLabel(m){var p=m.split('/');var nomes=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nomes[parseInt(p[0],10)-1]+'/'+p[1].slice(2);}
+  function renderFluxoCaixa(){
+    var body=document.getElementById('fcBody');if(!body)return;
+    var meses=ultimosMeses(6);
+    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+    var ac=window.allContas||[];
+    var locMap={};try{(window.locFluxoMensal?window.locFluxoMensal(12):[]).forEach(function(r){locMap[r.mes]=r;});}catch(e){}
+    var dados=meses.map(function(m){
+      var p=m.split('/');var mesN=parseInt(p[0],10)-1,anoN=parseInt(p[1],10);
+      var receita=0,despesa=0;
+      ah.forEach(function(h){var d=dbr(h['Data Pagamento']);if(d&&d.getMonth()===mesN&&d.getFullYear()===anoN)receita+=nbr(h['Valor Recebido']);});
+      var lr=locMap[m];if(lr)receita+=lr.taxa;
+      ac.forEach(function(c){
+        if(String(c['Status']).toLowerCase()!=='paga')return;
+        var d=dbr(c['Data Pagamento']);if(!d||d.getMonth()!==mesN||d.getFullYear()!==anoN)return;
+        var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+        var isCompraCartao=!!c['Cartao']&&!ehFatura;
+        if(isCompraCartao)return;
+        despesa+=nbr(c['Valor']);
+      });
+      return {mes:m,receita:receita,despesa:despesa,saldo:receita-despesa};
+    });
+    var totR=0,totD=0;dados.forEach(function(d){totR+=d.receita;totD+=d.despesa;});
+    if(!totR&&!totD){body.innerHTML='<div class="fc-empty">Sem lançamentos pagos/recebidos nos últimos 6 meses ainda.</div>';return;}
+    var max=Math.max(1,Math.max.apply(null,dados.map(function(d){return Math.max(d.receita,d.despesa);})));
+    var bars='<div class="fc-bars">'+dados.map(function(d){
+      var hr=d.receita>0?Math.max(Math.round(d.receita/max*100),2):0;
+      var hd=d.despesa>0?Math.max(Math.round(d.despesa/max*100),2):0;
+      var corSaldo=d.saldo>=0?'var(--green,#4caf7d)':'var(--red,#e05454)';
+      return '<div class="fc-col" title="'+E(mesLabel(d.mes))+' — receita '+BRLf(d.receita)+' · despesa '+BRLf(d.despesa)+'">'
+        +'<div class="fc-pair"><div class="fc-bar rec" style="height:'+hr+'%"></div><div class="fc-bar desp" style="height:'+hd+'%"></div></div>'
+        +'<div class="fc-mlabel">'+E(mesLabel(d.mes))+'</div>'
+        +'<div class="fc-saldo" style="color:'+corSaldo+'">'+(d.saldo>=0?'+':'')+BRLf(d.saldo)+'</div>'
+        +'</div>';
+    }).join('')+'</div>';
+    var saldoTot=totR-totD;
+    var totais='<div class="fc-totais">'
+      +'<div class="fc-tot"><div class="v" style="color:var(--green,#4caf7d)">'+BRLf(totR)+'</div><div class="l">receitas (6 meses)</div></div>'
+      +'<div class="fc-tot"><div class="v" style="color:var(--red,#e05454)">'+BRLf(totD)+'</div><div class="l">despesas (6 meses)</div></div>'
+      +'<div class="fc-tot"><div class="v" style="color:'+(saldoTot>=0?'var(--green,#4caf7d)':'var(--red,#e05454)')+'">'+(saldoTot>=0?'+':'')+BRLf(saldoTot)+'</div><div class="l">saldo do período</div></div>'
+      +'</div>';
+    body.innerHTML=bars+totais;
+  }
+
   function homeRefresh(){
+    try{renderFluxoCaixa();}catch(e){console.error('fluxoCaixa',e);}
     // Processos
     try{if(typeof allProcessos!=='undefined'){document.getElementById('hc-proc-total').textContent=allProcessos.length||0;document.getElementById('hc-proc-crit').textContent=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;}}catch(e){}
     // Honorários
