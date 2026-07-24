@@ -5867,7 +5867,7 @@ function renderContas(){
   +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option></select></div>'
   +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
   +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
-  +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa 7503</option><option>Itaú Mastercard 6669</option><option>Leroy Merlin Elo 6823</option><option>XP Visa 7503</option><option>Sicredi</option><option>Mercado Pago Visa 9390</option></select></div>'
+  +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa 2355</option><option>Itaú Mastercard 6669</option><option>Leroy Merlin Elo 6823</option><option>XP Visa 7503</option><option>Sicredi Mastercard 8727</option><option>Mercado Pago Visa 9390</option></select></div>'
   +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
@@ -5950,19 +5950,31 @@ function cpConferirFatura(c){
  return {soma:soma,diff:diff};
 }
 var _cpEditId=null;
-var CP_CARTOES=['Itaú Visa 7503','Itaú Mastercard 6669','Leroy Merlin Elo 6823','XP Visa 7503','Sicredi','Mercado Pago Visa 9390'];
-// alias p/ nomes antigos: lançamentos já gravados na planilha com o nome antigo do cartão continuam
-// batendo com o cartão certo depois do rename, sem precisar editar cada lançamento na mão.
-var CP_CARTAO_ALIAS={'Itaú Visa':'Itaú Visa 7503','Itaú Mastercard':'Itaú Mastercard 6669','Leroy Merlin':'Leroy Merlin Elo 6823','XP':'XP Visa 7503','Mercado Pago':'Mercado Pago Visa 9390'};
+var CP_CARTOES=['Itaú Visa 2355','Itaú Mastercard 6669','Leroy Merlin Elo 6823','XP Visa 7503','Sicredi Mastercard 8727','Mercado Pago Visa 9390'];
+// alias p/ nomes antigos (inclui os nomes originais e os usados num rename anterior): lançamentos já
+// gravados na planilha ou salvos no navegador com um nome antigo do cartão continuam batendo com o
+// cartão certo depois do rename, sem precisar editar cada lançamento na mão.
+var CP_CARTAO_ALIAS={'Itaú Visa':'Itaú Visa 2355','Itaú Visa 7503':'Itaú Visa 2355','Itaú Mastercard':'Itaú Mastercard 6669','Leroy Merlin':'Leroy Merlin Elo 6823','XP':'XP Visa 7503','Sicredi':'Sicredi Mastercard 8727','Mercado Pago':'Mercado Pago Visa 9390'};
 window.cpNomeCartao=function(v){v=String(v||'').trim();return CP_CARTAO_ALIAS[v]||v;};
+// migra chaves antigas p/ as novas dentro de um objeto salvo no localStorage (limites, datas etc.),
+// sem perder o que o usuário já tinha configurado quando um cartão é renomeado.
+function cpMigrarChaves(obj){
+ Object.keys(CP_CARTAO_ALIAS).forEach(function(velho){
+  var novo=CP_CARTAO_ALIAS[velho];
+  if(obj[velho]!=null&&obj[novo]==null){obj[novo]=obj[velho];}
+ });
+ return obj;
+}
+window.cpMigrarChaves=cpMigrarChaves;
 window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
-function cpLimites(){try{return JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){return {};}}
+function cpLimites(){var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){d={};}d=cpMigrarChaves(d);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(d));}catch(e){}return d;}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}cpRenderCartoes();};
 // Dia de fechamento (limite p/ compras entrarem na fatura) e dia de vencimento da fatura, por cartão.
 // Editável a qualquer momento pelo usuário; começa com os valores informados por ele como padrão.
-var CP_DATAS_PADRAO={'Sicredi':{fecha:24,vence:10},'XP Visa 7503':{fecha:18,vence:1},'Itaú Mastercard 6669':{fecha:'',vence:27},'Itaú Visa 7503':{fecha:2,vence:10},'Mercado Pago Visa 9390':{fecha:12,vence:17},'Leroy Merlin Elo 6823':{fecha:31,vence:5}};
+var CP_DATAS_PADRAO={'Sicredi Mastercard 8727':{fecha:24,vence:10},'XP Visa 7503':{fecha:18,vence:1},'Itaú Mastercard 6669':{fecha:'',vence:27},'Itaú Visa 2355':{fecha:2,vence:10},'Mercado Pago Visa 9390':{fecha:12,vence:17},'Leroy Merlin Elo 6823':{fecha:31,vence:5}};
 function cpDatas(){
  var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_datas')||'{}');}catch(e){d={};}
+ d=cpMigrarChaves(d);
  var mudou=false;
  CP_CARTOES.forEach(function(nome){if(!d[nome]&&CP_DATAS_PADRAO[nome]){d[nome]=CP_DATAS_PADRAO[nome];mudou=true;}});
  if(mudou)try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}
@@ -6964,12 +6976,19 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   function renderSaldos(){
     var grid=document.getElementById('sbGrid');if(!grid)return;
     var s=sbSaldos();var tot=0;
-    grid.innerHTML=SB_BANCOS.map(function(b){
-      var v=nbr(s[b.id]);tot+=v;
-      return '<div class="sb-card"><div class="sb-badge" style="background:'+b.cor+';font-size:'+(b.emoji?'18px':(b.ini.length>3?'10px':'12px'))+'">'+(b.emoji?b.ini:E(b.ini))+'</div>'
-        +'<div class="sb-nome">'+E(b.label)+'</div>'
-        +'<input class="sb-input" type="text" inputmode="decimal" data-id="'+E(b.id)+'" value="'+(v?v.toFixed(2):'')+'" placeholder="0,00" onchange="sbSetSaldo(this)"></div>';
-    }).join('');
+    // a home é atualizada a cada poucos segundos (setInterval mais abaixo); se o usuário estiver com
+    // o foco em um dos campos de saldo, não reconstrói o grid (senão perde o que está digitando) —
+    // só recalcula o total, que fica fora do grid.
+    var focoDentro=grid.contains(document.activeElement);
+    if(!focoDentro){
+      grid.innerHTML=SB_BANCOS.map(function(b){
+        var v=nbr(s[b.id]);
+        return '<div class="sb-card"><div class="sb-badge" style="background:'+b.cor+';font-size:'+(b.emoji?'18px':(b.ini.length>3?'10px':'12px'))+'">'+(b.emoji?b.ini:E(b.ini))+'</div>'
+          +'<div class="sb-nome">'+E(b.label)+'</div>'
+          +'<input class="sb-input" type="text" inputmode="decimal" data-id="'+E(b.id)+'" value="'+(v?v.toFixed(2).replace('.',','):'')+'" placeholder="0,00" onchange="sbSetSaldo(this)"></div>';
+      }).join('');
+    }
+    SB_BANCOS.forEach(function(b){tot+=nbr(s[b.id]);});
     var tEl=document.getElementById('sbTotal');if(tEl)tEl.textContent='Total: '+BRLf(tot);
   }
 
@@ -7209,7 +7228,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     // Quadro de aviso: CARTÕES DE CRÉDITO (disponível / estouro)
     try{
       var lim={};try{lim=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){}
-      var cards=['Itaú Visa 7503','Itaú Mastercard 6669','Leroy Merlin Elo 6823','XP Visa 7503','Sicredi','Mercado Pago Visa 9390'];
+      if(window.cpMigrarChaves)lim=window.cpMigrarChaves(lim);
+      var cards=['Itaú Visa 2355','Itaú Mastercard 6669','Leroy Merlin Elo 6823','XP Visa 7503','Sicredi Mastercard 8727','Mercado Pago Visa 9390'];
       var ac3=window.allContas||[];
       var linhas=[],algumEstouro=false;
       var nomeCartao=window.cpNomeCartao||function(v){return v;};
