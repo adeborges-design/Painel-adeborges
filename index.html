@@ -6,6 +6,7 @@
 <title>Painel Processual — Adenilson Borges da Silva</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --bg: #eef3f9;
@@ -5866,7 +5867,7 @@ function renderContas(){
   +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option></select></div>'
   +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
   +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
-  +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa</option><option>Itaú Mastercard</option><option>Leroy Merlin</option><option>XP</option><option>Sicredi</option></select></div>'
+  +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa</option><option>Itaú Mastercard</option><option>Leroy Merlin</option><option>XP</option><option>Sicredi</option><option>Mercado Pago</option></select></div>'
   +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
@@ -5949,7 +5950,7 @@ function cpConferirFatura(c){
  return {soma:soma,diff:diff};
 }
 var _cpEditId=null;
-var CP_CARTOES=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi'];
+var CP_CARTOES=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi','Mercado Pago'];
 window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
 function cpLimites(){try{return JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){return {};}}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}cpRenderCartoes();};
@@ -6791,6 +6792,12 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         </div>
       </div>
       <div id="fcBody"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;border-top:1px solid var(--border2);padding-top:14px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--muted)">Relatório mensal:</label>
+        <input type="month" id="fcMesExport" class="cc-lim" style="width:150px">
+        <button class="btn-sync" id="btnExportPdf" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
+        <span id="fcExportStatus" style="font-size:11px;color:var(--muted)"></span>
+      </div>
     </div>
     <div class="home-grid">
       <div class="home-module">
@@ -6951,7 +6958,88 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     body.innerHTML=bars+totais;
   }
 
+  // ---- Relatório mensal em PDF ----
+  function nomeMesExt(i){return ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][i];}
+  function dadosRelatorioMes(mesN,anoN){
+    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+    var ac=window.allContas||[];
+    var hons=ah.filter(function(h){var d=dbr(h['Data Pagamento']);return d&&d.getMonth()===mesN&&d.getFullYear()===anoN;});
+    var contasPagas=ac.filter(function(c){
+      if(String(c['Status']).toLowerCase()!=='paga')return false;
+      var d=dbr(c['Data Pagamento']);if(!d||d.getMonth()!==mesN||d.getFullYear()!==anoN)return false;
+      var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+      var isCompraCartao=!!c['Cartao']&&!ehFatura;
+      return !isCompraCartao;
+    });
+    var mChave=('0'+(mesN+1)).slice(-2)+'/'+anoN;
+    var loc=null;try{(window.locFluxoMensal?window.locFluxoMensal(24):[]).forEach(function(r){if(r.mes===mChave)loc=r;});}catch(e){}
+    var totHon=0;hons.forEach(function(h){totHon+=nbr(h['Valor Recebido']);});
+    var totContas=0;contasPagas.forEach(function(c){totContas+=nbr(c['Valor']);});
+    var totLocTaxa=loc?loc.taxa:0;
+    var receita=totHon+totLocTaxa,despesa=totContas;
+    return {hons:hons,contasPagas:contasPagas,loc:loc,totHon:totHon,totContas:totContas,totLocTaxa:totLocTaxa,receita:receita,despesa:despesa,saldo:receita-despesa};
+  }
+  function montarRelatorioDOM(mesN,anoN){
+    var d=dadosRelatorioMes(mesN,anoN);
+    var host=document.createElement('div');
+    host.style.cssText='position:fixed;left:-9999px;top:0;width:760px;background:#ffffff;color:#1a2233;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;padding:36px 40px';
+    function linhaTab(desc,meta,val,cor){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #e7ecf3;font-size:12px"><div><div style="color:#1a2233">'+desc+'</div>'+(meta?'<div style="color:#8a93a6;font-size:11px;margin-top:1px">'+meta+'</div>':'')+'</div><div style="font-family:\'DM Mono\',monospace;font-weight:700;color:'+(cor||'#1a2233')+';white-space:nowrap">'+val+'</div></div>';}
+    var htmlHon=d.hons.length?d.hons.map(function(h){return linhaTab(E(h['Cliente']||'-')+(h['Parcela Referencia']?' — '+E(h['Parcela Referencia']):''),E(h['Nr Processo']||''),BRLf(nbr(h['Valor Recebido'])),'#2e9e63');}).join(''):'<div style="font-size:12px;color:#8a93a6;padding:6px 0">Nenhum recebimento de honorários no período.</div>';
+    var htmlCont=d.contasPagas.length?d.contasPagas.map(function(c){return linhaTab(E(c['Descricao']||'-'),E(c['Categoria']||''),BRLf(nbr(c['Valor'])),'#c94f4f');}).join(''):'<div style="font-size:12px;color:#8a93a6;padding:6px 0">Nenhuma conta paga no período.</div>';
+    var locLinha=d.loc?linhaTab('Locações — taxa de administração recebida','Aluguéis recebidos no mês: '+BRLf(d.loc.alugueis)+' · Repasses pagos: '+BRLf(d.loc.repasse),BRLf(d.loc.taxa),'#2e9e63'):'<div style="font-size:12px;color:#8a93a6;padding:6px 0">Sem lançamentos de locação no período.</div>';
+    host.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a2233;padding-bottom:16px;margin-bottom:20px">'
+        +'<div><div style="font-family:\'DM Serif Display\',serif;font-size:26px;color:#1a2233">LexFlow</div><div style="font-size:11px;color:#8a93a6;margin-top:2px">Gestão Jurídica e Imobiliária</div></div>'
+        +'<div style="text-align:right;font-size:11px;color:#8a93a6">Adenilson Borges da Silva<br>OAB/SP 335.600</div>'
+      +'</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#1a2233;margin-bottom:2px">Relatório Financeiro Mensal</div>'
+      +'<div style="font-size:12px;color:#8a93a6;margin-bottom:20px;text-transform:capitalize">'+nomeMesExt(mesN)+' de '+anoN+'</div>'
+      +'<div style="display:flex;gap:14px;margin-bottom:26px">'
+        +'<div style="flex:1;background:#f3f6fb;border-radius:10px;padding:14px 16px"><div style="font-size:10.5px;color:#8a93a6">RECEITAS</div><div style="font-family:\'DM Serif Display\',serif;font-size:20px;color:#2e9e63;margin-top:4px">'+BRLf(d.receita)+'</div></div>'
+        +'<div style="flex:1;background:#f3f6fb;border-radius:10px;padding:14px 16px"><div style="font-size:10.5px;color:#8a93a6">DESPESAS</div><div style="font-family:\'DM Serif Display\',serif;font-size:20px;color:#c94f4f;margin-top:4px">'+BRLf(d.despesa)+'</div></div>'
+        +'<div style="flex:1;background:#f3f6fb;border-radius:10px;padding:14px 16px"><div style="font-size:10.5px;color:#8a93a6">SALDO</div><div style="font-family:\'DM Serif Display\',serif;font-size:20px;color:'+(d.saldo>=0?'#2e9e63':'#c94f4f')+';margin-top:4px">'+(d.saldo>=0?'+':'')+BRLf(d.saldo)+'</div></div>'
+      +'</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:15px;color:#1a2233;margin-bottom:6px">Honorários recebidos ('+BRLf(d.totHon)+')</div>'
+      +htmlHon
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:15px;color:#1a2233;margin:22px 0 6px">Contas a pagar quitadas ('+BRLf(d.totContas)+')</div>'
+      +htmlCont
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:15px;color:#1a2233;margin:22px 0 6px">Locações</div>'
+      +locLinha
+      +'<div style="margin-top:30px;padding-top:12px;border-top:1px solid #e7ecf3;font-size:10px;color:#b0b7c4">Relatório gerado automaticamente pelo LexFlow em '+(new Date()).toLocaleString('pt-BR')+'.</div>';
+    return host;
+  }
+  window.exportarRelatorioPDF=function(){
+    var btn=document.getElementById('btnExportPdf');var st=document.getElementById('fcExportStatus');
+    var mesInp=document.getElementById('fcMesExport');
+    var hoje=new Date();var mesN=hoje.getMonth(),anoN=hoje.getFullYear();
+    if(mesInp&&mesInp.value){var pp=mesInp.value.split('-');anoN=parseInt(pp[0],10);mesN=parseInt(pp[1],10)-1;}
+    if(!window.jspdf||!window.jspdf.jsPDF){if(st)st.innerHTML='<span style="color:var(--red)">Biblioteca de PDF não carregou — verifique a conexão.</span>';return;}
+    if(btn){btn.disabled=true;btn.textContent='⏳ gerando...';}
+    if(st)st.textContent='';
+    var host=montarRelatorioDOM(mesN,anoN);
+    document.body.appendChild(host);
+    html2canvas(host,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false}).then(function(canvas){
+      var pdf=new window.jspdf.jsPDF('p','mm','a4');
+      var pageW=210,pageH=297;
+      var imgW=pageW,imgH=canvas.height*imgW/canvas.width;
+      var heightLeft=imgH,position=0;
+      var imgData=canvas.toDataURL('image/png');
+      pdf.addImage(imgData,'PNG',0,position,imgW,imgH);
+      heightLeft-=pageH;
+      while(heightLeft>0){position=heightLeft-imgH;pdf.addPage();pdf.addImage(imgData,'PNG',0,position,imgW,imgH);heightLeft-=pageH;}
+      pdf.save('relatorio_'+nomeMesExt(mesN)+'_'+anoN+'.pdf');
+      document.body.removeChild(host);
+      if(btn){btn.disabled=false;btn.textContent='📄 Exportar PDF';}
+      if(st)st.innerHTML='<span style="color:var(--green)">PDF gerado!</span>';
+    }).catch(function(e){
+      try{document.body.removeChild(host);}catch(_){}
+      if(btn){btn.disabled=false;btn.textContent='📄 Exportar PDF';}
+      if(st)st.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';
+    });
+  };
+
   function homeRefresh(){
+    try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}
     try{renderFluxoCaixa();}catch(e){console.error('fluxoCaixa',e);}
     // Processos
     try{if(typeof allProcessos!=='undefined'){document.getElementById('hc-proc-total').textContent=allProcessos.length||0;document.getElementById('hc-proc-crit').textContent=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;}}catch(e){}
@@ -7053,12 +7141,19 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     // Quadro de aviso: CARTÕES DE CRÉDITO (disponível / estouro)
     try{
       var lim={};try{lim=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){}
-      var cards=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi'];
+      var cards=['Itaú Visa','Itaú Mastercard','Leroy Merlin','XP','Sicredi','Mercado Pago'];
       var ac3=window.allContas||[];
       var linhas=[],algumEstouro=false;
       cards.forEach(function(nome){
         var L=nbr(lim[nome]);
-        var saldo=ac3.filter(function(c){return String(c['Forma Pagamento'])===nome&&String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
+        var saldo=ac3.filter(function(c){
+          var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+          if(ehFatura)return false;
+          return String(c['Cartao'])===nome&&String(c['Status']).toLowerCase()!=='paga';
+        }).reduce(function(a,c){
+          var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
+          return a+vUso;
+        },0);
         if(L<=0&&saldo<=0)return;
         var disp=L-saldo;var pct=L>0?Math.round(saldo/L*100):null;
         if(L>0&&disp<0)algumEstouro=true;
