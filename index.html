@@ -76,6 +76,18 @@
     flex-direction: column;
   }
 
+  .lf-brand-mini {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    color: var(--accent);
+    letter-spacing: -0.2px;
+    cursor: pointer;
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .lf-brand-mini em { font-style: normal; }
+  .lf-brand-mini:hover { opacity: .8; }
+
   .header-right {
     display: flex;
     align-items: center;
@@ -2020,35 +2032,23 @@
 <!-- HEADER -->
 <header class="header">
   <div class="header-left">
-    <div class="logo-wrap">
+    <div class="logo-wrap lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
       <div class="logo">Lex<em>Flow</em></div>
-      <div class="logo-sub">Gestão Jurídica e Imobiliária</div>
+      <div class="logo-sub">Processos</div>
     </div>
   </div>
   <div class="header-right">
-    <div class="sync-pill">
+    <div class="sync-pill" id="btnSync" onclick="loadFromSheets()" style="cursor:pointer" title="Atualizar dados">
       <span class="sync-dot" id="syncDot"></span>
       <span id="syncStatus">—</span>
     </div>
-    <button class="btn-sync" id="btnSync" onclick="loadFromSheets()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 4v6h-6M1 20v-6h6"/>
-        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-      </svg>
-      Atualizar
-    </button>
-    <button class="btn-sync" onclick="abrirHonorarios()" style="border-color:rgba(200,169,110,0.4);color:var(--accent)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-      </svg>
-      Honorários
-    </button>
     <button class="btn-sync" onclick="abrirCadastro()" style="border-color:rgba(76,175,125,0.4);color:var(--green)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
       </svg>
       Novo
     </button>
+    <span class="user-menu-slot"></span>
   </div>
 </header>
 
@@ -2175,6 +2175,7 @@
 <!-- MÓDULO HONORÁRIOS -->
 <div class="hon-overlay" id="honOverlay">
   <div class="hon-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
     <div class="hon-title">💰 Controle de Honorários</div>
     <button class="btn-sync" onclick="carregarHonorarios()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -2182,6 +2183,7 @@
       </svg>
       Atualizar
     </button>
+    <span class="user-menu-slot"></span>
     <button class="btn-sync" onclick="document.getElementById('honOverlay').classList.remove('open')">✕ Fechar</button>
   </div>
 
@@ -6427,19 +6429,21 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
 
 <div class="loc-overlay" id="locOverlay">
   <div class="loc-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
     <div class="loc-title">🏠 Controle de Aluguéis</div>
     <div class="loc-sync"><span class="dot" id="locSyncDot"></span><span id="locSyncTxt">—</span></div>
     <button class="loc-btn" onclick="carregarAlugueis()">🔄 Atualizar</button>
-    <div class="loc-mes-wrap">
-      <label>Mês</label>
-      <select class="loc-select" id="locMesSel" onchange="locRender()"></select>
-    </div>
+    <span class="user-menu-slot"></span>
     <button class="loc-btn" onclick="document.getElementById('locOverlay').classList.remove('open')">✕ Fechar</button>
   </div>
   <div class="loc-body">
     <div class="loc-stats" id="locStats"></div>
     <div class="loc-chips" id="locChips"></div>
     <div class="loc-toolbar">
+      <div class="loc-mes-wrap">
+        <label>Mês</label>
+        <select class="loc-select" id="locMesSel" onchange="locRender()"></select>
+      </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" onclick="locToggleContratos()">📋 Contratos</button>
       <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
@@ -6917,14 +6921,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     return {mes:m,itens:out};
   };
 
-  // botão no header
-  function injectBtn(){
-    var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnAlugueis'))return;
-    var honBtn=Array.prototype.slice.call(hr.querySelectorAll('button')).find(function(b){return /Honor/.test(b.textContent);});
-    var b=document.createElement('button');b.id='btnAlugueis';b.className='btn-sync';b.style.cssText='border-color:rgba(91,141,238,0.5);color:var(--blue)';b.setAttribute('onclick','abrirAlugueis()');
-    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg> Aluguéis';
-    if(honBtn&&honBtn.nextSibling){hr.insertBefore(b,honBtn.nextSibling);}else{hr.appendChild(b);}
-  }
+  // botão no header (desativado: navegação agora fica no menu do usuário)
+  function injectBtn(){}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',injectBtn);else injectBtn();
   window.addEventListener('load',injectBtn);
 })();
@@ -7207,9 +7205,10 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
 <!-- CONTAS A PAGAR — módulo próprio -->
 <div class="hon-overlay" id="contasOverlay" style="z-index:905">
   <div class="hon-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
     <div class="hon-title">💸 Contas a Pagar</div>
     <button class="btn-sync" onclick="carregarContas()">🔄 Atualizar</button>
-    <button class="btn-sync" onclick="goHome()">🏠 Início</button>
+    <span class="user-menu-slot"></span>
     <button class="btn-sync" onclick="goHome()">✕ Fechar</button>
   </div>
   <div class="hon-body"><div id="contasHostBody"></div></div>
@@ -7239,13 +7238,43 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
     if(ev)ev.stopPropagation();
-    var m=document.getElementById('homeUserMenu');
-    if(m)m.classList.toggle('open');
+    var btn=ev&&ev.currentTarget;
+    var menu=btn?btn.closest('.home-user'):null;
+    if(!menu)return;
+    document.querySelectorAll('.home-user.open').forEach(function(m){if(m!==menu)m.classList.remove('open');});
+    menu.classList.toggle('open');
   };
   document.addEventListener('click',function(e){
-    var m=document.getElementById('homeUserMenu');
-    if(m&&m.classList.contains('open')&&!m.contains(e.target))m.classList.remove('open');
+    document.querySelectorAll('.home-user.open').forEach(function(m){
+      if(!m.contains(e.target))m.classList.remove('open');
+    });
   });
+
+  // ---- Menu de usuário reutilizável (injetado nos cabeçalhos de Processos/Honorários/Contas/Locações) ----
+  var USER_MENU_HTML =
+    '<div class="home-user">'+
+      '<button class="home-user-btn" onclick="toggleUserMenu(event)">'+
+        '<span class="home-user-info"><span class="home-user-name">Adenilson Borges da Silva</span><span class="home-user-oab">OAB/SP 335.600</span></span>'+
+        '<span class="home-user-avatar">AB</span>'+
+        '<svg class="home-user-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>'+
+      '</button>'+
+      '<div class="home-user-dropdown">'+
+        '<button class="home-user-item" onclick="openProcessos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Processos</button>'+
+        '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
+        '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
+        '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
+        '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
+        '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
+        '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="document.getElementById(\'modalConfig\').classList.add(\'open\');this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Configurações</button>'+
+      '</div>'+
+    '</div>';
+  window.injectUserMenus=function(){
+    document.querySelectorAll('.user-menu-slot').forEach(function(slot){
+      slot.outerHTML=USER_MENU_HTML;
+    });
+  };
 
   window.goHome=function(){closeOverlays();document.getElementById('homeOverlay').classList.add('open');homeRefresh();};
   window.openProcessos=function(){closeOverlays();/* revela o layout base de processos */try{if(typeof updateStats==='function')updateStats();}catch(e){}};
@@ -7623,17 +7652,9 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   }
   window.renderProximosDias=renderProximosDias;
 
-  // ---- Botões de navegação no header ----
+  // ---- Botões de navegação no header (desativado: navegação agora fica no menu do usuário) ----
   function injectNav(){
-    var hr=document.querySelector('.header-right');if(!hr||document.getElementById('btnInicio'))return;
-    var first=hr.firstChild;
-    function mk(id,label,color,onclick){var b=document.createElement('button');b.id=id;b.className='btn-sync';if(color)b.style.cssText='border-color:'+color+';';b.setAttribute('onclick',onclick);b.textContent=label;return b;}
-    hr.insertBefore(mk('btnInicio','🏠 Início','rgba(200,169,110,0.5)','goHome()'),first);
-    hr.insertBefore(mk('btnProcessos','⚖️ Processos','',"openProcessos()"),document.getElementById('btnInicio').nextSibling);
-    // Contas a Pagar (após Honorários se existir)
-    var honBtn=Array.prototype.slice.call(hr.querySelectorAll('button')).find(function(b){return /Honor/.test(b.textContent);});
-    var bc=mk('btnContas','💸 Contas','rgba(224,124,58,0.5)','openContas()');
-    if(honBtn&&honBtn.nextSibling)hr.insertBefore(bc,honBtn.nextSibling);else hr.appendChild(bc);
+    if(typeof injectUserMenus==='function')injectUserMenus();
   }
 
   // ---- Fechar dos overlays volta para o Início ----
