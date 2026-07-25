@@ -2568,9 +2568,9 @@
               <option value="">Selecionar</option>
               <option>Solteiro(a)</option>
               <option>Casado(a)</option>
-              <option>Divorciado(a)</option>
+              <option>Separado(a)</option>
               <option>Viúvo(a)</option>
-              <option>União estável</option>
+              <option>União Estável</option>
             </select>
           </div>
           <div class="form-field">
@@ -2797,9 +2797,9 @@
               <option value="">Selecionar</option>
               <option>Solteiro(a)</option>
               <option>Casado(a)</option>
-              <option>Divorciado(a)</option>
+              <option>Separado(a)</option>
               <option>Viúvo(a)</option>
-              <option>União estável</option>
+              <option>União Estável</option>
             </select>
           </div>
           <div class="form-field">
@@ -3413,7 +3413,7 @@ function parseProcessos(rows) {
     const processo         = get(row, 'Número do Processo', 2);
     const sistema          = get(row, 'Sistema',          3);
     const vara             = get(row, 'Vara',              -1);  // coluna D nova
-    const tribunal         = get(row, 'Tribunal e Fórum',  -1);  // coluna E nova
+    const tribunal         = get(row, 'Tribunal e Forum',  -1);  // cabeçalho real na planilha é sem acento
     const cpfCnpj          = get(row, 'CPF/CNPJ',         6);
     const rg               = get(row, 'RG/ Órgão emissor', 7);
     const estadoCivil      = get(row, 'Estado civil',     8);
@@ -5365,7 +5365,7 @@ async function salvarEdicao() {
     'Número do Processo': document.getElementById('ed-processo').value,
     'Sistema': document.getElementById('ed-sistema').value,
     'Vara': document.getElementById('ed-vara').value,
-    'Tribunal e Fórum': document.getElementById('ed-tribunal').value,
+    'Tribunal e Forum': document.getElementById('ed-tribunal').value,
     'Ramo do Direito': document.getElementById('ed-ramo').value,
     'Tipo de Acao': document.getElementById('ed-tipo').value,
     'Parte': document.getElementById('ed-parte').value,
@@ -5656,7 +5656,7 @@ async function salvarCadastro() {
     'Número do Processo': document.getElementById('cad-processo').value,
     'Sistema': document.getElementById('cad-sistema').value,
     'Vara': document.getElementById('cad-vara').value,
-    'Tribunal e Fórum': document.getElementById('cad-tribunal').value,
+    'Tribunal e Forum': document.getElementById('cad-tribunal').value,
     'Ramo do Direito': document.getElementById('cad-ramo').value,
     'Tipo de Acao': document.getElementById('cad-tipo').value,
     'Parte': document.getElementById('cad-parte').value,
