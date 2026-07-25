@@ -1112,6 +1112,7 @@
     .modal-card-overlay,
     .modal-doc-overlay,
     .modal-overlay,
+    .modal-repasse-overlay,
     .layout, .header, .sidebar, .main { display: none !important; }
   }
 
@@ -1128,6 +1129,30 @@
     overflow-y: auto;
   }
   .modal-parceiro-overlay.open { display: flex; }
+
+  /* MODAL CARD REPASSE PARCEIRO */
+  .modal-repasse-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 950;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-repasse-overlay.open { display: flex; }
+
+  .repasse-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 560px;
+    max-width: 96vw;
+    margin: auto;
+    overflow: hidden;
+  }
 
   .parceiro-wrap {
     background: var(--surface);
@@ -3622,6 +3647,7 @@ function renderProcessos() {
     // Filtro de urgencia / audiencia / providencia
     if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
     if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
+    if (currentFilter === 'criticourgente') return p.urgencia === 'critico' || p.urgencia === 'urgente';
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
 
     // Busca textual
@@ -6961,6 +6987,14 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .home-card.cont .ic{background:rgba(224,124,58,.15);color:var(--orange)}
   .home-card.hon .ic{background:rgba(76,175,125,.15);color:var(--green)}
   .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)}
+  .cnum{position:relative;padding:2px 4px;margin:-2px -4px;border-radius:8px;transition:background .15s}
+  .cnum.cnum-clickable{cursor:pointer}
+  .cnum.cnum-clickable:hover{background:rgba(255,255,255,.06)}
+  .cnum.cnum-clickable:hover .v{text-decoration:underline}
+  .cnum-spark-wrap{display:block;margin-top:5px;line-height:0;height:20px;width:60px}
+  .cnum-spark{width:60px;height:20px;display:block;opacity:.85}
+  @keyframes cnumPulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .cnum.crit-active .v{animation:cnumPulse 1.3s ease-in-out infinite}
   .home-config{margin-top:28px;font-size:12px;color:var(--muted)}
   .home-config a{color:var(--accent);cursor:pointer;text-decoration:underline}
   .home-alertas{display:none;background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:0;margin-bottom:0;transition:all .18s;overflow:hidden}
@@ -7151,8 +7185,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           <div class="ctitle">Processos</div>
           <div class="cdesc">Andamentos, prazos e audiências</div>
           <div class="cnums">
-            <div class="cnum"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div></div>
-            <div class="cnum"><div class="v" id="hc-proc-crit" style="color:var(--red)">—</div><div class="l">crítico/urgente</div></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openProcessos()" title="Ver todos os processos ativos"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div><span class="cnum-spark-wrap" id="spark-proc-total"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openProcessos('criticourgente')" title="Ver processos críticos/urgentes"><div class="v" id="hc-proc-crit" style="color:var(--red)">—</div><div class="l">crítico/urgente</div><span class="cnum-spark-wrap" id="spark-proc-crit"></span></div>
           </div>
         </div>
         <div class="home-alertas" id="homeAlertProc"></div>
@@ -7164,8 +7198,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           <div class="ctitle">Locações</div>
           <div class="cdesc">Aluguéis, repasses e contratos</div>
           <div class="cnums">
-            <div class="cnum"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div></div>
-            <div class="cnum"><div class="v" id="hc-loc-pend" style="color:var(--yellow)">—</div><div class="l">em aberto</div></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openAlugueisHome()" title="Ver aluguéis do mês"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div><span class="cnum-spark-wrap" id="spark-loc-alug"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openAlugueisHome()" title="Pendentes ou atrasados"><div class="v" id="hc-loc-pend" style="color:var(--yellow)">—</div><div class="l">pendentes/atrasados</div><span class="cnum-spark-wrap" id="spark-loc-pend"></span></div>
           </div>
         </div>
         <div class="home-alertas" id="homeAlertLoc"></div>
@@ -7177,8 +7211,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           <div class="ctitle">Contas a Pagar</div>
           <div class="cdesc">Despesas do escritório</div>
           <div class="cnums">
-            <div class="cnum"><div class="v" id="hc-cont-aberto" style="color:var(--orange)">—</div><div class="l">em aberto</div></div>
-            <div class="cnum"><div class="v" id="hc-cont-venc" style="color:var(--red)">—</div><div class="l">vencidas</div></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openContas()" title="Ver contas em aberto"><div class="v" id="hc-cont-aberto" style="color:var(--orange)">—</div><div class="l">em aberto</div><span class="cnum-spark-wrap" id="spark-cont-aberto"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openContas()" title="Ver contas vencidas"><div class="v" id="hc-cont-venc" style="color:var(--red)">—</div><div class="l">vencidas</div><span class="cnum-spark-wrap" id="spark-cont-venc"></span></div>
           </div>
         </div>
         <div class="home-alertas" id="homeAlertas"></div>
@@ -7191,8 +7225,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           <div class="ctitle">Honorários</div>
           <div class="cdesc">Recebimentos e repasses</div>
           <div class="cnums">
-            <div class="cnum"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div></div>
-            <div class="cnum"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver honorários recebidos"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div><span class="cnum-spark-wrap" id="spark-hon-total"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver todos os lançamentos"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div><span class="cnum-spark-wrap" id="spark-hon-qtd"></span></div>
           </div>
         </div>
         <div class="home-alertas" id="homeAlertHon"></div>
@@ -7277,7 +7311,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   };
 
   window.goHome=function(){closeOverlays();document.getElementById('homeOverlay').classList.add('open');homeRefresh();};
-  window.openProcessos=function(){closeOverlays();/* revela o layout base de processos */try{if(typeof updateStats==='function')updateStats();}catch(e){}};
+  window.openProcessos=function(filtro){closeOverlays();/* revela o layout base de processos */try{if(filtro&&typeof filterBy==='function')filterBy(filtro);else if(typeof updateStats==='function')updateStats();}catch(e){}};
   window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
   window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
@@ -7453,19 +7487,69 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     });
   };
 
+  // ---- Sparklines dos cartões de resumo (histórico local, 1 amostra/dia, até 14 pontos) ----
+  function homeHistPush(key,val){
+    try{
+      var raw=localStorage.getItem('lexflow_home_hist');
+      var hist=raw?JSON.parse(raw):{};
+      var today=new Date().toISOString().slice(0,10);
+      hist[key]=hist[key]||[];
+      var last=hist[key][hist[key].length-1];
+      if(last&&last.d===today){last.v=val;}else{hist[key].push({d:today,v:val});}
+      if(hist[key].length>14)hist[key]=hist[key].slice(-14);
+      localStorage.setItem('lexflow_home_hist',JSON.stringify(hist));
+      return hist[key];
+    }catch(e){return [];}
+  }
+  function sparklineSvg(points,color){
+    if(!points||points.length<2)return '';
+    var vals=points.map(function(p){return p.v;});
+    var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
+    var range=(max-min)||1;
+    var w=60,h=20,step=w/(points.length-1);
+    var d=points.map(function(p,i){var x=i*step;var y=h-((p.v-min)/range)*h*0.85-1.5;return (i===0?'M':'L')+x.toFixed(1)+','+y.toFixed(1);}).join(' ');
+    return '<svg class="cnum-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function renderSpark(id,key,val,color){try{var el=document.getElementById(id);if(!el)return;el.innerHTML=sparklineSvg(homeHistPush(key,val),color);}catch(e){}}
+  function setCritActive(cnumId,active){try{var v=document.getElementById(cnumId);var cn=v&&v.closest('.cnum');if(cn)cn.classList.toggle('crit-active',!!active);}catch(e){}}
+
   function homeRefresh(){
     try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}
     try{renderSaldos();}catch(e){console.error('saldos',e);}
     try{renderFluxoCaixa();}catch(e){console.error('fluxoCaixa',e);}
     // Processos
-    try{if(typeof allProcessos!=='undefined'){document.getElementById('hc-proc-total').textContent=allProcessos.length||0;document.getElementById('hc-proc-crit').textContent=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;}}catch(e){}
+    try{if(typeof allProcessos!=='undefined'){
+      var pTotal=allProcessos.length||0,pCrit=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;
+      document.getElementById('hc-proc-total').textContent=pTotal;
+      document.getElementById('hc-proc-crit').textContent=pCrit;
+      renderSpark('spark-proc-total','proc-total',pTotal,'var(--accent2)');
+      renderSpark('spark-proc-crit','proc-crit',pCrit,'var(--red)');
+      setCritActive('hc-proc-crit',pCrit>0);
+    }}catch(e){}
     try{renderProximosDias();}catch(e){}
     // Honorários
-    try{if(typeof allHonorarios!=='undefined'){var tot=0;allHonorarios.forEach(function(h){tot+=parseFloat(h['Valor Recebido'])||0;});document.getElementById('hc-hon-total').textContent=BRLf(tot);document.getElementById('hc-hon-qtd').textContent=allHonorarios.length;}}catch(e){}
+    try{if(typeof allHonorarios!=='undefined'){var tot=0;allHonorarios.forEach(function(h){tot+=parseFloat(h['Valor Recebido'])||0;});
+      document.getElementById('hc-hon-total').textContent=BRLf(tot);
+      document.getElementById('hc-hon-qtd').textContent=allHonorarios.length;
+      renderSpark('spark-hon-total','hon-total',tot,'var(--green)');
+      renderSpark('spark-hon-qtd','hon-qtd',allHonorarios.length,'var(--muted)');
+    }}catch(e){}
     // Contas
-    try{var ac=window.allContas||[];var hoje=new Date();hoje.setHours(0,0,0,0);var aberto=0,venc=0;ac.forEach(function(c){if(String(c['Status']).toLowerCase()!=='paga'){var v=nbr(c['Valor']);aberto+=v;var d=dbr(c['Data Vencimento']);if(d&&d<hoje)venc++;}});document.getElementById('hc-cont-aberto').textContent=BRLf(aberto);document.getElementById('hc-cont-venc').textContent=venc;}catch(e){}
+    try{var ac=window.allContas||[];var hoje=new Date();hoje.setHours(0,0,0,0);var aberto=0,venc=0;ac.forEach(function(c){if(String(c['Status']).toLowerCase()!=='paga'){var v=nbr(c['Valor']);aberto+=v;var d=dbr(c['Data Vencimento']);if(d&&d<hoje)venc++;}});
+      document.getElementById('hc-cont-aberto').textContent=BRLf(aberto);
+      document.getElementById('hc-cont-venc').textContent=venc;
+      renderSpark('spark-cont-aberto','cont-aberto',aberto,'var(--orange)');
+      renderSpark('spark-cont-venc','cont-venc',venc,'var(--red)');
+      setCritActive('hc-cont-venc',venc>0);
+    }catch(e){}
     // Locações
-    try{if(typeof window.locResumo==='function'){var r=window.locResumo();document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);document.getElementById('hc-loc-pend').textContent=(r.pendentes+r.atrasados);}}catch(e){}
+    try{if(typeof window.locResumo==='function'){var r=window.locResumo();var locPend=(r.pendentes+r.atrasados);
+      document.getElementById('hc-loc-alug').textContent=BRLf(r.alugueis);
+      document.getElementById('hc-loc-pend').textContent=locPend;
+      renderSpark('spark-loc-alug','loc-alug',r.alugueis,'var(--blue)');
+      renderSpark('spark-loc-pend','loc-pend',locPend,'var(--yellow)');
+      setCritActive('hc-loc-pend',r.atrasados>0);
+    }}catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
     try{
       var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
@@ -7561,20 +7645,21 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       if(window.cpMigrarChaves)lim=window.cpMigrarChaves(lim);
       var cards=['Itaú Visa 2355','Itaú Mastercard 6669','Leroy Merlin Elo 6823','XP Visa 7503','Sicredi Mastercard 8727','Mercado Pago Visa 9390'];
       var ac3=window.allContas||[];
-      var linhas=[],algumEstouro=false;
+      var linhas=[],algumEstouro=false,totalDisp=0,temLimite=false;
       var nomeCartao=window.cpNomeCartao||function(v){return v;};
       cards.forEach(function(nome){
         var L=nbr(lim[nome]);
         var saldo=ac3.filter(function(c){
           var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
           if(ehFatura)return false;
-          return nomeCartao(c['Cartao'])===nome&&String(c['Status']).toLowerCase()!=='paga';
+          return (nomeCartao(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';
         }).reduce(function(a,c){
           var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
           return a+vUso;
         },0);
         if(L<=0&&saldo<=0)return;
         var disp=L-saldo;var pct=L>0?Math.round(saldo/L*100):null;
+        if(L>0){temLimite=true;totalDisp+=disp;}
         if(L>0&&disp<0)algumEstouro=true;
         var cor=(L>0&&disp<0)?'var(--red)':((pct!=null&&pct>=80)?'var(--orange)':'var(--green)');
         linhas.push('<div class="ha-item"><b>'+E(nome)+'</b> — disponível <b style="color:'+cor+'">'+BRLf(disp)+'</b>'+(pct!=null?' ('+pct+'% usado)':' (defina o limite)')+'</div>');
@@ -7582,7 +7667,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       if(!linhas.length){setAlertBox('homeAlertCartoes',null);}
       else{
         var hc=(algumEstouro?'<div class="ha-tit venc">💳 Cartão(ões) acima do limite</div>':'<div class="ha-tit" style="color:var(--accent2)">💳 Cartões de crédito</div>')+linhas.join('');
-        setAlertBox('homeAlertCartoes',algumEstouro?'💳 Cartão(ões) acima do limite':'💳 Cartões de crédito',algumEstouro?'var(--red)':'var(--border2)',hc,'abrir Contas a Pagar','openContas()');
+        var resumoCC=algumEstouro?'💳 Cartão(ões) acima do limite':(temLimite?'💳 '+BRLf(totalDisp)+' disponível no total':'💳 Cartões de crédito (defina o limite)');
+        setAlertBox('homeAlertCartoes',resumoCC,algumEstouro?'var(--red)':'var(--border2)',hc,'abrir Contas a Pagar','openContas()');
       }
     }catch(e){}
     // config msg
