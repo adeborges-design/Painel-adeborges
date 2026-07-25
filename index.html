@@ -5378,7 +5378,7 @@ function abrirDocumentos(uid) {
   document.getElementById('docsCarregando').style.display = '';
   document.getElementById('modalDocumentos').classList.add('open');
 
-  if (!p.pastaDrive || p.pastaDrive.length < 5) {
+  if (!extrairIdPastaUrl(p.pastaDrive)) {
     document.getElementById('docsCarregando').style.display = 'none';
     document.getElementById('docsSemPasta').style.display = '';
   } else {
