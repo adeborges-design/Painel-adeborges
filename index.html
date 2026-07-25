@@ -657,7 +657,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.7);
-    z-index: 200;
+    z-index: 950;
     align-items: center;
     justify-content: center;
   }
@@ -759,7 +759,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.88);
-    z-index: 400;
+    z-index: 950;
     align-items: flex-start;
     justify-content: center;
     padding: 20px;
@@ -1109,7 +1109,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.85);
-    z-index: 480;
+    z-index: 950;
     align-items: flex-start;
     justify-content: center;
     padding: 20px;
@@ -1419,7 +1419,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.85);
-    z-index: 500;
+    z-index: 950;
     align-items: flex-start;
     justify-content: center;
     padding: 20px;
@@ -1566,7 +1566,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.88);
-    z-index: 450;
+    z-index: 950;
     align-items: flex-start;
     justify-content: center;
     padding: 20px;
@@ -1732,7 +1732,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.85);
-    z-index: 300;
+    z-index: 950;
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -6992,21 +6992,27 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .cp-cc-card .cc-bar{height:6px;background:var(--surface2);border-radius:3px;margin-top:8px;overflow:hidden}
   .cp-cc-card .cc-fill{height:100%;border-radius:3px;transition:width .3s}
   @media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-wrap{padding:28px 16px 50px}}
-  .home-agenda{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+  .home-agenda-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+  .home-agenda{display:contents}
   .ha-day{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px}
   .ha-day.hoje{border-color:var(--accent)}
   .ha-day-label{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
   .ha-day-label .tag{font-size:10px;font-weight:700;background:var(--accent);color:#fff;padding:2px 8px;border-radius:20px;letter-spacing:.03em}
   .ha-sec-tit{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin:12px 0 6px}
   .ha-sec-tit:first-of-type{margin-top:0}
-  .ha-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border2);font-size:12.5px}
+  .ha-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0 6px 8px;margin-left:-8px;border-bottom:1px solid var(--border2);border-left:3px solid transparent;font-size:12.5px}
   .ha-item:last-child{border-bottom:none}
-  .ha-hora{font-family:'DM Mono',monospace;color:var(--accent2);font-weight:700;flex-shrink:0;min-width:40px}
+  .ha-item.tipo-compromisso{border-left-color:var(--purple,#9b6dff)}
+  .ha-item.tipo-tarefa{border-left-color:var(--green,#4caf7d)}
+  .ha-item.urg-alta{border-left-color:var(--red)}
+  .ha-item.urg-media{border-left-color:var(--orange)}
+  .ha-item.urg-baixa{border-left-color:var(--border2)}
+  .ha-hora{font-family:'DM Mono',monospace;color:var(--accent2);font-weight:700;flex-shrink:0;min-width:52px}
   .ha-tit-ev{color:var(--text)}
   .ha-loc{color:var(--muted);font-size:11px;margin-top:1px}
   .ha-empty{font-size:12px;color:var(--muted);padding:4px 0}
   .ha-err{font-size:12px;color:var(--orange)}
-  @media(max-width:760px){.home-agenda{grid-template-columns:1fr}}
+  @media(max-width:900px){.home-agenda-row{grid-template-columns:1fr}}
   .fc-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:28px}
   .fc-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
   .fc-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text)}
@@ -7072,13 +7078,26 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         </svg>
       </button>
       <div class="home-user-dropdown" id="homeUserDropdown">
-        <button class="home-user-item" onclick="loadFromSheets();document.getElementById('homeUserMenu').classList.remove('open')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-          Atualizar dados
+        <button class="home-user-item" onclick="openProcessos();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          Processos
         </button>
         <button class="home-user-item" onclick="abrirHonorarios();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           Honorários
+        </button>
+        <button class="home-user-item" onclick="openContas();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Contas a Pagar
+        </button>
+        <button class="home-user-item" onclick="openAlugueisHome();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Locações
+        </button>
+        <div class="home-user-divider"></div>
+        <button class="home-user-item" onclick="loadFromSheets();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Atualizar dados
         </button>
         <button class="home-user-item" onclick="abrirCadastro();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -7098,7 +7117,10 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
       <span class="home-today-dot">•</span>
       <div class="home-date" id="homeDate">—</div>
     </div>
-    <div class="home-agenda" id="homeAgenda"></div>
+    <div class="home-agenda-row">
+      <div class="home-agenda" id="homeAgenda"></div>
+      <div class="ha-day" id="homeProximos"></div>
+    </div>
     <div class="fc-card">
       <div class="fc-head">
         <div class="fc-title">🏦 Saldos em Contas</div>
@@ -7408,6 +7430,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     try{renderFluxoCaixa();}catch(e){console.error('fluxoCaixa',e);}
     // Processos
     try{if(typeof allProcessos!=='undefined'){document.getElementById('hc-proc-total').textContent=allProcessos.length||0;document.getElementById('hc-proc-crit').textContent=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;}}catch(e){}
+    try{renderProximosDias();}catch(e){}
     // Honorários
     try{if(typeof allHonorarios!=='undefined'){var tot=0;allHonorarios.forEach(function(h){tot+=parseFloat(h['Valor Recebido'])||0;});document.getElementById('hc-hon-total').textContent=BRLf(tot);document.getElementById('hc-hon-qtd').textContent=allHonorarios.length;}}catch(e){}
     // Contas
@@ -7558,10 +7581,10 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var el=document.getElementById('homeAgenda'); if(!el)return;
     el.innerHTML=dias.map(function(dia,i){
       var comp=(dia.compromissos||[]).map(function(ev){
-        return '<div class="ha-item"><span class="ha-hora">'+E(ev.hora||'dia todo')+'</span><div><div class="ha-tit-ev">'+E(ev.titulo)+'</div>'+(ev.local?'<div class="ha-loc">📍 '+E(ev.local)+'</div>':'')+'</div></div>';
+        return '<div class="ha-item tipo-compromisso"><span class="ha-hora">'+E(ev.hora||'dia todo')+'</span><div><div class="ha-tit-ev">'+E(ev.titulo)+'</div>'+(ev.local?'<div class="ha-loc">📍 '+E(ev.local)+'</div>':'')+'</div></div>';
       }).join('')||'<div class="ha-empty">Sem compromissos.</div>';
       var tar=(dia.tarefas||[]).map(function(ev){
-        return '<div class="ha-item"><span class="ha-hora">'+E(ev.hora||'•')+'</span><div class="ha-tit-ev">'+E(ev.titulo)+'</div></div>';
+        return '<div class="ha-item tipo-tarefa"><span class="ha-hora">'+E(ev.hora||'•')+'</span><div class="ha-tit-ev">'+E(ev.titulo)+'</div></div>';
       }).join('')||'<div class="ha-empty">Sem tarefas.</div>';
       return '<div class="ha-day'+(i===0?' hoje':'')+'">'+
         '<div class="ha-day-label">'+(i===0?'<span class="tag">HOJE</span> ':'')+E(dia.label)+'</div>'+
@@ -7569,7 +7592,36 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
         '<div class="ha-sec-tit">✅ Tarefas</div>'+tar+
         '</div>';
     }).join('');
+    try{renderProximosDias();}catch(e){}
   }
+
+  // ---- 3ª coluna: Próximos Dias (prazos processuais + audiências, a partir de allProcessos) ----
+  function renderProximosDias(){
+    var el=document.getElementById('homeProximos'); if(!el)return;
+    var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
+    if(!ap.length){ el.innerHTML='<div class="ha-day-label">📆 Próximos Dias</div><div class="ha-empty">Sem dados de processos carregados ainda.</div>'; return; }
+    var hoje=new Date(); hoje.setHours(0,0,0,0);
+    var itens=[];
+    ap.forEach(function(p){
+      if(p.prazoData&&String(p.prazoData).length>3){
+        var d=dbr(p.prazoData);
+        if(d){var diff=Math.round((d-hoje)/86400000); if(diff>=2&&diff<=30)itens.push({diff:diff,titulo:p.nome||p.processo||'-',sub:'Prazo processual'+(p.processo?' · '+p.processo:''),tipo:'prazo'});}
+      }
+      if(p.dataAudi&&String(p.dataAudi).length>3){
+        var da=dbr(p.dataAudi);
+        if(da){var diffA=Math.round((da-hoje)/86400000); if(diffA>=2&&diffA<=30)itens.push({diff:diffA,titulo:p.nome||p.processo||'-',sub:'Audiência'+(p.horAudi?' às '+p.horAudi:''),tipo:'audiencia'});}
+      }
+    });
+    itens.sort(function(a,b){return a.diff-b.diff;});
+    itens=itens.slice(0,8);
+    var body=itens.length?itens.map(function(x){
+      var urg=x.diff<=5?'urg-alta':(x.diff<=15?'urg-media':'urg-baixa');
+      var diaLabel=x.diff===1?'amanhã':'em '+x.diff+'d';
+      return '<div class="ha-item '+urg+'"><span class="ha-hora">'+diaLabel+'</span><div><div class="ha-tit-ev">'+E(x.titulo)+'</div><div class="ha-loc">'+(x.tipo==='audiencia'?'⚖️ ':'⏰ ')+E(x.sub)+'</div></div></div>';
+    }).join(''):'<div class="ha-empty">Nada previsto nos próximos dias.</div>';
+    el.innerHTML='<div class="ha-day-label">📆 Próximos Dias</div>'+body;
+  }
+  window.renderProximosDias=renderProximosDias;
 
   // ---- Botões de navegação no header ----
   function injectNav(){
