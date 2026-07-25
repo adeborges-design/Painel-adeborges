@@ -7566,7 +7566,8 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     }catch(e){return [];}
   }
   function sparklineSvg(points,color){
-    if(!points||points.length<2)return '';
+    if(!points||!points.length)return '';
+    if(points.length===1)points=[points[0],points[0]]; // 1º dia: mostra uma linha reta de base até acumular histórico real
     var vals=points.map(function(p){return p.v;});
     var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
     var range=(max-min)||1;
