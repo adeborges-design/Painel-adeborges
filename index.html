@@ -2723,12 +2723,9 @@
             <input type="date" id="ed-dataPrazoCliente">
           </div>
           <div class="form-field">
-            <label>Dias para Cumprimento (diasPrazo)</label>
-            <input type="number" id="ed-diasPrazo" min="0">
-          </div>
-          <div class="form-field">
-            <label>Data do Prazo (prazoData)</label>
+            <label>Data do Prazo</label>
             <input type="date" id="ed-prazoData">
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Os dias restantes são calculados automaticamente a partir dessa data — não precisa mais digitar "dias para cumprimento".</div>
           </div>
         </div>
       </div>
@@ -3449,7 +3446,7 @@ function parseProcessos(rows) {
     const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
     const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
     const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
-    const diasPrazo        = get(row, 'diasPrazo',        38);
+    const diasPrazo        = get(row, 'diasPrazo',        -1); // -1: campo legado, se a coluna for excluída da planilha simplesmente vira vazio (sem ler índice deslocado por engano)
     const prazoData        = get(row, 'prazoData',        39);
     const dataAudi         = get(row, 'Data Audiência',   40);
     const horAudi          = get(row, 'Horário Audiência', 41);
@@ -3561,19 +3558,20 @@ function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, 
     }
   }
 
-  // 2. prazoData - data do prazo processual
+  // 2. prazoData - data do prazo processual (prazo vencido = máxima urgência, nunca "normal")
   if (prazoData && prazoData.length > 3) {
     const d = parseDate(prazoData);
     if (d) {
       const diff = Math.ceil((d - hoje) / 86400000);
-      if (diff <= 5 && diff >= 0) return 'critico';
-      if (diff <= 15 && diff >= 0) return 'urgente';
-      if (diff <= 30 && diff >= 0) return 'atencao';
+      if (diff < 0) return 'critico';
+      if (diff <= 5) return 'critico';
+      if (diff <= 15) return 'urgente';
+      if (diff <= 30) return 'atencao';
     }
   }
 
-  // 3. diasPrazo - dias restantes informados manualmente
-  if (diasPrazo > 0) {
+  // 3. diasPrazo - legado: só usado como fallback quando não há prazoData (registros antigos sem data cadastrada)
+  if (!prazoData && diasPrazo > 0) {
     if (diasPrazo <= 5) return 'critico';
     if (diasPrazo <= 15) return 'urgente';
     if (diasPrazo <= 30) return 'atencao';
@@ -3816,15 +3814,10 @@ function renderCard(p, idx) {
               <div class="detail-label">Posicao processual</div>
               <div class="detail-value">${escHtml(p.parte) || '-'}</div>
             </div>
-            ${p.diasPrazo > 0 ? `
-            <div class="detail-block">
-              <div class="detail-label">Dias para cumprimento</div>
-              <div class="detail-value" style="color:${p.diasPrazo <= 5 ? 'var(--red)' : p.diasPrazo <= 15 ? 'var(--orange)' : 'var(--text)'}">${p.diasPrazo} dias</div>
-            </div>` : ''}
             ${p.prazoData && p.prazoData.length > 3 ? `
             <div class="detail-block">
               <div class="detail-label">Data do prazo</div>
-              <div class="detail-value" style="color:var(--accent)">${formatDate(p.prazoData)}</div>
+              <div class="detail-value" style="color:var(--accent)">${formatDate(p.prazoData)}${pc.fonte === 'Prazo processual' ? ` <span style="font-size:11px;font-weight:400;color:${pc.dias<0?'var(--red)':'var(--muted)'}">(${pc.texto})</span>` : ''}</div>
             </div>` : ''}
             ${p.dataPrazoCliente && p.dataPrazoCliente.length > 3 ? `
             <div class="detail-block">
@@ -5298,7 +5291,6 @@ function abrirEdicao(uid) {
   document.getElementById('ed-status').value = p.status || 'ATIVO';
   document.getElementById('ed-proxAdv').value = p.proximoPassoAdv || '';
   document.getElementById('ed-provCliente').value = p.providCliente || '';
-  document.getElementById('ed-diasPrazo').value = p.diasPrazo || '';
   document.getElementById('ed-obs').value = p.obs || '';
 
   // Converter datas para formato input date (yyyy-mm-dd)
@@ -5387,7 +5379,6 @@ async function salvarEdicao() {
     'proximoPassoAdv': document.getElementById('ed-proxAdv').value,
     'Providências para o Cliente Atender': document.getElementById('ed-provCliente').value,
     'dataPrazoCliente': inputParaData(document.getElementById('ed-dataPrazoCliente').value),
-    'diasPrazo': document.getElementById('ed-diasPrazo').value,
     'prazoData': inputParaData(document.getElementById('ed-prazoData').value),
     'Data Audiência': inputParaData(document.getElementById('ed-dataAudi').value),
     'Horário Audiência': document.getElementById('ed-horAudi').value,
