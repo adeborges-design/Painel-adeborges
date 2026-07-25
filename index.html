@@ -7090,6 +7090,23 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
   .home-today-row .home-hello{margin-bottom:0}
   .home-today-row .home-date{margin-bottom:0}
   .home-today-dot{color:var(--border2);font-size:20px;line-height:1;font-weight:700}
+  .home-header-right{display:flex;align-items:center;gap:14px}
+  .home-notif{position:relative}
+  .home-notif-btn{position:relative;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:none;border:none;cursor:pointer;color:var(--muted);transition:background .15s,color .15s}
+  .home-notif-btn:hover{background:var(--surface2,#f3f6fb);color:var(--accent)}
+  .home-notif-btn svg{width:20px;height:20px}
+  .home-notif-badge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;line-height:1}
+  .home-notif-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,0.14);width:340px;max-width:90vw;max-height:440px;overflow-y:auto;z-index:60;padding:10px}
+  .home-notif.open .home-notif-dropdown{display:block}
+  .home-notif-dd-title{font-family:'DM Serif Display',serif;font-size:14px;color:var(--text);padding:4px 6px 10px;border-bottom:1px solid var(--border);margin-bottom:8px}
+  .notif-item{padding:10px 11px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:rgba(0,0,0,.02)}
+  .notif-item:hover{background:rgba(0,0,0,.05)}
+  .notif-item-head{font-weight:700;font-size:12px;margin-bottom:4px}
+  .notif-item-body{font-size:11.5px;color:var(--muted)}
+  .notif-item-body .ha-item{margin:2px 0}
+  .notif-item-body .ha-tit{font-size:11px;margin:6px 0 2px}
+  .notif-item-cta{font-size:11px;color:var(--accent);margin-top:6px;font-weight:600}
+  .notif-empty{padding:24px 10px;text-align:center;font-size:12px;color:var(--muted)}
 </style>
 
 <div class="home-overlay open" id="homeOverlay">
@@ -7097,6 +7114,17 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     <div class="home-brand">
       <div class="home-logo">Lex<em>Flow</em></div>
       <div class="home-sub">Gestão Jurídica e Imobiliária</div>
+    </div>
+    <div class="home-header-right">
+    <div class="home-notif" id="notifBell">
+      <button class="home-notif-btn" onclick="toggleNotifBell(event)" title="Notificações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="home-notif-badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="home-notif-dropdown" id="notifDropdown">
+        <div class="home-notif-dd-title">🔔 Notificações</div>
+        <div id="notifPanelBody"><div class="notif-empty">Carregando…</div></div>
+      </div>
     </div>
     <div class="home-user" id="homeUserMenu">
       <button class="home-user-btn" onclick="toggleUserMenu(event)">
@@ -7141,6 +7169,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           Configurações
         </button>
       </div>
+    </div>
     </div>
   </div>
   <div class="home-wrap">
@@ -7257,15 +7286,40 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
 
   // ---- Accordion dos avisos: fechado por padrão, mantém estado entre refreshes ----
   window.toggleAlertBox=function(id){var b=document.getElementById(id);if(b)b.classList.toggle('open');};
+  window.__notifReg=window.__notifReg||{};
   function setAlertBox(id,resumo,cor,detalheHtml,ctaLabel,ctaFn){
     var box=document.getElementById(id);if(!box)return;
-    if(!resumo){box.style.display='none';box.classList.remove('open');return;}
+    if(!resumo){box.style.display='none';box.classList.remove('open');window.__notifReg[id]=null;renderNotifBell();return;}
     var wasOpen=box.classList.contains('open');
     box.innerHTML='<div class="ha-head" onclick="toggleAlertBox(\''+id+'\')"><span class="ha-summary" style="color:'+cor+'">'+resumo+'</span><span class="ha-chevron">▸</span></div>'
       +'<div class="ha-body">'+detalheHtml+'<div class="ha-cta" onclick="'+ctaFn+'">→ '+ctaLabel+'</div></div>';
     box.style.display='block';box.style.borderColor=cor;
     if(wasOpen)box.classList.add('open');else box.classList.remove('open');
+    window.__notifReg[id]={resumo:resumo,cor:cor,detalheHtml:detalheHtml,ctaLabel:ctaLabel,ctaFn:ctaFn};
+    renderNotifBell();
   }
+  // ---- Painel de Notificações (consolida os avisos de todos os módulos, com contador no sino do cabeçalho) ----
+  function renderNotifBell(){
+    var badge=document.getElementById('notifBadge');var panel=document.getElementById('notifPanelBody');
+    if(!badge||!panel)return;
+    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertas','homeAlertCartoes'];
+    var reg=window.__notifReg||{};
+    var itens=ordem.map(function(id){return reg[id];}).filter(Boolean);
+    if(!itens.length){
+      badge.style.display='none';
+      panel.innerHTML='<div class="notif-empty">✅ Nenhum aviso no momento.</div>';
+      return;
+    }
+    badge.style.display='flex';badge.textContent=itens.length;
+    panel.innerHTML=itens.map(function(it){
+      return '<div class="notif-item" style="border-left:3px solid '+it.cor+'" onclick="'+it.ctaFn+';document.getElementById(\'notifBell\').classList.remove(\'open\')">'
+        +'<div class="notif-item-head" style="color:'+it.cor+'">'+it.resumo+'</div>'
+        +'<div class="notif-item-body">'+it.detalheHtml+'</div>'
+        +'<div class="notif-item-cta">→ '+it.ctaLabel+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  window.renderNotifBell=renderNotifBell;
 
   function closeOverlays(){['honOverlay','locOverlay','contasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
@@ -7276,10 +7330,20 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
     var menu=btn?btn.closest('.home-user'):null;
     if(!menu)return;
     document.querySelectorAll('.home-user.open').forEach(function(m){if(m!==menu)m.classList.remove('open');});
+    document.querySelectorAll('.home-notif.open').forEach(function(m){m.classList.remove('open');});
     menu.classList.toggle('open');
+  };
+  window.toggleNotifBell=function(ev){
+    if(ev)ev.stopPropagation();
+    var el=document.getElementById('notifBell');if(!el)return;
+    document.querySelectorAll('.home-user.open').forEach(function(m){m.classList.remove('open');});
+    el.classList.toggle('open');
   };
   document.addEventListener('click',function(e){
     document.querySelectorAll('.home-user.open').forEach(function(m){
+      if(!m.contains(e.target))m.classList.remove('open');
+    });
+    document.querySelectorAll('.home-notif.open').forEach(function(m){
       if(!m.contains(e.target))m.classList.remove('open');
     });
   });
