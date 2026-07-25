@@ -588,6 +588,28 @@
 
   .atualizacao-box strong { color: var(--text); }
 
+  .nota-interna-box {
+    background: rgba(224,124,58,0.07);
+    border: 1px dashed rgba(224,124,58,0.4);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .nota-interna-box .nota-interna-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--orange);
+    margin-bottom: 6px;
+  }
+
   .detail-actions {
     display: flex;
     gap: 8px;
@@ -2730,11 +2752,11 @@
       </div>
 
       <div class="form-section">
-        <div class="form-section-title">📝 Observações</div>
+        <div class="form-section-title">🔒 Anotações internas</div>
         <div class="form-grid">
           <div class="form-field form-full">
-            <label>Observações</label>
-            <textarea id="ed-obs" rows="2"></textarea>
+            <label>Anotações internas (não aparece para o cliente)</label>
+            <textarea id="ed-obs" rows="4" placeholder="Anotações só para uso interno do escritório — não entram no card do cliente, WhatsApp, recibo ou qualquer documento gerado."></textarea>
           </div>
         </div>
       </div>
@@ -3834,8 +3856,9 @@ function renderCard(p, idx) {
           ${ultimaHtml}
 
           ${p.obs && p.obs.length > 2 && p.obs !== p.ultima ? `
-          <div class="atualizacao-box" style="margin-top:8px">
-            <strong>Observacoes:</strong><br>${escHtml(p.obs)}
+          <div class="nota-interna-box" style="margin-top:8px">
+            <div class="nota-interna-tag">🔒 Anotação interna · não vai para o cliente</div>
+            ${escHtml(p.obs)}
           </div>` : ''}
 
           <div class="detail-actions">
@@ -3853,6 +3876,12 @@ function renderCard(p, idx) {
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
               Editar
+            </button>
+            <button class="btn-action" style="background:rgba(224,124,58,0.12);border-color:rgba(224,124,58,0.35);color:var(--orange);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirNotaInterna(this.dataset.uid)" title="Anotação só para uso interno — não aparece pro cliente">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+              Nota interna
             </button>
             <button class="btn-action" style="background:rgba(200,169,110,0.08);border-color:rgba(200,169,110,0.3);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirRecibo(this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5282,6 +5311,18 @@ function abrirEdicao(uid) {
 
   document.getElementById('edicaoStatus').textContent = '';
   document.getElementById('modalEdicao').classList.add('open');
+}
+
+// Atalho: abre a edição já rolada e com foco no campo de anotação interna
+// (mesmo campo "Observações"/ed-obs, que nunca é enviado ao cliente).
+function abrirNotaInterna(uid) {
+  abrirEdicao(uid);
+  setTimeout(function() {
+    const el = document.getElementById('ed-obs');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus();
+  }, 150);
 }
 
 function dataParaInput(str) {
