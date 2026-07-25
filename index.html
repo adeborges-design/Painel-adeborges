@@ -3222,6 +3222,33 @@
   </div>
 </div>
 
+<div class="modal-form-overlay" id="modalDocumentos">
+  <div class="form-modal-wrap" style="width:560px">
+    <div class="form-modal-header">
+      <div class="form-modal-title" id="docsTitulo">📎 Documentos</div>
+      <button class="btn-form-cancel" style="padding:6px 12px" onclick="document.getElementById('modalDocumentos').classList.remove('open')">✕</button>
+    </div>
+    <div class="form-modal-body">
+      <div id="docsCarregando" style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>
+      <div id="docsSemPasta" style="display:none;text-align:center;padding:20px 0">
+        <p style="color:var(--muted);margin-bottom:14px;font-size:13px">Este processo ainda não tem uma pasta no Google Drive.</p>
+        <button class="btn-form-save" onclick="criarPastaProcesso()">📁 Criar pasta no Drive</button>
+      </div>
+      <div id="docsComPasta" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
+          <a href="#" id="docsAbrirPasta" target="_blank" style="color:var(--accent);text-decoration:none;font-size:13px">Abrir pasta no Drive ↗</a>
+          <label class="btn-form-save" style="padding:8px 16px;cursor:pointer;font-size:12px;white-space:nowrap">
+            📤 Enviar arquivo
+            <input type="file" id="docsFileInput" style="display:none" onchange="uploadDocumento(this)">
+          </label>
+        </div>
+        <div id="docsLista"></div>
+      </div>
+    </div>
+    <div class="form-status" id="docsStatus"></div>
+  </div>
+</div>
+
 <script>
 // --- ESTADO ---------------------------------------------------
 let allProcessos = [];
@@ -3822,6 +3849,12 @@ function renderCard(p, idx) {
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
               </svg>
               Contrato
+            </button>
+            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDocumentos(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+              Documentos
             </button>
             <button class="btn-action" style="background:rgba(200,169,110,0.15);border-color:rgba(200,169,110,0.4);color:var(--accent);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardAtendimento(this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5314,6 +5347,194 @@ async function salvarEdicao() {
   } finally {
     btn.disabled = false;
     btn.textContent = '💾 Salvar na planilha';
+  }
+}
+
+// --- DOCUMENTOS (Google Drive) ---------------------------------
+let _docsUid = null;
+
+function extrairIdPastaUrl(url) {
+  const m = String(url || '').match(/[-\w]{25,}/);
+  return m ? m[0] : '';
+}
+
+function fmtTamanhoArquivo(bytes) {
+  bytes = parseInt(bytes) || 0;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function abrirDocumentos(uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+  _docsUid = uid;
+
+  document.getElementById('docsTitulo').textContent = '📎 Documentos — ' + p.nome;
+  document.getElementById('docsStatus').className = 'form-status';
+  document.getElementById('docsStatus').textContent = '';
+  document.getElementById('docsSemPasta').style.display = 'none';
+  document.getElementById('docsComPasta').style.display = 'none';
+  document.getElementById('docsCarregando').style.display = '';
+  document.getElementById('modalDocumentos').classList.add('open');
+
+  if (!p.pastaDrive || p.pastaDrive.length < 5) {
+    document.getElementById('docsCarregando').style.display = 'none';
+    document.getElementById('docsSemPasta').style.display = '';
+  } else {
+    carregarDocumentos(p.pastaDrive);
+  }
+}
+
+async function carregarDocumentos(pastaUrl) {
+  document.getElementById('docsCarregando').style.display = '';
+  document.getElementById('docsComPasta').style.display = 'none';
+  document.getElementById('docsSemPasta').style.display = 'none';
+  const pastaId = extrairIdPastaUrl(pastaUrl);
+  try {
+    const r = await fetch(URL_AS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'listar_arquivos_pasta', pasta: pastaId })
+    });
+    const d = await r.json();
+    document.getElementById('docsCarregando').style.display = 'none';
+    if (!d.ok) {
+      document.getElementById('docsStatus').className = 'form-status erro';
+      document.getElementById('docsStatus').textContent = 'Erro ao listar arquivos: ' + (d.error || '');
+      document.getElementById('docsSemPasta').style.display = '';
+      return;
+    }
+    document.getElementById('docsComPasta').style.display = '';
+    document.getElementById('docsAbrirPasta').href = d.pastaUrl || pastaUrl;
+    renderListaDocumentos(d.arquivos || []);
+  } catch (e) {
+    document.getElementById('docsCarregando').style.display = 'none';
+    document.getElementById('docsStatus').className = 'form-status erro';
+    document.getElementById('docsStatus').textContent = 'Erro: ' + e.message;
+  }
+}
+
+function renderListaDocumentos(arquivos) {
+  const el = document.getElementById('docsLista');
+  if (!arquivos.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">Nenhum arquivo enviado ainda.</p>';
+    return;
+  }
+  el.innerHTML = arquivos.map(a => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:0;overflow:hidden">
+        <a href="${escHtml(a.url)}" target="_blank" style="color:var(--text);text-decoration:none;font-weight:600;font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(a.nome)}</a>
+        <div style="font-size:11px;color:var(--muted)">${fmtTamanhoArquivo(a.tamanho)} • ${escHtml(a.atualizado || '')}</div>
+      </div>
+      <button onclick="excluirDocumento('${a.id}')" title="Excluir arquivo" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:4px 8px;flex-shrink:0">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function criarPastaProcesso() {
+  const p = allProcessos.find(x => x._uid === parseInt(_docsUid));
+  if (!p) return;
+  const statusEl = document.getElementById('docsStatus');
+  statusEl.className = 'form-status';
+  statusEl.textContent = 'Criando pasta...';
+  try {
+    const r = await fetch(URL_AS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'criar_pasta_processo', nome: p.nome + (p.processo ? ' - ' + p.processo : '') })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'falha ao criar pasta');
+
+    await fetch(URL_AS, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Pasta Drive': d.url } })
+    });
+
+    p.pastaDrive = d.url;
+    statusEl.className = 'form-status ok';
+    statusEl.textContent = 'Pasta criada!';
+    document.getElementById('docsSemPasta').style.display = 'none';
+    carregarDocumentos(d.url);
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function uploadDocumento(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const p = allProcessos.find(x => x._uid === parseInt(_docsUid));
+  if (!p) return;
+  const pastaId = extrairIdPastaUrl(p.pastaDrive);
+  const statusEl = document.getElementById('docsStatus');
+
+  if (file.size > 15 * 1024 * 1024) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Arquivo muito grande (máx. 15MB).';
+    input.value = '';
+    return;
+  }
+
+  statusEl.className = 'form-status';
+  statusEl.textContent = 'Enviando ' + file.name + '...';
+
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const r = await fetch(URL_AS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        acao: 'upload_arquivo',
+        pasta: pastaId,
+        nome: file.name,
+        base64: base64,
+        mimeType: file.type || 'application/octet-stream'
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'falha no upload');
+    statusEl.className = 'form-status ok';
+    statusEl.textContent = 'Arquivo enviado!';
+    carregarDocumentos(p.pastaDrive);
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    input.value = '';
+  }
+}
+
+async function excluirDocumento(id) {
+  if (!confirm('Excluir este arquivo? Esta ação não pode ser desfeita.')) return;
+  const p = allProcessos.find(x => x._uid === parseInt(_docsUid));
+  if (!p) return;
+  const statusEl = document.getElementById('docsStatus');
+  statusEl.className = 'form-status';
+  statusEl.textContent = 'Excluindo...';
+  try {
+    const r = await fetch(URL_AS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'excluir_arquivo', id })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'falha ao excluir');
+    statusEl.textContent = '';
+    carregarDocumentos(p.pastaDrive);
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
   }
 }
 
