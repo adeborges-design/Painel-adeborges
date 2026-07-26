@@ -5913,6 +5913,18 @@ window.renderVencimentos=function(){
  if(!host){host=document.createElement('div');host.id='honVencimentos';var resumo=body.querySelector('.hon-resumo');var form=resumo?resumo.querySelector('.hon-form'):null;if(resumo&&form){resumo.insertBefore(host,form);}else{body.insertBefore(host,main);}}
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
+ // Processos com contrato de honorarios preenchido (valor/parcelas) mas ainda sem
+ // nenhum lancamento na aba HONORARIOS - sem isso o cronograma só aparecia depois
+ // que o advogado desse baixa manualmente na 1a parcela.
+ (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
+  var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
+  if(!vTotalP&&!nParcP)return;
+  var k=(p.processo||'')+'|'+(p.nome||'');
+  if(groups[k])return;
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
+   'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
+   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':''}];
+ });
  var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0;
  Object.keys(groups).forEach(function(k){
   var rows=groups[k],h0=rows[rows.length-1];
@@ -6006,6 +6018,15 @@ function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);ret
 function calcAlertas(){
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
+ (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
+  var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
+  if(!vTotalP&&!nParcP)return;
+  var k=(p.processo||'')+'|'+(p.nome||'');
+  if(groups[k])return;
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
+   'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
+   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':''}];
+ });
  var atras=[],sem=[];
  Object.keys(groups).forEach(function(k){
   var rows=groups[k],h0=rows[rows.length-1];
