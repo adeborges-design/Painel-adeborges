@@ -2331,6 +2331,12 @@
           </div>
 
           <div class="hon-field hon-form-full">
+            <label>Datas de Vencimento (opcional)</label>
+            <textarea class="hon-textarea" id="hon-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro). Cobre vencimentos quinzenais ou fora do padrão mensal. Salvo aqui atualiza direto o cadastro do processo.</div>
+          </div>
+
+          <div class="hon-field hon-form-full">
             <label>Objeto do Contrato</label>
             <textarea class="hon-textarea" id="hon-objeto" rows="2"></textarea>
           </div>
@@ -4819,6 +4825,7 @@ function honPreencherContrato() {
   document.getElementById('hon-valorEntrada').value = p.valorEntrada || '';
   document.getElementById('hon-valorParcela').value = p.valorParcela || '';
   document.getElementById('hon-diaVenc').value = p.diaVencimento || '';
+  document.getElementById('hon-datasVenc').value = p.datasVencimento || '';
   document.getElementById('hon-objeto').value = p.objetoContrato || '';
   document.getElementById('hon-parceiro').value = p.advParc || '';
   // Preencher dados do cliente como pagador padrao
@@ -4845,7 +4852,7 @@ function limparHonForm() {
   _honEditId = null;
   document.getElementById('btnSalvarHon').textContent = '💾 Lançar';
   ['hon-respPagamento','hon-cpfPagador','hon-telPagador','hon-parcelaRef',
-   'hon-nf','hon-recibo','hon-obs','hon-parceiro','hon-diaVenc','hon-objeto'].forEach(id => {
+   'hon-nf','hon-recibo','hon-obs','hon-parceiro','hon-diaVenc','hon-datasVenc','hon-objeto'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -4921,6 +4928,20 @@ async function salvarHonorario() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(body)
     });
+    // "Datas de Vencimentos" mora no cadastro do processo (fonte unica), nao no
+    // lancamento - se foi editado aqui, grava de volta direto no processo.
+    if (p && p._row !== undefined) {
+      try {
+        await fetch(URL_AS, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: {
+            'Datas de Vencimentos': document.getElementById('hon-datasVenc').value
+          }})
+        });
+      } catch (e2) { console.error('sync-datasVenc', e2); }
+    }
     document.getElementById('honFormStatus').innerHTML = '<span style="color:var(--green)"> Salvo! Atualizando...</span>';
     limparHonForm();
     setTimeout(() => carregarHonorarios(), 1500);
@@ -4946,6 +4967,15 @@ function editarHonorario(id) {
   document.getElementById('hon-valorParcela').value = h['Valor da Parcela'] || '';
   document.getElementById('hon-diaVenc').value = h['Dia Vencimento'] || '';
   document.getElementById('hon-objeto').value = h['Objeto do Contrato'] || '';
+  // "Datas de Vencimentos" mora no cadastro do processo, nao no lancamento -
+  // busca o processo correspondente (por numero+cliente) so para exibir aqui.
+  (function(){
+    var proc = allProcessos.find(function(pp){
+      return String(pp.processo||'').trim().toLowerCase() === String(h['Nr Processo']||'').trim().toLowerCase()
+          && String(pp.nome||'').trim().toLowerCase() === String(h['Cliente']||'').trim().toLowerCase();
+    });
+    document.getElementById('hon-datasVenc').value = proc ? (proc.datasVencimento || '') : '';
+  })();
   document.getElementById('hon-respPagamento').value = h['Responsavel Pagamento'] || '';
   document.getElementById('hon-cpfPagador').value = h['CPF/CNPJ Pagador'] || '';
   document.getElementById('hon-telPagador').value = h['Telefone Pagador'] || '';
