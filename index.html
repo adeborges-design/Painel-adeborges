@@ -2786,6 +2786,11 @@
             <label>Objeto do Contrato</label>
             <textarea id="ed-objeto" rows="2"></textarea>
           </div>
+          <div class="form-field form-full">
+            <label>Datas de Vencimento (opcional)</label>
+            <textarea id="ed-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
+          </div>
         </div>
       </div>
 
@@ -3012,6 +3017,11 @@
           <div class="form-field form-full">
             <label>Objeto do Contrato</label>
             <textarea id="cad-objeto" rows="2"></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Datas de Vencimento (opcional)</label>
+            <textarea id="cad-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
           </div>
         </div>
       </div>
@@ -3486,6 +3496,7 @@ function parseProcessos(rows) {
     const valorEntrada     = brNumStr(get(row, 'Valor da parcela de entrada', 19));
     const valorParcela     = brNumStr(get(row, 'Valor da Parcela', 20));
     const diaVencimento    = get(row, 'Dia do Vencimento', 21);
+    const datasVencimento  = get(row, 'Datas de Vencimento', -1); // campo novo/opcional - lista de datas separadas por virgula (entrada + parcelas, na ordem)
     const formaPagamento   = get(row, 'Forma de pagamento ', 22);
     const objetoContrato   = get(row, 'Objeto do contrato (descricao dos Serviços)', 23);
     const tipoProcuracao   = get(row, 'Tipo de Procuracao', 24);
@@ -3536,7 +3547,7 @@ function parseProcessos(rows) {
       nome, processo, sistema,
       vara, tribunal, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
       endereco, bairro, complemento, cep, cidade, estado,
-      valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento,
+      valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento, datasVencimento,
       formaPagamento, objetoContrato,
       tipoProcuracao, poderesEspeciais,
       rendaMensal, numDependentes,
@@ -5368,6 +5379,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-diaVenc').value = p.diaVencimento || '';
   document.getElementById('ed-formaPag').value = p.formaPagamento || '';
   document.getElementById('ed-objeto').value = p.objetoContrato || '';
+  document.getElementById('ed-datasVenc').value = p.datasVencimento || '';
 
   document.getElementById('edicaoStatus').textContent = '';
   document.getElementById('modalEdicao').classList.add('open');
@@ -5458,6 +5470,7 @@ async function salvarEdicao() {
     'Dia do Vencimento': document.getElementById('ed-diaVenc').value,
     'Forma de pagamento ': document.getElementById('ed-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('ed-objeto').value,
+    'Datas de Vencimento': document.getElementById('ed-datasVenc').value,
     'Observacoes': document.getElementById('ed-obs').value,
   };
 
@@ -5679,7 +5692,7 @@ function abrirCadastro() {
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
    'cad-processo','cad-vara','cad-tribunal','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
-   'cad-pastaDrive','cad-objeto','cad-diaVenc'].forEach(id => {
+   'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -5750,6 +5763,7 @@ async function salvarCadastro() {
     'Dia do Vencimento': document.getElementById('cad-diaVenc').value,
     'Forma de pagamento ': document.getElementById('cad-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
+    'Datas de Vencimento': document.getElementById('cad-datasVenc').value,
   };
 
   try {
@@ -5947,11 +5961,17 @@ window.renderVencimentos=function(){
   var repPend=0,repNomes={};
   rows.forEach(function(r){if(r['Quem Recebeu']==='Parceiro'&&String(r['Status Repasse']||'').toLowerCase().indexOf('pend')===0){var v=nbr(r['Valor Repasse Parceiro']);repPend+=v;var nm=r['Parceiro']||'parceiro';repNomes[nm]=(repNomes[nm]||0)+v;}});
   totRepasse+=repPend;
+  // Datas de vencimento customizadas (campo opcional no cadastro do processo) -
+  // sobrepoe o calculo automatico mensal, uma data por parcela na ordem (entrada primeiro).
+  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(pp.processo,pp.nome)===k;});
+  var datasCustom=[];
+  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
-  var start=datas[0]||hoje;
+  var start=datasCustom[0]||datas[0]||hoje;
   var plano=[];
-  if(vEntr>0)plano.push({ref:'Entrada',key:'E',valor:vEntr,venc:start});
-  if(nParc>0){var off=(vEntr>0||(dia&&dia<=start.getDate()))?1:0;for(var i=1;i<=nParc;i++){plano.push({ref:pad2(i)+'/'+pad2(nParc),key:i,valor:vParc,venc:clampDay(start.getFullYear(),start.getMonth()+off+(i-1),dia||start.getDate())});}}
+  var custIdx=0;
+  if(vEntr>0){plano.push({ref:'Entrada',key:'E',valor:vEntr,venc:datasCustom[custIdx]||start});custIdx++;}
+  if(nParc>0){var off=(vEntr>0||(dia&&dia<=start.getDate()))?1:0;for(var i=1;i<=nParc;i++){var vencCalc=clampDay(start.getFullYear(),start.getMonth()+off+(i-1),dia||start.getDate());plano.push({ref:pad2(i)+'/'+pad2(nParc),key:i,valor:vParc,venc:datasCustom[custIdx]||vencCalc});custIdx++;}}
   var usados=[];
   plano.forEach(function(p){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])===p.key;});if(m){p.pago=m;usados.push(m);}});
   plano.forEach(function(p){if(!p.pago){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])==null;});if(m){p.pago=m;usados.push(m);}}});
@@ -6040,11 +6060,15 @@ function calcAlertas(){
   rows.forEach(function(r){vTotal=Math.max(vTotal,nbr(r['Valor Total Contrato']));vParc=Math.max(vParc,nbr(r['Valor da Parcela']));vEntr=Math.max(vEntr,nbr(r['Valor da Entrada']));dia=dia||parseInt(diaOnly(r['Dia Vencimento']))||0;nParc=nParc||parseInt(r['Número de Parcelas'])||0;});
   if(!vParc&&nParc>0)vParc=Math.max((vTotal-vEntr)/nParc,0);
   var pags=rows.filter(function(r){return nbr(r['Valor Recebido'])>0;});
+  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(pp.processo,pp.nome)===k;});
+  var datasCustom=[];
+  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
-  var start=datas[0]||hoje;
+  var start=datasCustom[0]||datas[0]||hoje;
   var plano=[];
-  if(vEntr>0)plano.push({ref:'Entrada',key:'E',valor:vEntr,venc:start});
-  if(nParc>0){var off=(vEntr>0||(dia&&dia<=start.getDate()))?1:0;for(var i=1;i<=nParc;i++){plano.push({ref:pad2(i)+'/'+pad2(nParc),key:i,valor:vParc,venc:clampDay(start.getFullYear(),start.getMonth()+off+(i-1),dia||start.getDate())});}}
+  var custIdx=0;
+  if(vEntr>0){plano.push({ref:'Entrada',key:'E',valor:vEntr,venc:datasCustom[custIdx]||start});custIdx++;}
+  if(nParc>0){var off=(vEntr>0||(dia&&dia<=start.getDate()))?1:0;for(var i=1;i<=nParc;i++){var vencCalc=clampDay(start.getFullYear(),start.getMonth()+off+(i-1),dia||start.getDate());plano.push({ref:pad2(i)+'/'+pad2(nParc),key:i,valor:vParc,venc:datasCustom[custIdx]||vencCalc});custIdx++;}}
   var usados=[];
   plano.forEach(function(p){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])===p.key;});if(m){p.pago=m;usados.push(m);}});
   plano.forEach(function(p){if(!p.pago){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])==null;});if(m){p.pago=m;usados.push(m);}}});
