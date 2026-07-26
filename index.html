@@ -4627,7 +4627,10 @@ function abrirHonorarios() {
   // Preencher select de processos
   const sel = document.getElementById('hon-processo');
   sel.innerHTML = '<option value="">Selecionar processo...</option>';
-  allProcessos.forEach(p => {
+  const processosOrdenados = allProcessos.slice().sort((a, b) =>
+    (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' })
+  );
+  processosOrdenados.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p._uid;
     opt.textContent = p.nome + (p.processo ? ' - ' + p.processo : '');
