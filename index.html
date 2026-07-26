@@ -3423,6 +3423,20 @@ async function loadFromSheets() {
   }
 }
 
+// Converte valor monetario vindo da API do Sheets (que retorna o texto FORMATADO
+// da celula, ex.: "R$ 6.500,00") para uma string numerica limpa ("6500") que os
+// campos <input type="number"> aceitam. Sem isso, o navegador rejeita o valor
+// em silencio e o campo aparece em branco mesmo com o dado correto na planilha.
+function brNumStr(v) {
+  v = String(v == null ? '' : v).trim();
+  if (!v) return '';
+  v = v.replace(/R\$\s?/gi, '').trim();
+  if (v.indexOf(',') >= 0) { v = v.replace(/\./g, '').replace(',', '.'); }
+  const n = parseFloat(v);
+  return isNaN(n) ? '' : String(n);
+}
+window.brNumStr = brNumStr;
+
 // --- PARSE DOS DADOS ------------------------------------------
 function parseProcessos(rows) {
   if (rows.length < 2) {
@@ -3467,10 +3481,10 @@ function parseProcessos(rows) {
     const cep              = get(row, 'CEP',              14);
     const cidade           = get(row, 'Cidade',           15);
     const estado           = get(row, 'Estado (UF)',      16);
-    const valorHonorarios  = get(row, 'Valor dos Honorários', 17);
+    const valorHonorarios  = brNumStr(get(row, 'Valor dos Honorários', 17));
     const numParcelas      = get(row, 'Número de parcelas', 18);
-    const valorEntrada     = get(row, 'Valor da parcela de entrada', 19);
-    const valorParcela     = get(row, 'Valor da Parcela', 20);
+    const valorEntrada     = brNumStr(get(row, 'Valor da parcela de entrada', 19));
+    const valorParcela     = brNumStr(get(row, 'Valor da Parcela', 20));
     const diaVencimento    = get(row, 'Dia do Vencimento', 21);
     const formaPagamento   = get(row, 'Forma de pagamento ', 22);
     const objetoContrato   = get(row, 'Objeto do contrato (descricao dos Serviços)', 23);
