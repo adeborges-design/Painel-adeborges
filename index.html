@@ -5906,20 +5906,24 @@ function pad2(n){return ('0'+n).slice(-2);}
 function refKey(s){s=String(s||'').toLowerCase().trim();if(!s)return null;if(s.indexOf('entr')===0)return 'E';if(s.indexOf('contrato')===0)return 'C';var m=s.match(/^([0-9]{1,2})/);return m?parseInt(m[1],10):null;}
 function numInput(v){v=String(v==null?'':v).trim();if(!v)return '';if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?'':String(n);}
 function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);return m?m[1]:'';}
+// Chave normalizada (trim + minusculas) para casar um lancamento real da aba HONORARIOS
+// com o processo correspondente, mesmo com pequenas diferencas de espaco/maiusculas
+// entre "Nr Processo" (gravado no lancamento) e "Numero do Processo" (no cadastro).
+function gkey(proc,nome){return String(proc||'').trim().toLowerCase()+'|'+String(nome||'').trim().toLowerCase();}
 window.renderVencimentos=function(){
  var body=document.querySelector('#honOverlay .hon-body');if(!body)return;
  var main=body.querySelector('.hon-main');
  var host=document.getElementById('honVencimentos');
  if(!host){host=document.createElement('div');host.id='honVencimentos';var resumo=body.querySelector('.hon-resumo');var form=resumo?resumo.querySelector('.hon-form'):null;if(resumo&&form){resumo.insertBefore(host,form);}else{body.insertBefore(host,main);}}
  var hoje=new Date();hoje.setHours(0,0,0,0);
- var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
+ var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=gkey(h['Nr Processo'],h['Cliente']);(groups[k]=groups[k]||[]).push(h);});
  // Processos com contrato de honorarios preenchido (valor/parcelas) mas ainda sem
  // nenhum lancamento na aba HONORARIOS - sem isso o cronograma só aparecia depois
  // que o advogado desse baixa manualmente na 1a parcela.
  (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
   var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
   if(!vTotalP&&!nParcP)return;
-  var k=(p.processo||'')+'|'+(p.nome||'');
+  var k=gkey(p.processo,p.nome);
   if(groups[k])return;
   groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
@@ -6015,13 +6019,14 @@ function pad2(n){return ('0'+n).slice(-2);}
 function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
 function refKey(s){s=String(s||'').toLowerCase().trim();if(!s)return null;if(s.indexOf('entr')===0)return 'E';if(s.indexOf('contrato')===0)return 'C';var m=s.match(/^([0-9]{1,2})/);return m?parseInt(m[1],10):null;}
 function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);return m?m[1]:'';}
+function gkey(proc,nome){return String(proc||'').trim().toLowerCase()+'|'+String(nome||'').trim().toLowerCase();}
 function calcAlertas(){
  var hoje=new Date();hoje.setHours(0,0,0,0);
- var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=(h['Nr Processo']||'')+'|'+(h['Cliente']||'');(groups[k]=groups[k]||[]).push(h);});
+ var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=gkey(h['Nr Processo'],h['Cliente']);(groups[k]=groups[k]||[]).push(h);});
  (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
   var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
   if(!vTotalP&&!nParcP)return;
-  var k=(p.processo||'')+'|'+(p.nome||'');
+  var k=gkey(p.processo,p.nome);
   if(groups[k])return;
   groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
