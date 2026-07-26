@@ -4250,7 +4250,14 @@ function gerarContrato(p) {
     ? String(p.datasVencimento).split(/[,;]+/).map(s => s.trim()).filter(Boolean)
     : [];
   const dataEntrada = datasLista.length ? datasLista[0] : (p.diaVencimento ? 'dia ' + p.diaVencimento : '______________________');
-  const vencimento = p.diaVencimento ? 'dia ' + p.diaVencimento + ' de cada mes' : '______________________';
+  const nParcNum = parseInt(p.numParcelas) || 0;
+  const parcelaUnica = nParcNum === 1;
+  // Se ha so 1 parcela (alem da entrada), "de cada mes" nao faz sentido - usa a
+  // data especifica dela (2o item da lista, ja que o 1o e da entrada) ou o dia fixo.
+  const dataParcelaUnica = datasLista.length > 1 ? datasLista[1] : null;
+  const vencTexto = parcelaUnica
+    ? (dataParcelaUnica ? `em ${dataParcelaUnica}` : (p.diaVencimento ? `no dia ${p.diaVencimento}` : 'em ______________________'))
+    : (p.diaVencimento ? `no dia ${p.diaVencimento} de cada mes` : 'em ______________________');
   const formaPag = p.formaPagamento || 'PIX';
   const objeto = p.objetoContrato || (p.processo
     ? 'prestacao de servicos advocaticios no processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos')
@@ -4290,8 +4297,8 @@ function gerarContrato(p) {
     Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
     <strong>${valTotal}</strong>,
     ${valEntrada
-      ? `sendo <strong>${valEntrada}</strong> a título de entrada, a ser paga em ${dataEntrada}, e o saldo remanescente em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong> cada, com vencimento no ${vencimento},`
-      : `a ser pago em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`}
+      ? `sendo <strong>${valEntrada}</strong> a título de entrada, a ser paga em ${dataEntrada}, e o saldo remanescente em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong>${parcelaUnica ? '' : ' cada'}, com vencimento ${vencTexto},`
+      : `a ser pago em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong>${parcelaUnica ? '' : ' cada'}, com vencimento ${vencTexto},`}
     por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX - CPF: 051.303.588-56)' : ''}.
   </p>
 
