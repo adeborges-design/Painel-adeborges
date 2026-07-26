@@ -3496,7 +3496,7 @@ function parseProcessos(rows) {
     const valorEntrada     = brNumStr(get(row, 'Valor da parcela de entrada', 19));
     const valorParcela     = brNumStr(get(row, 'Valor da Parcela', 20));
     const diaVencimento    = get(row, 'Dia do Vencimento', 21);
-    const datasVencimento  = get(row, 'Datas de Vencimento', -1); // campo novo/opcional - lista de datas separadas por virgula (entrada + parcelas, na ordem)
+    const datasVencimento  = get(row, 'Datas de Vencimentos', -1); // campo novo/opcional - lista de datas separadas por virgula (entrada + parcelas, na ordem)
     const formaPagamento   = get(row, 'Forma de pagamento ', 22);
     const objetoContrato   = get(row, 'Objeto do contrato (descricao dos Serviços)', 23);
     const tipoProcuracao   = get(row, 'Tipo de Procuracao', 24);
@@ -5470,7 +5470,7 @@ async function salvarEdicao() {
     'Dia do Vencimento': document.getElementById('ed-diaVenc').value,
     'Forma de pagamento ': document.getElementById('ed-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('ed-objeto').value,
-    'Datas de Vencimento': document.getElementById('ed-datasVenc').value,
+    'Datas de Vencimentos': document.getElementById('ed-datasVenc').value,
     'Observacoes': document.getElementById('ed-obs').value,
   };
 
@@ -5763,7 +5763,7 @@ async function salvarCadastro() {
     'Dia do Vencimento': document.getElementById('cad-diaVenc').value,
     'Forma de pagamento ': document.getElementById('cad-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
-    'Datas de Vencimento': document.getElementById('cad-datasVenc').value,
+    'Datas de Vencimentos': document.getElementById('cad-datasVenc').value,
   };
 
   try {
