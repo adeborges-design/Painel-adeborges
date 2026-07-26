@@ -2750,6 +2750,46 @@
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">💰 Honorários</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field">
+            <label>Valor Total (R$)</label>
+            <input type="number" id="ed-honorarios" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Nº de Parcelas</label>
+            <input type="number" id="ed-parcelas" min="1">
+          </div>
+          <div class="form-field">
+            <label>Valor da Entrada (R$)</label>
+            <input type="number" id="ed-entrada" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Valor da Parcela (R$)</label>
+            <input type="number" id="ed-valorParcela" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Dia do Vencimento</label>
+            <input type="text" id="ed-diaVenc" placeholder="Ex.: 10">
+          </div>
+          <div class="form-field">
+            <label>Forma de Pagamento</label>
+            <select id="ed-formaPag">
+              <option value="">Selecionar</option>
+              <option>PIX</option>
+              <option>Transferência bancária</option>
+              <option>Boleto</option>
+              <option>Dinheiro</option>
+            </select>
+          </div>
+          <div class="form-field form-full">
+            <label>Objeto do Contrato</label>
+            <textarea id="ed-objeto" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title">🔒 Anotações internas</div>
         <div class="form-grid">
           <div class="form-field form-full">
@@ -5303,6 +5343,15 @@ function abrirEdicao(uid) {
   document.getElementById('ed-horAudi').value = p.horAudi ? p.horAudi.substring(0,5) : '';
   document.getElementById('ed-localAudi').value = p.localAudi || '';
 
+  // Preencher campos - Honorários (contrato)
+  document.getElementById('ed-honorarios').value = p.valorHonorarios || '';
+  document.getElementById('ed-parcelas').value = p.numParcelas || '';
+  document.getElementById('ed-entrada').value = p.valorEntrada || '';
+  document.getElementById('ed-valorParcela').value = p.valorParcela || '';
+  document.getElementById('ed-diaVenc').value = p.diaVencimento || '';
+  document.getElementById('ed-formaPag').value = p.formaPagamento || '';
+  document.getElementById('ed-objeto').value = p.objetoContrato || '';
+
   document.getElementById('edicaoStatus').textContent = '';
   document.getElementById('modalEdicao').classList.add('open');
 }
@@ -5385,6 +5434,13 @@ async function salvarEdicao() {
     'Data Audiência': inputParaData(document.getElementById('ed-dataAudi').value),
     'Horário Audiência': document.getElementById('ed-horAudi').value,
     'Local da Audiência': document.getElementById('ed-localAudi').value,
+    'Valor dos Honorários': document.getElementById('ed-honorarios').value,
+    'Número de parcelas': document.getElementById('ed-parcelas').value,
+    'Valor da parcela de entrada': document.getElementById('ed-entrada').value,
+    'Valor da Parcela': document.getElementById('ed-valorParcela').value,
+    'Dia do Vencimento': document.getElementById('ed-diaVenc').value,
+    'Forma de pagamento ': document.getElementById('ed-formaPag').value,
+    'Objeto do contrato (descricao dos Serviços)': document.getElementById('ed-objeto').value,
     'Observacoes': document.getElementById('ed-obs').value,
   };
 
@@ -6113,6 +6169,9 @@ var st=document.createElement('style');st.textContent=css;document.head.appendCh
 function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
 function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
 function fdt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+// Normaliza "Recorrencia" (tira espaço e ignora maiuscula/minuscula) — um espaço a mais digitado
+// na planilha quebrava silenciosamente a geração automática da parcela/mês seguinte.
+window.recNorm=window.recNorm||function(v){return String(v||'').trim().toLowerCase();};
 function fmr(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2});}
 function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
 function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
@@ -6187,7 +6246,7 @@ function renderContas(){
     else confHtml='<div style="margin-top:3px;font-size:11px;color:var(--red)">⚠ diverge dos lançamentos no cartão: soma R$ '+fmr(conf.soma)+' ('+(conf.diff>0?'faltam R$ '+fmr(conf.diff)+' lançar':'R$ '+fmr(-conf.diff)+' lançados a mais')+')</div>';
    } else confHtml='<div style="margin-top:3px;font-size:11px;color:var(--muted)">Sem vencimento para conferir os lançamentos do mês.</div>';
   }
-  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(c['Recorrencia']==='Mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(c['Recorrencia']==='Parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(window.cpNomeCartao(c['Cartao']))+' · na fatura</span>':'')+(isFaturaCartao&&c['Cartao']?' <span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(window.cpNomeCartao(c['Cartao']))+'</span>':'')+'</div>'
+  html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(recNorm(c['Recorrencia'])==='mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(recNorm(c['Recorrencia'])==='parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(window.cpNomeCartao(c['Cartao']))+' · na fatura</span>':'')+(isFaturaCartao&&c['Cartao']?' <span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(window.cpNomeCartao(c['Cartao']))+'</span>':'')+'</div>'
   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div>'+confHtml+'</div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
@@ -6287,7 +6346,7 @@ function cpRenderCartoes(){
    if(ehFatura)return false; // a fatura em si não conta pro limite — quem conta são as compras que a compõem
    return (cpNomeCartao(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';
   }).reduce(function(a,c){
-   var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
+   var vUso=(recNorm(c['Recorrencia'])==='parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
    return a+vUso;
   },0);
   var L=nbr(lim[nome]);var disp=L-saldo;var pct=L>0?Math.min(100,Math.round(saldo/L*100)):0;
@@ -6361,12 +6420,12 @@ window.cpPagar=async function(id){
  if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
  var hoje=new Date();
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(hoje)}})});
- if(c['Recorrencia']==='Mensal'){
+ if(recNorm(c['Recorrencia'])==='mensal'){
   var dv=dbr(c['Data Vencimento'])||hoje;
   var prox=clampDay(dv.getFullYear(),dv.getMonth()+1,dv.getDate());
   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||''}})});
  }
- if(c['Recorrencia']==='Parcelada'){
+ if(recNorm(c['Recorrencia'])==='parcelada'){
   var saldoAtu=nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida']);
   if(saldoAtu<=0){
    var dvx=dbr(c['Data Vencimento'])||hoje;
@@ -7755,7 +7814,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeo
           if(ehFatura)return false;
           return (nomeCartao(c['Cartao'])===nome||String(c['Forma Pagamento'])===nome)&&String(c['Status']).toLowerCase()!=='paga';
         }).reduce(function(a,c){
-          var vUso=(c['Recorrencia']==='Parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
+          var vUso=(window.recNorm(c['Recorrencia'])==='parcelada')?(nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida'])||nbr(c['Valor'])):nbr(c['Valor']);
           return a+vUso;
         },0);
         if(L<=0&&saldo<=0)return;
