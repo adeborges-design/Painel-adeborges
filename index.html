@@ -2778,6 +2778,11 @@
             <label>Dia do Vencimento</label>
             <input type="text" id="ed-diaVenc" placeholder="Ex.: 10">
           </div>
+          <div class="form-field form-full">
+            <label>Datas de Vencimento (opcional)</label>
+            <textarea id="ed-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
+          </div>
           <div class="form-field">
             <label>Forma de Pagamento</label>
             <select id="ed-formaPag">
@@ -2791,11 +2796,6 @@
           <div class="form-field form-full">
             <label>Objeto do Contrato</label>
             <textarea id="ed-objeto" rows="2"></textarea>
-          </div>
-          <div class="form-field form-full">
-            <label>Datas de Vencimento (opcional)</label>
-            <textarea id="ed-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
-            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
           </div>
         </div>
       </div>
@@ -3010,6 +3010,11 @@
             <label>Dia do Vencimento</label>
             <input type="text" id="cad-diaVenc" placeholder="Ex.: 10">
           </div>
+          <div class="form-field form-full">
+            <label>Datas de Vencimento (opcional)</label>
+            <textarea id="cad-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
+          </div>
           <div class="form-field">
             <label>Forma de Pagamento</label>
             <select id="cad-formaPag">
@@ -3023,11 +3028,6 @@
           <div class="form-field form-full">
             <label>Objeto do Contrato</label>
             <textarea id="cad-objeto" rows="2"></textarea>
-          </div>
-          <div class="form-field form-full">
-            <label>Datas de Vencimento (opcional)</label>
-            <textarea id="cad-datasVenc" rows="2" placeholder="Ex.: 10/08/2026, 25/08/2026, 10/10/2026"></textarea>
-            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Uma data por parcela, na ordem (entrada primeiro, depois parcela 1, 2, 3...), separadas por vírgula. Cobre vencimentos quinzenais ou fora do padrão mensal. Deixe em branco para calcular automaticamente todo mês a partir do Dia do Vencimento.</div>
           </div>
         </div>
       </div>
@@ -4244,6 +4244,12 @@ function gerarContrato(p) {
   const valEntrada = p.valorEntrada
     ? `R$ ${parseFloat(p.valorEntrada).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
     : '';
+  // Datas de Vencimentos (se preenchidas): a 1a data e a da entrada. Sem isso,
+  // cai no "dia X" generico calculado a partir do Dia do Vencimento.
+  const datasLista = p.datasVencimento
+    ? String(p.datasVencimento).split(/[,;]+/).map(s => s.trim()).filter(Boolean)
+    : [];
+  const dataEntrada = datasLista.length ? datasLista[0] : (p.diaVencimento ? 'dia ' + p.diaVencimento : '______________________');
   const vencimento = p.diaVencimento ? 'dia ' + p.diaVencimento + ' de cada mes' : '______________________';
   const formaPag = p.formaPagamento || 'PIX';
   const objeto = p.objetoContrato || (p.processo
@@ -4282,10 +4288,10 @@ function gerarContrato(p) {
   <p class="doc-texto">
     <strong>CLAUSULA 2a - DOS HONORÁRIOS.</strong>
     Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
-    <strong>${valTotal}</strong>, a ser pago em <strong>${parcelas}</strong> parcela(s),
+    <strong>${valTotal}</strong>,
     ${valEntrada
-      ? `sendo a primeira parcela no valor de <strong>${valEntrada}</strong> a ser paga em ${campo(p.diaVencimento) || '______'} e as demais parcelas no valor de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`
-      : `de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`}
+      ? `sendo <strong>${valEntrada}</strong> a título de entrada, a ser paga em ${dataEntrada}, e o saldo remanescente em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong> cada, com vencimento no ${vencimento},`
+      : `a ser pago em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong>, com vencimento no ${vencimento},`}
     por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX - CPF: 051.303.588-56)' : ''}.
   </p>
 
