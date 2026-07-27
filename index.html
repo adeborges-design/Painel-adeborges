@@ -6363,7 +6363,12 @@ function renderContas(){
   html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(recNorm(c['Recorrencia'])==='mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(recNorm(c['Recorrencia'])==='parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(window.cpNomeCartao(c['Cartao']))+' · na fatura</span>':'')+(isFaturaCartao&&c['Cartao']?' <span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(window.cpNomeCartao(c['Cartao']))+'</span>':'')+'</div>'
   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div>'+confHtml+'</div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
-  +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':(isFaturaCartao&&c['Cartao']?'<button class="cp-btn pg" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓ Pagar fatura</button>':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>'))
+  +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'
+  +(paga
+    ?(isFaturaCartao&&c['Cartao']
+      ?'<button class="cp-btn" title="Estorna a fatura e as compras pagas junto" onclick="cpEstornarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">↩ Estornar fatura</button>'
+      :'<button class="cp-btn" title="Desfazer esse pagamento" onclick="cpEstornar(\''+esc(c['ID'])+'\')">↩ Estornar</button>')
+    :(isFaturaCartao&&c['Cartao']?'<button class="cp-btn pg" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓ Pagar fatura</button>':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>'))
   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button></span></div>';
  });
  document.getElementById('cpVencidas').textContent=fmr(vencidas);
@@ -6595,6 +6600,72 @@ window.cpExcluir=async function(id){
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_conta',id:id})});
  setTimeout(carregarContas,1800);
 };
+// Estorno de pagamento: volta o status pra "Em aberto", limpa a Data de Pagamento, repõe o saldo
+// devedor (Parcelada) e remove a parcela/mensalidade seguinte que tinha sido gerada sozinha ao pagar
+// (localizada por descrição+cartão+recorrência com vencimento exatamente 1 mês depois, ainda em aberto).
+async function cpEstornarCore(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ if(String(c['Status']).toLowerCase()!=='paga')return;
+ var rec=recNorm(c['Recorrencia']);
+ var dv=dbr(c['Data Vencimento']);
+ var campos={'Status':'Em aberto','Data Pagamento':''};
+ var proxima=null;
+ if(dv){
+  var alvoM=dv.getMonth()+1,alvoA=dv.getFullYear();
+  if(alvoM>11){alvoM=0;alvoA++;}
+  proxima=(allContas||[]).find(function(x){
+   if(String(x['ID'])===String(id))return false;
+   if(String(x['Status']).toLowerCase()==='paga')return false;
+   if((x['Descricao']||'').trim().toLowerCase()!==(c['Descricao']||'').trim().toLowerCase())return false;
+   if(cpNomeCartao(x['Cartao']||'')!==cpNomeCartao(c['Cartao']||''))return false;
+   if(recNorm(x['Recorrencia'])!==rec)return false;
+   var xdv=dbr(x['Data Vencimento']);if(!xdv)return false;
+   return xdv.getMonth()===alvoM&&xdv.getFullYear()===alvoA;
+  });
+ }
+ if(rec==='parcelada'){
+  var saldoArmazenado=nbr(c['Saldo Devedor']);
+  var saldoRestaurado=Math.round((saldoArmazenado+nbr(c['Valor']))*100)/100;
+  campos['Saldo Devedor']=saldoRestaurado.toFixed(2).replace('.',',');
+ }
+ await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:campos})});
+ if(proxima){
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_conta',id:proxima['ID']})});
+ }
+}
+window.cpEstornar=async function(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ if(String(c['Status']).toLowerCase()!=='paga'){alert('Essa conta não está paga.');return;}
+ var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+ var msg='Estornar o pagamento de "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+')? Volta para "Em aberto"'+(recNorm(c['Recorrencia'])==='parcelada'?', restaura o saldo devedor':'')+' e remove a parcela/mensalidade seguinte gerada automaticamente, se existir.';
+ if(ehFatura)msg+='\n\nATENÇÃO: isso estorna só a fatura em si. As compras individuais desse cartão pagas junto continuam pagas — use "Estornar fatura" pra reverter tudo de uma vez.';
+ if(!confirm(msg))return;
+ await cpEstornarCore(id);
+ setTimeout(async function(){
+  await carregarContas();
+  try{if(c['Cartao']){var nm=cpNomeCartao(c['Cartao']);await cpSyncFatura(nm);cpRenderDrill(nm);}}catch(e){}
+  try{renderContas();}catch(e){}
+ },1800);
+};
+window.cpEstornarFatura=async function(faturaId,nome){
+ var fatura=allContas.find(function(x){return String(x['ID'])===String(faturaId);});if(!fatura)return;
+ if(String(fatura['Status']).toLowerCase()!=='paga'){alert('Essa fatura não está paga.');return;}
+ var dvFat=dbr(fatura['Data Vencimento']);if(!dvFat){alert('Essa fatura não tem data de vencimento preenchida.');return;}
+ var mes=dvFat.getMonth(),ano=dvFat.getFullYear();
+ var compras=(allContas||[]).filter(function(c){
+  var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  if(ehF)return false;
+  if(cpNomeCartao(c['Cartao'])!==nome)return false;
+  if(String(c['Status']).toLowerCase()!=='paga')return false;
+  var xdv=dbr(c['Data Vencimento']);if(!xdv)return false;
+  return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
+ });
+ if(!confirm('Estornar a fatura "'+esc(nome)+'" ('+fmr(nbr(fatura['Valor']))+')? Isso vai estornar também '+compras.length+' compra(s) paga(s) deste mês, restaurando saldo devedor e removendo as parcelas/mensalidades seguintes geradas automaticamente.'))return;
+ for(var i=0;i<compras.length;i++){await cpEstornarCore(compras[i]['ID']);}
+ await cpEstornarCore(faturaId);
+ setTimeout(async function(){await carregarContas();try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},2200);
+};
+window.cpEstornarDrill=async function(id,nome){await cpEstornar(id);setTimeout(async function(){try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},1900);};
 if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
 
@@ -6678,7 +6749,10 @@ function cpRenderDrill(nome){
    +'<div class="meta">venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
    +(paga?'<span style="margin-left:8px"><span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span></span>':'')
    +'<span class="val">'+fmr(nbr(c['Valor']))+'</span>'
-   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\');cpFecharDrill();">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar</button>')
+   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\');cpFecharDrill();">✎</button>'
+   +(paga
+     ?'<button class="cp-btn" title="Desfazer esse pagamento" onclick="cpEstornarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">↩ Estornar</button>'
+     :'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar</button>')
    +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluirDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">🗑️</button></span></div>';
  }).join(''):'<div class="hon-empty">Nenhuma compra lançada neste cartão ainda.</div>';
 
