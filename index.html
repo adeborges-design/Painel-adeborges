@@ -6533,7 +6533,16 @@ window.cpLancar=async function(){
   if(cartEl)cartEl.value='';
   var fx=document.getElementById('cp-forma');if(fx)fx.value='';
   var bx=document.getElementById('cp-banco');if(bx)bx.value='';
-  setTimeout(carregarContas,1800);
+  // se essa conta foi lançada/editada com um Cartão (mesmo lançando por aqui, fora do "drill" do
+  // cartão), a fatura consolidada daquele cartão precisa ser ressincronizada, senão o valor da fatura
+  // fica desatualizado em relação à soma real das compras.
+  var cartSync=cart?cpNomeCartao(cart):'';
+  setTimeout(async function(){
+   await carregarContas();
+   if(cartSync){try{await cpSyncFatura(cartSync);}catch(e){}}
+   try{renderContas();}catch(e){}
+   try{if(cartSync&&document.getElementById('cpDrillOverlay')&&document.getElementById('cpDrillOverlay').style.display!=='none')cpRenderDrill(cartSync);}catch(e){}
+  },1800);
  }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
 };
 // Nucleo do "marcar como paga" (sem confirm() e sem recarregar contas) - reaproveitado tanto pelo
@@ -6570,7 +6579,12 @@ window.cpPagar=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
  if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
  await cpPagarCore(id);
- setTimeout(carregarContas,1800);
+ var cartSync=c['Cartao']?cpNomeCartao(c['Cartao']):'';
+ setTimeout(async function(){
+  await carregarContas();
+  if(cartSync){try{await cpSyncFatura(cartSync);}catch(e){}}
+  try{renderContas();}catch(e){}
+ },1800);
 };
 // Paga a fatura inteira do cartão de uma vez: da baixa em todas as compras em aberto do mesmo
 // mes/ano de vencimento da fatura (gerando sozinho a parcela/mensalidade do mes seguinte de cada
@@ -6598,7 +6612,12 @@ window.cpExcluir=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});
  if(!confirm('Excluir a conta "'+(c?c['Descricao']:id)+'"?'))return;
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_conta',id:id})});
- setTimeout(carregarContas,1800);
+ var cartSync=c&&c['Cartao']?cpNomeCartao(c['Cartao']):'';
+ setTimeout(async function(){
+  await carregarContas();
+  if(cartSync){try{await cpSyncFatura(cartSync);}catch(e){}}
+  try{renderContas();}catch(e){}
+ },1800);
 };
 // Estorno de pagamento: volta o status pra "Em aberto", limpa a Data de Pagamento, repõe o saldo
 // devedor (Parcelada) e remove a parcela/mensalidade seguinte que tinha sido gerada sozinha ao pagar
