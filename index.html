@@ -6310,6 +6310,7 @@ function renderContas(){
   +'<div class="cp-card"><div class="l">Pagas no mês</div><div class="v" style="color:var(--green)" id="cpPagasMes">R$ 0,00</div></div>'
   +'<div class="cp-card"><div class="l">Total em aberto</div><div class="v" style="color:var(--accent2)" id="cpAberto">R$ 0,00</div></div></div>'
   +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title">💳 Cartões de Crédito</div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
+  +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista"></div></div>'
   +'<div class="cp-form">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
   +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
@@ -6340,6 +6341,9 @@ function renderContas(){
   // embutido na fatura consolidada acima — por isso NÃO soma nos totais gerais de Contas a Pagar (evita
   // contar o mesmo valor duas vezes). Ainda soma no card do cartão (limite) e na conferência da fatura.
   var isCartaoItem=!!c['Cartao']&&!isFaturaCartao;
+  // Compras individuais de cartão nao aparecem mais na lista geral (deixava a lista enorme) -
+  // elas so aparecem dentro do proprio cartão (clique no card em Cartões de Crédito).
+  if(isCartaoItem)return;
   var stH='';
   if(paga){var dp=dbr(c['Data Pagamento']);if(!isCartaoItem&&dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
   else{if(!isCartaoItem)aberto+=v;
@@ -6368,6 +6372,7 @@ function renderContas(){
  document.getElementById('cpAberto').textContent=fmr(aberto);
  document.getElementById('cpLista').innerHTML=html||'<div class="hon-empty">Nenhuma conta cadastrada</div>';
  try{cpRenderCartoes();}catch(e){}
+ try{cpRenderFixas();}catch(e){}
  try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
  // alerta flutuante
  var atras=abertas.filter(function(c){var d=dbr(c['Data Vencimento']);return d&&d<hoje;});
@@ -6472,6 +6477,7 @@ function cpRenderCartoes(){
    +'<div class="cc-row" style="margin-top:10px"><span>Fecha dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="fecha" value="'+(dc.fecha||'')+'" placeholder="—" onchange="cpSetData(this)"></div>'
    +'<div class="cc-row"><span>Vence dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="vence" value="'+(dc.vence||'')+'" placeholder="—" onchange="cpSetData(this)"></div>'
    +(vencTxt?'<div class="cc-row" style="justify-content:flex-end;margin-top:-2px;font-size:11px">'+vencTxt+'</div>':'')
+   +'<button class="cp-btn" style="width:100%;margin-top:10px;justify-content:center;background:var(--accent);color:#fff;font-weight:700" onclick="cpAbrirCartaoDrill(\''+esc(nome)+'\')">🧾 Ver / lançar compras</button>'
    +'</div>';
  }).join('');
 }
@@ -6562,6 +6568,145 @@ window.cpExcluir=async function(id){
 };
 if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
+
+// ===== COMPRAS DE CARTÃO ISOLADAS DO CARTÃO + QUADRO DE CONTAS FIXAS =====
+// Compras individuais de cartão (isCartaoItem) somem da lista geral (renderContas ja filtra) e passam
+// a ser lançadas e vistas só dentro do proprio cartão, aqui no "drill" (clique em "Ver / lançar compras").
+// O valor da fatura consolidada (a linha que aparece em Contas a Pagar p/ dar baixa) e sincronizado
+// automaticamente com a soma dessas compras, no vencimento do mesmo mes/ano da fatura.
+async function cpSyncFatura(nome){
+ try{
+  var datas=cpDatas();var dc=datas[nome]||{};
+  var pv=cpProximoVenc(dc.vence);
+  if(!pv)return; // sem "dia de vencimento" configurado pro cartão, nao da pra saber o periodo da fatura
+  var mes=pv.getMonth(),ano=pv.getFullYear();
+  var soma=(allContas||[]).filter(function(x){
+   var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(x['Categoria']||'').trim());
+   if(ehF)return false;
+   if(cpNomeCartao(x['Cartao'])!==nome)return false;
+   var xdv=dbr(x['Data Vencimento']);if(!xdv)return false;
+   return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
+  }).reduce(function(a,x){return a+nbr(x['Valor']);},0);
+  soma=Math.round(soma*100)/100;
+  var fatura=(allContas||[]).find(function(x){
+   var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(x['Categoria']||'').trim());
+   if(!ehF)return false;
+   if(cpNomeCartao(x['Cartao'])!==nome)return false;
+   var xdv=dbr(x['Data Vencimento']);if(!xdv)return false;
+   return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
+  });
+  if(fatura){
+   if(Math.abs(nbr(fatura['Valor'])-soma)>0.004){
+    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:fatura['ID'],campos:{'Valor':soma.toFixed(2).replace('.',',')}})});
+   }
+  } else if(soma>0){
+   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':'Cartão de Crédito - '+nome,'Categoria':'Cartão de Crédito','Cartao':nome,'Valor':soma.toFixed(2).replace('.',','),'Data Vencimento':fdt(pv),'Forma Pagamento':'Cartão de crédito','Recorrencia':'Mensal','Status':'Em aberto'}})});
+  }
+  await carregarContas();
+ }catch(e){console.error('cpSyncFatura',e);}
+}
+window.cpSyncFatura=cpSyncFatura;
+
+function cpDrillEnsureModal(){
+ if(document.getElementById('cpDrillOverlay'))return;
+ var ov=document.createElement('div');
+ ov.id='cpDrillOverlay';
+ ov.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:960;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+ ov.innerHTML='<div id="cpDrillWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+ ov.addEventListener('click',function(e){if(e.target===ov)cpFecharDrill();});
+ document.body.appendChild(ov);
+}
+window.cpFecharDrill=function(){var ov=document.getElementById('cpDrillOverlay');if(ov)ov.style.display='none';};
+window.cpAbrirCartaoDrill=function(nome){
+ cpDrillEnsureModal();
+ document.getElementById('cpDrillOverlay').style.display='flex';
+ cpRenderDrill(nome);
+};
+function cpRenderDrill(nome){
+ var wrap=document.getElementById('cpDrillWrap');if(!wrap)return;
+ var itens=(allContas||[]).filter(function(c){
+  var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  return !ehF&&cpNomeCartao(c['Cartao'])===nome;
+ });
+ itens.sort(function(a,b){return (dbr(b['Data Vencimento'])||0)-(dbr(a['Data Vencimento'])||0);});
+ var totAberto=itens.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
+ var linhas=itens.length?itens.map(function(c){
+  var paga=String(c['Status']).toLowerCase()==='paga';
+  var parcInfo=recNorm(c['Recorrencia'])==='parcelada'?(' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>'):'';
+  return '<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+parcInfo+'</div>'
+   +'<div class="meta">venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div></div>'
+   +(paga?'<span style="margin-left:8px"><span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span></span>':'')
+   +'<span class="val">'+fmr(nbr(c['Valor']))+'</span>'
+   +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\');cpFecharDrill();">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar</button>')
+   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluirDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">🗑️</button></span></div>';
+ }).join(''):'<div class="hon-empty">Nenhuma compra lançada neste cartão ainda.</div>';
+
+ wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">💳 '+esc(nome)+'</div><button class="cp-btn" onclick="cpFecharDrill()">✕</button></div>'
+  +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Em aberto: <strong style="color:var(--accent2)">'+fmr(totAberto)+'</strong> · a fatura na lista de Contas a Pagar é atualizada automaticamente com a soma das compras lançadas aqui.</div>'
+  +'<div class="cp-form" style="margin-bottom:16px">'
+  +'<div class="cp-field cp-full"><label>Descrição da compra *</label><input id="cpd-desc" placeholder="Ex.: Compra supermercado"></div>'
+  +'<div class="cp-field"><label>Categoria</label><input id="cpd-cat" placeholder="Ex.: Alimentação"></div>'
+  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cpd-valor" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field"><label>Vencimento (fatura) *</label><input id="cpd-venc" type="date"></div>'
+  +'<div class="cp-field"><label>Tipo</label><select id="cpd-rec" onchange="cpdToggleParc()"><option value="Única">À vista</option><option value="Parcelada">Parcelada</option></select></div>'
+  +'<div class="cp-field" id="cpdParc1" style="display:none"><label>Valor total da compra (R$)</label><input id="cpd-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpdParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cpd-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpdStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" onclick="cpLancarCompraCartao(\''+esc(nome)+'\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar compra</button></div>'
+  +'</div>'
+  +'<div>'+linhas+'</div>';
+ var datas=cpDatas();var dc=datas[nome]||{};var pv=cpProximoVenc(dc.vence);
+ var vEl=document.getElementById('cpd-venc');
+ if(vEl&&pv)vEl.value=pv.getFullYear()+'-'+('0'+(pv.getMonth()+1)).slice(-2)+'-'+('0'+pv.getDate()).slice(-2);
+}
+window.cpdToggleParc=function(){var p=document.getElementById('cpd-rec').value==='Parcelada';['cpdParc1','cpdParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
+window.cpLancarCompraCartao=async function(nome){
+ var d=document.getElementById('cpd-desc').value.trim();
+ var v=document.getElementById('cpd-valor').value;
+ var dv=document.getElementById('cpd-venc').value;
+ var stEl=document.getElementById('cpdStatus');
+ if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
+ stEl.textContent='⏳ salvando...';
+ var rec=document.getElementById('cpd-rec').value;
+ var totd=(document.getElementById('cpd-totdiv')||{}).value||'';
+ var sald=(document.getElementById('cpd-saldodiv')||{}).value||'';
+ if(rec==='Parcelada'&&totd&&!sald)sald=totd;
+ var campos={'Descricao':d,'Categoria':document.getElementById('cpd-cat').value||'Compra no cartão','Fornecedor':'','Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':rec,'Status':'Em aberto','Forma Pagamento':'Cartão de crédito','Cartao':nome,'Valor Total Divida':totd,'Saldo Devedor':sald};
+ try{
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:campos})});
+  stEl.innerHTML='<span style="color:var(--green)">Salvo! Atualizando...</span>';
+  setTimeout(async function(){await carregarContas();await cpSyncFatura(nome);cpRenderDrill(nome);renderContas();},1500);
+ }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
+};
+window.cpPagarDrill=async function(id,nome){await cpPagar(id);setTimeout(async function(){await cpSyncFatura(nome);cpRenderDrill(nome);renderContas();},1900);};
+window.cpExcluirDrill=async function(id,nome){await cpExcluir(id);setTimeout(async function(){await cpSyncFatura(nome);cpRenderDrill(nome);renderContas();},1900);};
+
+// Quadro "Contas Fixas": contas de recorrência Mensal que NAO sao compras de cartão nem a fatura
+// consolidada - pensado p/ contas fixas do escritorio (contador, aluguel, internet etc.), uma linha
+// por conta (deduplicado por Descricao+Fornecedor, priorizando o lançamento mais recente).
+function cpRenderFixas(){
+ var host=document.getElementById('cpFixasLista');if(!host)return;
+ var lista=(allContas||[]).filter(function(c){
+  if(recNorm(c['Recorrencia'])!=='mensal')return false;
+  var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  if(ehF||c['Cartao'])return false;
+  return true;
+ });
+ lista.sort(function(a,b){return (dbr(b['Data Vencimento'])||0)-(dbr(a['Data Vencimento'])||0);});
+ var vistos={},dedup=[];
+ lista.forEach(function(c){
+  var k=(c['Descricao']||'').trim().toLowerCase()+'|'+(c['Fornecedor']||'').trim().toLowerCase();
+  if(vistos[k])return;vistos[k]=1;dedup.push(c);
+ });
+ dedup.sort(function(a,b){var da=dbr(a['Data Vencimento']),db=dbr(b['Data Vencimento']);return (da?da.getDate():99)-(db?db.getDate():99);});
+ if(!dedup.length){host.innerHTML='<div class="hon-empty">Nenhuma conta fixa (recorrência Mensal) cadastrada.</div>';return;}
+ host.innerHTML=dedup.map(function(c){
+  var dv=dbr(c['Data Vencimento']);
+  return '<div class="cp-item"><div><div class="desc">'+esc(c['Descricao'])+'</div>'
+   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+(c['Forma Pagamento']?esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):''):'-')+' · todo dia '+(dv?dv.getDate():'-')+'</div></div>'
+   +'<span class="val">'+fmr(nbr(c['Valor']))+'</span></div>';
+ }).join('');
+}
+window.cpRenderFixas=cpRenderFixas;
 })();
 </script>
 
