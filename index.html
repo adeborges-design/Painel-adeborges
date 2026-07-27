@@ -6363,7 +6363,7 @@ function renderContas(){
   html+='<div class="cp-item'+(paga?' paga':'')+'"><div><div class="desc">'+esc(c['Descricao'])+' <span class="hon-badge hv-badge-fut">'+esc(c['Categoria']||'')+'</span>'+(recNorm(c['Recorrencia'])==='mensal'?' <span class="hon-badge hv-badge-fut">🔁 Mensal</span>':'')+(recNorm(c['Recorrencia'])==='parcelada'?' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>':'')+(c['Forma Pagamento']?' <span class="hon-badge hv-badge-fut">'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>':'')+(isCartaoItem?' <span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(window.cpNomeCartao(c['Cartao']))+' · na fatura</span>':'')+(isFaturaCartao&&c['Cartao']?' <span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(window.cpNomeCartao(c['Cartao']))+'</span>':'')+'</div>'
   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+'venc. '+esc(c['Data Vencimento']||'-')+(c['Observacoes']?' · '+esc(String(c['Observacoes']).slice(0,40)):'')+'</div>'+confHtml+'</div>'
   +'<span style="margin-left:8px">'+stH+'</span><span class="val">'+fmr(v)+'</span>'
-  +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>')
+  +'<span style="display:flex;gap:6px"><button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'+(paga?'':(isFaturaCartao&&c['Cartao']?'<button class="cp-btn pg" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓ Pagar fatura</button>':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>'))
   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button></span></div>';
  });
  document.getElementById('cpVencidas').textContent=fmr(vencidas);
@@ -6531,9 +6531,11 @@ window.cpLancar=async function(){
   setTimeout(carregarContas,1800);
  }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
 };
-window.cpPagar=async function(id){
+// Nucleo do "marcar como paga" (sem confirm() e sem recarregar contas) - reaproveitado tanto pelo
+// pagamento individual (cpPagar) quanto pelo pagamento em lote da fatura inteira (cpPagarFatura),
+// pra nao abrir um confirm() por compra quando a fatura toda for paga de uma vez.
+async function cpPagarCore(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
- if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
  var hoje=new Date();
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(hoje)}})});
  if(recNorm(c['Recorrencia'])==='mensal'){
@@ -6548,7 +6550,7 @@ window.cpPagar=async function(id){
    var proxx=clampDay(dvx.getFullYear(),dvx.getMonth()+1,dvx.getDate());
    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxx),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||''}})});
    setTimeout(function(){alert('Parcela do mês seguinte criada. Atenção: preencha o Valor total da dívida e o Saldo devedor (botão ✎ editar) para o abatimento automático funcionar.');},500);
-   setTimeout(carregarContas,1800);return;
+   return;
   }
   var novoSaldo=Math.max(Math.round((saldoAtu-nbr(c['Valor']))*100)/100,0);
   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')}})});
@@ -6558,7 +6560,34 @@ window.cpPagar=async function(id){
    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxp),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Valor Total Divida':c['Valor Total Divida']||'','Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')}})});
   } else { setTimeout(function(){alert('🎉 Dívida "'+c['Descricao']+'" QUITADA!');},500); }
  }
+}
+window.cpPagar=async function(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
+ await cpPagarCore(id);
  setTimeout(carregarContas,1800);
+};
+// Paga a fatura inteira do cartão de uma vez: da baixa em todas as compras em aberto do mesmo
+// mes/ano de vencimento da fatura (gerando sozinho a parcela/mensalidade do mes seguinte de cada
+// uma, como ja acontecia pagando uma por uma) e por fim da baixa na propria linha da fatura.
+window.cpPagarFatura=async function(faturaId,nome){
+ var fatura=allContas.find(function(x){return String(x['ID'])===String(faturaId);});if(!fatura)return;
+ var dvFat=dbr(fatura['Data Vencimento']);
+ if(!dvFat){alert('Essa fatura não tem data de vencimento preenchida.');return;}
+ var mes=dvFat.getMonth(),ano=dvFat.getFullYear();
+ var compras=(allContas||[]).filter(function(c){
+  var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  if(ehF)return false;
+  if(cpNomeCartao(c['Cartao'])!==nome)return false;
+  if(String(c['Status']).toLowerCase()==='paga')return false;
+  var xdv=dbr(c['Data Vencimento']);if(!xdv)return false;
+  return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
+ });
+ var totalCompras=compras.reduce(function(a,c){return a+nbr(c['Valor']);},0);
+ if(!confirm('Marcar a fatura "'+esc(nome)+'" ('+fmr(nbr(fatura['Valor']))+') como PAGA?\n\nIsso vai dar baixa em '+compras.length+' compra(s) deste mês (soma R$ '+fmr(totalCompras)+') e já gerar sozinho as parcelas/mensalidades do mês seguinte.'))return;
+ for(var i=0;i<compras.length;i++){await cpPagarCore(compras[i]['ID']);}
+ await cpPagarCore(faturaId);
+ setTimeout(async function(){await carregarContas();try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},2200);
 };
 window.cpExcluir=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});
@@ -6630,6 +6659,18 @@ function cpRenderDrill(nome){
  });
  itens.sort(function(a,b){return (dbr(b['Data Vencimento'])||0)-(dbr(a['Data Vencimento'])||0);});
  var totAberto=itens.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';}).reduce(function(a,c){return a+nbr(c['Valor']);},0);
+ // Fatura consolidada mais proxima (nao paga) desse cartão - a que realmente vai ser paga de uma vez.
+ var faturas=(allContas||[]).filter(function(c){
+  var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  return ehF&&cpNomeCartao(c['Cartao'])===nome&&String(c['Status']).toLowerCase()!=='paga';
+ }).sort(function(a,b){return (dbr(a['Data Vencimento'])||0)-(dbr(b['Data Vencimento'])||0);});
+ var faturaAtual=faturas[0]||null;
+ var faturaHtml=faturaAtual
+  ? '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:12px">'
+    +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Fatura atual (vence '+esc(faturaAtual['Data Vencimento'])+')</div>'
+    +'<div style="font-size:18px;font-weight:700;color:var(--accent2)">'+fmr(nbr(faturaAtual['Valor']))+'</div></div>'
+    +'<button class="cp-btn pg" onclick="cpPagarFatura(\''+esc(faturaAtual['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar fatura</button></div>'
+  : '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Nenhuma fatura em aberto lançada ainda pra esse cartão — é criada sozinha assim que você lançar a 1ª compra do período.</div>';
  var linhas=itens.length?itens.map(function(c){
   var paga=String(c['Status']).toLowerCase()==='paga';
   var parcInfo=recNorm(c['Recorrencia'])==='parcelada'?(' <span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>'):'';
@@ -6642,7 +6683,8 @@ function cpRenderDrill(nome){
  }).join(''):'<div class="hon-empty">Nenhuma compra lançada neste cartão ainda.</div>';
 
  wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">💳 '+esc(nome)+'</div><button class="cp-btn" onclick="cpFecharDrill()">✕</button></div>'
-  +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Em aberto: <strong style="color:var(--accent2)">'+fmr(totAberto)+'</strong> · a fatura na lista de Contas a Pagar é atualizada automaticamente com a soma das compras lançadas aqui.</div>'
+  +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Total em aberto no cartão: <strong style="color:var(--accent2)">'+fmr(totAberto)+'</strong> · a fatura abaixo é atualizada sozinha com a soma das compras lançadas aqui, e pagar ela já dá baixa em todas de uma vez.</div>'
+  +faturaHtml
   +'<div class="cp-form" style="margin-bottom:16px">'
   +'<div class="cp-field cp-full"><label>Descrição da compra *</label><input id="cpd-desc" placeholder="Ex.: Compra supermercado"></div>'
   +'<div class="cp-field"><label>Categoria</label><input id="cpd-cat" placeholder="Ex.: Alimentação"></div>'
