@@ -3302,8 +3302,7 @@
     <div class="form-group">
       <label class="form-label">ID DA PLANILHA</label>
       <input type="text" class="form-input" id="inputSheetId"
-        placeholder="Ex: 1GHRSdjAXRns-wV2lGoCNve8H2vAkbl1K0nLaek7xtP4"
-        value="1GHRSdjAXRns-wV2lGoCNve8H2vAkbl1K0nLaek7xtP4">
+        placeholder="Ex: 1GHRSdjAXRns-wV2lGoCNve8H2vAkbl1K0nLaek7xtP4">
     </div>
 
     <div class="form-group">
@@ -3316,7 +3315,7 @@
 
     <div class="form-group">
       <label class="form-label">NOME DA ABA DE PROCESSOS</label>
-      <input type="text" class="form-input" id="inputSheetName" placeholder="Planilha1" value="Planilha1">
+      <input type="text" class="form-input" id="inputSheetName" placeholder="PROCESSOS">
     </div>
 
     <div class="modal-actions">
@@ -3364,17 +3363,33 @@ let expandedId = null;
 const CONFIG_KEY = 'lexflow_config';
 const URL_AS = 'https://script.google.com/macros/s/AKfycbwMjrcSwDSc8SWQRtbuH0UQKU3uopCWMiZTxwaGJR3V3j95iJjJxFt3t7UKCSwY7nhv/exec';
 
+// ID da planilha "Controle Geral", nome da aba de processos e chave de API raramente mudam, então
+// servem de padrão mesmo se o navegador perder a configuração salva — assim o painel nunca mais
+// pede pra reconfigurar do zero. A chave de API é restrita por domínio/referenciador no Google
+// Cloud Console (uso combinado com decisão do usuário de deixá-la fixa aqui).
+const CONFIG_DEFAULTS = {
+  sheetId: '1iwc2_Xc4_hFcRgsJhPUA_viOwlAYZ8zU3i4A-ooHDWo',
+  sheetName: 'PROCESSOS',
+  apiKey: 'AIzaSyDJvN5ge5Np2842nAdoaFFozuU2Wwtn2Mg'
+};
+
 // --- CONFIG ---------------------------------------------------
 function getConfig() {
+  var saved = {};
   try {
-    return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
-  } catch(e) { return {}; }
+    saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+  } catch(e) { saved = {}; }
+  return {
+    sheetId: saved.sheetId || CONFIG_DEFAULTS.sheetId,
+    apiKey: saved.apiKey || CONFIG_DEFAULTS.apiKey,
+    sheetName: saved.sheetName || CONFIG_DEFAULTS.sheetName
+  };
 }
 
 function saveConfig() {
   const sheetId = document.getElementById('inputSheetId').value.trim();
   const apiKey = document.getElementById('inputApiKey').value.trim();
-  const sheetName = document.getElementById('inputSheetName').value.trim() || 'Planilha1';
+  const sheetName = document.getElementById('inputSheetName').value.trim() || CONFIG_DEFAULTS.sheetName;
 
   if (!sheetId || !apiKey) {
     alert('Preencha o ID da planilha e a chave de API.');
