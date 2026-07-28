@@ -6328,7 +6328,7 @@ function renderContas(){
   +cpBlocoResumoHtml('pessoal')
   +cpBlocoResumoHtml('escritorio')
   +cpBlocoResumoHtml('locacao')
-  +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title">💳 Cartões de Crédito</div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
+  +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
   +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista"></div></div>'
   +'<div class="cp-form">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
@@ -6455,6 +6455,11 @@ window.cpMigrarChaves=cpMigrarChaves;
 window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
 function cpLimites(){var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){d={};}d=cpMigrarChaves(d);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(d));}catch(e){}return d;}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}cpRenderCartoes();};
+// Versao "silenciosa" (sem recriar o grid, so grava): usada no oninput, pra nao depender do onchange
+// (que so dispara ao perder o foco do campo). Se o usuario fecha o navegador logo apos digitar, sem
+// clicar em outro lugar antes, o onchange nunca dispara e o valor nunca era salvo - por isso agora
+// tambem salva a cada tecla digitada, sem recriar o HTML (senao o cursor pularia a cada letra).
+window.cpSetLimiteQuiet=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}};
 // Dia de fechamento (limite p/ compras entrarem na fatura) e dia de vencimento da fatura, por cartão.
 // Editável a qualquer momento pelo usuário; começa com os valores informados por ele como padrão.
 var CP_DATAS_PADRAO={'Sicredi Mastercard 8727':{fecha:24,vence:10},'XP Visa 7503':{fecha:18,vence:1},'Itaú Mastercard 6669':{fecha:'',vence:27},'Itaú Visa 2355':{fecha:2,vence:10},'Mercado Pago Visa 9390':{fecha:12,vence:17},'Leroy Merlin Elo 6823':{fecha:31,vence:5}};
@@ -6467,6 +6472,18 @@ function cpDatas(){
  return d;
 }
 window.cpSetData=function(el){var d=cpDatas();var nome=el.getAttribute('data-card');var campo=el.getAttribute('data-campo');d[nome]=d[nome]||{};d[nome][campo]=el.value?parseInt(el.value,10):'';try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}cpRenderCartoes();};
+window.cpSetDataQuiet=function(el){var d=cpDatas();var nome=el.getAttribute('data-card');var campo=el.getAttribute('data-campo');d[nome]=d[nome]||{};d[nome][campo]=el.value?parseInt(el.value,10):'';try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}};
+// Botao explicito "Salvar" (pedido do usuario, alem do salvamento automatico acima): forca gravar tudo
+// que esta nos campos agora e da um feedback visual, pra confirmar de forma clara que salvou.
+window.cpSalvarCartoesBtn=function(){
+ var grid=document.getElementById('cpCartoesGrid');if(!grid)return;
+ [].forEach.call(grid.querySelectorAll('input[data-card]'),function(el){
+  if(el.hasAttribute('data-campo'))window.cpSetDataQuiet(el);else window.cpSetLimiteQuiet(el);
+ });
+ cpRenderCartoes();
+ var st=document.getElementById('cpCartoesSalvoMsg');
+ if(st){st.textContent='✓ Salvo!';st.style.opacity='1';setTimeout(function(){st.style.opacity='0';},2000);}
+};
 // Próximo vencimento da fatura a partir do dia informado (rola pro mês seguinte se o dia já passou).
 function cpProximoVenc(diaVenc){
  if(!diaVenc)return null;
@@ -6499,12 +6516,12 @@ function cpRenderCartoes(){
   var pv=cpProximoVenc(dc.vence);var vencTxt='';
   if(pv){var diffV=Math.round((pv-new Date(new Date().setHours(0,0,0,0)))/86400000);vencTxt='<span style="color:'+(diffV<=3?'var(--red)':'var(--muted)')+'">'+(diffV===0?'vence hoje':'vence em '+diffV+'d')+'</span>';}
   return '<div class="cp-cc-card"><div class="cc-nome">'+esc(nome)+'</div>'
-   +'<div class="cc-row"><span>Limite</span><input class="cc-lim" type="text" inputmode="decimal" data-card="'+esc(nome)+'" value="'+(L?L.toFixed(2):'')+'" placeholder="0,00" onchange="cpSetLimite(this)"></div>'
+   +'<div class="cc-row"><span>Limite</span><input class="cc-lim" type="text" inputmode="decimal" data-card="'+esc(nome)+'" value="'+(L?L.toFixed(2):'')+'" placeholder="0,00" onchange="cpSetLimite(this)" oninput="cpSetLimiteQuiet(this)"></div>'
    +'<div class="cc-row"><span>Em aberto</span><b style="color:var(--accent2)">'+fmr(saldo)+'</b></div>'
    +'<div class="cc-row"><span>Disponível</span><b style="color:'+(disp<0?'var(--red)':'var(--green)')+'">'+fmr(disp)+'</b></div>'
    +'<div class="cc-bar"><div class="cc-fill" style="width:'+pct+'%;background:'+cor+'"></div></div>'
-   +'<div class="cc-row" style="margin-top:10px"><span>Fecha dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="fecha" value="'+(dc.fecha||'')+'" placeholder="—" onchange="cpSetData(this)"></div>'
-   +'<div class="cc-row"><span>Vence dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="vence" value="'+(dc.vence||'')+'" placeholder="—" onchange="cpSetData(this)"></div>'
+   +'<div class="cc-row" style="margin-top:10px"><span>Fecha dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="fecha" value="'+(dc.fecha||'')+'" placeholder="—" onchange="cpSetData(this)" oninput="cpSetDataQuiet(this)"></div>'
+   +'<div class="cc-row"><span>Vence dia</span><input class="cc-lim" style="width:52px;text-align:center" type="number" min="1" max="31" data-card="'+esc(nome)+'" data-campo="vence" value="'+(dc.vence||'')+'" placeholder="—" onchange="cpSetData(this)" oninput="cpSetDataQuiet(this)"></div>'
    +(vencTxt?'<div class="cc-row" style="justify-content:flex-end;margin-top:-2px;font-size:11px">'+vencTxt+'</div>':'')
    +'<button class="cp-btn" style="width:100%;margin-top:10px;justify-content:center;background:var(--accent);color:#fff;font-weight:700" onclick="cpAbrirCartaoDrill(\''+esc(nome)+'\')">🧾 Ver / lançar compras</button>'
    +'</div>';
@@ -6713,6 +6730,22 @@ window.cpEstornarFatura=async function(faturaId,nome){
 window.cpEstornarDrill=async function(id,nome){await cpEstornar(id);setTimeout(async function(){try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},1900);};
 if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
+// Rede de segurança extra: força gravar limites/datas de cartão e saldos em conta assim que a aba/
+// navegador começa a fechar, cobrindo qualquer campo que por algum motivo não tenha disparado o
+// salvamento automático (oninput) ainda.
+window.addEventListener('beforeunload',function(){
+ try{
+  var g1=document.getElementById('cpCartoesGrid');
+  if(g1)[].forEach.call(g1.querySelectorAll('input[data-card]'),function(el){
+   if(el.hasAttribute('data-campo')){if(typeof window.cpSetDataQuiet==='function')window.cpSetDataQuiet(el);}
+   else if(typeof window.cpSetLimiteQuiet==='function')window.cpSetLimiteQuiet(el);
+  });
+ }catch(e){}
+ try{
+  var g2=document.getElementById('sbGrid');
+  if(g2)[].forEach.call(g2.querySelectorAll('input[data-id]'),function(el){if(typeof window.sbSetSaldoQuiet==='function')window.sbSetSaldoQuiet(el);});
+ }catch(e){}
+});
 
 // ===== COMPRAS DE CARTÃO ISOLADAS DO CARTÃO + QUADRO DE CONTAS FIXAS =====
 // Compras individuais de cartão (isCartaoItem) somem da lista geral (renderContas ja filtra) e passam
@@ -7706,7 +7739,11 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="fc-card">
       <div class="fc-head">
         <div class="fc-title">🏦 Saldos em Contas</div>
-        <div class="fc-legend" id="sbTotal" style="font-weight:700;font-size:13px;color:var(--text)"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="sbSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700;font-size:12px">✓ Salvo!</span>
+          <button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="sbSalvarBtn()">💾 Salvar saldos</button>
+          <div class="fc-legend" id="sbTotal" style="font-weight:700;font-size:13px;color:var(--text)"></div>
+        </div>
       </div>
       <div class="sb-grid" id="sbGrid"></div>
       <div style="font-size:10.5px;color:var(--muted);margin-top:12px">Saldos digitados manualmente por você — servem de referência e não vêm do banco automaticamente. Salvos neste navegador.</div>
@@ -7923,6 +7960,18 @@ window.cpRenderFixas=cpRenderFixas;
   ];
   function sbSaldos(){try{return JSON.parse(localStorage.getItem('lexflow_saldos_bancos')||'{}');}catch(e){return {};}}
   window.sbSetSaldo=function(el){var s=sbSaldos();s[el.getAttribute('data-id')]=nbr(el.value);try{localStorage.setItem('lexflow_saldos_bancos',JSON.stringify(s));}catch(e){}renderSaldos();};
+  // Grava a cada tecla digitada (sem recriar o grid) - o onchange só dispara ao perder o foco, e se o
+  // usuário fechar o navegador logo após digitar, sem clicar em outro lugar antes, o valor nunca era
+  // salvo de fato. Isso garante que o valor já está gravado assim que a pessoa termina de digitar.
+  window.sbSetSaldoQuiet=function(el){var s=sbSaldos();s[el.getAttribute('data-id')]=nbr(el.value);try{localStorage.setItem('lexflow_saldos_bancos',JSON.stringify(s));}catch(e){}};
+  window.sbSalvarBtn=function(){
+    var grid=document.getElementById('sbGrid');if(!grid)return;
+    [].forEach.call(grid.querySelectorAll('input[data-id]'),function(el){window.sbSetSaldoQuiet(el);});
+    var tot=0;var s=sbSaldos();SB_BANCOS.forEach(function(b){tot+=nbr(s[b.id]);});
+    var tEl=document.getElementById('sbTotal');if(tEl)tEl.textContent='Total: '+BRLf(tot);
+    var st=document.getElementById('sbSalvoMsg');
+    if(st){st.textContent='✓ Salvo!';st.style.opacity='1';setTimeout(function(){st.style.opacity='0';},2000);}
+  };
   function renderSaldos(){
     var grid=document.getElementById('sbGrid');if(!grid)return;
     var s=sbSaldos();var tot=0;
@@ -7935,7 +7984,7 @@ window.cpRenderFixas=cpRenderFixas;
         var v=nbr(s[b.id]);
         return '<div class="sb-card"><div class="sb-badge" style="background:'+b.cor+';font-size:'+(b.emoji?'18px':(b.ini.length>3?'10px':'12px'))+'">'+(b.emoji?b.ini:E(b.ini))+'</div>'
           +'<div class="sb-nome">'+E(b.label)+'</div>'
-          +'<input class="sb-input" type="text" inputmode="decimal" data-id="'+E(b.id)+'" value="'+(v?v.toFixed(2).replace('.',','):'')+'" placeholder="0,00" onchange="sbSetSaldo(this)"></div>';
+          +'<input class="sb-input" type="text" inputmode="decimal" data-id="'+E(b.id)+'" value="'+(v?v.toFixed(2).replace('.',','):'')+'" placeholder="0,00" onchange="sbSetSaldo(this)" oninput="sbSetSaldoQuiet(this)"></div>';
       }).join('');
     }
     SB_BANCOS.forEach(function(b){tot+=nbr(s[b.id]);});
