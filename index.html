@@ -3404,6 +3404,7 @@ function saveConfig() {
   try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
+  try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
 }
 
 // --- CARGA DO SHEETS ------------------------------------------
@@ -4000,6 +4001,12 @@ function renderCard(p, idx) {
               </svg>
               Gerar card cliente
             </button>
+            <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.3);color:var(--blue);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirAtendimentos(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+              </svg>
+              Atendimentos
+            </button>
             ${p.processo && p.sistema === 'ESAJ' ? `
             <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4580,6 +4587,7 @@ function compartilharCardImagem() {
       navigator.share({ files: [file], title: 'Atualizacao Processual' })
         .then(function() {
           if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> Compartilhado.</div>';
+          atendAutoLog('Card enviado');
         })
         .catch(function(e) {
           if (e.name !== 'AbortError' && statusEl)
@@ -4614,6 +4622,7 @@ function salvarCardPng() {
     a.href = url; a.download = file.name; a.click();
     URL.revokeObjectURL(url);
     if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> PNG salvo na galeria.</div>';
+    atendAutoLog('Card enviado');
   }).catch(function(e) {
     if (statusEl) statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + e.message + '</div>';
   }).finally(function() {
@@ -4673,8 +4682,140 @@ function copyCardText() {
     tmp.textContent = 'Texto copiado!';
     document.body.appendChild(tmp);
     setTimeout(() => tmp.remove(), 2000);
+    atendAutoLog('Card enviado');
   });
 }
+
+// --- HISTÓRICO DE ATENDIMENTO (por processo/cliente) ----------
+// Registra contatos com o cliente (card enviado, WhatsApp, e-mail, ligação) e despesas feitas por
+// conta do cliente (reembolsáveis ou não). Guardado numa aba própria (ATENDIMENTOS) na planilha,
+// gravada/lida pelas mesmas ações genéricas 'lancar_/atualizar_/excluir_atend' do backend.
+window.allAtendimentos = [];
+var ATEND_TIPOS = ['Card enviado','WhatsApp enviado','WhatsApp recebido','Email enviado','Email recebido','Ligação','Despesa com o cliente'];
+window.carregarAtendimentos = async function () {
+  try {
+    var cfg = getConfig(); if (!cfg || !cfg.apiKey || !cfg.sheetId) return;
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/ATENDIMENTOS!A1:J500?key=' + cfg.apiKey);
+    if (!r.ok) { window.allAtendimentos = []; return; }
+    var data = await r.json(); var rows = data.values || [];
+    if (rows.length < 2) { window.allAtendimentos = []; return; }
+    var hd = rows[0];
+    window.allAtendimentos = rows.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; hd.forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+  } catch (e) { console.error('atendimentos', e); }
+};
+// Chamado sozinho ao enviar o card pro cliente (compartilhar/salvar png/copiar texto) - silencioso,
+// não bloqueia nem avisa em caso de erro, é só um "melhor esforço" de registro automático.
+function atendAutoLog(tipo) {
+  try {
+    var uid = document.getElementById('modalCard').dataset.uid;
+    var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); });
+    if (!p) return;
+    var campos = {
+      'Nr Processo': p.processo || '', 'Cliente': p.nome || '', 'Tipo': tipo,
+      'Descricao': 'Registrado automaticamente ao usar "' + tipo + '" no card do cliente.',
+      'Data Lancamento': fdt(new Date())
+    };
+    fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) }).catch(function () {});
+  } catch (e) {}
+}
+function atendEnsureModal() {
+  if (document.getElementById('atendModalOverlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'atendModalOverlay';
+  ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.innerHTML = '<div id="atendModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) window.atendFechar(); });
+  document.body.appendChild(ov);
+}
+window.atendFechar = function () { var ov = document.getElementById('atendModalOverlay'); if (ov) ov.style.display = 'none'; };
+window.abrirAtendimentos = async function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  atendEnsureModal();
+  document.getElementById('atendModalOverlay').style.display = 'flex';
+  atendRenderModal(uid, '⏳ Carregando histórico...');
+  await window.carregarAtendimentos();
+  atendRenderModal(uid);
+};
+window.atendToggleDespesa = function () {
+  var v = document.getElementById('atend-tipo').value === 'Despesa com o cliente';
+  var el = document.getElementById('atendDespesaFields'); if (el) el.style.display = v ? '' : 'none';
+};
+window.atendSalvar = async function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var tipo = document.getElementById('atend-tipo').value;
+  var dataV = document.getElementById('atend-data').value;
+  var desc = document.getElementById('atend-desc').value.trim();
+  var stEl = document.getElementById('atendStatus');
+  if (!desc) { stEl.innerHTML = '<span style="color:var(--red)">Descreva o atendimento.</span>'; return; }
+  var campos = {
+    'Nr Processo': p.processo || '', 'Cliente': p.nome || '', 'Tipo': tipo, 'Descricao': desc,
+    'Data Lancamento': dataV ? dtBRfromInput(dataV) : fdt(new Date()),
+    'Observacoes': (document.getElementById('atend-obs') || {}).value || ''
+  };
+  if (tipo === 'Despesa com o cliente') {
+    campos['Valor'] = (document.getElementById('atend-valor') || {}).value || '';
+    campos['Reembolsavel'] = (document.getElementById('atend-reemb') || {}).value || 'Não';
+    campos['Status Reembolso'] = (document.getElementById('atend-statusReemb') || {}).value || 'Pendente';
+  }
+  stEl.textContent = '⏳ salvando...';
+  try {
+    await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) });
+    stEl.innerHTML = '<span style="color:var(--green)">Salvo!</span>';
+    setTimeout(async function () { await carregarAtendimentos(); atendRenderModal(uid); }, 1200);
+  } catch (e) { stEl.innerHTML = '<span style="color:var(--red)">Erro: ' + e.message + '</span>'; }
+};
+window.atendExcluir = async function (id, uid) {
+  if (!confirm('Excluir esse registro de atendimento?')) return;
+  await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_atend', id: id }) });
+  setTimeout(async function () { await carregarAtendimentos(); atendRenderModal(uid); }, 1200);
+};
+function atendRenderModal(uid, loadingMsg) {
+  var wrap = document.getElementById('atendModalWrap'); if (!wrap) return;
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  if (loadingMsg) { wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">' + loadingMsg + '</div>'; return; }
+  var pk = String(p.processo || '').trim().toLowerCase();
+  var nk = String(p.nome || '').trim().toLowerCase();
+  var itens = (window.allAtendimentos || []).filter(function (a) {
+    var ak = String(a['Nr Processo'] || '').trim().toLowerCase();
+    var an = String(a['Cliente'] || '').trim().toLowerCase();
+    if (pk) return ak === pk && an === nk;
+    return an === nk;
+  });
+  itens.sort(function (a, b) { return (dbr(b['Data Lancamento']) || 0) - (dbr(a['Data Lancamento']) || 0); });
+  var pendente = itens.filter(function (a) {
+    return a['Tipo'] === 'Despesa com o cliente' && String(a['Reembolsavel']).toLowerCase() === 'sim' && String(a['Status Reembolso']).toLowerCase() !== 'reembolsado';
+  }).reduce(function (s, a) { return s + nbr(a['Valor']); }, 0);
+  var TIPO_ICON = { 'Card enviado': '📇', 'WhatsApp enviado': '💬', 'WhatsApp recebido': '💬', 'Email enviado': '✉️', 'Email recebido': '✉️', 'Ligação': '📞', 'Despesa com o cliente': '💰' };
+  var linhas = itens.length ? itens.map(function (a) {
+    var desp = a['Tipo'] === 'Despesa com o cliente';
+    var reemb = desp && String(a['Reembolsavel']).toLowerCase() === 'sim';
+    var pago = reemb && String(a['Status Reembolso']).toLowerCase() === 'reembolsado';
+    return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo']] || '📌') + ' ' + esc(a['Tipo'])
+      + (desp && nbr(a['Valor']) ? ' <span class="hon-badge hv-badge-fut">' + fmr(nbr(a['Valor'])) + '</span>' : '')
+      + (reemb ? (pago ? ' <span class="hon-badge hv-badge-paga">reembolsado</span>' : ' <span class="hon-badge hv-badge-hoje">a reembolsar</span>') : '') + '</div>'
+      + '<div class="meta">' + esc(a['Data Lancamento'] || '-') + ' · ' + esc(a['Descricao'] || '') + '</div></div>'
+      + '<button class="cp-btn ex" title="Excluir" onclick="atendExcluir(\'' + esc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
+  }).join('') : '<div class="hon-empty">Nenhum atendimento registrado ainda.</div>';
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">📋 Histórico de Atendimento — ' + esc(p.nome) + '</div><button class="cp-btn" onclick="atendFechar()">✕</button></div>'
+    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Processo nr. ' + esc(p.processo) + '</div>' : '')
+    + (pendente > 0.004 ? '<div style="font-size:12.5px;color:var(--orange);margin-bottom:10px">⚠ Pendente de reembolso: <strong>' + fmr(pendente) + '</strong></div>' : '')
+    + '<div class="cp-form" style="margin-bottom:16px">'
+    + '<div class="cp-field"><label>Tipo</label><select id="atend-tipo" onchange="atendToggleDespesa()">' + ATEND_TIPOS.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="cp-field"><label>Data</label><input id="atend-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
+    + '<div class="cp-field cp-full"><label>Descrição *</label><input id="atend-desc" placeholder="Ex.: Cliente ligou perguntando sobre a audiência"></div>'
+    + '<div id="atendDespesaFields" style="display:none" class="cp-full"><div class="cp-form" style="padding:0;border:none;margin:0">'
+      + '<div class="cp-field"><label>Valor (R$)</label><input id="atend-valor" type="number" step="0.01" placeholder="0,00"></div>'
+      + '<div class="cp-field"><label>Reembolsável?</label><select id="atend-reemb"><option value="Não">Não</option><option value="Sim">Sim</option></select></div>'
+      + '<div class="cp-field"><label>Status reembolso</label><select id="atend-statusReemb"><option value="Pendente">Pendente</option><option value="Reembolsado">Reembolsado</option></select></div>'
+    + '</div></div>'
+    + '<div class="cp-field cp-full"><label>Observações (opcional)</label><input id="atend-obs" placeholder="Detalhes adicionais"></div>'
+    + '<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="atendStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" onclick="atendSalvar(\'' + uid + '\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Registrar atendimento</button></div>'
+    + '</div>'
+    + '<div>' + linhas + '</div>';
+}
+window.atendRenderModal = atendRenderModal;
 
 // --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
