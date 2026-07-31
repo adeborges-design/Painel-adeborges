@@ -4690,6 +4690,14 @@ function copyCardText() {
 // Registra contatos com o cliente (card enviado, WhatsApp, e-mail, ligação) e despesas feitas por
 // conta do cliente (reembolsáveis ou não). Guardado numa aba própria (ATENDIMENTOS) na planilha,
 // gravada/lida pelas mesmas ações genéricas 'lancar_/atualizar_/excluir_atend' do backend.
+// Helpers próprios (não reaproveita esc/nbr/fmr/dbr/fdt do módulo Contas a Pagar, que vivem dentro
+// de outro escopo isolado e não são visíveis aqui - foi a causa do "esc is not defined").
+function atEsc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+function atNbr(v) { v = String(v == null ? '' : v).trim(); if (!v) return 0; if (v.indexOf(',') >= 0) { v = v.replace(/\./g, '').replace(',', '.'); } var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function atFmr(v) { return 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+function atDbr(s) { s = String(s || '').trim(); var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return null; return new Date(+m[3], +m[2] - 1, +m[1]); }
+function atFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+function atDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 window.allAtendimentos = [];
 var ATEND_TIPOS = ['Card enviado','WhatsApp enviado','WhatsApp recebido','Email enviado','Email recebido','Ligação','Despesa com o cliente'];
 window.carregarAtendimentos = async function () {
@@ -4715,7 +4723,7 @@ function atendAutoLog(tipo) {
     var campos = {
       'Nr Processo': p.processo || '', 'Cliente': p.nome || '', 'Tipo': tipo,
       'Descricao': 'Registrado automaticamente ao usar "' + tipo + '" no card do cliente.',
-      'Data Lancamento': fdt(new Date())
+      'Data Lancamento': atFdt(new Date())
     };
     fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) }).catch(function () {});
   } catch (e) {}
@@ -4751,7 +4759,7 @@ window.atendSalvar = async function (uid) {
   if (!desc) { stEl.innerHTML = '<span style="color:var(--red)">Descreva o atendimento.</span>'; return; }
   var campos = {
     'Nr Processo': p.processo || '', 'Cliente': p.nome || '', 'Tipo': tipo, 'Descricao': desc,
-    'Data Lancamento': dataV ? dtBRfromInput(dataV) : fdt(new Date()),
+    'Data Lancamento': dataV ? atDtBRfromInput(dataV) : atFdt(new Date()),
     'Observacoes': (document.getElementById('atend-obs') || {}).value || ''
   };
   if (tipo === 'Despesa com o cliente') {
@@ -4783,26 +4791,26 @@ function atendRenderModal(uid, loadingMsg) {
     if (pk) return ak === pk && an === nk;
     return an === nk;
   });
-  itens.sort(function (a, b) { return (dbr(b['Data Lancamento']) || 0) - (dbr(a['Data Lancamento']) || 0); });
+  itens.sort(function (a, b) { return (atDbr(b['Data Lancamento']) || 0) - (atDbr(a['Data Lancamento']) || 0); });
   var pendente = itens.filter(function (a) {
     return a['Tipo'] === 'Despesa com o cliente' && String(a['Reembolsavel']).toLowerCase() === 'sim' && String(a['Status Reembolso']).toLowerCase() !== 'reembolsado';
-  }).reduce(function (s, a) { return s + nbr(a['Valor']); }, 0);
+  }).reduce(function (s, a) { return s + atNbr(a['Valor']); }, 0);
   var TIPO_ICON = { 'Card enviado': '📇', 'WhatsApp enviado': '💬', 'WhatsApp recebido': '💬', 'Email enviado': '✉️', 'Email recebido': '✉️', 'Ligação': '📞', 'Despesa com o cliente': '💰' };
   var linhas = itens.length ? itens.map(function (a) {
     var desp = a['Tipo'] === 'Despesa com o cliente';
     var reemb = desp && String(a['Reembolsavel']).toLowerCase() === 'sim';
     var pago = reemb && String(a['Status Reembolso']).toLowerCase() === 'reembolsado';
-    return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo']] || '📌') + ' ' + esc(a['Tipo'])
-      + (desp && nbr(a['Valor']) ? ' <span class="hon-badge hv-badge-fut">' + fmr(nbr(a['Valor'])) + '</span>' : '')
+    return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo']] || '📌') + ' ' + atEsc(a['Tipo'])
+      + (desp && atNbr(a['Valor']) ? ' <span class="hon-badge hv-badge-fut">' + atFmr(atNbr(a['Valor'])) + '</span>' : '')
       + (reemb ? (pago ? ' <span class="hon-badge hv-badge-paga">reembolsado</span>' : ' <span class="hon-badge hv-badge-hoje">a reembolsar</span>') : '') + '</div>'
-      + '<div class="meta">' + esc(a['Data Lancamento'] || '-') + ' · ' + esc(a['Descricao'] || '') + '</div></div>'
-      + '<button class="cp-btn ex" title="Excluir" onclick="atendExcluir(\'' + esc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
+      + '<div class="meta">' + atEsc(a['Data Lancamento'] || '-') + ' · ' + atEsc(a['Descricao'] || '') + '</div></div>'
+      + '<button class="cp-btn ex" title="Excluir" onclick="atendExcluir(\'' + atEsc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
   }).join('') : '<div class="hon-empty">Nenhum atendimento registrado ainda.</div>';
-  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">📋 Histórico de Atendimento — ' + esc(p.nome) + '</div><button class="cp-btn" onclick="atendFechar()">✕</button></div>'
-    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Processo nr. ' + esc(p.processo) + '</div>' : '')
-    + (pendente > 0.004 ? '<div style="font-size:12.5px;color:var(--orange);margin-bottom:10px">⚠ Pendente de reembolso: <strong>' + fmr(pendente) + '</strong></div>' : '')
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">📋 Histórico de Atendimento — ' + atEsc(p.nome) + '</div><button class="cp-btn" onclick="atendFechar()">✕</button></div>'
+    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Processo nr. ' + atEsc(p.processo) + '</div>' : '')
+    + (pendente > 0.004 ? '<div style="font-size:12.5px;color:var(--orange);margin-bottom:10px">⚠ Pendente de reembolso: <strong>' + atFmr(pendente) + '</strong></div>' : '')
     + '<div class="cp-form" style="margin-bottom:16px">'
-    + '<div class="cp-field"><label>Tipo</label><select id="atend-tipo" onchange="atendToggleDespesa()">' + ATEND_TIPOS.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="cp-field"><label>Tipo</label><select id="atend-tipo" onchange="atendToggleDespesa()">' + ATEND_TIPOS.map(function (t) { return '<option value="' + atEsc(t) + '">' + atEsc(t) + '</option>'; }).join('') + '</select></div>'
     + '<div class="cp-field"><label>Data</label><input id="atend-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
     + '<div class="cp-field cp-full"><label>Descrição *</label><input id="atend-desc" placeholder="Ex.: Cliente ligou perguntando sobre a audiência"></div>'
     + '<div id="atendDespesaFields" style="display:none" class="cp-full"><div class="cp-form" style="padding:0;border:none;margin:0">'
