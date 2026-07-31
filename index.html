@@ -3405,6 +3405,7 @@ function saveConfig() {
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
+  try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
 }
 
 // --- CARGA DO SHEETS ------------------------------------------
@@ -4685,6 +4686,32 @@ function copyCardText() {
     atendAutoLog('Card enviado');
   });
 }
+
+// --- BACKUP DE CONFIGURAÇÃO NA PLANILHA (limites/datas de cartão, saldos em conta) ------------
+// O localStorage sozinho não é confiável a longo prazo (navegador pode evictar dados de sites
+// pouco visitados após alguns dias sem acesso). Toda vez que o usuário salva um desses valores
+// (blur ou botão "Salvar"), também manda uma cópia pra aba CONFIG_PAINEL na planilha (fonte
+// durável). Ao carregar o painel, restaura do que estiver na planilha pro localStorage - assim,
+// mesmo que o navegador tenha apagado tudo, os valores voltam sozinhos na próxima visita.
+window.persistConfigPainel = function (chave, valorObj) {
+  try {
+    fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'salvar_config', chave: chave, valor: JSON.stringify(valorObj) }) }).catch(function () {});
+  } catch (e) {}
+};
+window.carregarConfigPainel = async function () {
+  try {
+    var cfg = getConfig(); if (!cfg || !cfg.apiKey || !cfg.sheetId) return;
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/CONFIG_PAINEL!A1:B20?key=' + cfg.apiKey);
+    if (!r.ok) return;
+    var data = await r.json(); var rows = data.values || [];
+    var map = {}; rows.forEach(function (row) { if (row[0]) map[row[0]] = row[1] || ''; });
+    var mudou = false;
+    if (map.limites_cartao) { try { localStorage.setItem('lexflow_cartoes_lim', map.limites_cartao); mudou = true; } catch (e) {} }
+    if (map.datas_cartao) { try { localStorage.setItem('lexflow_cartoes_datas', map.datas_cartao); mudou = true; } catch (e) {} }
+    if (map.saldos_bancos) { try { localStorage.setItem('lexflow_saldos_bancos', map.saldos_bancos); mudou = true; } catch (e) {} }
+    if (mudou) { try { if (typeof window.carregarContas === 'function') window.carregarContas(); } catch (e) {} }
+  } catch (e) { console.error('configPainel', e); }
+};
 
 // --- HISTÓRICO DE ATENDIMENTO (por processo/cliente) ----------
 // Registra contatos com o cliente (card enviado, WhatsApp, e-mail, ligação) e despesas feitas por
@@ -6618,7 +6645,7 @@ function cpMigrarChaves(obj){
 window.cpMigrarChaves=cpMigrarChaves;
 window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
 function cpLimites(){var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){d={};}d=cpMigrarChaves(d);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(d));}catch(e){}return d;}
-window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}cpRenderCartoes();};
+window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('limites_cartao',lim);cpRenderCartoes();};
 // Versao "silenciosa" (sem recriar o grid, so grava): usada no oninput, pra nao depender do onchange
 // (que so dispara ao perder o foco do campo). Se o usuario fecha o navegador logo apos digitar, sem
 // clicar em outro lugar antes, o onchange nunca dispara e o valor nunca era salvo - por isso agora
@@ -6635,7 +6662,7 @@ function cpDatas(){
  if(mudou)try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}
  return d;
 }
-window.cpSetData=function(el){var d=cpDatas();var nome=el.getAttribute('data-card');var campo=el.getAttribute('data-campo');d[nome]=d[nome]||{};d[nome][campo]=el.value?parseInt(el.value,10):'';try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}cpRenderCartoes();};
+window.cpSetData=function(el){var d=cpDatas();var nome=el.getAttribute('data-card');var campo=el.getAttribute('data-campo');d[nome]=d[nome]||{};d[nome][campo]=el.value?parseInt(el.value,10):'';try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('datas_cartao',d);cpRenderCartoes();};
 window.cpSetDataQuiet=function(el){var d=cpDatas();var nome=el.getAttribute('data-card');var campo=el.getAttribute('data-campo');d[nome]=d[nome]||{};d[nome][campo]=el.value?parseInt(el.value,10):'';try{localStorage.setItem('lexflow_cartoes_datas',JSON.stringify(d));}catch(e){}};
 // Botao explicito "Salvar" (pedido do usuario, alem do salvamento automatico acima): forca gravar tudo
 // que esta nos campos agora e da um feedback visual, pra confirmar de forma clara que salvou.
@@ -6644,6 +6671,7 @@ window.cpSalvarCartoesBtn=function(){
  [].forEach.call(grid.querySelectorAll('input[data-card]'),function(el){
   if(el.hasAttribute('data-campo'))window.cpSetDataQuiet(el);else window.cpSetLimiteQuiet(el);
  });
+ if(typeof window.persistConfigPainel==='function'){window.persistConfigPainel('limites_cartao',cpLimites());window.persistConfigPainel('datas_cartao',cpDatas());}
  cpRenderCartoes();
  var st=document.getElementById('cpCartoesSalvoMsg');
  if(st){st.textContent='✓ Salvo!';st.style.opacity='1';setTimeout(function(){st.style.opacity='0';},2000);}
@@ -6894,6 +6922,7 @@ window.cpEstornarFatura=async function(faturaId,nome){
 window.cpEstornarDrill=async function(id,nome){await cpEstornar(id);setTimeout(async function(){try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},1900);};
 if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
+window.addEventListener('load',function(){setTimeout(function(){try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}},3000);});
 // Rede de segurança extra: força gravar limites/datas de cartão e saldos em conta assim que a aba/
 // navegador começa a fechar, cobrindo qualquer campo que por algum motivo não tenha disparado o
 // salvamento automático (oninput) ainda.
@@ -8123,7 +8152,7 @@ window.cpRenderFixas=cpRenderFixas;
     {id:'Caixa',label:'Dinheiro em caixa',cor:'#a0793d',ini:'💵',emoji:true}
   ];
   function sbSaldos(){try{return JSON.parse(localStorage.getItem('lexflow_saldos_bancos')||'{}');}catch(e){return {};}}
-  window.sbSetSaldo=function(el){var s=sbSaldos();s[el.getAttribute('data-id')]=nbr(el.value);try{localStorage.setItem('lexflow_saldos_bancos',JSON.stringify(s));}catch(e){}renderSaldos();};
+  window.sbSetSaldo=function(el){var s=sbSaldos();s[el.getAttribute('data-id')]=nbr(el.value);try{localStorage.setItem('lexflow_saldos_bancos',JSON.stringify(s));}catch(e){}if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('saldos_bancos',s);renderSaldos();};
   // Grava a cada tecla digitada (sem recriar o grid) - o onchange só dispara ao perder o foco, e se o
   // usuário fechar o navegador logo após digitar, sem clicar em outro lugar antes, o valor nunca era
   // salvo de fato. Isso garante que o valor já está gravado assim que a pessoa termina de digitar.
@@ -8131,6 +8160,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.sbSalvarBtn=function(){
     var grid=document.getElementById('sbGrid');if(!grid)return;
     [].forEach.call(grid.querySelectorAll('input[data-id]'),function(el){window.sbSetSaldoQuiet(el);});
+    if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('saldos_bancos',sbSaldos());
     var tot=0;var s=sbSaldos();SB_BANCOS.forEach(function(b){tot+=nbr(s[b.id]);});
     var tEl=document.getElementById('sbTotal');if(tEl)tEl.textContent='Total: '+BRLf(tot);
     var st=document.getElementById('sbSalvoMsg');
