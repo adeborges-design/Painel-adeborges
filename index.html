@@ -7234,6 +7234,7 @@ window.cpRenderFixas=cpRenderFixas;
           <th style="text-align:center">Venc.</th>
           <th>Status Aluguel</th>
           <th style="text-align:center">Dia Repasse</th>
+          <th style="text-align:right">Encargos (R$)</th>
           <th style="text-align:right">Repasse (R$)</th>
           <th style="text-align:center">Atraso repasse</th>
           <th>Status Repasse</th><th>Data pgto/repasse</th><th>Banco</th>
@@ -7262,6 +7263,8 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="number" step="0.01" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
+        <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>IPTU (parcela mensal, R$)</label><input class="loc-cinput" id="lc-iptu" type="number" step="0.01" placeholder="0,00"></div>
         <div class="loc-cfield"><label>&nbsp;</label><input class="loc-cinput" id="lc-spacer" style="visibility:hidden"></div>
         <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
         <div class="loc-cform-actions">
@@ -7292,7 +7295,40 @@ window.cpRenderFixas=cpRenderFixas;
       </table>
     </div>
   </div>
+
+  <!-- MODAL ENCARGOS DO MÊS (IPTU / Condomínio / Outras cobranças) -->
+  <div class="modal-cobr-overlay" id="modalCobrancas">
+    <div class="cobr-wrap">
+      <div class="cobr-header">
+        <div class="cobr-title">💰 Encargos do mês — <span id="cobrContratoLabel"></span></div>
+        <button class="btn-form-cancel" onclick="fecharModalCobrancas()">✕</button>
+      </div>
+      <div class="cobr-body">
+        <input type="hidden" id="cobr-contrato">
+        <div class="loc-cfield"><label>Condomínio (R$)</label><input class="loc-cinput" id="cobr-condominio" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>IPTU (R$)</label><input class="loc-cinput" id="cobr-iptu" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield full"><label>Outras cobranças — descrição</label><input class="loc-cinput" id="cobr-outras-desc" placeholder="Ex.: Água 90,00; Gás 45,00; Multa atraso 20,00"></div>
+        <div class="loc-cfield"><label>Outras cobranças — valor total (R$)</label><input class="loc-cinput" id="cobr-outras-valor" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Total de encargos</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2)">R$ 0,00</div></div>
+      </div>
+      <div class="loc-cform-actions" style="padding:0 18px 18px">
+        <button class="loc-btn" onclick="fecharModalCobrancas()">Cancelar</button>
+        <button class="loc-btn primary" onclick="salvarCobrancas()">💾 Salvar encargos</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+  .modal-cobr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:960;align-items:center;justify-content:center}
+  .modal-cobr-overlay.open{display:flex}
+  .cobr-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(560px,92vw);max-height:88vh;overflow-y:auto}
+  .cobr-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
+  .cobr-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--accent)}
+  .cobr-body{padding:16px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .cobr-body .full{grid-column:1/-1}
+  @media(max-width:520px){.cobr-body{grid-template-columns:1fr}}
+</style>
 
 <script>
 (function(){
@@ -7322,7 +7358,8 @@ window.cpRenderFixas=cpRenderFixas;
   function num(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf('/')>=0)return 0;/* célula corrompida (data) => inválida */if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
   function mesRef(s){s=String(s||'').trim();if(s.indexOf('/')>=0){var p=s.split('/');if(p.length===3)return ('0'+p[1]).slice(-2)+'/'+p[2];if(p.length===2)return ('0'+p[0]).slice(-2)+'/'+p[1];}return s;}
   // Repasse efetivo: usa o Valor Repasse lançado manualmente (inclusive R$ 0,00); se nunca foi lançado, sugere Aluguel − Taxa.
-  function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)-(l.taxa||0));}
+  function encargosOf(l){return (l.iptu||0)+(l.condominio||0)+(l.outrasValor||0);}
+  function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)-(l.taxa||0)-encargosOf(l));}
 
   function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
@@ -7374,12 +7411,12 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs};
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela'))};
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
         var valorRepasseRaw=cell(row,ml,'Valor Repasse');
-        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
+        return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),condominio:cell(row,ml,'Condominio'),iptu:cell(row,ml,'IPTU'),outrasDesc:cell(row,ml,'Outras Cobrancas Desc')||'',outrasValor:num(cell(row,ml,'Outras Cobrancas Valor')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -7406,8 +7443,23 @@ window.cpRenderFixas=cpRenderFixas;
       var ct=contratosById[l.contrato]||{};
       var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round(aluguel*(num(ct.taxaPct)/100)*100)/100;
-      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
-      if(o){if(o.statusAluguel)r.statusAluguel=o.statusAluguel;if(o.statusRep)r.statusRep=o.statusRep;if(o.dataPag!=null)r.dataPag=o.dataPag;if(o.banco!=null)r.banco=o.banco;if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}}
+      // Condomínio e IPTU: se o lançamento do mês já tem valor próprio, usa-o; senão, puxa o padrão do contrato.
+      var condominio=(l.condominio!=null&&l.condominio!=='')?num(l.condominio):num(ct.condominioPadrao);
+      var iptu=(l.iptu!=null&&l.iptu!=='')?num(l.iptu):num(ct.iptuParcela);
+      var outrasDesc=l.outrasDesc||'';
+      var outrasValor=num(l.outrasValor);
+      var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,taxa:taxa,condominio:condominio,iptu:iptu,outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
+      if(o){
+        if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
+        if(o.statusRep)r.statusRep=o.statusRep;
+        if(o.dataPag!=null)r.dataPag=o.dataPag;
+        if(o.banco!=null)r.banco=o.banco;
+        if(o.condominio!=null)r.condominio=num(o.condominio);
+        if(o.iptu!=null)r.iptu=num(o.iptu);
+        if(o.outrasDesc!=null)r.outrasDesc=o.outrasDesc;
+        if(o.outrasValor!=null)r.outrasValor=num(o.outrasValor);
+        if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}
+      }
       // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar:
       // só faz sentido repassar depois de receber. O valor real (quando Recebido) fica preservado acima.
       if(r.statusAluguel!=='Recebido')r.statusRep=r.statusAluguel;
@@ -7464,7 +7516,8 @@ window.cpRenderFixas=cpRenderFixas;
         '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
         '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
-        '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
+        '<td class="loc-money" style="cursor:pointer" title="IPTU '+BRL(l.iptu||0)+' + Condomínio '+BRL(l.condominio||0)+(l.outrasValor?' + Outras ('+E(l.outrasDesc||'outras cobranças')+') '+BRL(l.outrasValor):'')+' — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(encargosOf(l))+' <span class="loc-num">✎</span></td>'+
+        '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel − Taxa − Encargos). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td>'+(l.statusAluguel!=='Recebido'?
           '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
@@ -7473,11 +7526,11 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
+    }).join('')||'<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
     if(showRepasse)renderRepasse(lst);
     renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
-    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel − Taxa de adm., mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
+    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Encargos</b> (clique para editar) soma IPTU, Condomínio e Outras cobranças do mês — IPTU e Condomínio vêm do padrão do contrato mas podem ser ajustados aqui. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel − Taxa de adm. − Encargos, mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
   function chip(cls,l,n){return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';}
@@ -7525,9 +7578,42 @@ window.cpRenderFixas=cpRenderFixas;
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
-    var campos={'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):''};
+    var campos={'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'','Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':w.outrasValor||0};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
+
+  // ---------- ENCARGOS DO MÊS (IPTU / Condomínio / Outras cobranças) ----------
+  window.abrirModalCobrancas=function(contrato){
+    var l=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+    if(!l)return;
+    var c=contratosById[contrato]||{};
+    document.getElementById('cobr-contrato').value=contrato;
+    document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
+    document.getElementById('cobr-condominio').value=l.condominio||'';
+    document.getElementById('cobr-iptu').value=l.iptu||'';
+    document.getElementById('cobr-outras-desc').value=l.outrasDesc||'';
+    document.getElementById('cobr-outras-valor').value=l.outrasValor||'';
+    cobrAtualizarPreview();
+    document.getElementById('modalCobrancas').classList.add('open');
+  };
+  window.fecharModalCobrancas=function(){document.getElementById('modalCobrancas').classList.remove('open');};
+  window.cobrAtualizarPreview=function(){
+    var tot=num(document.getElementById('cobr-condominio').value)+num(document.getElementById('cobr-iptu').value)+num(document.getElementById('cobr-outras-valor').value);
+    document.getElementById('cobrTotalPreview').textContent=BRL(tot);
+  };
+  window.salvarCobrancas=function(){
+    var contrato=document.getElementById('cobr-contrato').value;
+    var patch={
+      condominio:num(document.getElementById('cobr-condominio').value),
+      iptu:num(document.getElementById('cobr-iptu').value),
+      outrasDesc:document.getElementById('cobr-outras-desc').value.trim(),
+      outrasValor:num(document.getElementById('cobr-outras-valor').value)
+    };
+    setOverride(contrato,patch);
+    gravarSheet(contrato);
+    fecharModalCobrancas();
+    locRender();
+  };
   window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
   window.locSetStatusRepasse=function(contrato,val){
     var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
@@ -7559,16 +7645,16 @@ window.cpRenderFixas=cpRenderFixas;
       alert('Solicitada a geração de '+novo+' na planilha. Aguarde alguns segundos e clique em 🔄 Atualizar.');
       setTimeout(carregarAlugueis,2800);
     }else{
-      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:''});});saveState(s);selMes=novo;locRefreshMeses();locRender();
+      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),outrasDesc:'',outrasValor:0});});saveState(s);selMes=novo;locRefreshMeses();locRender();
     }
   };
   window.locReset=function(){if(!confirm('Isto apaga as alterações locais (baixas ainda não sincronizadas e meses gerados localmente). Os dados da planilha não são afetados. Continuar?'))return;localStorage.removeItem(LS_KEY);selMes=null;carregarAlugueis();};
 
   window.locExportCSV=function(){
     var lst=workingList().slice().sort(function(a,b){return a.mes.localeCompare(b.mes);});
-    var head=['Mes/Ano Ref.','Contrato','Locador','Locatario','Endereco','Dia Vencto','Aluguel (R$)','Taxa Adm (R$)','Repasse (R$)','Status Aluguel','Status Repasse','Data Pgto/Repasse','Banco'];
+    var head=['Mes/Ano Ref.','Contrato','Locador','Locatario','Endereco','Dia Vencto','Aluguel (R$)','Taxa Adm (R$)','Condominio (R$)','IPTU (R$)','Outras Cobrancas Desc','Outras Cobrancas (R$)','Repasse (R$)','Status Aluguel','Status Repasse','Data Pgto/Repasse','Banco'];
     var lines=[head.join(';')];
-    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var rep=effRep(l);lines.push([l.mes,l.contrato,csv(c.locador),csv(c.locatario),csv(c.end),c.venc||'',n2(l.aluguel),n2(-l.taxa),n2(rep),l.statusAluguel,l.statusRep,l.dataPag||'',l.banco||''].join(';'));});
+    lst.forEach(function(l){var c=contratosById[l.contrato]||{};var rep=effRep(l);lines.push([l.mes,l.contrato,csv(c.locador),csv(c.locatario),csv(c.end),c.venc||'',n2(l.aluguel),n2(-l.taxa),n2(-(l.condominio||0)),n2(-(l.iptu||0)),csv(l.outrasDesc),n2(-(l.outrasValor||0)),n2(rep),l.statusAluguel,l.statusRep,l.dataPag||'',l.banco||''].join(';'));});
     var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='controle_locacoes_atualizado.csv';a.click();
   };
   function csv(s){s=String(s==null?'':s);return s.indexOf(';')>=0?'"'+s.replace(/"/g,'""')+'"':s;}
@@ -7595,7 +7681,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-end','lc-aluguel','lc-venc','lc-rep','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-end','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
     locRenderContratos();document.getElementById('lc-contrato').focus();
   };
@@ -7611,6 +7697,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-taxa').value=num(c.taxaPct)||'';
     document.getElementById('lc-venc').value=c.venc||'';
     document.getElementById('lc-rep').value=c.rep||'';
+    document.getElementById('lc-condominio').value=num(c.condominioPadrao)||'';
+    document.getElementById('lc-iptu').value=num(c.iptuParcela)||'';
     document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
     document.getElementById('lc-obs').value=c.obs||'';
     document.getElementById('lc-msg').textContent='';
@@ -7628,11 +7716,13 @@ window.cpRenderFixas=cpRenderFixas;
       'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
       'Dia Repasse':document.getElementById('lc-rep').value.trim(),
       'Ativo':document.getElementById('lc-ativo').value,
-      'Observacoes':document.getElementById('lc-obs').value.trim()
+      'Observacoes':document.getElementById('lc-obs').value.trim(),
+      'Condominio Padrao':num(document.getElementById('lc-condominio').value),
+      'IPTU Parcela':num(document.getElementById('lc-iptu').value)
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Aluguel){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel.';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,end:campos.Endereco,aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes};
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,end:campos.Endereco,aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela']};
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
