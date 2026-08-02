@@ -7277,7 +7277,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
         <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="number" step="0.01" placeholder="0,00"></div>
-        <div class="loc-cfield"><label>IPTU (parcela mensal, R$)</label><input class="loc-cinput" id="lc-iptu" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="number" step="0.01" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="number" step="0.01" placeholder="Ex.: 2"></div>
         <div class="loc-cfield"><label>&nbsp;</label><input class="loc-cinput" id="lc-spacer" style="visibility:hidden"></div>
         <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
@@ -7331,7 +7331,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>13º salário (fundo)</label><input class="loc-cinput" id="cobr-decimo-terceiro" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">IPTU</div>
-        <div class="loc-cfield"><label>Parcela deste mês (R$)</label><input class="loc-cinput" id="cobr-iptu" type="number" step="0.01" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Parcela deste mês (R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('cobr-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="cobr-iptu" type="number" step="0.01" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">Multa e juros (sobre o aluguel)</div>
         <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -7349,6 +7349,48 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="loc-btn" onclick="abrirReciboLoc(document.getElementById('cobr-contrato').value,'aluguel')">🖨 Recibo do locatário</button>
         <button class="loc-btn" onclick="abrirReciboLoc(document.getElementById('cobr-contrato').value,'repasse')">🖨 Informe do locador</button>
         <button class="loc-btn primary" onclick="salvarCobrancas()">💾 Salvar encargos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALCULADORA DE IPTU -->
+<div class="modal-cobr-overlay" id="modalCalcIptu">
+  <div class="cobr-wrap" style="max-width:520px">
+    <div class="cobr-header">
+      <div class="cobr-title">📐 Calculadora de IPTU</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCalcIptu').classList.remove('open')">✕</button>
+    </div>
+    <div class="cobr-body" style="grid-template-columns:1fr">
+      <div class="cobr-secao full">1) Ano de início da locação (proporcional)</div>
+      <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Use quando a locação começou no meio do ano — calcula a parte proporcional do IPTU anual e divide pelos meses de aluguel que ainda serão cobrados até dezembro.</div>
+      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual" type="number" step="0.01" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar(false)"></div>
+      <div class="loc-cfield"><label>Data de início da locação</label><input class="loc-cinput" id="calciptu-data" type="date" oninput="calcIptuAtualizar(true)"></div>
+      <div class="loc-cfield"><label>Aluguel é vencido (1ª cobrança ~30 dias após o início)?</label>
+        <select class="loc-cinput" id="calciptu-vencido" onchange="calcIptuAtualizar(true)">
+          <option value="sim">Sim (vencido — mais comum)</option>
+          <option value="nao">Não (antecipado)</option>
+        </select>
+      </div>
+      <div class="loc-cfield"><label>Meses de aluguel a cobrar até 31/12 <span style="font-weight:400;color:#5c6f8a">(sugestão automática, edite se precisar)</span></label><input class="loc-cinput" id="calciptu-meses" type="number" step="1" min="0" oninput="calcIptuAtualizar(false)"></div>
+      <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+        <div id="calciptu-detalhe" style="font-size:12px;color:#5c6f8a;line-height:1.6"></div>
+        <div style="margin-top:6px;font-size:15px">Valor mensal a lançar: <strong id="calciptu-resultado" style="color:var(--accent2)">R$ 0,00</strong></div>
+      </div>
+      <div class="loc-cfield full" style="text-align:right">
+        <button class="loc-btn primary" onclick="calcIptuUsar()">✓ Usar este valor</button>
+      </div>
+
+      <div class="cobr-secao full" style="margin-top:14px">2) Anos completos seguintes (regime normal do carnê)</div>
+      <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Use a partir do 2º ano da locação (ou quando o IPTU cobre o ano inteiro) — divide o valor anual pelo número de parcelas do carnê da prefeitura.</div>
+      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual2" type="number" step="0.01" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar2()"></div>
+      <div class="loc-cfield"><label>Número de parcelas do carnê</label><input class="loc-cinput" id="calciptu-parcelas" type="number" step="1" min="1" value="10" oninput="calcIptuAtualizar2()"></div>
+      <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+        <div style="font-size:15px">Valor de cada parcela mensal: <strong id="calciptu-resultado2" style="color:var(--accent2)">R$ 0,00</strong></div>
+        <div style="font-size:11px;color:#5c6f8a;margin-top:4px">Lance esse valor apenas nos meses em que a prefeitura efetivamente cobra o carnê (ex.: em São Paulo, normalmente fevereiro a novembro) — deixe 0 nos demais meses, no campo do lançamento daquele mês.</div>
+      </div>
+      <div class="loc-cfield full" style="text-align:right">
+        <button class="loc-btn primary" onclick="calcIptuUsar2()">✓ Usar este valor</button>
       </div>
     </div>
   </div>
@@ -7717,6 +7759,73 @@ window.cpRenderFixas=cpRenderFixas;
     fecharModalCobrancas();
     locRender();
   };
+
+  // ---------- CALCULADORA DE IPTU (proporcional no ano de início + regime normal do carnê) ----------
+  function calcIptuDiasNoAno(ano){return ((ano%4===0&&ano%100!==0)||ano%400===0)?366:365;}
+  window.abrirCalcIptu=function(targetId){
+    document.getElementById('modalCalcIptu').setAttribute('data-alvo',targetId);
+    document.getElementById('modalCalcIptu').classList.add('open');
+  };
+  window.calcIptuAtualizar=function(comSugestao){
+    var anual=num(document.getElementById('calciptu-anual').value);
+    var dataStr=document.getElementById('calciptu-data').value;
+    var vencido=document.getElementById('calciptu-vencido').value==='sim';
+    var detalheEl=document.getElementById('calciptu-detalhe');
+    var resultEl=document.getElementById('calciptu-resultado');
+    if(!dataStr){
+      detalheEl.textContent='Informe a data de início da locação.';
+      resultEl.textContent='R$ 0,00';
+      window._calcIptuValor=0;
+      return;
+    }
+    var dt=new Date(dataStr+'T00:00:00');
+    var ano=dt.getFullYear();
+    var fimAno=new Date(ano,11,31);
+    var totalDiasAno=calcIptuDiasNoAno(ano);
+    var diasRestantes=Math.round((fimAno-dt)/86400000)+1;
+    var valorProporcional=anual/totalDiasAno*diasRestantes;
+
+    if(comSugestao){
+      var mesInicio=dt.getMonth();
+      var mesesOcupacao=12-mesInicio;
+      var mesesSugestao=vencido?Math.max(mesesOcupacao-1,0):mesesOcupacao;
+      document.getElementById('calciptu-meses').value=mesesSugestao;
+    }
+    var meses=num(document.getElementById('calciptu-meses').value);
+    var valorMensal=meses>0?(valorProporcional/meses):0;
+
+    detalheEl.innerHTML='Dias restantes até 31/12: <strong>'+diasRestantes+'</strong> de '+totalDiasAno+' dias do ano ('+ano+').<br>'
+      +'Valor proporcional do IPTU no período: <strong>'+BRL(valorProporcional)+'</strong>.';
+    resultEl.textContent=BRL(valorMensal);
+    window._calcIptuValor=valorMensal;
+  };
+  window.calcIptuUsar=function(){
+    var alvo=document.getElementById('modalCalcIptu').getAttribute('data-alvo');
+    if(alvo&&document.getElementById(alvo)){
+      document.getElementById(alvo).value=(window._calcIptuValor||0).toFixed(2);
+      if(alvo==='cobr-iptu'&&typeof window.cobrAtualizarPreview==='function')window.cobrAtualizarPreview();
+    }
+    document.getElementById('modalCalcIptu').classList.remove('open');
+  };
+  window.calcIptuAtualizar2=function(){
+    var anual=num(document.getElementById('calciptu-anual2').value);
+    var parcelas=num(document.getElementById('calciptu-parcelas').value)||10;
+    var valor=parcelas>0?anual/parcelas:0;
+    document.getElementById('calciptu-resultado2').textContent=BRL(valor);
+    window._calcIptuValor2=valor;
+  };
+  window.calcIptuUsar2=function(){
+    var alvo=document.getElementById('modalCalcIptu').getAttribute('data-alvo');
+    if(alvo&&document.getElementById(alvo)){
+      document.getElementById(alvo).value=(window._calcIptuValor2||0).toFixed(2);
+      if(alvo==='cobr-iptu'&&typeof window.cobrAtualizarPreview==='function')window.cobrAtualizarPreview();
+    }
+    document.getElementById('modalCalcIptu').classList.remove('open');
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var mci=document.getElementById('modalCalcIptu');
+    if(mci)mci.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+  });
 
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
   var _reciboLocContrato=null, _reciboLocTipo=null, _reciboLocImgCache=null;
