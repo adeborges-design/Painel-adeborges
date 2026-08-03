@@ -6411,7 +6411,7 @@ function upBanner(){
  if(!r.atras.length&&!r.sem.length){if(el)el.remove();return;}
  if(!el){
   el=document.createElement('div');el.id='vencBanner';
-  el.style.cssText='position:fixed;top:70px;right:16px;z-index:800;background:var(--surface2,#1a1e28);border-radius:12px;padding:12px 16px;max-width:340px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--text,#e8eaf0)';
+  el.style.cssText='position:fixed;bottom:16px;right:16px;z-index:800;background:var(--surface2,#1a1e28);border-radius:12px;padding:12px 16px;max-width:340px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--text,#e8eaf0)';
   el.onclick=function(){if(typeof abrirHonorarios==='function')abrirHonorarios();};
   document.body.appendChild(el);
  }
