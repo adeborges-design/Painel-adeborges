@@ -26,6 +26,41 @@
     --purple: #7d5cd6;
   }
 
+  html.dark-mode {
+    --bg: #0e131d;
+    --surface: #171e2b;
+    --surface2: #1e2635;
+    --border: #2b3547;
+    --border2: #384457;
+    --text: #e6ebf3;
+    --muted: #93a1b8;
+    --accent: #6ba3e0;
+    --accent2: #d8bd8a;
+    --red: #e5747a;
+    --orange: #e8935a;
+    --yellow: #dcb84a;
+    --green: #4fbb8a;
+    --blue: #6ba3e0;
+    --purple: #a58ce8;
+  }
+  html.dark-mode { color-scheme: dark; }
+
+  .theme-toggle-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    margin-left: 4px;
+  }
+  .theme-toggle-btn:hover { background: var(--border); }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -271,7 +306,7 @@
   /* TOP STATS */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px;
     margin-bottom: 24px;
   }
@@ -316,6 +351,7 @@
   .search-bar {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 20px;
   }
@@ -437,7 +473,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 320px;
+    max-width: 100%;
+    flex: 1 1 200px;
+    min-width: 0;
   }
 
   .badge {
@@ -2039,6 +2077,13 @@
 </style>
 </head>
 <body>
+<script>
+  (function(){
+    try{
+      if(localStorage.getItem('lexflow_dark_mode')==='1'){document.documentElement.classList.add('dark-mode');}
+    }catch(e){}
+  })();
+</script>
 
 <!-- LEXFLOW GATE (senha de acesso) -->
 <div id="lexflowGate" style="position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',Arial,sans-serif;">
@@ -2083,6 +2128,7 @@
       <div class="logo">Lex<em>Flow</em></div>
       <div class="logo-sub">Processos</div>
     </div>
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
   </div>
   <div class="header-right">
     <div class="sync-pill" id="btnSync" onclick="loadFromSheets()" style="cursor:pointer" title="Atualizar dados">
@@ -2193,8 +2239,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
-        <input type="text" class="search-input" placeholder="Buscar por cliente, número, tipo de ação..." id="searchInput" oninput="renderProcessos()">
+        <input type="text" class="search-input" placeholder="Buscar por cliente, número, tipo de ação... (atalho: /)" id="searchInput" oninput="renderProcessos()">
       </div>
+      <button class="btn-sync" onclick="openProcessos('criticourgente')" style="border-color:rgba(209,69,74,0.4);color:var(--red)" title="Mostrar apenas processos críticos e urgentes">
+        📋 Prazos da Semana
+      </button>
       <select class="sort-select" id="sortSelect" onchange="renderProcessos()">
         <option value="prioridade">Ordenar: Prioridade</option>
         <option value="nome">Ordenar: Nome</option>
@@ -8402,9 +8451,12 @@ window.cpRenderFixas=cpRenderFixas;
 
 <div class="home-overlay open" id="homeOverlay">
   <div class="home-header">
-    <div class="home-brand">
-      <div class="home-logo">Lex<em>Flow</em></div>
-      <div class="home-sub">Gestão Jurídica e Imobiliária</div>
+    <div class="home-brand" style="display:flex;align-items:center;gap:10px">
+      <div>
+        <div class="home-logo">Lex<em>Flow</em></div>
+        <div class="home-sub">Gestão Jurídica e Imobiliária</div>
+      </div>
+      <button class="theme-toggle-btn theme-toggle-home" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     </div>
     <div class="home-header-right">
     <div class="home-notif" id="notifBell">
@@ -8673,6 +8725,28 @@ window.cpRenderFixas=cpRenderFixas;
 
   window.goHome=function(){closeOverlays();document.getElementById('homeOverlay').classList.add('open');homeRefresh();};
   window.openProcessos=function(filtro){closeOverlays();/* revela o layout base de processos */try{if(filtro&&typeof filterBy==='function')filterBy(filtro);else if(typeof updateStats==='function')updateStats();}catch(e){}};
+
+  // ---------- TEMA CLARO/ESCURO ----------
+  window.toggleDarkMode=function(){
+    var isDark=document.documentElement.classList.toggle('dark-mode');
+    document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
+    try{localStorage.setItem('lexflow_dark_mode',isDark?'1':'0');}catch(e){}
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var isDark=document.documentElement.classList.contains('dark-mode');
+    document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
+  });
+
+  // ---------- ATALHO DE TECLADO "/" PARA BUSCA ----------
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='/')return;
+    var ativo=document.activeElement;
+    var tag=(ativo&&ativo.tagName)||'';
+    var editando=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(ativo&&ativo.isContentEditable);
+    if(editando)return;
+    var el=document.getElementById('searchInput');
+    if(el){e.preventDefault();el.focus();el.select();}
+  });
   window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
   window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
