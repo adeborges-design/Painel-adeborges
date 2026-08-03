@@ -7208,6 +7208,8 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-locatario{font-weight:600}
   .loc-endereco{font-size:11px;color:var(--muted);max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .loc-money{font-family:'DM Mono',monospace;text-align:right;white-space:nowrap}
+  .loc-send-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;width:30px;height:30px;font-size:14px;cursor:pointer;line-height:1}
+  .loc-send-btn:hover{background:var(--border)}
   .loc-money.rep{color:var(--accent2)}
   .loc-row-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
   .loc-row-date{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 6px;border-radius:6px;font-size:11px;outline:none;font-family:'DM Mono',monospace}
@@ -7252,6 +7254,7 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="loc-overlay" id="locOverlay">
   <div class="loc-header">
     <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     <div class="loc-title">🏠 Controle de Aluguéis</div>
     <div class="loc-sync"><span class="dot" id="locSyncDot"></span><span id="locSyncTxt">—</span></div>
     <button class="loc-btn" onclick="carregarAlugueis()">🔄 Atualizar</button>
@@ -7275,7 +7278,7 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
-    <div class="loc-section-title">Lançamentos do mês (repasses)</div>
+    <div class="loc-section-title">Lançamentos do mês, cobranças e repasses</div>
     <div class="loc-table-wrap">
       <table class="loc-table">
         <thead><tr>
@@ -7287,6 +7290,7 @@ window.cpRenderFixas=cpRenderFixas;
           <th style="text-align:right">Repasse (R$)</th>
           <th style="text-align:center">Atraso repasse</th>
           <th>Status Repasse</th><th>Data pgto/repasse</th><th>Banco</th>
+          <th style="text-align:center">Ações</th>
         </tr></thead>
         <tbody id="locTbody"></tbody>
       </table>
@@ -7395,8 +7399,6 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="loc-cform-actions" style="padding:0 18px 18px;flex-wrap:wrap">
         <button class="loc-btn" onclick="fecharModalCobrancas()">Cancelar</button>
-        <button class="loc-btn" onclick="abrirReciboLoc(document.getElementById('cobr-contrato').value,'aluguel')">🖨 Recibo do locatário</button>
-        <button class="loc-btn" onclick="abrirReciboLoc(document.getElementById('cobr-contrato').value,'repasse')">🖨 Informe do locador</button>
         <button class="loc-btn primary" onclick="salvarCobrancas()">💾 Salvar encargos</button>
       </div>
     </div>
@@ -7441,6 +7443,27 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-cfield full" style="text-align:right">
         <button class="loc-btn primary" onclick="calcIptuUsar2()">✓ Usar este valor</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ANOTAÇÕES E MENSAGEM AO LOCATÁRIO -->
+<div class="modal-cobr-overlay" id="modalAnotacoes">
+  <div class="cobr-wrap" style="max-width:520px">
+    <div class="cobr-header">
+      <div class="cobr-title">💬 Conversa com o locatário — <span id="anotContratoLabel"></span></div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalAnotacoes').classList.remove('open')">✕</button>
+    </div>
+    <div class="cobr-body" style="grid-template-columns:1fr">
+      <input type="hidden" id="anot-contrato">
+      <div class="cobr-secao full">Histórico de anotações</div>
+      <div id="anot-historico" style="max-height:220px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:var(--text)"></div>
+      <div class="loc-cfield full"><label>Nova anotação</label><textarea class="loc-cinput" id="anot-nova" rows="3" placeholder="Ex.: Cliente avisou que vai atrasar o pagamento deste mês por motivo X."></textarea></div>
+      <div class="loc-cfield full" style="text-align:right"><button class="loc-btn primary" onclick="adicionarAnotacao()">+ Adicionar anotação</button></div>
+
+      <div class="cobr-secao full" style="margin-top:10px">Enviar mensagem ao locatário</div>
+      <div class="loc-cfield full"><textarea class="loc-cinput" id="anot-mensagem" rows="3" placeholder="Escreva a mensagem para o locatário..."></textarea></div>
+      <div class="loc-cfield full" style="text-align:right"><button class="loc-btn" onclick="enviarMensagemLocatario()">📱 Enviar por WhatsApp</button></div>
     </div>
   </div>
 </div>
@@ -7574,7 +7597,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador')};
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino')};
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
@@ -7713,8 +7736,9 @@ window.cpRenderFixas=cpRenderFixas;
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
+        '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button> <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\')">💬</button></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
+    }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
     if(showRepasse)renderRepasse(lst);
     renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
@@ -7874,6 +7898,41 @@ window.cpRenderFixas=cpRenderFixas;
   document.addEventListener('DOMContentLoaded',function(){
     var mci=document.getElementById('modalCalcIptu');
     if(mci)mci.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+  });
+
+  // ---------- ANOTAÇÕES E MENSAGEM AO LOCATÁRIO ----------
+  window.abrirAnotacoes=function(contrato){
+    var c=contratosById[contrato]||{};
+    document.getElementById('anot-contrato').value=contrato;
+    document.getElementById('anotContratoLabel').textContent=contrato+' — '+(c.locatario||'');
+    var hist=c.anotacoesInquilino||'';
+    document.getElementById('anot-historico').textContent=hist?hist:'Nenhuma anotação registrada ainda.';
+    document.getElementById('anot-nova').value='';
+    document.getElementById('anot-mensagem').value='';
+    document.getElementById('modalAnotacoes').classList.add('open');
+  };
+  window.adicionarAnotacao=function(){
+    var contrato=document.getElementById('anot-contrato').value;
+    var texto=document.getElementById('anot-nova').value.trim();
+    if(!texto)return;
+    var c=contratosById[contrato]||{};
+    var novaLinha='['+fmtHoje()+'] '+texto;
+    var atualizado=c.anotacoesInquilino?(c.anotacoesInquilino+'\n'+novaLinha):novaLinha;
+    c.anotacoesInquilino=atualizado;
+    document.getElementById('anot-historico').textContent=atualizado;
+    document.getElementById('anot-nova').value='';
+    if(live&&c.id){
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locc',id:c.id,campos:{'Anotacoes Inquilino':atualizado}})});}catch(e){}
+    }
+  };
+  window.enviarMensagemLocatario=function(){
+    var msg=document.getElementById('anot-mensagem').value.trim();
+    if(!msg)return;
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var ma=document.getElementById('modalAnotacoes');
+    if(ma)ma.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   });
 
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
