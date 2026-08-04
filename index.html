@@ -2928,6 +2928,7 @@
     </div>
     <div id="edicaoStatus" class="form-status"></div>
     <div class="form-modal-footer">
+      <button class="btn-form-cancel" onclick="excluirProcesso()" style="color:var(--red);border-color:var(--red)">🗑️ Excluir processo</button>
       <button class="btn-form-cancel" onclick="document.getElementById('modalEdicao').classList.remove('open')">Cancelar</button>
       <button class="btn-form-save" id="btnSalvarEdicao" onclick="salvarEdicao()">💾 Salvar na planilha</button>
     </div>
@@ -5710,12 +5711,14 @@ function enviarParcImagem() {
 
 // Estado atual de edicao
 let _edicaoLinha = null;
+let _edicaoNome = '';
 
 function abrirEdicao(uid) {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
 
   _edicaoLinha = p._row + 1; // linha real na planilha
+  _edicaoNome = p.nome || '';
 
   document.getElementById('edicaoTitulo').textContent = '✏️ Editar: ' + p.nome;
 
@@ -5889,6 +5892,35 @@ async function salvarEdicao() {
   } finally {
     btn.disabled = false;
     btn.textContent = '💾 Salvar na planilha';
+  }
+}
+
+async function excluirProcesso() {
+  if (!_edicaoLinha) return;
+  if (!confirm('Excluir definitivamente o processo de "' + _edicaoNome + '"?\n\nEsta ação não pode ser desfeita — o registro será removido da planilha.')) return;
+  const btn = document.getElementById('btnSalvarEdicao');
+  const statusEl = document.getElementById('edicaoStatus');
+  btn.disabled = true;
+  statusEl.className = 'form-status';
+  statusEl.textContent = '⏳ Excluindo...';
+  try {
+    await fetch(URL_AS, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'excluir_processo', linha: _edicaoLinha })
+    });
+    statusEl.className = 'form-status ok';
+    statusEl.textContent = '✓ Excluído! Atualizando painel...';
+    setTimeout(() => {
+      document.getElementById('modalEdicao').classList.remove('open');
+      loadFromSheets();
+    }, 1200);
+  } catch (e) {
+    statusEl.className = 'form-status erro';
+    statusEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -8422,10 +8454,17 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
-        '<td><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button></td>'+
+        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
+  window.locExcluirContrato=function(id,contrato){
+    if(!confirm('Excluir definitivamente o contrato '+contrato+'?\n\nOs lançamentos mensais já gerados para este contrato NÃO serão apagados automaticamente (ficam na planilha como histórico). Esta ação não pode ser desfeita.'))return;
+    if(!live){alert('Só é possível excluir contratos com a planilha conectada (modo ao vivo).');return;}
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locc',id:id})}).then(function(){
+      setTimeout(function(){carregarAlugueis();},1000);
+    });
+  };
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
