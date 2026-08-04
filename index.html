@@ -3491,6 +3491,7 @@
 let allProcessos = [];
 let filteredProcessos = [];
 let currentFilter = 'all';
+let menorPrazoAtual = null;
 let currentRamo = 'all';
 let expandedId = null;
 
@@ -3887,6 +3888,8 @@ function renderProcessos() {
   const sort = (document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : '') || 'prioridade';
   const URGENCIA_ORDER = { critico: 0, urgente: 1, atencao: 2, normal: 3, monitorar: 4 };
 
+  const diasOf = p => (p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined) ? p.prazoInfo.dias : null;
+
   let list = allProcessos.filter(p => {
     // Filtro de ramo
     if (currentRamo !== 'all' && p.ramo !== currentRamo) return false;
@@ -3895,7 +3898,7 @@ function renderProcessos() {
     if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
     if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
     if (currentFilter === 'criticourgente') return p.urgencia === 'critico' || p.urgencia === 'urgente';
-    if (currentFilter === 'prazo') return p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined && p.prazoInfo.dias >= 0;
+    if (currentFilter === 'prazo') { const d = diasOf(p); return d !== null && menorPrazoAtual !== null && d === menorPrazoAtual; }
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
 
     // Busca textual
@@ -3908,7 +3911,6 @@ function renderProcessos() {
   });
 
   // Ordenacao
-  const diasOf = p => (p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined) ? p.prazoInfo.dias : null;
   if (sort === 'prioridade') {
     list.sort((a, b) => {
       const da = diasOf(a), db = diasOf(b);
@@ -4239,6 +4241,7 @@ function updateStats() {
     .map(p => p.prazoInfo && p.prazoInfo.dias)
     .filter(d => d !== null && d !== undefined && d >= 0);
   const menorPrazo = prazos.length > 0 ? Math.min(...prazos) : null;
+  menorPrazoAtual = menorPrazo;
 
   document.getElementById('st-total').textContent = allProcessos.length;
   document.getElementById('st-criticos').textContent = criticos;
