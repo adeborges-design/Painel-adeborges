@@ -81,6 +81,11 @@
   .lf-tip-btn.open::after { transform: rotate(90deg); }
   .lf-tip-content { display: none; margin-top: 8px; }
   .lf-tip-content.open { display: block; }
+  .lf-changelog-versao { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .lf-changelog-versao:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .lf-changelog-data { font-weight: 700; color: var(--accent2); font-size: 12.5px; margin-bottom: 6px; }
+  .lf-changelog-versao ul { margin: 0; padding-left: 18px; }
+  .lf-changelog-versao li { font-size: 12px; color: var(--muted); margin-bottom: 4px; line-height: 1.5; }
 
   /* ---- Resultados de busca (cliente existente / processo principal) ---- */
   .cad-busca-resultados {
@@ -2267,27 +2272,27 @@
 
     <!-- STATS -->
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer" onclick="filterBy('all')" title="Ver todos os processos ativos">
         <div class="label">CASOS ATIVOS</div>
         <div class="value" id="st-total" style="color:var(--accent)">—</div>
         <div class="sub">no momento</div>
       </div>
-      <div class="stat-card critico">
+      <div class="stat-card critico" style="cursor:pointer" onclick="filterBy('criticourgente')" title="Ver processos críticos/urgentes">
         <div class="label">CRÍTICO / URGENTE</div>
         <div class="value" id="st-criticos">—</div>
         <div class="sub">ação imediata</div>
       </div>
-      <div class="stat-card urgente">
+      <div class="stat-card urgente" style="cursor:pointer" onclick="filterBy('prazo')" title="Ver processos com prazo ativo">
         <div class="label">PRAZO EM DIAS</div>
         <div class="value" id="st-prazo">—</div>
         <div class="sub">menor prazo ativo</div>
       </div>
-      <div class="stat-card audiencia">
+      <div class="stat-card audiencia" style="cursor:pointer" onclick="filterBy('audiencia')" title="Ver processos com audiência marcada">
         <div class="label">AUDIÊNCIAS</div>
         <div class="value" id="st-audiencia" style="color:var(--purple)">—</div>
         <div class="sub">marcadas</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer" onclick="filterBy('providencia')" title="Ver processos com ação pendente">
         <div class="label">PROVIDÊNCIAS</div>
         <div class="value" id="st-providencias" style="color:var(--yellow)">—</div>
         <div class="sub">ações pendentes</div>
@@ -3840,6 +3845,7 @@ function parseDate(str) {
 function filterBy(type, btn) {
   currentFilter = type;
   document.querySelectorAll('.sidebar .filter-btn').forEach(b => b.classList.remove('active'));
+  if (!btn) btn = document.querySelector('.sidebar .filter-btn[data-filter="' + type + '"]');
   if (btn) btn.classList.add('active');
   renderProcessos();
 }
@@ -3889,6 +3895,7 @@ function renderProcessos() {
     if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
     if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
     if (currentFilter === 'criticourgente') return p.urgencia === 'critico' || p.urgencia === 'urgente';
+    if (currentFilter === 'prazo') return p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined && p.prazoInfo.dias >= 0;
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
 
     // Busca textual
@@ -8826,6 +8833,10 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="home-agenda" id="homeAgenda"></div>
       <div class="ha-day" id="homeProximos"></div>
     </div>
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('lfChangelogBox').classList.toggle('open')">📋 Histórico de atualizações do painel</button>
+      <div class="lf-tip-content" id="lfChangelogBox"></div>
+    </div>
     <div class="home-grid">
       <div class="home-module">
         <div class="home-card proc" onclick="openProcessos()">
@@ -9030,6 +9041,23 @@ window.cpRenderFixas=cpRenderFixas;
   window.openProcessos=function(filtro){closeOverlays();/* revela o layout base de processos */try{if(filtro&&typeof filterBy==='function')filterBy(filtro);else if(typeof updateStats==='function')updateStats();}catch(e){}};
 
   // ---------- TEMA CLARO/ESCURO ----------
+  // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
+  // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
+  var LF_CHANGELOG = [
+    { data: '04/ago/2026', itens: [
+      'Os cards "Casos Ativos", "Crítico/Urgente", "Prazo em Dias", "Audiências" e "Providências" agora são clicáveis — cada um abre a lista de processos já filtrada, sem precisar procurar na barra lateral.',
+      'Criado este histórico de atualizações — a partir de agora, cada nova versão entregue ganha uma entrada aqui, datada.'
+    ]}
+  ];
+  function renderLfChangelog(){
+    var box=document.getElementById('lfChangelogBox');
+    if(!box)return;
+    box.innerHTML=LF_CHANGELOG.map(function(v){
+      return '<div class="lf-changelog-versao"><div class="lf-changelog-data">'+v.data+'</div><ul>'+v.itens.map(function(it){return '<li>'+it+'</li>';}).join('')+'</ul></div>';
+    }).join('');
+  }
+  document.addEventListener('DOMContentLoaded', renderLfChangelog);
+
   window.toggleDarkMode=function(){
     var isDark=document.documentElement.classList.toggle('dark-mode');
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
