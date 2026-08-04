@@ -61,6 +61,27 @@
   }
   .theme-toggle-btn:hover { background: var(--border); }
 
+  /* ---- Componente reutilizável de "Dicas de uso" (colapsável, clique para ler) ---- */
+  .lf-tip-wrap { margin: 10px 0; }
+  .lf-tip-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--accent2);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lf-tip-btn:hover { background: var(--border); }
+  .lf-tip-btn::after { content: '▸'; font-size: 10px; transition: transform .15s; }
+  .lf-tip-btn.open::after { transform: rotate(90deg); }
+  .lf-tip-content { display: none; margin-top: 8px; }
+  .lf-tip-content.open { display: block; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -7271,6 +7292,7 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" onclick="locToggleContratos()">📋 Contratos</button>
+      <button class="loc-btn" onclick="locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
       <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
       <button class="loc-btn" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
@@ -7295,7 +7317,10 @@ window.cpRenderFixas=cpRenderFixas;
         <tbody id="locTbody"></tbody>
       </table>
     </div>
-    <div class="loc-note" id="locNote"></div>
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('locNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
+      <div class="loc-note lf-tip-content" id="locNote"></div>
+    </div>
 
     <div id="locRepasseSection" class="loc-hidden">
       <div class="loc-section-title">Repasse líquido por locador (mês selecionado)</div>
@@ -7347,19 +7372,21 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
 
     <!-- 3) RESUMO DOS LOCADORES -->
-    <div class="loc-section-title">Resumo dos locadores e seus contratos</div>
-    <div class="loc-table-wrap">
-      <table class="loc-table" style="min-width:900px">
-        <thead><tr>
-          <th>Locador</th>
-          <th style="text-align:center">Contratos ativos</th>
-          <th>Imóveis / Locatários</th>
-          <th style="text-align:right">Total aluguéis (R$)</th>
-          <th style="text-align:right">Total taxa adm. (R$)</th>
-          <th style="text-align:right">Total repasse estimado (R$)</th>
-        </tr></thead>
-        <tbody id="locResumoLocadorTbody"></tbody>
-      </table>
+    <div id="locResumoSection" class="loc-hidden">
+      <div class="loc-section-title">Resumo dos locadores e seus contratos</div>
+      <div class="loc-table-wrap">
+        <table class="loc-table" style="min-width:900px">
+          <thead><tr>
+            <th>Locador</th>
+            <th style="text-align:center">Contratos ativos</th>
+            <th>Imóveis / Locatários</th>
+            <th style="text-align:right">Total aluguéis (R$)</th>
+            <th style="text-align:right">Total taxa adm. (R$)</th>
+            <th style="text-align:right">Total repasse estimado (R$)</th>
+          </tr></thead>
+          <tbody id="locResumoLocadorTbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -7530,7 +7557,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
   }
   var DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
-  var live=false, lastSync='', selMes=null, showRepasse=false;
+  var live=false, lastSync='', selMes=null, showRepasse=false, showResumoLocadores=false;
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
   function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
@@ -7740,7 +7767,7 @@ window.cpRenderFixas=cpRenderFixas;
       '</tr>';
     }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
     if(showRepasse)renderRepasse(lst);
-    renderResumoLocadores();
+    if(showResumoLocadores)renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
     document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Encargos</b> (clique para editar) reúne condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), IPTU (parcela do mês), outras cobranças e desconto — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel + Multa + Juros − Taxa + Encargos, mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
@@ -7753,6 +7780,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Repassado'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>Já repassado</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
   }
   window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
+  window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();};
 
   // ---------- RESUMO DOS LOCADORES (estrutural, por contrato ativo) ----------
   function renderResumoLocadores(){
@@ -8584,34 +8612,6 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="home-agenda" id="homeAgenda"></div>
       <div class="ha-day" id="homeProximos"></div>
     </div>
-    <div class="fc-card">
-      <div class="fc-head">
-        <div class="fc-title">🏦 Saldos em Contas</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span id="sbSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700;font-size:12px">✓ Salvo!</span>
-          <button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="sbSalvarBtn()">💾 Salvar saldos</button>
-          <div class="fc-legend" id="sbTotal" style="font-weight:700;font-size:13px;color:var(--text)"></div>
-        </div>
-      </div>
-      <div class="sb-grid" id="sbGrid"></div>
-      <div style="font-size:10.5px;color:var(--muted);margin-top:12px">Saldos digitados manualmente por você — servem de referência e não vêm do banco automaticamente. Salvos neste navegador.</div>
-    </div>
-    <div class="fc-card">
-      <div class="fc-head">
-        <div class="fc-title">📈 Fluxo de Caixa — últimos 6 meses</div>
-        <div class="fc-legend">
-          <span><span class="fc-dot" style="background:var(--green,#4caf7d)"></span>Receitas</span>
-          <span><span class="fc-dot" style="background:var(--red,#e05454)"></span>Despesas</span>
-        </div>
-      </div>
-      <div id="fcBody"></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;border-top:1px solid var(--border2);padding-top:14px;flex-wrap:wrap">
-        <label style="font-size:11px;color:var(--muted)">Relatório mensal:</label>
-        <input type="month" id="fcMesExport" class="cc-lim" style="width:150px">
-        <button class="btn-sync" id="btnExportPdf" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
-        <span id="fcExportStatus" style="font-size:11px;color:var(--muted)"></span>
-      </div>
-    </div>
     <div class="home-grid">
       <div class="home-module">
         <div class="home-card proc" onclick="openProcessos()">
@@ -8680,7 +8680,37 @@ window.cpRenderFixas=cpRenderFixas;
     <span class="user-menu-slot"></span>
     <button class="btn-sync" onclick="goHome()">✕ Fechar</button>
   </div>
-  <div class="hon-body"><div id="contasHostBody"></div></div>
+  <div class="hon-body">
+    <div class="fc-card">
+      <div class="fc-head">
+        <div class="fc-title">🏦 Saldos em Contas</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="sbSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700;font-size:12px">✓ Salvo!</span>
+          <button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="sbSalvarBtn()">💾 Salvar saldos</button>
+          <div class="fc-legend" id="sbTotal" style="font-weight:700;font-size:13px;color:var(--text)"></div>
+        </div>
+      </div>
+      <div class="sb-grid" id="sbGrid"></div>
+      <div style="font-size:10.5px;color:var(--muted);margin-top:12px">Saldos digitados manualmente por você — servem de referência e não vêm do banco automaticamente. Salvos neste navegador.</div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-head">
+        <div class="fc-title">📈 Fluxo de Caixa — últimos 6 meses</div>
+        <div class="fc-legend">
+          <span><span class="fc-dot" style="background:var(--green,#4caf7d)"></span>Receitas</span>
+          <span><span class="fc-dot" style="background:var(--red,#e05454)"></span>Despesas</span>
+        </div>
+      </div>
+      <div id="fcBody"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;border-top:1px solid var(--border2);padding-top:14px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--muted)">Relatório mensal:</label>
+        <input type="month" id="fcMesExport" class="cc-lim" style="width:150px">
+        <button class="btn-sync" id="btnExportPdf" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
+        <span id="fcExportStatus" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+    </div>
+    <div id="contasHostBody"></div>
+  </div>
 </div>
 
 <script>
@@ -8806,7 +8836,7 @@ window.cpRenderFixas=cpRenderFixas;
     var el=document.getElementById('searchInput');
     if(el){e.preventDefault();el.focus();el.select();}
   });
-  window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}};
+  window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}try{if(typeof renderFluxoCaixa==='function')renderFluxoCaixa();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
   window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
 
