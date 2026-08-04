@@ -2282,10 +2282,10 @@
         <div class="value" id="st-criticos">—</div>
         <div class="sub">ação imediata</div>
       </div>
-      <div class="stat-card urgente" style="cursor:pointer" onclick="filterBy('prazo')" title="Ver processos com prazo ativo">
-        <div class="label">PRAZO EM DIAS</div>
+      <div class="stat-card urgente" style="cursor:pointer" onclick="filterBy('prazo')" title="Ver o processo com o prazo mais próximo">
+        <div class="label">PRAZO MAIS PRÓXIMO</div>
         <div class="value" id="st-prazo">—</div>
-        <div class="sub">menor prazo ativo</div>
+        <div class="sub" id="st-prazo-sub">clique para ver o processo</div>
       </div>
       <div class="stat-card audiencia" style="cursor:pointer" onclick="filterBy('audiencia')" title="Ver processos com audiência marcada">
         <div class="label">AUDIÊNCIAS</div>
@@ -4246,6 +4246,12 @@ function updateStats() {
   document.getElementById('st-total').textContent = allProcessos.length;
   document.getElementById('st-criticos').textContent = criticos;
   document.getElementById('st-prazo').textContent = menorPrazo !== null ? menorPrazo : '-';
+  const prazoSubEl = document.getElementById('st-prazo-sub');
+  if (prazoSubEl) {
+    prazoSubEl.textContent = menorPrazo !== null
+      ? (menorPrazo === 0 ? 'vence hoje' : (menorPrazo === 1 ? 'dia — clique para ver' : 'dias — clique para ver'))
+      : 'nenhum prazo ativo';
+  }
   document.getElementById('st-audiencia').textContent = audiencias;
   document.getElementById('st-providencias').textContent = providencias;
 
