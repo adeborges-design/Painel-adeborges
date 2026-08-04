@@ -82,6 +82,46 @@
   .lf-tip-content { display: none; margin-top: 8px; }
   .lf-tip-content.open { display: block; }
 
+  /* ---- Resultados de busca (cliente existente / processo principal) ---- */
+  .cad-busca-resultados {
+    display: none;
+    position: absolute;
+    left: 0; right: 0; top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 60;
+  }
+  .cad-busca-item { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); }
+  .cad-busca-item:last-child { border-bottom: none; }
+  .cad-busca-item:hover { background: var(--surface2); }
+  .cad-busca-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cad-busca-vazio { padding: 10px 14px; font-size: 12px; color: var(--muted); }
+
+  /* ---- Vínculo entre processos (incidentes / recursos / cumprimento de sentença) ---- */
+  .processo-vinculo {
+    font-size: 11.5px;
+    color: var(--accent);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    width: fit-content;
+  }
+  .processo-vinculo:hover { background: var(--border); }
+  .processo-vinculo .chevron { transition: transform .15s; }
+  .processo-vinculados-lista { margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--border2); }
+  .vinc-item { font-size: 11.5px; color: var(--text); padding: 4px 8px; cursor: pointer; border-radius: 5px; }
+  .vinc-item:hover { background: var(--surface2); }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -2699,6 +2739,11 @@
             <label>Número do Processo</label>
             <input type="text" id="ed-processo" placeholder="0000000-00.0000.0.00.0000">
           </div>
+          <div class="form-field form-full" style="position:relative">
+            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
+            <input type="text" id="ed-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'ed')" autocomplete="off">
+            <div id="ed-processoPrincipalResultados" class="cad-busca-resultados"></div>
+          </div>
           <div class="form-field">
             <label>Sistema</label>
             <select id="ed-sistema">
@@ -2898,6 +2943,14 @@
     </div>
     <div class="form-modal-body">
 
+      <div class="form-section" style="background:var(--surface2);border-radius:10px;padding:14px 16px">
+        <div class="form-section-title">🔍 Cliente já cadastrado?</div>
+        <div style="position:relative">
+          <input type="text" id="cad-buscaCliente" placeholder="Digite o nome ou CPF/CNPJ para preencher os dados automaticamente..." oninput="buscarClienteExistente(this.value)" autocomplete="off" style="width:100%">
+          <div id="cad-buscaClienteResultados" class="cad-busca-resultados"></div>
+        </div>
+      </div>
+
       <div class="form-section">
         <div class="form-section-title">👤 Dados do Cliente</div>
         <div class="form-grid">
@@ -2974,6 +3027,11 @@
           <div class="form-field form-full">
             <label>Número do Processo</label>
             <input type="text" id="cad-processo" placeholder="0000000-00.0000.0.00.0000">
+          </div>
+          <div class="form-field form-full" style="position:relative">
+            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
+            <input type="text" id="cad-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'cad')" autocomplete="off">
+            <div id="cad-processoPrincipalResultados" class="cad-busca-resultados"></div>
           </div>
           <div class="form-field">
             <label>Sistema</label>
@@ -3567,7 +3625,7 @@ function parseProcessos(rows) {
     if (!row || row.length < 3) continue;
 
     // Leitura por nome de coluna (com fallback numerico)
-    const nro              = get(row, 'Nr ',              0);
+    const nro              = get(row, 'Nº',                0);
     const nome             = get(row, 'Nome',             1);
     const processo         = get(row, 'Número do Processo', 2);
     const sistema          = get(row, 'Sistema',          3);
@@ -3591,34 +3649,35 @@ function parseProcessos(rows) {
     const diaVencimento    = get(row, 'Dia do Vencimento', 21);
     const datasVencimento  = get(row, 'Datas de Vencimentos', -1); // campo novo/opcional - lista de datas separadas por virgula (entrada + parcelas, na ordem)
     const formaPagamento   = get(row, 'Forma de pagamento ', 22);
-    const objetoContrato   = get(row, 'Objeto do contrato (descricao dos Serviços)', 23);
-    const tipoProcuracao   = get(row, 'Tipo de Procuracao', 24);
+    const objetoContrato   = get(row, 'Objeto do contrato (descrição dos Serviços)', 23);
+    const tipoProcuracao   = get(row, 'Tipo de Procuração', 24);
     const poderesEspeciais = get(row, 'Poderes Especiais (texto livre para poderes especificos)', 25);
     const rendaMensal      = get(row, 'Renda mensal declarada', 26);
     const numDependentes   = get(row, 'Número de Dependendes', 27);
     const outra            = get(row, 'Outra Parte',      28);
     const parte            = get(row, 'Parte',            29);
     const ramo             = get(row, 'Ramo do Direito',  30);
-    const tipo             = get(row, 'Tipo de Acao',     31);
+    const tipo             = get(row, 'Tipo de Ação',     31);
     const status           = get(row, 'Status',           32);
-    const dataAtua         = get(row, 'Data Atualizacao', 33);
-    const ultima           = get(row, 'Última Atualizacao', 34);
+    const dataAtua         = get(row, 'Data Atualização', 33);
+    const ultima           = get(row, 'Última Atualização', 34);
     const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
     const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
     const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
-    const diasPrazo        = get(row, 'diasPrazo',        -1); // -1: campo legado, se a coluna for excluída da planilha simplesmente vira vazio (sem ler índice deslocado por engano)
+    const diasPrazo        = get(row, 'DiasPrazo',        -1); // -1: campo legado, se a coluna for excluída da planilha simplesmente vira vazio (sem ler índice deslocado por engano)
     const prazoData        = get(row, 'prazoData',        39);
     const dataAudi         = get(row, 'Data Audiência',   40);
     const horAudi          = get(row, 'Horário Audiência', 41);
     const localAudi        = get(row, 'Local da Audiência', 42);
     const advParc          = get(row, 'Advogado Parceiro', 43);
-    const obs              = get(row, 'Observacoes',      44);
+    const obs              = get(row, 'Observações',      46);
     const pastaDrive       = get(row, 'Pasta Drive',      45);
     const linkTrib         = get(row, 'Link Tribunal',    46);
     const telefone         = get(row, 'Telefone',         47);
     const email            = get(row, 'e-mail',           48);
-    const telParceiro      = get(row, 'Telefone Advogado Parceiro', 44);  // AS
-    const emailParceiro    = get(row, 'E-mail Advogado Parceiro',   45);  // AT
+    const telParceiro      = get(row, 'Telefone do Advogado Parceiro', 44);  // AS
+    const emailParceiro    = get(row, 'E-mail do Advogado Parceiro',   45);  // AT
+    const processoPrincipal = get(row, 'Processo Principal', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -3651,6 +3710,7 @@ function parseProcessos(rows) {
       dataAudi, horAudi, localAudi,
       advParc, obs, pastaDrive, linkTrib, telefone, email,
       telParceiro, emailParceiro,
+      processoPrincipal,
       urgencia,
       prazoInfo,
       _row: i
@@ -3944,6 +4004,25 @@ function renderCard(p, idx) {
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
+        ${(() => {
+          let html = '';
+          if (p.processoPrincipal) {
+            const pai = allProcessos.find(x => x.processo && x.processo.trim() === p.processoPrincipal.trim());
+            html += `<div class="processo-vinculo" onclick="event.stopPropagation();${pai ? 'toggleCard(' + pai._uid + ');document.getElementById(\'card-' + pai._uid + '\').scrollIntoView({behavior:\'smooth\',block:\'center\'})' : ''}">
+              🔗 Incidente/vinculado a: <strong>${escHtml(pai ? pai.nome : p.processoPrincipal)}</strong>${pai ? ' (' + escHtml(p.processoPrincipal) + ')' : ''}
+            </div>`;
+          }
+          const filhos = p.processo ? allProcessos.filter(x => x.processoPrincipal && x.processoPrincipal.trim() === p.processo.trim()) : [];
+          if (filhos.length) {
+            html += `<div class="processo-vinculo processo-vinculo-toggle" onclick="event.stopPropagation();toggleVinculados(${p._uid})">
+              📎 ${filhos.length} processo(s) vinculado(s) — incidentes/recursos <span class="chevron" id="chev-${p._uid}">▸</span>
+            </div>
+            <div class="processo-vinculados-lista" id="vinc-${p._uid}" style="display:none">
+              ${filhos.map(f => `<div class="vinc-item" onclick="event.stopPropagation();toggleCard(${f._uid});document.getElementById('card-${f._uid}').scrollIntoView({behavior:'smooth',block:'center'})">${escHtml(f.processo || '(sem número)')} — ${escHtml(f.tipo || f.nome)}</div>`).join('')}
+            </div>`;
+          }
+          return html;
+        })()}
         <div class="processo-meta">
           <span class="meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4121,6 +4200,15 @@ function toggleCard(uid) {
   const wasExpanded = card.classList.contains('expanded');
   document.querySelectorAll('.processo-card.expanded').forEach(c => c.classList.remove('expanded'));
   if (!wasExpanded) card.classList.add('expanded');
+}
+
+function toggleVinculados(uid) {
+  const lista = document.getElementById(`vinc-${uid}`);
+  const chev = document.getElementById(`chev-${uid}`);
+  if (!lista) return;
+  const aberto = lista.style.display !== 'none';
+  lista.style.display = aberto ? 'none' : 'block';
+  if (chev) chev.textContent = aberto ? '▸' : '▾';
 }
 
 function copyNumero(num) {
@@ -5649,6 +5737,7 @@ function abrirEdicao(uid) {
 
   // Preencher campos - Dados do Processo
   document.getElementById('ed-processo').value = p.processo || '';
+  document.getElementById('ed-processoPrincipal').value = p.processoPrincipal || '';
   document.getElementById('ed-sistema').value = p.sistema || '';
   document.getElementById('ed-vara').value = p.vara || '';
   document.getElementById('ed-tribunal').value = p.tribunal || '';
@@ -5747,6 +5836,7 @@ async function salvarEdicao() {
     'Cidade': document.getElementById('ed-cidade').value,
     'Estado (UF)': document.getElementById('ed-estado').value,
     'Número do Processo': document.getElementById('ed-processo').value,
+    'Processo Principal': document.getElementById('ed-processoPrincipal').value,
     'Sistema': document.getElementById('ed-sistema').value,
     'Vara': document.getElementById('ed-vara').value,
     'Tribunal e Forum': document.getElementById('ed-tribunal').value,
@@ -5990,16 +6080,100 @@ async function excluirDocumento(id) {
   }
 }
 
+// ---------- BUSCA DE CLIENTE JÁ CADASTRADO (preenchimento rápido) ----------
+function buscarClienteExistente(termo) {
+  const box = document.getElementById('cad-buscaClienteResultados');
+  termo = (termo || '').trim().toLowerCase();
+  if (termo.length < 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  const vistos = {};
+  const resultados = allProcessos.filter(p => {
+    const chave = (p.cpfCnpj || p.nome || '').toLowerCase();
+    if (vistos[chave]) return false;
+    const bate = (p.nome || '').toLowerCase().includes(termo) || (p.cpfCnpj || '').toLowerCase().includes(termo);
+    if (bate) { vistos[chave] = true; return true; }
+    return false;
+  }).slice(0, 8);
+  box.innerHTML = '';
+  if (!resultados.length) {
+    box.innerHTML = '<div class="cad-busca-vazio">Nenhum cliente encontrado — preencha os dados manualmente.</div>';
+    box.style.display = 'block';
+    return;
+  }
+  resultados.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'cad-busca-item';
+    item.innerHTML = '<strong>' + escHtml(p.nome) + '</strong>' + (p.cpfCnpj ? ' — ' + escHtml(p.cpfCnpj) : '')
+      + '<div class="cad-busca-sub">' + escHtml(p.processo || '(sem processo)') + (p.tipo ? ' · ' + escHtml(p.tipo) : '') + '</div>';
+    item.addEventListener('click', () => preencherClienteExistente(p));
+    box.appendChild(item);
+  });
+  box.style.display = 'block';
+}
+function preencherClienteExistente(p) {
+  const map = {
+    'cad-nome':'nome','cad-cpf':'cpfCnpj','cad-rg':'rg','cad-estadoCivil':'estadoCivil',
+    'cad-profissao':'profissao','cad-telefone':'telefone','cad-email':'email',
+    'cad-endereco':'endereco','cad-bairro':'bairro','cad-complemento':'complemento',
+    'cad-cep':'cep','cad-cidade':'cidade','cad-estado':'estado'
+  };
+  Object.keys(map).forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.value = p[map[id]] || '';
+  });
+  const dn = document.getElementById('cad-dataNasc');
+  if (dn) dn.value = dataParaInput(p.dataNasc) || '';
+  document.getElementById('cad-buscaCliente').value = p.nome;
+  document.getElementById('cad-buscaClienteResultados').style.display = 'none';
+  document.getElementById('cad-buscaClienteResultados').innerHTML = '';
+  const proc = document.getElementById('cad-processo'); if (proc) proc.focus();
+}
+
+// ---------- BUSCA DE PROCESSO PRINCIPAL (vincular incidente/recurso/cumprimento) ----------
+function buscarProcessoPrincipal(termo, prefixo) {
+  const box = document.getElementById(prefixo + '-processoPrincipalResultados');
+  termo = (termo || '').trim().toLowerCase();
+  if (termo.length < 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  const resultados = allProcessos.filter(p =>
+    (p.nome || '').toLowerCase().includes(termo) || (p.processo || '').toLowerCase().includes(termo)
+  ).slice(0, 8);
+  box.innerHTML = '';
+  if (!resultados.length) {
+    box.innerHTML = '<div class="cad-busca-vazio">Nenhum processo encontrado.</div>';
+    box.style.display = 'block';
+    return;
+  }
+  resultados.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'cad-busca-item';
+    item.innerHTML = '<strong>' + escHtml(p.processo || '(sem número)') + '</strong>'
+      + '<div class="cad-busca-sub">' + escHtml(p.nome) + (p.tipo ? ' · ' + escHtml(p.tipo) : '') + '</div>';
+    item.addEventListener('click', () => {
+      document.getElementById(prefixo + '-processoPrincipal').value = p.processo || p.nome;
+      box.style.display = 'none';
+    });
+    box.appendChild(item);
+  });
+  box.style.display = 'block';
+}
+document.addEventListener('click', function(e){
+  ['cad-buscaClienteResultados','cad-processoPrincipalResultados','ed-processoPrincipalResultados'].forEach(function(id){
+    var box = document.getElementById(id);
+    if (box && !box.contains(e.target) && e.target.id !== id.replace('Resultados','')) box.style.display = 'none';
+  });
+});
+
 function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-vara','cad-tribunal','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-vara','cad-tribunal','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
-   'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc'].forEach(id => {
+   'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var _bcr = document.getElementById('cad-buscaClienteResultados'); if (_bcr) { _bcr.style.display='none'; _bcr.innerHTML=''; }
+  var _ppr = document.getElementById('cad-processoPrincipalResultados'); if (_ppr) { _ppr.style.display='none'; _ppr.innerHTML=''; }
   ['cad-honorarios','cad-parcelas','cad-entrada','cad-valorParcela'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -6046,6 +6220,7 @@ async function salvarCadastro() {
     'Cidade': document.getElementById('cad-cidade').value,
     'Estado (UF)': document.getElementById('cad-estado').value,
     'Número do Processo': document.getElementById('cad-processo').value,
+    'Processo Principal': document.getElementById('cad-processoPrincipal').value,
     'Sistema': document.getElementById('cad-sistema').value,
     'Vara': document.getElementById('cad-vara').value,
     'Tribunal e Forum': document.getElementById('cad-tribunal').value,
