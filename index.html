@@ -9640,6 +9640,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (8)', itens: [
+      'Corrigido bug sério nas abas criadas automaticamente (Entregas, Atendimentos, Locações, Contas): quando uma coluna era renomeada no sistema mas a quantidade de colunas não mudava, o cabeçalho da planilha ficava desatualizado e os dados eram lidos na posição errada — foi a causa da assinatura digital não aparecer nos recibos de entrega salvos. Agora o cabeçalho é sempre sincronizado com o nome certo.'
+    ]},
     { data: '05/ago/2026 (7)', itens: [
       'Corrigido bug sério: quando uma coluna não existe na planilha, salvar um processo mostrava "Salvo!" mesmo os dados daquele campo nunca sendo gravados de verdade — descoberto através do problema da Ribagorza (dados de Pessoa Jurídica e representante sumindo). Agora o sistema avisa exatamente quais colunas estão faltando, na hora.',
       'Detecção automática de Pessoa Jurídica pelo CNPJ ajustada: aceita qualquer CPF/CNPJ com mais de 11 dígitos (antes exigia exatamente 14, e uma pequena variação no formato já fazia falhar).'
