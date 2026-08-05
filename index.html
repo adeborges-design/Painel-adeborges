@@ -5172,9 +5172,13 @@ function atendRenderModal(uid, loadingMsg) {
 window.atendRenderModal = atendRenderModal;
 
 // --- MÓDULO ENTREGAS E ASSINATURAS -----------------------------
-// Cada entrega (chaves, documento, certidão...) vira uma linha na aba ENTREGAS.
-// A assinatura de quem recebeu é capturada num canvas, salva como PNG na pasta do
-// Drive do processo (mesma pasta usada em "Documentos"), e o link fica gravado no registro.
+// Recibo de Entrega: registra entrega de chaves, documentos ou certidões (para o
+// cliente ou um terceiro). A assinatura de quem recebeu pode ser colhida de duas formas:
+//  - "Assinar agora na tela": a pessoa assina com o dedo/mouse ali mesmo, e a imagem da
+//    assinatura vai para a pasta do Drive do processo.
+//  - "Imprimir para assinar fisicamente": gera o recibo em papel com uma linha em branco
+//    para assinatura à caneta, pra quando a pessoa não está no escritório na hora.
+// Cada entrega vira uma linha na aba ENTREGAS.
 function entrEsc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
 function entrFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
 function entrDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
@@ -5186,7 +5190,7 @@ var ENTR_TIPOS = ['Chaves do imóvel', 'Documento', 'Certidão', 'Outro'];
 window.carregarEntregas = async function () {
   try {
     var cfg = getConfig(); if (!cfg || !cfg.apiKey || !cfg.sheetId) return;
-    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/ENTREGAS!A1:L500?key=' + cfg.apiKey);
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/ENTREGAS!A1:M500?key=' + cfg.apiKey);
     if (!r.ok) { window.allEntregas = []; return; }
     var data = await r.json(); var rows = data.values || [];
     if (rows.length < 2) { window.allEntregas = []; return; }
@@ -5205,6 +5209,18 @@ function entrEnsureModal() {
   ov.innerHTML = '<div id="entrModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
   ov.addEventListener('click', function (e) { if (e.target === ov) window.entrFechar(); });
   document.body.appendChild(ov);
+
+  if (!document.getElementById('entrPrintStyle')) {
+    var st = document.createElement('style');
+    st.id = 'entrPrintStyle';
+    st.textContent = ''
+      + 'body.printing-recibo-entrega * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }'
+      + 'body.printing-recibo-entrega > *:not(#entrModalOverlay) { display:none !important; }'
+      + 'body.printing-recibo-entrega #entrModalOverlay { display:flex !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important; background:#fff !important; padding:24px 0 !important; z-index:9999 !important; overflow:visible !important; align-items:flex-start !important; }'
+      + 'body.printing-recibo-entrega #entrModalWrap { box-shadow:none !important; border:none !important; width:100% !important; max-width:640px !important; margin:0 auto !important; background:#fff !important; }'
+      + 'body.printing-recibo-entrega .entr-no-print { display:none !important; }';
+    document.head.appendChild(st);
+  }
 }
 window.entrFechar = function () { var ov = document.getElementById('entrModalOverlay'); if (ov) ov.style.display = 'none'; };
 
@@ -5228,7 +5244,7 @@ function entrInitCanvas() {
   var rect = canvas.getBoundingClientRect();
   var dpr = window.devicePixelRatio || 1;
   canvas.width = Math.max(rect.width, 200) * dpr;
-  canvas.height = 160 * dpr;
+  canvas.height = 140 * dpr;
   var ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
   ctx.fillStyle = '#ffffff';
@@ -5274,12 +5290,39 @@ window.entrToggleDestinatario = function () {
   var tipo = document.getElementById('entr-destTipo').value;
   var wrap = document.getElementById('entr-destNomeWrap');
   if (wrap) wrap.style.display = tipo === 'Terceiro' ? '' : 'none';
+  entrAtualizarPreview();
 };
 
-window.entrArquivoSelecionado = function (input) {
-  var el = document.getElementById('entr-arquivo-nome');
-  if (!el) return;
-  el.textContent = (input.files && input.files[0]) ? ('📎 ' + input.files[0].name) : '';
+// Alterna entre "assinar agora na tela" (mostra o canvas) e "imprimir para assinar depois"
+// (mostra uma linha em branco, sem exigir assinatura digital pra salvar).
+window.entrToggleModoAssinatura = function () {
+  var modo = document.querySelector('input[name="entr-modoAssinatura"]:checked').value;
+  var canvasWrap = document.getElementById('entr-canvasWrap');
+  var linhaFisica = document.getElementById('entr-linhaFisica');
+  if (canvasWrap) canvasWrap.style.display = modo === 'agora' ? '' : 'none';
+  if (linhaFisica) linhaFisica.style.display = modo === 'depois' ? '' : 'none';
+  var btn = document.getElementById('entrBtnSalvar');
+  if (btn) btn.textContent = modo === 'agora' ? '💾 Salvar recibo assinado' : '🖨️ Salvar e imprimir para assinar';
+};
+
+window.entrAtualizarPreview = function () {
+  var tipo = document.getElementById('entr-tipo'); if (!tipo) return;
+  var desc = document.getElementById('entr-descricao').value.trim();
+  var destTipo = document.getElementById('entr-destTipo').value;
+  var destNome = (document.getElementById('entr-destNome') || {}).value || '';
+  var local = (document.getElementById('entr-local') || {}).value || '';
+  var p = window._entrProcessoAtual;
+  var nomeDestinatario = destTipo === 'Terceiro' ? (destNome || '(nome não informado)') : (p ? p.nome : '');
+  document.getElementById('entrPreviewDesc').textContent = desc || '(descreva o que foi entregue)';
+  document.getElementById('entrPreviewDest').textContent = nomeDestinatario;
+  document.getElementById('entrPreviewLocal').textContent = local ? (' — ' + local) : '';
+  var linhaNome = document.getElementById('entr-linhaFisicaNome');
+  if (linhaNome) linhaNome.textContent = nomeDestinatario;
+};
+
+window.entrImprimir = function () {
+  document.body.classList.add('printing-recibo-entrega');
+  setTimeout(function () { window.print(); document.body.classList.remove('printing-recibo-entrega'); }, 200);
 };
 
 window.entrSalvar = async function (uid) {
@@ -5291,79 +5334,63 @@ window.entrSalvar = async function (uid) {
   var destNome = (document.getElementById('entr-destNome') || {}).value || '';
   var local = (document.getElementById('entr-local') || {}).value || '';
   var obs = (document.getElementById('entr-obs') || {}).value || '';
+  var modo = document.querySelector('input[name="entr-modoAssinatura"]:checked').value;
   var stEl = document.getElementById('entrStatus');
 
   if (!desc) { stEl.innerHTML = '<span style="color:var(--red)">Descreva o que foi entregue.</span>'; return; }
   if (destTipo === 'Terceiro' && !destNome.trim()) { stEl.innerHTML = '<span style="color:var(--red)">Informe o nome de quem recebeu.</span>'; return; }
-  if (!_entrSigHasContent) { stEl.innerHTML = '<span style="color:var(--red)">Colha a assinatura de quem recebeu antes de salvar.</span>'; return; }
+  if (modo === 'agora' && !_entrSigHasContent) { stEl.innerHTML = '<span style="color:var(--red)">Colha a assinatura na tela, ou mude para "imprimir e assinar depois".</span>'; return; }
 
   var btn = document.getElementById('entrBtnSalvar'); if (btn) btn.disabled = true;
   stEl.textContent = '⏳ salvando...';
 
   try {
-    // Garantir pasta do Drive do processo (mesma lógica usada em "Documentos")
-    var pastaId = extrairIdPastaUrl(p.pastaDrive);
-    if (!pastaId) {
-      stEl.textContent = '⏳ criando pasta do processo no Drive...';
-      var rp = await fetch(URL_AS, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ acao: 'criar_pasta_processo', nome: p.nome + (p.processo ? ' - ' + p.processo : '') })
-      });
-      var dp = await rp.json();
-      if (!dp.ok) throw new Error(dp.error || 'falha ao criar pasta do processo');
-      await fetch(URL_AS, {
-        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Pasta Drive': dp.url } })
-      });
-      p.pastaDrive = dp.url;
-      pastaId = extrairIdPastaUrl(dp.url);
-    }
+    var assinaturaUrl = '';
+    if (modo === 'agora') {
+      var pastaId = extrairIdPastaUrl(p.pastaDrive);
+      if (!pastaId) {
+        stEl.textContent = '⏳ criando pasta do processo no Drive...';
+        var rp = await fetch(URL_AS, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ acao: 'criar_pasta_processo', nome: p.nome + (p.processo ? ' - ' + p.processo : '') })
+        });
+        var dp = await rp.json();
+        if (!dp.ok) throw new Error(dp.error || 'falha ao criar pasta do processo');
+        await fetch(URL_AS, {
+          method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Pasta Drive': dp.url } })
+        });
+        p.pastaDrive = dp.url;
+        pastaId = extrairIdPastaUrl(dp.url);
+      }
 
-    stEl.textContent = '⏳ enviando assinatura...';
-    var canvas = document.getElementById('entrCanvas');
-    var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
-    var base64 = await new Promise(function (res, rej) {
-      var reader = new FileReader();
-      reader.onload = function () { res(reader.result.split(',')[1]); };
-      reader.onerror = rej;
-      reader.readAsDataURL(blob);
-    });
-    var dataEntregaBr = dataV ? entrDtBRfromInput(dataV) : entrFdt(new Date());
-    var nomeArq = 'Assinatura - ' + tipo + ' - ' + dataEntregaBr.replace(/\//g, '-') + '.png';
-    var ru = await fetch(URL_AS, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: nomeArq, base64: base64, tipo: 'image/png' })
-    });
-    var du = await ru.json();
-    if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
-
-    var documentoUrl = '';
-    var arqInput = document.getElementById('entr-arquivo');
-    var arqFile = arqInput && arqInput.files && arqInput.files[0];
-    if (arqFile) {
-      stEl.textContent = '⏳ enviando o documento anexado...';
-      if (arqFile.size > 15 * 1024 * 1024) throw new Error('Arquivo anexado muito grande (máx. 15MB).');
-      var base64Doc = await new Promise(function (res, rej) {
-        var reader2 = new FileReader();
-        reader2.onload = function () { res(reader2.result.split(',')[1]); };
-        reader2.onerror = rej;
-        reader2.readAsDataURL(arqFile);
+      stEl.textContent = '⏳ enviando assinatura...';
+      var canvas = document.getElementById('entrCanvas');
+      var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+      var base64 = await new Promise(function (res, rej) {
+        var reader = new FileReader();
+        reader.onload = function () { res(reader.result.split(',')[1]); };
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
       });
-      var rd = await fetch(URL_AS, {
+      var dataEntregaBr = dataV ? entrDtBRfromInput(dataV) : entrFdt(new Date());
+      var nomeArq = 'Assinatura - ' + tipo + ' - ' + dataEntregaBr.replace(/\//g, '-') + '.png';
+      var ru = await fetch(URL_AS, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: arqFile.name, base64: base64Doc, tipo: arqFile.type || 'application/octet-stream' })
+        body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: nomeArq, base64: base64, tipo: 'image/png' })
       });
-      var dd = await rd.json();
-      if (!dd.ok) throw new Error(dd.error || 'falha ao enviar o documento anexado');
-      documentoUrl = dd.arquivo.url;
+      var du = await ru.json();
+      if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
+      assinaturaUrl = du.arquivo.url;
     }
 
     var campos = {
       'Nr Processo': p.processo || '', 'Cliente': p.nome || '',
       'Tipo de Entrega': tipo, 'Descricao': desc,
       'Destinatario Tipo': destTipo, 'Destinatario Nome': destTipo === 'Terceiro' ? destNome.trim() : (p.nome || ''),
-      'Data da Entrega': dataEntregaBr, 'Local': local,
-      'Assinatura URL': du.arquivo.url, 'Documento URL': documentoUrl, 'Observacoes': obs,
+      'Data da Entrega': dataV ? entrDtBRfromInput(dataV) : entrFdt(new Date()), 'Local': local,
+      'Forma Assinatura': modo === 'agora' ? 'Digital' : 'Física (impressa)',
+      'Assinatura URL': assinaturaUrl, 'Observacoes': obs,
       'Data Lancamento': entrFdt(new Date())
     };
     await fetch(URL_AS, {
@@ -5371,8 +5398,13 @@ window.entrSalvar = async function (uid) {
       body: JSON.stringify({ acao: 'lancar_entrega', campos: campos })
     });
 
-    stEl.innerHTML = '<span style="color:var(--green)">Entrega registrada e assinatura salva!</span>';
-    setTimeout(async function () { await carregarEntregas(); entrRenderModal(uid); }, 1300);
+    if (modo === 'depois') {
+      stEl.innerHTML = '<span style="color:var(--green)">Entrega registrada! Abrindo impressão para colher a assinatura no papel...</span>';
+      setTimeout(function () { window.entrImprimir(); }, 300);
+    } else {
+      stEl.innerHTML = '<span style="color:var(--green)">Entrega registrada e assinatura salva!</span>';
+    }
+    setTimeout(async function () { await carregarEntregas(); entrRenderModal(uid); }, 1600);
   } catch (e) {
     stEl.innerHTML = '<span style="color:var(--red)">Erro: ' + e.message + '</span>';
     if (btn) btn.disabled = false;
@@ -5380,14 +5412,66 @@ window.entrSalvar = async function (uid) {
 };
 
 window.entrExcluir = async function (id, uid) {
-  if (!confirm('Excluir este registro de entrega? A imagem da assinatura permanece no Drive.')) return;
+  if (!confirm('Excluir este registro de entrega? A imagem da assinatura (se houver) permanece no Drive.')) return;
   await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_entrega', id: id }) });
   setTimeout(async function () { await carregarEntregas(); entrRenderModal(uid); }, 1200);
 };
 
+// Reabre um recibo JÁ SALVO em modo de visualização/impressão, sem formulário.
+window.entrVerRecibo = function (idx, uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var a = (window.allEntregas || []).filter(function (x) {
+    var ak = String(x['Nr Processo'] || '').trim().toLowerCase();
+    var an = String(x['Cliente'] || '').trim().toLowerCase();
+    var pk = String(p.processo || '').trim().toLowerCase();
+    var nk = String(p.nome || '').trim().toLowerCase();
+    return pk ? (ak === pk && an === nk) : (an === nk);
+  })[idx];
+  if (!a) return;
+  var wrap = document.getElementById('entrModalWrap');
+  var digital = a['Forma Assinatura'] === 'Digital';
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px" class="entr-no-print"><div style="font-size:15px;font-weight:700">Recibo de Entrega</div>'
+    + '<div><button class="cp-btn" onclick="entrImprimir()">🖨️ Imprimir</button> <button class="cp-btn" onclick="entrRenderModal(\'' + uid + '\')">← Voltar</button></div></div>'
+    + entrReciboHtml({
+        tipo: a['Tipo de Entrega'], desc: a['Descricao'], destNome: a['Destinatario Nome'],
+        data: a['Data da Entrega'], local: a['Local'], obs: a['Observacoes'],
+        digital: digital, assinaturaUrl: a['Assinatura URL'], p: p
+      });
+};
+
+// Monta o HTML do recibo em si (cabeçalho do escritório, dados da entrega, área de assinatura).
+// Reaproveitado tanto no preview ao vivo (formulário) quanto na visualização de um recibo já salvo.
+function entrReciboHtml(o) {
+  var TIPO_ICON = { 'Chaves do imóvel': '🔑', 'Documento': '📄', 'Certidão': '📜', 'Outro': '📦' };
+  return '<div id="entrReciboPreview" style="background:#ffffff;color:#16233a;border:1px solid #d8dde8;border-radius:10px;padding:22px 24px;font-family:\'DM Sans\',sans-serif">'
+    + '<div style="text-align:center;border-bottom:2px solid #c8a96e;padding-bottom:10px;margin-bottom:14px">'
+    + '<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#0d1f35">Recibo de Entrega</div>'
+    + '<div style="font-size:11px;color:#6b7280;margin-top:2px">Escritório Adenilson Borges — OAB/SP 335.600</div>'
+    + '</div>'
+    + '<div style="font-size:13px;line-height:1.9">'
+    + '<div><strong>Processo:</strong> ' + entrEsc(o.p && o.p.nome || '') + (o.p && o.p.processo ? ' — nº ' + entrEsc(o.p.processo) : '') + '</div>'
+    + '<div><strong>' + (TIPO_ICON[o.tipo] || '📦') + ' Entregue:</strong> <span id="entrPreviewDesc">' + entrEsc(o.desc || '') + '</span></div>'
+    + '<div><strong>Recebido por:</strong> <span id="entrPreviewDest">' + entrEsc(o.destNome || '') + '</span></div>'
+    + '<div><strong>Data:</strong> ' + entrEsc(o.data || '') + '<span id="entrPreviewLocal">' + (o.local ? ' — ' + entrEsc(o.local) : '') + '</span></div>'
+    + (o.obs ? '<div><strong>Observações:</strong> ' + entrEsc(o.obs) + '</div>' : '')
+    + '</div>'
+    + '<div style="margin-top:26px;text-align:center">'
+    + (o.digital
+        ? (o.assinaturaUrl
+            ? '<img src="' + entrEsc(o.assinaturaUrl) + '" style="max-width:280px;max-height:110px;display:block;margin:0 auto">'
+            : '<div id="entr-canvasWrap"><canvas id="entrCanvas" style="display:block;width:100%;max-width:400px;height:140px;margin:0 auto;border:1px dashed #c8c8d0;border-radius:8px;cursor:crosshair;touch-action:none"></canvas></div>')
+        : '<div style="border-top:1px solid #16233a;width:280px;margin:60px auto 6px"></div>')
+    + '<div style="font-size:12px;margin-top:4px" id="entr-linhaFisicaNome">' + entrEsc(o.destNome || '') + '</div>'
+    + '<div style="font-size:10.5px;color:#6b7280">Assinatura de quem recebeu</div>'
+    + '</div>'
+    + '<div style="text-align:center;font-size:10px;color:#6b7280;margin-top:22px;border-top:1px solid #e5e7eb;padding-top:8px">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>'
+    + '</div>';
+}
+
 function entrRenderModal(uid, loadingMsg) {
   var wrap = document.getElementById('entrModalWrap'); if (!wrap) return;
   var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  window._entrProcessoAtual = p;
   if (loadingMsg) { wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">' + loadingMsg + '</div>'; return; }
 
   var pk = String(p.processo || '').trim().toLowerCase();
@@ -5401,32 +5485,41 @@ function entrRenderModal(uid, loadingMsg) {
   itens.sort(function (a, b) { return (entrDbr(b['Data da Entrega']) || 0) - (entrDbr(a['Data da Entrega']) || 0); });
 
   var TIPO_ICON = { 'Chaves do imóvel': '🔑', 'Documento': '📄', 'Certidão': '📜', 'Outro': '📦' };
-  var linhas = itens.length ? itens.map(function (a) {
+  var linhas = itens.length ? itens.map(function (a, idx) {
+    var digital = a['Forma Assinatura'] === 'Digital';
     return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo de Entrega']] || '📦') + ' ' + entrEsc(a['Tipo de Entrega'])
-      + ' <span class="hon-badge hv-badge-fut">' + (a['Destinatario Tipo'] === 'Terceiro' ? 'Terceiro: ' + entrEsc(a['Destinatario Nome']) : 'Cliente') + '</span></div>'
-      + '<div class="meta">' + entrEsc(a['Data da Entrega'] || '-') + ' · ' + entrEsc(a['Descricao'] || '') + (a['Local'] ? ' · ' + entrEsc(a['Local']) : '') + '</div></div>'
-      + (a['Assinatura URL'] ? '<a href="' + entrEsc(a['Assinatura URL']) + '" target="_blank" class="cp-btn" title="Ver assinatura" style="text-decoration:none">✍️</a>' : '')
-      + (a['Documento URL'] ? '<a href="' + entrEsc(a['Documento URL']) + '" target="_blank" class="cp-btn" title="Ver documento anexado" style="text-decoration:none">📎</a>' : '')
+      + ' <span class="hon-badge ' + (digital ? 'hv-badge-paga' : 'hv-badge-hoje') + '">' + (digital ? '✍️ assinado na tela' : '🖨️ físico') + '</span></div>'
+      + '<div class="meta">' + entrEsc(a['Data da Entrega'] || '-') + ' · ' + entrEsc(a['Descricao'] || '') + ' · para ' + entrEsc(a['Destinatario Nome'] || '') + '</div></div>'
+      + '<button class="cp-btn" title="Ver / imprimir recibo" onclick="entrVerRecibo(' + idx + ',\'' + uid + '\')">🖨️</button>'
       + '<button class="cp-btn ex" title="Excluir" onclick="entrExcluir(\'' + entrEsc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
   }).join('') : '<div class="hon-empty">Nenhuma entrega registrada ainda.</div>';
 
-  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">✍️ Entregas e Assinaturas — ' + entrEsc(p.nome) + '</div><button class="cp-btn" onclick="entrFechar()">✕</button></div>'
-    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Processo nr. ' + entrEsc(p.processo) + '</div>' : '')
-    + '<div class="cp-form" style="margin-bottom:16px">'
-    + '<div class="cp-field"><label>Tipo de entrega</label><select id="entr-tipo">' + ENTR_TIPOS.map(function (t) { return '<option value="' + entrEsc(t) + '">' + entrEsc(t) + '</option>'; }).join('') + '</select></div>'
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px" class="entr-no-print"><div style="font-size:16px;font-weight:700">✍️ Entregas e Assinaturas — ' + entrEsc(p.nome) + '</div><button class="cp-btn" onclick="entrFechar()">✕</button></div>'
+    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:10px" class="entr-no-print">Processo nr. ' + entrEsc(p.processo) + '</div>' : '')
+    + '<div class="cp-form entr-no-print" style="margin-bottom:16px">'
+    + '<div class="cp-field"><label>Tipo de entrega</label><select id="entr-tipo" onchange="entrAtualizarPreview()">' + ENTR_TIPOS.map(function (t) { return '<option value="' + entrEsc(t) + '">' + entrEsc(t) + '</option>'; }).join('') + '</select></div>'
     + '<div class="cp-field"><label>Data da entrega</label><input id="entr-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
-    + '<div class="cp-field cp-full"><label>Descrição *</label><input id="entr-descricao" placeholder="Ex.: 3 chaves do apartamento 96, chave do portão"></div>'
+    + '<div class="cp-field cp-full"><label>Descrição *</label><input id="entr-descricao" oninput="entrAtualizarPreview()" placeholder="Ex.: 3 chaves do apartamento 96, chave do portão"></div>'
     + '<div class="cp-field"><label>Destinatário</label><select id="entr-destTipo" onchange="entrToggleDestinatario()"><option value="Cliente">O próprio cliente</option><option value="Terceiro">Terceira pessoa</option></select></div>'
-    + '<div class="cp-field" id="entr-destNomeWrap" style="display:none"><label>Nome de quem recebeu</label><input id="entr-destNome" placeholder="Nome completo"></div>'
-    + '<div class="cp-field cp-full"><label>Local (opcional)</label><input id="entr-local" placeholder="Ex.: escritório, imóvel, fórum..."></div>'
+    + '<div class="cp-field" id="entr-destNomeWrap" style="display:none"><label>Nome de quem recebeu</label><input id="entr-destNome" oninput="entrAtualizarPreview()" placeholder="Nome completo"></div>'
+    + '<div class="cp-field cp-full"><label>Local (opcional)</label><input id="entr-local" oninput="entrAtualizarPreview()" placeholder="Ex.: escritório, imóvel, fórum..."></div>'
     + '<div class="cp-field cp-full"><label>Observações (opcional)</label><input id="entr-obs"></div>'
-    + '<div class="cp-field cp-full"><label>Anexar o documento/certidão (opcional — a foto ou o arquivo entregue)</label><input type="file" id="entr-arquivo" accept="image/*,application/pdf,.doc,.docx" onchange="entrArquivoSelecionado(this)"><div id="entr-arquivo-nome" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>'
-    + '<div class="cp-full"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Assinatura de quem recebeu *</label>'
-    + '<div style="border:2px dashed var(--border2);border-radius:10px;overflow:hidden;background:#fff"><canvas id="entrCanvas" style="display:block;width:100%;height:160px;cursor:crosshair;touch-action:none"></canvas></div>'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Assine com o dedo ou o mouse</span><button type="button" class="cp-btn" style="padding:4px 10px;font-size:11px" onclick="limparAssinaturaEntrega()">🧹 Limpar</button></div></div>'
-    + '<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px"><span id="entrStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="entrBtnSalvar" onclick="entrSalvar(\'' + uid + '\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Salvar entrega e assinatura</button></div>'
+    + '<div class="cp-field cp-full">'
+    + '<label>Como colher a assinatura?</label>'
+    + '<div style="display:flex;gap:16px;margin-top:4px">'
+    + '<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="radio" name="entr-modoAssinatura" value="agora" checked onchange="entrToggleModoAssinatura()"> ✍️ Assinar agora na tela</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="radio" name="entr-modoAssinatura" value="depois" onchange="entrToggleModoAssinatura()"> 🖨️ Imprimir para assinar fisicamente</label>'
+    + '</div></div>'
     + '</div>'
-    + '<div>' + linhas + '</div>';
+    + entrReciboHtml({ tipo: '', desc: '', destNome: p.nome, data: new Date().toLocaleDateString('pt-BR'), local: '', obs: '', digital: true, assinaturaUrl: '', p: p })
+    + '<div class="entr-no-print" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px">'
+    + '<button type="button" class="cp-btn" id="entr-btnLimpar" style="padding:6px 12px;font-size:12px" onclick="limparAssinaturaEntrega()">🧹 Limpar assinatura</button>'
+    + '<span id="entrStatus" style="font-size:12px;flex:1;text-align:center"></span>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="cp-btn" onclick="entrImprimir()">🖨️ Imprimir</button>'
+    + '<button class="cp-btn" id="entrBtnSalvar" onclick="entrSalvar(\'' + uid + '\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Salvar recibo assinado</button>'
+    + '</div></div>'
+    + '<div class="entr-no-print" style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px">' + linhas + '</div>';
 
   entrInitCanvas();
 }
@@ -9493,6 +9586,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (5)', itens: [
+      'Reformulado o módulo de Entregas: agora gera um "Recibo de Entrega" completo (cabeçalho, processo, o que foi entregue, destinatário, data) — não só a assinatura isolada.',
+      'Duas formas de assinatura: "Assinar agora na tela" (dedo/mouse, como antes) ou "Imprimir para assinar fisicamente" (linha em branco no papel, pra quando a pessoa não está no escritório) — escolha na hora do lançamento.',
+      'Botão de Imprimir o recibo a qualquer momento, inclusive reabrindo entregas já salvas para reimprimir.',
+      'Removido o campo de anexar documento (confuso e sem uso real) — o recibo em si já é o documento completo.'
+    ]},
     { data: '05/ago/2026 (4)', itens: [
       'Novo campo "Tipo de cliente" (Pessoa Física / Pessoa Jurídica) no cadastro e edição de processo.',
       'Quando é Pessoa Jurídica: some Estado Civil/Profissão/Data de Nascimento (não se aplicam a empresa) e aparecem os dados do Representante Legal (nome, CPF, RG, cargo) — quem assina em nome da empresa.',
