@@ -4200,6 +4200,12 @@ function renderCard(p, idx) {
               </svg>
               Documentos
             </button>
+            <button class="btn-action" style="background:rgba(200,169,110,0.1);border-color:rgba(200,169,110,0.35);color:var(--accent2);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEntregas(this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z"/>
+              </svg>
+              Entregas
+            </button>
             <button class="btn-action" style="background:rgba(200,169,110,0.15);border-color:rgba(200,169,110,0.4);color:var(--accent);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardAtendimento(this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
@@ -5077,6 +5083,234 @@ function atendRenderModal(uid, loadingMsg) {
     + '<div>' + linhas + '</div>';
 }
 window.atendRenderModal = atendRenderModal;
+
+// --- MÓDULO ENTREGAS E ASSINATURAS -----------------------------
+// Cada entrega (chaves, documento, certidão...) vira uma linha na aba ENTREGAS.
+// A assinatura de quem recebeu é capturada num canvas, salva como PNG na pasta do
+// Drive do processo (mesma pasta usada em "Documentos"), e o link fica gravado no registro.
+function entrEsc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+function entrFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+function entrDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function entrDbr(s) { s = String(s || '').trim(); var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return null; return new Date(+m[3], +m[2] - 1, +m[1]); }
+
+window.allEntregas = [];
+var ENTR_TIPOS = ['Chaves do imóvel', 'Documento', 'Certidão', 'Outro'];
+
+window.carregarEntregas = async function () {
+  try {
+    var cfg = getConfig(); if (!cfg || !cfg.apiKey || !cfg.sheetId) return;
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/ENTREGAS!A1:L500?key=' + cfg.apiKey);
+    if (!r.ok) { window.allEntregas = []; return; }
+    var data = await r.json(); var rows = data.values || [];
+    if (rows.length < 2) { window.allEntregas = []; return; }
+    var hd = rows[0];
+    window.allEntregas = rows.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; hd.forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+  } catch (e) { console.error('entregas', e); }
+};
+
+function entrEnsureModal() {
+  if (document.getElementById('entrModalOverlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'entrModalOverlay';
+  ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.innerHTML = '<div id="entrModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) window.entrFechar(); });
+  document.body.appendChild(ov);
+}
+window.entrFechar = function () { var ov = document.getElementById('entrModalOverlay'); if (ov) ov.style.display = 'none'; };
+
+window.abrirEntregas = async function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  entrEnsureModal();
+  document.getElementById('entrModalOverlay').style.display = 'flex';
+  entrRenderModal(uid, '⏳ Carregando histórico...');
+  await window.carregarEntregas();
+  entrRenderModal(uid);
+};
+
+var _entrSigHasContent = false;
+var _entrSigCtx = null;
+var _entrSigDrawing = false;
+var _entrSigLast = null;
+
+function entrInitCanvas() {
+  var canvas = document.getElementById('entrCanvas');
+  if (!canvas) return;
+  var rect = canvas.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(rect.width, 200) * dpr;
+  canvas.height = 160 * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#16233a';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  _entrSigCtx = ctx;
+  _entrSigHasContent = false;
+
+  function pos(e) {
+    var r = canvas.getBoundingClientRect();
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    var cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx, y: cy };
+  }
+  function start(e) { e.preventDefault(); _entrSigDrawing = true; _entrSigHasContent = true; _entrSigLast = pos(e); }
+  function move(e) {
+    if (!_entrSigDrawing) return;
+    e.preventDefault();
+    var p2 = pos(e);
+    ctx.beginPath(); ctx.moveTo(_entrSigLast.x, _entrSigLast.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    _entrSigLast = p2;
+  }
+  function end() { _entrSigDrawing = false; }
+
+  canvas.onmousedown = start; canvas.onmousemove = move;
+  canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+window.limparAssinaturaEntrega = function () {
+  var canvas = document.getElementById('entrCanvas');
+  if (!canvas || !_entrSigCtx) return;
+  _entrSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _entrSigHasContent = false;
+};
+
+window.entrToggleDestinatario = function () {
+  var tipo = document.getElementById('entr-destTipo').value;
+  var wrap = document.getElementById('entr-destNomeWrap');
+  if (wrap) wrap.style.display = tipo === 'Terceiro' ? '' : 'none';
+};
+
+window.entrSalvar = async function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var tipo = document.getElementById('entr-tipo').value;
+  var dataV = document.getElementById('entr-data').value;
+  var desc = document.getElementById('entr-descricao').value.trim();
+  var destTipo = document.getElementById('entr-destTipo').value;
+  var destNome = (document.getElementById('entr-destNome') || {}).value || '';
+  var local = (document.getElementById('entr-local') || {}).value || '';
+  var obs = (document.getElementById('entr-obs') || {}).value || '';
+  var stEl = document.getElementById('entrStatus');
+
+  if (!desc) { stEl.innerHTML = '<span style="color:var(--red)">Descreva o que foi entregue.</span>'; return; }
+  if (destTipo === 'Terceiro' && !destNome.trim()) { stEl.innerHTML = '<span style="color:var(--red)">Informe o nome de quem recebeu.</span>'; return; }
+  if (!_entrSigHasContent) { stEl.innerHTML = '<span style="color:var(--red)">Colha a assinatura de quem recebeu antes de salvar.</span>'; return; }
+
+  var btn = document.getElementById('entrBtnSalvar'); if (btn) btn.disabled = true;
+  stEl.textContent = '⏳ salvando...';
+
+  try {
+    // Garantir pasta do Drive do processo (mesma lógica usada em "Documentos")
+    var pastaId = extrairIdPastaUrl(p.pastaDrive);
+    if (!pastaId) {
+      stEl.textContent = '⏳ criando pasta do processo no Drive...';
+      var rp = await fetch(URL_AS, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ acao: 'criar_pasta_processo', nome: p.nome + (p.processo ? ' - ' + p.processo : '') })
+      });
+      var dp = await rp.json();
+      if (!dp.ok) throw new Error(dp.error || 'falha ao criar pasta do processo');
+      await fetch(URL_AS, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Pasta Drive': dp.url } })
+      });
+      p.pastaDrive = dp.url;
+      pastaId = extrairIdPastaUrl(dp.url);
+    }
+
+    stEl.textContent = '⏳ enviando assinatura...';
+    var canvas = document.getElementById('entrCanvas');
+    var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+    var base64 = await new Promise(function (res, rej) {
+      var reader = new FileReader();
+      reader.onload = function () { res(reader.result.split(',')[1]); };
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
+    });
+    var dataEntregaBr = dataV ? entrDtBRfromInput(dataV) : entrFdt(new Date());
+    var nomeArq = 'Assinatura - ' + tipo + ' - ' + dataEntregaBr.replace(/\//g, '-') + '.png';
+    var ru = await fetch(URL_AS, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: nomeArq, base64: base64, tipo: 'image/png' })
+    });
+    var du = await ru.json();
+    if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
+
+    var campos = {
+      'Nr Processo': p.processo || '', 'Cliente': p.nome || '',
+      'Tipo de Entrega': tipo, 'Descricao': desc,
+      'Destinatario Tipo': destTipo, 'Destinatario Nome': destTipo === 'Terceiro' ? destNome.trim() : (p.nome || ''),
+      'Data da Entrega': dataEntregaBr, 'Local': local,
+      'Assinatura URL': du.arquivo.url, 'Observacoes': obs,
+      'Data Lancamento': entrFdt(new Date())
+    };
+    await fetch(URL_AS, {
+      method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'lancar_entrega', campos: campos })
+    });
+
+    stEl.innerHTML = '<span style="color:var(--green)">Entrega registrada e assinatura salva!</span>';
+    setTimeout(async function () { await carregarEntregas(); entrRenderModal(uid); }, 1300);
+  } catch (e) {
+    stEl.innerHTML = '<span style="color:var(--red)">Erro: ' + e.message + '</span>';
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.entrExcluir = async function (id, uid) {
+  if (!confirm('Excluir este registro de entrega? A imagem da assinatura permanece no Drive.')) return;
+  await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_entrega', id: id }) });
+  setTimeout(async function () { await carregarEntregas(); entrRenderModal(uid); }, 1200);
+};
+
+function entrRenderModal(uid, loadingMsg) {
+  var wrap = document.getElementById('entrModalWrap'); if (!wrap) return;
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  if (loadingMsg) { wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">' + loadingMsg + '</div>'; return; }
+
+  var pk = String(p.processo || '').trim().toLowerCase();
+  var nk = String(p.nome || '').trim().toLowerCase();
+  var itens = (window.allEntregas || []).filter(function (a) {
+    var ak = String(a['Nr Processo'] || '').trim().toLowerCase();
+    var an = String(a['Cliente'] || '').trim().toLowerCase();
+    if (pk) return ak === pk && an === nk;
+    return an === nk;
+  });
+  itens.sort(function (a, b) { return (entrDbr(b['Data da Entrega']) || 0) - (entrDbr(a['Data da Entrega']) || 0); });
+
+  var TIPO_ICON = { 'Chaves do imóvel': '🔑', 'Documento': '📄', 'Certidão': '📜', 'Outro': '📦' };
+  var linhas = itens.length ? itens.map(function (a) {
+    return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo de Entrega']] || '📦') + ' ' + entrEsc(a['Tipo de Entrega'])
+      + ' <span class="hon-badge hv-badge-fut">' + (a['Destinatario Tipo'] === 'Terceiro' ? 'Terceiro: ' + entrEsc(a['Destinatario Nome']) : 'Cliente') + '</span></div>'
+      + '<div class="meta">' + entrEsc(a['Data da Entrega'] || '-') + ' · ' + entrEsc(a['Descricao'] || '') + (a['Local'] ? ' · ' + entrEsc(a['Local']) : '') + '</div></div>'
+      + (a['Assinatura URL'] ? '<a href="' + entrEsc(a['Assinatura URL']) + '" target="_blank" class="cp-btn" title="Ver assinatura" style="text-decoration:none">✍️</a>' : '')
+      + '<button class="cp-btn ex" title="Excluir" onclick="entrExcluir(\'' + entrEsc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
+  }).join('') : '<div class="hon-empty">Nenhuma entrega registrada ainda.</div>';
+
+  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">✍️ Entregas e Assinaturas — ' + entrEsc(p.nome) + '</div><button class="cp-btn" onclick="entrFechar()">✕</button></div>'
+    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Processo nr. ' + entrEsc(p.processo) + '</div>' : '')
+    + '<div class="cp-form" style="margin-bottom:16px">'
+    + '<div class="cp-field"><label>Tipo de entrega</label><select id="entr-tipo">' + ENTR_TIPOS.map(function (t) { return '<option value="' + entrEsc(t) + '">' + entrEsc(t) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="cp-field"><label>Data da entrega</label><input id="entr-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
+    + '<div class="cp-field cp-full"><label>Descrição *</label><input id="entr-descricao" placeholder="Ex.: 3 chaves do apartamento 96, chave do portão"></div>'
+    + '<div class="cp-field"><label>Destinatário</label><select id="entr-destTipo" onchange="entrToggleDestinatario()"><option value="Cliente">O próprio cliente</option><option value="Terceiro">Terceira pessoa</option></select></div>'
+    + '<div class="cp-field" id="entr-destNomeWrap" style="display:none"><label>Nome de quem recebeu</label><input id="entr-destNome" placeholder="Nome completo"></div>'
+    + '<div class="cp-field cp-full"><label>Local (opcional)</label><input id="entr-local" placeholder="Ex.: escritório, imóvel, fórum..."></div>'
+    + '<div class="cp-field cp-full"><label>Observações (opcional)</label><input id="entr-obs"></div>'
+    + '<div class="cp-full"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Assinatura de quem recebeu *</label>'
+    + '<div style="border:2px dashed var(--border2);border-radius:10px;overflow:hidden;background:#fff"><canvas id="entrCanvas" style="display:block;width:100%;height:160px;cursor:crosshair;touch-action:none"></canvas></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Assine com o dedo ou o mouse</span><button type="button" class="cp-btn" style="padding:4px 10px;font-size:11px" onclick="limparAssinaturaEntrega()">🧹 Limpar</button></div></div>'
+    + '<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px"><span id="entrStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="entrBtnSalvar" onclick="entrSalvar(\'' + uid + '\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Salvar entrega e assinatura</button></div>'
+    + '</div>'
+    + '<div>' + linhas + '</div>';
+
+  entrInitCanvas();
+}
+window.entrRenderModal = entrRenderModal;
 
 // --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
@@ -6142,7 +6376,7 @@ async function uploadDocumento(input) {
         pasta: pastaId,
         nome: file.name,
         base64: base64,
-        mimeType: file.type || 'application/octet-stream'
+        tipo: file.type || 'application/octet-stream'
       })
     });
     const d = await r.json();
@@ -9107,6 +9341,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026', itens: [
+      'Novo módulo "Entregas e Assinaturas" em Processos — registra entrega de chaves, documentos ou certidões (para o cliente ou terceiro), com assinatura de quem recebeu colhida na tela (dedo ou mouse) e salva automaticamente na pasta do Drive do processo.',
+      'Corrigido bug no envio de arquivos ao Drive: o tipo do arquivo não estava sendo reconhecido pelo backend.'
+    ]},
     { data: '04/ago/2026 (3)', itens: [
       'Nova categoria "Sem atuação" para processos onde você não atua mais (substabelecido, renúncia ou procuração revogada) — o processo pode continuar correndo, mas fica separado do seu trabalho ativo.',
       'Filtro próprio "Sem atuação" na barra lateral, mostrando o motivo exato em cada card (Substabelecido / Renúncia / Procuração Revogada), com fundo listrado âmbar para diferenciar do "Extinto" (cinza).',
