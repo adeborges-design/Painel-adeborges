@@ -5403,7 +5403,7 @@ window.entrSalvar = async function (uid) {
       });
       var du = await ru.json();
       if (!du.ok) throw new Error(du.error || 'falha ao enviar o recibo');
-      assinaturaUrl = du.arquivo.urlDireta || du.arquivo.url;
+      assinaturaUrl = du.arquivo.url;
     }
 
     var campos = {
@@ -5440,6 +5440,29 @@ window.entrExcluir = async function (id, uid) {
 };
 
 // Reabre um recibo JÁ SALVO em modo de visualização/impressão, sem formulário.
+// Chamada quando o <img> da pré-visualização direta falha (ex.: Drive bloqueou o formato embutido
+// para esse arquivo). Mostra o texto do recibo reconstruído + um link garantido para abrir no Drive.
+window.entrFallbackRecibo = function (imgEl, uid, idx) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var a = (window.allEntregas || []).filter(function (x) {
+    var ak = String(x['Nr Processo'] || '').trim().toLowerCase();
+    var an = String(x['Cliente'] || '').trim().toLowerCase();
+    var pk = String(p.processo || '').trim().toLowerCase();
+    var nk = String(p.nome || '').trim().toLowerCase();
+    return pk ? (ak === pk && an === nk) : (an === nk);
+  })[idx];
+  if (!a) return;
+  var container = imgEl.closest('#entrReciboPreview');
+  if (!container) return;
+  container.outerHTML = entrReciboHtml({
+      tipo: a['Tipo de Entrega'], desc: a['Descricao'], destNome: a['Destinatario Nome'],
+      data: a['Data da Entrega'], local: a['Local'], obs: a['Observacoes'],
+      digital: true, assinaturaUrl: '', p: p
+    }) + '<div class="entr-no-print" style="text-align:center;margin-top:8px">'
+    + '<a href="' + entrEsc(a['Assinatura URL']) + '" target="_blank" class="cp-btn" style="text-decoration:none;display:inline-block">🔗 Abrir a assinatura no Drive</a>'
+    + '</div>';
+};
+
 window.entrVerRecibo = function (idx, uid) {
   var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
   var a = (window.allEntregas || []).filter(function (x) {
@@ -5456,10 +5479,15 @@ window.entrVerRecibo = function (idx, uid) {
     + '<div><button class="cp-btn" onclick="entrImprimir()">🖨️ Imprimir</button> <button class="cp-btn" onclick="entrRenderModal(\'' + uid + '\')">← Voltar</button></div></div>';
   if (digital && a['Assinatura URL']) {
     // O arquivo salvo JA E o recibo completo (cabecalho + dados + assinatura, capturado como imagem
-    // no momento de assinar) - mostra ele direto, sem reconstruir o texto por cima de novo.
+    // no momento de assinar). O link salvo e o do visualizador do Drive (sempre confiavel ao abrir
+    // em nova aba); pra tentar mostrar a imagem embutida aqui dentro, monta um link direto a partir
+    // do mesmo ID do arquivo - e se essa tentativa falhar (o Drive as vezes bloqueia esse formato
+    // pra arquivos maiores), cai automaticamente pro texto do recibo + link garantido do Drive.
+    var fileId = extrairIdPastaUrl(a['Assinatura URL']);
+    var urlDiretaTentativa = fileId ? ('https://drive.google.com/uc?export=view&id=' + fileId) : a['Assinatura URL'];
     wrap.innerHTML = cabecalho
       + '<div id="entrReciboPreview" style="background:#ffffff;border:1px solid #d8dde8;border-radius:10px;padding:10px;text-align:center">'
-      + '<img src="' + entrEsc(a['Assinatura URL']) + '" style="max-width:100%;display:block;margin:0 auto;border-radius:6px">'
+      + '<img src="' + entrEsc(urlDiretaTentativa) + '" style="max-width:100%;display:block;margin:0 auto;border-radius:6px" onerror="entrFallbackRecibo(this,\'' + uid + '\',' + idx + ')">'
       + '</div>';
   } else {
     wrap.innerHTML = cabecalho + entrReciboHtml({
@@ -9651,6 +9679,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (11)', itens: [
+      'Corrigido: quando a pré-visualização direta da imagem do recibo falhava (o Google Drive às vezes bloqueia esse formato para determinados arquivos), a tela ficava só com um ícone quebrado, sem nada mais. Agora, se isso acontecer, aparece automaticamente o texto do recibo reconstruído + um link garantido para abrir a imagem direto no Drive.'
+    ]},
     { data: '05/ago/2026 (10)', itens: [
       'Corrigido de vez: ao assinar na tela, agora sobe para o Drive o RECIBO INTEIRO (cabeçalho, dados da entrega e assinatura, tudo junto em uma imagem só) — antes só a assinatura isolada era salva.',
       'Ao reabrir um recibo já assinado digitalmente para visualizar/imprimir, mostra essa imagem completa direto, sem duplicar o texto por cima.'
