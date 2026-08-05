@@ -5144,6 +5144,8 @@ function entrInitCanvas() {
   canvas.height = 160 * dpr;
   var ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.strokeStyle = '#16233a';
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
@@ -5176,6 +5178,8 @@ window.limparAssinaturaEntrega = function () {
   var canvas = document.getElementById('entrCanvas');
   if (!canvas || !_entrSigCtx) return;
   _entrSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _entrSigCtx.fillStyle = '#ffffff';
+  _entrSigCtx.fillRect(0, 0, canvas.width, canvas.height);
   _entrSigHasContent = false;
 };
 
@@ -5183,6 +5187,12 @@ window.entrToggleDestinatario = function () {
   var tipo = document.getElementById('entr-destTipo').value;
   var wrap = document.getElementById('entr-destNomeWrap');
   if (wrap) wrap.style.display = tipo === 'Terceiro' ? '' : 'none';
+};
+
+window.entrArquivoSelecionado = function (input) {
+  var el = document.getElementById('entr-arquivo-nome');
+  if (!el) return;
+  el.textContent = (input.files && input.files[0]) ? ('📎 ' + input.files[0].name) : '';
 };
 
 window.entrSalvar = async function (uid) {
@@ -5240,12 +5250,33 @@ window.entrSalvar = async function (uid) {
     var du = await ru.json();
     if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
 
+    var documentoUrl = '';
+    var arqInput = document.getElementById('entr-arquivo');
+    var arqFile = arqInput && arqInput.files && arqInput.files[0];
+    if (arqFile) {
+      stEl.textContent = '⏳ enviando o documento anexado...';
+      if (arqFile.size > 15 * 1024 * 1024) throw new Error('Arquivo anexado muito grande (máx. 15MB).');
+      var base64Doc = await new Promise(function (res, rej) {
+        var reader2 = new FileReader();
+        reader2.onload = function () { res(reader2.result.split(',')[1]); };
+        reader2.onerror = rej;
+        reader2.readAsDataURL(arqFile);
+      });
+      var rd = await fetch(URL_AS, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: arqFile.name, base64: base64Doc, tipo: arqFile.type || 'application/octet-stream' })
+      });
+      var dd = await rd.json();
+      if (!dd.ok) throw new Error(dd.error || 'falha ao enviar o documento anexado');
+      documentoUrl = dd.arquivo.url;
+    }
+
     var campos = {
       'Nr Processo': p.processo || '', 'Cliente': p.nome || '',
       'Tipo de Entrega': tipo, 'Descricao': desc,
       'Destinatario Tipo': destTipo, 'Destinatario Nome': destTipo === 'Terceiro' ? destNome.trim() : (p.nome || ''),
       'Data da Entrega': dataEntregaBr, 'Local': local,
-      'Assinatura URL': du.arquivo.url, 'Observacoes': obs,
+      'Assinatura URL': du.arquivo.url, 'Documento URL': documentoUrl, 'Observacoes': obs,
       'Data Lancamento': entrFdt(new Date())
     };
     await fetch(URL_AS, {
@@ -5288,6 +5319,7 @@ function entrRenderModal(uid, loadingMsg) {
       + ' <span class="hon-badge hv-badge-fut">' + (a['Destinatario Tipo'] === 'Terceiro' ? 'Terceiro: ' + entrEsc(a['Destinatario Nome']) : 'Cliente') + '</span></div>'
       + '<div class="meta">' + entrEsc(a['Data da Entrega'] || '-') + ' · ' + entrEsc(a['Descricao'] || '') + (a['Local'] ? ' · ' + entrEsc(a['Local']) : '') + '</div></div>'
       + (a['Assinatura URL'] ? '<a href="' + entrEsc(a['Assinatura URL']) + '" target="_blank" class="cp-btn" title="Ver assinatura" style="text-decoration:none">✍️</a>' : '')
+      + (a['Documento URL'] ? '<a href="' + entrEsc(a['Documento URL']) + '" target="_blank" class="cp-btn" title="Ver documento anexado" style="text-decoration:none">📎</a>' : '')
       + '<button class="cp-btn ex" title="Excluir" onclick="entrExcluir(\'' + entrEsc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
   }).join('') : '<div class="hon-empty">Nenhuma entrega registrada ainda.</div>';
 
@@ -5301,6 +5333,7 @@ function entrRenderModal(uid, loadingMsg) {
     + '<div class="cp-field" id="entr-destNomeWrap" style="display:none"><label>Nome de quem recebeu</label><input id="entr-destNome" placeholder="Nome completo"></div>'
     + '<div class="cp-field cp-full"><label>Local (opcional)</label><input id="entr-local" placeholder="Ex.: escritório, imóvel, fórum..."></div>'
     + '<div class="cp-field cp-full"><label>Observações (opcional)</label><input id="entr-obs"></div>'
+    + '<div class="cp-field cp-full"><label>Anexar o documento/certidão (opcional — a foto ou o arquivo entregue)</label><input type="file" id="entr-arquivo" accept="image/*,application/pdf,.doc,.docx" onchange="entrArquivoSelecionado(this)"><div id="entr-arquivo-nome" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>'
     + '<div class="cp-full"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Assinatura de quem recebeu *</label>'
     + '<div style="border:2px dashed var(--border2);border-radius:10px;overflow:hidden;background:#fff"><canvas id="entrCanvas" style="display:block;width:100%;height:160px;cursor:crosshair;touch-action:none"></canvas></div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Assine com o dedo ou o mouse</span><button type="button" class="cp-btn" style="padding:4px 10px;font-size:11px" onclick="limparAssinaturaEntrega()">🧹 Limpar</button></div></div>'
@@ -9341,6 +9374,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (3)', itens: [
+      'Corrigido: a imagem da assinatura salvava com fundo transparente (quadriculado) — agora salva com fundo branco sólido, como papel, tanto ao assinar quanto depois de usar "Limpar".'
+    ]},
+    { data: '05/ago/2026 (2)', itens: [
+      'Corrigido: o módulo de Entregas só salvava a assinatura, não o documento/certidão em si. Agora tem um campo para anexar o arquivo (foto ou PDF) separado da assinatura — os dois ficam salvos e linkados no registro.'
+    ]},
     { data: '05/ago/2026', itens: [
       'Novo módulo "Entregas e Assinaturas" em Processos — registra entrega de chaves, documentos ou certidões (para o cliente ou terceiro), com assinatura de quem recebeu colhida na tela (dedo ou mouse) e salva automaticamente na pasta do Drive do processo.',
       'Corrigido bug no envio de arquivos ao Drive: o tipo do arquivo não estava sendo reconhecido pelo backend.'
