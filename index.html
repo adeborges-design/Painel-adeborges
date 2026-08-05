@@ -5384,9 +5384,10 @@ window.entrSalvar = async function (uid) {
         pastaId = extrairIdPastaUrl(dp.url);
       }
 
-      stEl.textContent = '⏳ enviando assinatura...';
-      var canvas = document.getElementById('entrCanvas');
-      var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+      stEl.textContent = '⏳ montando o recibo completo...';
+      var reciboEl = document.getElementById('entrReciboPreview');
+      var canvasCaptura = await html2canvas(reciboEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      var blob = await new Promise(function (res) { canvasCaptura.toBlob(res, 'image/png'); });
       var base64 = await new Promise(function (res, rej) {
         var reader = new FileReader();
         reader.onload = function () { res(reader.result.split(',')[1]); };
@@ -5394,13 +5395,14 @@ window.entrSalvar = async function (uid) {
         reader.readAsDataURL(blob);
       });
       var dataEntregaBr = dataV ? entrDtBRfromInput(dataV) : entrFdt(new Date());
-      var nomeArq = 'Assinatura - ' + tipo + ' - ' + dataEntregaBr.replace(/\//g, '-') + '.png';
+      var nomeArq = 'Recibo de Entrega - ' + tipo + ' - ' + dataEntregaBr.replace(/\//g, '-') + '.png';
+      stEl.textContent = '⏳ enviando o recibo assinado...';
       var ru = await fetch(URL_AS, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ acao: 'upload_arquivo', pasta: pastaId, nome: nomeArq, base64: base64, tipo: 'image/png' })
       });
       var du = await ru.json();
-      if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
+      if (!du.ok) throw new Error(du.error || 'falha ao enviar o recibo');
       assinaturaUrl = du.arquivo.urlDireta || du.arquivo.url;
     }
 
@@ -5450,13 +5452,22 @@ window.entrVerRecibo = function (idx, uid) {
   if (!a) return;
   var wrap = document.getElementById('entrModalWrap');
   var digital = a['Forma Assinatura'] === 'Digital';
-  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px" class="entr-no-print"><div style="font-size:15px;font-weight:700">Recibo de Entrega</div>'
-    + '<div><button class="cp-btn" onclick="entrImprimir()">🖨️ Imprimir</button> <button class="cp-btn" onclick="entrRenderModal(\'' + uid + '\')">← Voltar</button></div></div>'
-    + entrReciboHtml({
+  var cabecalho = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px" class="entr-no-print"><div style="font-size:15px;font-weight:700">Recibo de Entrega</div>'
+    + '<div><button class="cp-btn" onclick="entrImprimir()">🖨️ Imprimir</button> <button class="cp-btn" onclick="entrRenderModal(\'' + uid + '\')">← Voltar</button></div></div>';
+  if (digital && a['Assinatura URL']) {
+    // O arquivo salvo JA E o recibo completo (cabecalho + dados + assinatura, capturado como imagem
+    // no momento de assinar) - mostra ele direto, sem reconstruir o texto por cima de novo.
+    wrap.innerHTML = cabecalho
+      + '<div id="entrReciboPreview" style="background:#ffffff;border:1px solid #d8dde8;border-radius:10px;padding:10px;text-align:center">'
+      + '<img src="' + entrEsc(a['Assinatura URL']) + '" style="max-width:100%;display:block;margin:0 auto;border-radius:6px">'
+      + '</div>';
+  } else {
+    wrap.innerHTML = cabecalho + entrReciboHtml({
         tipo: a['Tipo de Entrega'], desc: a['Descricao'], destNome: a['Destinatario Nome'],
         data: a['Data da Entrega'], local: a['Local'], obs: a['Observacoes'],
-        digital: digital, assinaturaUrl: a['Assinatura URL'], p: p
+        digital: digital, assinaturaUrl: '', p: p
       });
+  }
 };
 
 // Monta o HTML do recibo em si (cabeçalho do escritório, dados da entrega, área de assinatura).
@@ -9640,6 +9651,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (10)', itens: [
+      'Corrigido de vez: ao assinar na tela, agora sobe para o Drive o RECIBO INTEIRO (cabeçalho, dados da entrega e assinatura, tudo junto em uma imagem só) — antes só a assinatura isolada era salva.',
+      'Ao reabrir um recibo já assinado digitalmente para visualizar/imprimir, mostra essa imagem completa direto, sem duplicar o texto por cima.'
+    ]},
     { data: '05/ago/2026 (9)', itens: [
       'Corrigido: a imagem da assinatura não aparecia no recibo salvo (ícone quebrado) por dois motivos — o link do Drive retornado não é um link direto de imagem (abre o visualizador, não a imagem crua), e o arquivo enviado não herdava a permissão pública da pasta. Ambos corrigidos: o arquivo agora fica visível por link e a assinatura usa o formato de link direto.'
     ]},
