@@ -2688,17 +2688,25 @@
         <div class="form-section-title">👤 Dados do Cliente</div>
         <div class="form-grid">
           <div class="form-field form-full">
-            <label>Nome completo *</label>
-            <input type="text" id="ed-nome" placeholder="Nome do cliente">
+            <label>Tipo de cliente</label>
+            <select id="ed-tipoPessoa" onchange="togglePessoaJuridica('ed')">
+              <option value="Física">Pessoa Física</option>
+              <option value="Jurídica">Pessoa Jurídica</option>
+            </select>
+          </div>
+          <div class="form-field form-full">
+            <label id="ed-labelNome">Nome completo / Razão Social *</label>
+            <input type="text" id="ed-nome" placeholder="Nome do cliente ou razão social da empresa">
           </div>
           <div class="form-field">
-            <label>CPF / CNPJ</label>
+            <label id="ed-labelCpf">CPF / CNPJ</label>
             <input type="text" id="ed-cpf" placeholder="000.000.000-00">
           </div>
           <div class="form-field">
             <label>RG / Órgão emissor</label>
             <input type="text" id="ed-rg">
           </div>
+          <div id="ed-pfFields" style="display:contents">
           <div class="form-field">
             <label>Estado civil</label>
             <select id="ed-estadoCivil">
@@ -2718,6 +2726,28 @@
           <div class="form-field">
             <label>Data de Nascimento</label>
             <input type="date" id="ed-dataNasc">
+          </div>
+          </div>
+          <div id="ed-pjFields" style="display:none;grid-column:1/-1">
+            <div class="form-section-title" style="font-size:13px;margin-top:6px">🏢 Representante Legal (assina em nome da empresa)</div>
+            <div class="form-grid">
+              <div class="form-field form-full">
+                <label>Nome do representante legal</label>
+                <input type="text" id="ed-repNome" placeholder="Nome de quem representa a empresa">
+              </div>
+              <div class="form-field">
+                <label>CPF do representante</label>
+                <input type="text" id="ed-repCpf" placeholder="000.000.000-00">
+              </div>
+              <div class="form-field">
+                <label>RG do representante</label>
+                <input type="text" id="ed-repRg">
+              </div>
+              <div class="form-field">
+                <label>Cargo / função na empresa</label>
+                <input type="text" id="ed-repCargo" placeholder="Ex.: Sócio-administrador, Diretor...">
+              </div>
+            </div>
           </div>
           <div class="form-field">
             <label>Telefone</label>
@@ -2983,17 +3013,25 @@
         <div class="form-section-title">👤 Dados do Cliente</div>
         <div class="form-grid">
           <div class="form-field form-full">
-            <label>Nome completo *</label>
-            <input type="text" id="cad-nome" placeholder="Nome do cliente">
+            <label>Tipo de cliente</label>
+            <select id="cad-tipoPessoa" onchange="togglePessoaJuridica('cad')">
+              <option value="Física">Pessoa Física</option>
+              <option value="Jurídica">Pessoa Jurídica</option>
+            </select>
+          </div>
+          <div class="form-field form-full">
+            <label id="cad-labelNome">Nome completo / Razão Social *</label>
+            <input type="text" id="cad-nome" placeholder="Nome do cliente ou razão social da empresa">
           </div>
           <div class="form-field">
-            <label>CPF / CNPJ</label>
+            <label id="cad-labelCpf">CPF / CNPJ</label>
             <input type="text" id="cad-cpf" placeholder="000.000.000-00">
           </div>
           <div class="form-field">
             <label>RG / Órgão emissor</label>
             <input type="text" id="cad-rg">
           </div>
+          <div id="cad-pfFields" style="display:contents">
           <div class="form-field">
             <label>Estado civil</label>
             <select id="cad-estadoCivil">
@@ -3013,6 +3051,28 @@
           <div class="form-field">
             <label>Data de Nascimento</label>
             <input type="date" id="cad-dataNasc">
+          </div>
+          </div>
+          <div id="cad-pjFields" style="display:none;grid-column:1/-1">
+            <div class="form-section-title" style="font-size:13px;margin-top:6px">🏢 Representante Legal (assina em nome da empresa)</div>
+            <div class="form-grid">
+              <div class="form-field form-full">
+                <label>Nome do representante legal</label>
+                <input type="text" id="cad-repNome" placeholder="Nome de quem representa a empresa">
+              </div>
+              <div class="form-field">
+                <label>CPF do representante</label>
+                <input type="text" id="cad-repCpf" placeholder="000.000.000-00">
+              </div>
+              <div class="form-field">
+                <label>RG do representante</label>
+                <input type="text" id="cad-repRg">
+              </div>
+              <div class="form-field">
+                <label>Cargo / função na empresa</label>
+                <input type="text" id="cad-repCargo" placeholder="Ex.: Sócio-administrador, Diretor...">
+              </div>
+            </div>
           </div>
           <div class="form-field">
             <label>Telefone</label>
@@ -3716,6 +3776,11 @@ function parseProcessos(rows) {
     const telParceiro      = get(row, 'Telefone do Advogado Parceiro', 44);  // AS
     const emailParceiro    = get(row, 'E-mail do Advogado Parceiro',   45);  // AT
     const processoPrincipal = get(row, 'Processo Principal', -1);
+    const tipoPessoa        = get(row, 'Tipo de Pessoa',    -1);
+    const repNome           = get(row, 'Representante Nome', -1);
+    const repCpf            = get(row, 'Representante CPF',  -1);
+    const repRg             = get(row, 'Representante RG',   -1);
+    const repCargo          = get(row, 'Representante Cargo', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -3747,6 +3812,7 @@ function parseProcessos(rows) {
       advParc, obs, pastaDrive, linkTrib, telefone, email,
       telParceiro, emailParceiro,
       processoPrincipal,
+      tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
       prazoInfo,
       _row: i
@@ -4364,6 +4430,34 @@ function campo(val, fallback) {
   return val && val.length > 1 ? `<span class="doc-campo">${val}</span>` : `<span class="doc-campo">${fallback || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span>`;
 }
 
+// Qualificação da parte (cliente) usada na Procuração e no Contrato de Honorários.
+// Pessoa Física: nome, estado civil, profissão, RG/CPF, nascimento, endereço.
+// Pessoa Jurídica: razão social, CNPJ, sede, representada por seu representante legal
+// (nome, cargo, RG/CPF do representante) — o representante é quem assina, não a empresa.
+function qualificacaoParte(p) {
+  if (p.tipoPessoa === 'Jurídica') {
+    return `${campo(p.nome)}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nr. ${campo(p.cpfCnpj)},
+      com sede na ${campo(enderecoCompleto(p))}, neste ato representada, na forma de seu contrato/estatuto social,
+      por seu(sua) ${campo(p.repCargo, 'representante legal')}, ${campo(p.repNome)},
+      portador(a) do RG nr. ${campo(p.repRg)} e CPF/MF nr. ${campo(p.repCpf)},
+      e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
+  }
+  return `${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
+    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
+    nascido(a) em ${campo(p.dataNasc)},
+    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
+    e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
+}
+
+// Nome exibido acima da linha de assinatura. Pessoa Jurídica: mostra a razão social
+// e, embaixo, "por [representante]" — quem assina fisicamente é o representante, não a empresa.
+function nomeAssinatura(p) {
+  if (p.tipoPessoa === 'Jurídica') {
+    return escHtml(p.nome) + (p.repNome ? '<br><small style="font-weight:normal">p. ' + escHtml(p.repNome) + '</small>' : '');
+  }
+  return escHtml(p.nome);
+}
+
 function abrirDoc(tipo, uid) {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
@@ -4406,11 +4500,7 @@ function gerarProcuracao(p, tipo) {
   </div>
 
   <p class="doc-texto">
-    <strong>OUTORGANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
-    nascido(a) em ${campo(p.dataNasc)},
-    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
-    e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
+    <strong>OUTORGANTE:</strong> ${qualificacaoParte(p)}.
   </p>
 
   <p class="doc-texto">
@@ -4435,7 +4525,7 @@ function gerarProcuracao(p, tipo) {
 
   <div style="margin-top:48px;text-align:center">
     <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
-      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
+      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(p)}</span><br>
       <small>Outorgante</small>
     </div>
   </div>`;
@@ -4529,10 +4619,7 @@ function gerarContrato(p) {
   </p>
 
   <p class="doc-texto">
-    <strong>CONTRATANTE:</strong> ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
-    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
-    e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}.
+    <strong>CONTRATANTE:</strong> ${qualificacaoParte(p)}.
   </p>
 
   <p class="doc-texto">
@@ -4581,7 +4668,7 @@ function gerarContrato(p) {
 
   <div class="doc-assinaturas">
     <div class="doc-assinatura-linha">
-      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
+      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(p)}</span><br>
       <small>Contratante</small>
     </div>
     <div class="doc-assinatura-linha">
@@ -6047,6 +6134,19 @@ function enviarParcImagem() {
 let _edicaoLinha = null;
 let _edicaoNome = '';
 
+window.togglePessoaJuridica = function (prefixo) {
+  var tipo = document.getElementById(prefixo + '-tipoPessoa').value;
+  var juridica = tipo === 'Jurídica';
+  var pf = document.getElementById(prefixo + '-pfFields');
+  var pj = document.getElementById(prefixo + '-pjFields');
+  var labelNome = document.getElementById(prefixo + '-labelNome');
+  var labelCpf = document.getElementById(prefixo + '-labelCpf');
+  if (pf) pf.style.display = juridica ? 'none' : 'contents';
+  if (pj) pj.style.display = juridica ? '' : 'none';
+  if (labelNome) labelNome.textContent = juridica ? 'Razão Social *' : 'Nome completo *';
+  if (labelCpf) labelCpf.textContent = juridica ? 'CNPJ' : 'CPF / CNPJ';
+};
+
 function abrirEdicao(uid) {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
@@ -6057,12 +6157,18 @@ function abrirEdicao(uid) {
   document.getElementById('edicaoTitulo').textContent = '✏️ Editar: ' + p.nome;
 
   // Preencher campos - Dados do Cliente
+  document.getElementById('ed-tipoPessoa').value = p.tipoPessoa === 'Jurídica' ? 'Jurídica' : 'Física';
   document.getElementById('ed-nome').value = p.nome || '';
   document.getElementById('ed-cpf').value = p.cpfCnpj || '';
   document.getElementById('ed-rg').value = p.rg || '';
   document.getElementById('ed-estadoCivil').value = p.estadoCivil || '';
   document.getElementById('ed-profissao').value = p.profissao || '';
   document.getElementById('ed-dataNasc').value = dataParaInput(p.dataNasc);
+  document.getElementById('ed-repNome').value = p.repNome || '';
+  document.getElementById('ed-repCpf').value = p.repCpf || '';
+  document.getElementById('ed-repRg').value = p.repRg || '';
+  document.getElementById('ed-repCargo').value = p.repCargo || '';
+  togglePessoaJuridica('ed');
   document.getElementById('ed-telefone').value = p.telefone || '';
   document.getElementById('ed-email').value = p.email || '';
   document.getElementById('ed-endereco').value = p.endereco || '';
@@ -6162,6 +6268,11 @@ async function salvarEdicao() {
     'Nome': document.getElementById('ed-nome').value,
     'CPF/CNPJ': document.getElementById('ed-cpf').value,
     'RG/ Órgão emissor': document.getElementById('ed-rg').value,
+    'Tipo de Pessoa': document.getElementById('ed-tipoPessoa').value,
+    'Representante Nome': document.getElementById('ed-repNome').value,
+    'Representante CPF': document.getElementById('ed-repCpf').value,
+    'Representante RG': document.getElementById('ed-repRg').value,
+    'Representante Cargo': document.getElementById('ed-repCargo').value,
     'Estado civil': document.getElementById('ed-estadoCivil').value,
     'Profissão': document.getElementById('ed-profissao').value,
     'Data de Nascimento': inputParaData(document.getElementById('ed-dataNasc').value),
@@ -6536,10 +6647,13 @@ function abrirCadastro() {
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
    'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
-   'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente'].forEach(id => {
+   'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
+   'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  document.getElementById('cad-tipoPessoa').value = 'Física';
+  togglePessoaJuridica('cad');
   var _bcr = document.getElementById('cad-buscaClienteResultados'); if (_bcr) { _bcr.style.display='none'; _bcr.innerHTML=''; }
   var _ppr = document.getElementById('cad-processoPrincipalResultados'); if (_ppr) { _ppr.style.display='none'; _ppr.innerHTML=''; }
   ['cad-honorarios','cad-parcelas','cad-entrada','cad-valorParcela'].forEach(id => {
@@ -6576,6 +6690,11 @@ async function salvarCadastro() {
     'Nome': nome,
     'CPF/CNPJ': document.getElementById('cad-cpf').value,
     'RG/ Órgão emissor': document.getElementById('cad-rg').value,
+    'Tipo de Pessoa': document.getElementById('cad-tipoPessoa').value,
+    'Representante Nome': document.getElementById('cad-repNome').value,
+    'Representante CPF': document.getElementById('cad-repCpf').value,
+    'Representante RG': document.getElementById('cad-repRg').value,
+    'Representante Cargo': document.getElementById('cad-repCargo').value,
     'Estado civil': document.getElementById('cad-estadoCivil').value,
     'Profissão': document.getElementById('cad-profissao').value,
     'Data de Nascimento': inputParaData(document.getElementById('cad-dataNasc').value),
@@ -9374,6 +9493,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (4)', itens: [
+      'Novo campo "Tipo de cliente" (Pessoa Física / Pessoa Jurídica) no cadastro e edição de processo.',
+      'Quando é Pessoa Jurídica: some Estado Civil/Profissão/Data de Nascimento (não se aplicam a empresa) e aparecem os dados do Representante Legal (nome, CPF, RG, cargo) — quem assina em nome da empresa.',
+      'Procuração e Contrato de Honorários agora qualificam corretamente a Pessoa Jurídica (razão social, CNPJ, sede, representada por seu representante legal) e mostram o nome do representante na linha de assinatura.',
+      'Processos de Pessoa Física continuam funcionando exatamente como antes, sem nenhuma mudança.'
+    ]},
     { data: '05/ago/2026 (3)', itens: [
       'Corrigido: a imagem da assinatura salvava com fundo transparente (quadriculado) — agora salva com fundo branco sólido, como papel, tanto ao assinar quanto depois de usar "Limpar".'
     ]},
