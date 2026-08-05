@@ -567,9 +567,13 @@
   .badge-normal { background: rgba(76,175,125,0.15); color: var(--green); border-color: rgba(76,175,125,0.3); }
   .badge-monitorar { background: rgba(91,141,238,0.15); color: var(--blue); border-color: rgba(91,141,238,0.3); }
   .badge-extinto { background: rgba(120,120,130,0.25); color: #c8c8d0; border-color: rgba(120,120,130,0.5); }
+  .badge-semAtuacao { background: rgba(200,140,60,0.18); color: #e0a860; border-color: rgba(200,140,60,0.4); }
   .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
   .processo-card-extinto:hover { opacity: 1; }
+  .processo-card-semAtuacao { background: repeating-linear-gradient(135deg, rgba(200,140,60,0.08), rgba(200,140,60,0.08) 10px, rgba(200,140,60,0.14) 10px, rgba(200,140,60,0.14) 20px) !important; opacity: 0.85; }
+  .processo-card-semAtuacao:hover { opacity: 1; }
   .priority-extinto { background: #6b7280 !important; }
+  .priority-semAtuacao { background: #c88c3c !important; }
 
   .processo-numero {
     font-family: 'DM Mono', monospace;
@@ -2250,6 +2254,10 @@
         <span class="urgency-dot" style="background:#6b7280"></span>Extintos
         <span class="count" id="cnt-extinto">—</span>
       </button>
+      <button class="filter-btn" onclick="filterBy('semAtuacao', this)" data-filter="semAtuacao" style="border-color:rgba(200,140,60,0.3)" title="Substabelecido, renúncia ou procuração revogada">
+        <span class="urgency-dot" style="background:#c88c3c"></span>Sem atuação
+        <span class="count" id="cnt-semAtuacao">—</span>
+      </button>
     </div>
 
     <div class="sidebar-section">
@@ -2836,7 +2844,9 @@
               <option value="MONITORAR">MONITORAR</option>
               <option value="SUSPENSO">SUSPENSO</option>
               <option value="EXTINTO">EXTINTO</option>
-              <option value="RENUNCIA">RENUNCIA</option>
+              <option value="SUBSTABELECIDO">SUBSTABELECIDO</option>
+              <option value="RENUNCIA">RENÚNCIA</option>
+              <option value="REVOGADO">PROCURAÇÃO REVOGADA</option>
             </select>
           </div>
           <div class="form-field">
@@ -3108,6 +3118,10 @@
               <option value="ATIVO">ATIVO</option>
               <option value="MONITORAR">MONITORAR</option>
               <option value="SUSPENSO">SUSPENSO</option>
+              <option value="EXTINTO">EXTINTO</option>
+              <option value="SUBSTABELECIDO">SUBSTABELECIDO</option>
+              <option value="RENUNCIA">RENÚNCIA</option>
+              <option value="REVOGADO">PROCURAÇÃO REVOGADA</option>
             </select>
           </div>
           <div class="form-field">
@@ -3794,6 +3808,10 @@ function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, 
   // Processo encerrado: nunca conta como critico/urgente, mesmo com prazos antigos vencidos
   if (stUp === 'EXTINTO') return 'extinto';
 
+  // Advogado nao atua mais neste processo (substabelecido, renuncia ou procuracao revogada),
+  // mas o processo em si pode continuar correndo — nao entra em critico/urgente/normal
+  if (stUp === 'SUBSTABELECIDO' || stUp === 'RENUNCIA' || stUp === 'REVOGADO') return 'semAtuacao';
+
   // 1. Audiencia proxima - maior prioridade
   if (dataAudi && dataAudi.length > 3) {
     const d = parseDate(dataAudi);
@@ -3919,7 +3937,9 @@ function renderProcessos() {
     if (currentFilter === 'criticourgente') return p.urgencia === 'critico' || p.urgencia === 'urgente';
     if (currentFilter === 'prazo') { const d = diasOf(p); return d !== null && menorPrazoAtual !== null && d === menorPrazoAtual; }
     if (currentFilter === 'extinto') return p.status === 'EXTINTO';
+    if (currentFilter === 'semAtuacao') return ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase());
     if (currentFilter === 'all' && p.status === 'EXTINTO') return false;
+    if (currentFilter === 'all' && ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase())) return false;
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
 
     // Busca textual
@@ -4024,7 +4044,7 @@ function renderCard(p, idx) {
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
-    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
+    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}${['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase()) ? ' processo-card-semAtuacao' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
          onclick="toggleCard(${p._uid})">
       <div class="priority-bar priority-${p.urgencia}"></div>
       <div class="processo-body">
@@ -4034,6 +4054,9 @@ function renderCard(p, idx) {
           <span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
           ${p.status === 'EXTINTO' ? '<span class="badge badge-urgencia badge-extinto">⚫ Extinto</span>' : ''}
+          ${p.status === 'SUBSTABELECIDO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Substabelecido</span>' : ''}
+          ${(p.status||'').toUpperCase() === 'RENUNCIA' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Renúncia</span>' : ''}
+          ${p.status === 'REVOGADO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Procuração Revogada</span>' : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
         ${(() => {
@@ -4255,7 +4278,10 @@ function copyNumero(num) {
 
 // --- STATS ----------------------------------------------------
 function updateStats() {
-  const ativos = allProcessos.filter(p => p.status !== 'EXTINTO');
+  const ativos = allProcessos.filter(p => {
+    const st = (p.status||'').toUpperCase();
+    return st !== 'EXTINTO' && st !== 'SUBSTABELECIDO' && st !== 'RENUNCIA' && st !== 'REVOGADO';
+  });
   const criticos = ativos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
   const audiencias = ativos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
   const providencias = ativos.filter(p => (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3)).length;
@@ -4284,6 +4310,7 @@ function updateStats() {
   });
   document.getElementById('cnt-all').textContent = ativos.length;
   document.getElementById('cnt-extinto').textContent = allProcessos.filter(p => p.status === 'EXTINTO').length;
+  document.getElementById('cnt-semAtuacao').textContent = allProcessos.filter(p => ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase())).length;
   document.getElementById('cnt-audiencia').textContent = audiencias;
   document.getElementById('cnt-providencia').textContent = providencias;
   // Atualiza label sidebar
@@ -9080,6 +9107,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '04/ago/2026 (3)', itens: [
+      'Nova categoria "Sem atuação" para processos onde você não atua mais (substabelecido, renúncia ou procuração revogada) — o processo pode continuar correndo, mas fica separado do seu trabalho ativo.',
+      'Filtro próprio "Sem atuação" na barra lateral, mostrando o motivo exato em cada card (Substabelecido / Renúncia / Procuração Revogada), com fundo listrado âmbar para diferenciar do "Extinto" (cinza).',
+      'Padronizadas as opções de status entre os formulários de Novo Processo e Editar Processo (antes eram diferentes entre si).'
+    ]},
     { data: '04/ago/2026 (2)', itens: [
       'Corrigido bug importante: processos SUSPENSOS e EXTINTOS não eram nem carregados do sistema — agora todos aparecem.',
       'Processos extintos ganharam um filtro próprio ("Extintos" na barra lateral) e visual distinto (fundo listrado cinza + selo "⚫ Extinto"), para não se misturar com o trabalho ativo mas continuar acessível quando precisar consultar uma anotação antiga.',
