@@ -1764,13 +1764,18 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
   }
 
   .doc-toolbar-title {
     font-family: 'DM Serif Display', serif;
     font-size: 15px;
     color: var(--accent);
-    flex: 1;
+    flex: 1 1 160px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .doc-body {
@@ -4434,8 +4439,21 @@ function campo(val, fallback) {
 // Pessoa Física: nome, estado civil, profissão, RG/CPF, nascimento, endereço.
 // Pessoa Jurídica: razão social, CNPJ, sede, representada por seu representante legal
 // (nome, cargo, RG/CPF do representante) — o representante é quem assina, não a empresa.
+// Verifica se é Pessoa Jurídica de forma tolerante a acento/maiúsculas/espaços —
+// o valor vem e volta da planilha, então uma comparação exata com 'Jurídica' é frágil
+// (mesmo problema já visto em 'Observações', 'Tipo de Ação' etc. antes de corrigidos).
+function ehPessoaJuridica(p) {
+  var t = String((p && p.tipoPessoa) || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (t.indexOf('jurid') === 0 || t === 'pj') return true;
+  if (t.indexOf('fisic') === 0 || t === 'pf') return false;
+  // "Tipo de Pessoa" nunca foi definido (processo cadastrado antes deste campo existir):
+  // tenta inferir pela quantidade de dígitos do CPF/CNPJ (14 dígitos = CNPJ).
+  var digitos = String((p && p.cpfCnpj) || '').replace(/\D/g, '');
+  return digitos.length === 14;
+}
+
 function qualificacaoParte(p) {
-  if (p.tipoPessoa === 'Jurídica') {
+  if (ehPessoaJuridica(p)) {
     return `${campo(p.nome)}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nr. ${campo(p.cpfCnpj)},
       com sede na ${campo(enderecoCompleto(p))}, neste ato representada, na forma de seu contrato/estatuto social,
       por seu(sua) ${campo(p.repCargo, 'representante legal')}, ${campo(p.repNome)},
@@ -4452,7 +4470,7 @@ function qualificacaoParte(p) {
 // Nome exibido acima da linha de assinatura. Pessoa Jurídica: mostra a razão social
 // e, embaixo, "por [representante]" — quem assina fisicamente é o representante, não a empresa.
 function nomeAssinatura(p) {
-  if (p.tipoPessoa === 'Jurídica') {
+  if (ehPessoaJuridica(p)) {
     return escHtml(p.nome) + (p.repNome ? '<br><small style="font-weight:normal">p. ' + escHtml(p.repNome) + '</small>' : '');
   }
   return escHtml(p.nome);
@@ -4478,6 +4496,7 @@ function abrirDoc(tipo, uid) {
   }
 
   document.getElementById('docToolbarTitle').textContent = titulo;
+  document.getElementById('docToolbarTitle').title = titulo;
   const docBody = document.getElementById('docBody');
   docBody.innerHTML = html;
   docBody.contentEditable = 'true';
@@ -6250,7 +6269,7 @@ function abrirEdicao(uid) {
   document.getElementById('edicaoTitulo').textContent = '✏️ Editar: ' + p.nome;
 
   // Preencher campos - Dados do Cliente
-  document.getElementById('ed-tipoPessoa').value = p.tipoPessoa === 'Jurídica' ? 'Jurídica' : 'Física';
+  document.getElementById('ed-tipoPessoa').value = ehPessoaJuridica(p) ? 'Jurídica' : 'Física';
   document.getElementById('ed-nome').value = p.nome || '';
   document.getElementById('ed-cpf').value = p.cpfCnpj || '';
   document.getElementById('ed-rg').value = p.rg || '';
@@ -9586,6 +9605,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (6)', itens: [
+      'Corrigido cabeçalho do visualizador de documentos: títulos longos (como "Contrato de Prestação de Serviços Advocatícios") quebravam em 2 linhas e sobrepunham os botões — agora o título trunca com "..." numa linha só (o texto completo aparece ao passar o mouse), e em telas estreitas os botões quebram para uma linha própria, organizados.',
+      'Corrigida a identificação de Pessoa Jurídica: a comparação exigia o texto exato "Jurídica" e falhava com variações de acento/maiúsculas. Agora tolera isso, e além disso, processos antigos (cadastrados antes do campo "Tipo de Pessoa" existir) são identificados automaticamente como Pessoa Jurídica pelo formato do CNPJ (14 dígitos) — a Procuração e o Contrato já saem com a qualificação de empresa correta sem precisar editar o processo. Só falta preencher os dados do representante legal (nome, CPF, RG, cargo) em cada um.'
+    ]},
     { data: '05/ago/2026 (5)', itens: [
       'Reformulado o módulo de Entregas: agora gera um "Recibo de Entrega" completo (cabeçalho, processo, o que foi entregue, destinatário, data) — não só a assinatura isolada.',
       'Duas formas de assinatura: "Assinar agora na tela" (dedo/mouse, como antes) ou "Imprimir para assinar fisicamente" (linha em branco no papel, pra quando a pessoa não está no escritório) — escolha na hora do lançamento.',
