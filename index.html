@@ -5401,7 +5401,7 @@ window.entrSalvar = async function (uid) {
       });
       var du = await ru.json();
       if (!du.ok) throw new Error(du.error || 'falha ao enviar a assinatura');
-      assinaturaUrl = du.arquivo.url;
+      assinaturaUrl = du.arquivo.urlDireta || du.arquivo.url;
     }
 
     var campos = {
@@ -9640,6 +9640,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (9)', itens: [
+      'Corrigido: a imagem da assinatura não aparecia no recibo salvo (ícone quebrado) por dois motivos — o link do Drive retornado não é um link direto de imagem (abre o visualizador, não a imagem crua), e o arquivo enviado não herdava a permissão pública da pasta. Ambos corrigidos: o arquivo agora fica visível por link e a assinatura usa o formato de link direto.'
+    ]},
     { data: '05/ago/2026 (8)', itens: [
       'Corrigido bug sério nas abas criadas automaticamente (Entregas, Atendimentos, Locações, Contas): quando uma coluna era renomeada no sistema mas a quantidade de colunas não mudava, o cabeçalho da planilha ficava desatualizado e os dados eram lidos na posição errada — foi a causa da assinatura digital não aparecer nos recibos de entrega salvos. Agora o cabeçalho é sempre sincronizado com o nome certo.'
     ]},
