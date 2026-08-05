@@ -566,6 +566,10 @@
   .badge-atencao { background: rgba(212,160,23,0.15); color: var(--yellow); border-color: rgba(212,160,23,0.3); }
   .badge-normal { background: rgba(76,175,125,0.15); color: var(--green); border-color: rgba(76,175,125,0.3); }
   .badge-monitorar { background: rgba(91,141,238,0.15); color: var(--blue); border-color: rgba(91,141,238,0.3); }
+  .badge-extinto { background: rgba(120,120,130,0.25); color: #c8c8d0; border-color: rgba(120,120,130,0.5); }
+  .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
+  .processo-card-extinto:hover { opacity: 1; }
+  .priority-extinto { background: #6b7280 !important; }
 
   .processo-numero {
     font-family: 'DM Mono', monospace;
@@ -2242,6 +2246,10 @@
         <span class="urgency-dot dot-monitorar"></span>Monitorar
         <span class="count" id="cnt-monitorar">—</span>
       </button>
+      <button class="filter-btn" onclick="filterBy('extinto', this)" data-filter="extinto" style="border-color:rgba(120,120,130,0.3)">
+        <span class="urgency-dot" style="background:#6b7280"></span>Extintos
+        <span class="count" id="cnt-extinto">—</span>
+      </button>
     </div>
 
     <div class="sidebar-section">
@@ -3698,9 +3706,7 @@ function parseProcessos(rows) {
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
 
-    // So mostra ATIVO e MONITORAR
     const st = status.toUpperCase();
-    if (st !== 'ATIVO' && st !== 'MONITORAR') continue;
     if (!nome || nome.length < 2) continue;
 
     const diasPrazoNum = parseInt(diasPrazo) || 0;
@@ -3783,6 +3789,10 @@ function resolvePrazoCritico(diasPrazo, prazoData, dataPrazoCliente, dataAudi) {
 
 function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, tipo) {
   const hoje = new Date();
+  const stUp = (status || '').toUpperCase();
+
+  // Processo encerrado: nunca conta como critico/urgente, mesmo com prazos antigos vencidos
+  if (stUp === 'EXTINTO') return 'extinto';
 
   // 1. Audiencia proxima - maior prioridade
   if (dataAudi && dataAudi.length > 3) {
@@ -3908,6 +3918,8 @@ function renderProcessos() {
     if (currentFilter === 'providencia') return (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3);
     if (currentFilter === 'criticourgente') return p.urgencia === 'critico' || p.urgencia === 'urgente';
     if (currentFilter === 'prazo') { const d = diasOf(p); return d !== null && menorPrazoAtual !== null && d === menorPrazoAtual; }
+    if (currentFilter === 'extinto') return p.status === 'EXTINTO';
+    if (currentFilter === 'all' && p.status === 'EXTINTO') return false;
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
 
     // Busca textual
@@ -4012,7 +4024,7 @@ function renderCard(p, idx) {
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
-    <div class="processo-card" id="card-${p._uid}" style="animation-delay:${delay}s"
+    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
          onclick="toggleCard(${p._uid})">
       <div class="priority-bar priority-${p.urgencia}"></div>
       <div class="processo-body">
@@ -4021,6 +4033,7 @@ function renderCard(p, idx) {
           <span class="badge badge-ramo">${escHtml(p.ramo || p.tipo)}</span>
           <span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
+          ${p.status === 'EXTINTO' ? '<span class="badge badge-urgencia badge-extinto">⚫ Extinto</span>' : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
         ${(() => {
@@ -4242,17 +4255,18 @@ function copyNumero(num) {
 
 // --- STATS ----------------------------------------------------
 function updateStats() {
-  const criticos = allProcessos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
-  const audiencias = allProcessos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
-  const providencias = allProcessos.filter(p => (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3)).length;
+  const ativos = allProcessos.filter(p => p.status !== 'EXTINTO');
+  const criticos = ativos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
+  const audiencias = ativos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
+  const providencias = ativos.filter(p => (p.providCliente && p.providCliente.length > 3) || (p.dataPrazoCliente && p.dataPrazoCliente.length > 3)).length;
 
-  const prazos = allProcessos
+  const prazos = ativos
     .map(p => p.prazoInfo && p.prazoInfo.dias)
     .filter(d => d !== null && d !== undefined && d >= 0);
   const menorPrazo = prazos.length > 0 ? Math.min(...prazos) : null;
   menorPrazoAtual = menorPrazo;
 
-  document.getElementById('st-total').textContent = allProcessos.length;
+  document.getElementById('st-total').textContent = ativos.length;
   document.getElementById('st-criticos').textContent = criticos;
   document.getElementById('st-prazo').textContent = menorPrazo !== null ? menorPrazo : '-';
   const prazoSubEl = document.getElementById('st-prazo-sub');
@@ -4268,7 +4282,8 @@ function updateStats() {
   ['critico','urgente','atencao','normal','monitorar'].forEach(u => {
     document.getElementById(`cnt-${u}`).textContent = allProcessos.filter(p => p.urgencia === u).length;
   });
-  document.getElementById('cnt-all').textContent = allProcessos.length;
+  document.getElementById('cnt-all').textContent = ativos.length;
+  document.getElementById('cnt-extinto').textContent = allProcessos.filter(p => p.status === 'EXTINTO').length;
   document.getElementById('cnt-audiencia').textContent = audiencias;
   document.getElementById('cnt-providencia').textContent = providencias;
   // Atualiza label sidebar
@@ -9065,6 +9080,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '04/ago/2026 (2)', itens: [
+      'Corrigido bug importante: processos SUSPENSOS e EXTINTOS não eram nem carregados do sistema — agora todos aparecem.',
+      'Processos extintos ganharam um filtro próprio ("Extintos" na barra lateral) e visual distinto (fundo listrado cinza + selo "⚫ Extinto"), para não se misturar com o trabalho ativo mas continuar acessível quando precisar consultar uma anotação antiga.',
+      'A visão padrão "Todos os ativos" e as estatísticas do topo (Casos Ativos, Crítico/Urgente, Audiências, Providências, Prazo mais próximo) agora excluem corretamente os processos extintos.',
+      'Corrigido: o campo "Juiz(a)" no cadastro/edição de processo não estava sendo salvo ao clicar em Salvar.'
+    ]},
     { data: '04/ago/2026', itens: [
       'Os cards "Casos Ativos", "Crítico/Urgente", "Prazo em Dias", "Audiências" e "Providências" agora são clicáveis — cada um abre a lista de processos já filtrada, sem precisar procurar na barra lateral.',
       'Criado este histórico de atualizações — a partir de agora, cada nova versão entregue ganha uma entrada aqui, datada.'
