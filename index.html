@@ -5484,7 +5484,7 @@ window.entrVerRecibo = function (idx, uid) {
     // do mesmo ID do arquivo - e se essa tentativa falhar (o Drive as vezes bloqueia esse formato
     // pra arquivos maiores), cai automaticamente pro texto do recibo + link garantido do Drive.
     var fileId = extrairIdPastaUrl(a['Assinatura URL']);
-    var urlDiretaTentativa = fileId ? ('https://drive.google.com/uc?export=view&id=' + fileId) : a['Assinatura URL'];
+    var urlDiretaTentativa = fileId ? ('https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1600') : a['Assinatura URL'];
     wrap.innerHTML = cabecalho
       + '<div id="entrReciboPreview" style="background:#ffffff;border:1px solid #d8dde8;border-radius:10px;padding:10px;text-align:center">'
       + '<img src="' + entrEsc(urlDiretaTentativa) + '" style="max-width:100%;display:block;margin:0 auto;border-radius:6px" onerror="entrFallbackRecibo(this,\'' + uid + '\',' + idx + ')">'
@@ -9679,6 +9679,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (12)', itens: [
+      'O arquivo salvo no Drive já está perfeito (recibo completo com a assinatura, confirmado). O problema era só a pré-visualização dentro do próprio painel — trocado o formato de link direto (o antigo "uc?export=view" tem ficado instável para incorporação em <img>) pelo endpoint de miniatura do Drive, mais confiável para isso.'
+    ]},
     { data: '05/ago/2026 (11)', itens: [
       'Corrigido: quando a pré-visualização direta da imagem do recibo falhava (o Google Drive às vezes bloqueia esse formato para determinados arquivos), a tela ficava só com um ícone quebrado, sem nada mais. Agora, se isso acontecer, aparece automaticamente o texto do recibo reconstruído + um link garantido para abrir a imagem direto no Drive.'
     ]},
