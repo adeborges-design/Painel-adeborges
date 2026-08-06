@@ -3712,14 +3712,18 @@ function parseProcessos(rows) {
     return;
   }
 
-  // Mapear cabecalhos por nome (robusto a colunas extras/faltantes)
+  // Mapear cabecalhos por nome (robusto a colunas extras/faltantes, espaco, acento e
+  // maiuscula/minuscula - mesma normalizacao usada no lado de gravacao do Apps Script,
+  // pra nao repetir bugs silenciosos tipo "Forma de pagamento " vs "Forma de pagamento").
+  const normalizarNomeCol = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const header = rows[0];
   const H = {};
-  header.forEach((h, i) => { if (h) H[h.toString().trim()] = i; });
+  header.forEach((h, i) => { if (h) H[normalizarNomeCol(h)] = i; });
 
-  // Funcao auxiliar - busca por nome exato ou indice fallback (-1 = so por nome)
+  // Funcao auxiliar - busca por nome exato (normalizado) ou indice fallback (-1 = so por nome)
   const get = (row, name, fallback) => {
-    if (H[name] !== undefined) return (row[H[name]] || '').toString().trim();
+    const key = normalizarNomeCol(name);
+    if (H[key] !== undefined) return (row[H[key]] || '').toString().trim();
     if (fallback < 0) return '';
     return (row[fallback] || '').toString().trim();
   };
@@ -7096,9 +7100,9 @@ window.renderVencimentos=function(){
   if(!vTotalP&&!nParcP)return;
   var k=gkey(p.processo,p.nome);
   if(groups[k])return;
-  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':(nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único',
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
-   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':''}];
+   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||''}];
  });
  var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0;
  Object.keys(groups).forEach(function(k){
@@ -7106,6 +7110,7 @@ window.renderVencimentos=function(){
   var cliente=h0['Cliente']||h0['Nr Processo']||'(sem nome)';
   var proc=h0['Nr Processo']||'';
   var tipo=String(h0['Tipo Contrato']||'');
+  var formaPag=String(h0['Forma de Pagamento']||h0['Forma de pagamento']||'');
   var vTotal=0,vParc=0,vEntr=0,dia=0,nParc=0;
   rows.forEach(function(r){vTotal=Math.max(vTotal,nbr(r['Valor Total Contrato']));vParc=Math.max(vParc,nbr(r['Valor da Parcela']));vEntr=Math.max(vEntr,nbr(r['Valor da Entrada']));dia=dia||parseInt(diaOnly(r['Dia Vencimento']))||0;nParc=nParc||parseInt(r['Número de Parcelas'])||0;});
   var tl=tipo.toLowerCase();
@@ -7151,7 +7156,7 @@ window.renderVencimentos=function(){
   cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<div class="hv-contrato"><div class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop
    +(tipo?'<span class="hon-badge hv-badge-fut">'+esc(tipo)+'</span>':'')
    +(proc?'<span style="font-size:11px;color:var(--muted)">'+esc(proc)+'</span>':'')
-   +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b></span></div>'
+   +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b>'+(formaPag?' | Forma: <b style="color:var(--text)">'+esc(formaPag)+'</b>':'')+'</span></div>'
    +'<div class="hv-parcelas">'+linhas+'</div>'+repH+'</div>'});
  });
  cards.sort(function(a,b){return a.ordem-b.ordem;});
@@ -7205,9 +7210,9 @@ function calcAlertas(){
   if(!vTotalP&&!nParcP)return;
   var k=gkey(p.processo,p.nome);
   if(groups[k])return;
-  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':nParcP>1?'Parcelado':'Único',
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':(nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único',
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
-   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':''}];
+   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||''}];
  });
  var atras=[],sem=[];
  Object.keys(groups).forEach(function(k){
@@ -9683,6 +9688,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '05/ago/2026 (13)', itens: [
+      'Corrigido: contrato com entrada + 1 parcela aparecia como "Único" em vez de "Parcelado" — agora considera a entrada na contagem.',
+      'A forma de pagamento (PIX, boleto, desconto em repasse...) agora aparece no cabeçalho do card de honorários, junto com Contrato/Recebido/Saldo.',
+      'Corrigido de vez (não só para este campo): a busca de qualquer coluna por nome na planilha de Processos agora ignora diferença de espaço, acento e maiúscula/minúscula — mesma robustez que já existia do lado de gravação. Resolve o "Forma de Pagamento não estava gravando" e evita que o mesmo tipo de bug apareça em outros campos no futuro.'
+    ]},
     { data: '05/ago/2026 (12)', itens: [
       'O arquivo salvo no Drive já está perfeito (recibo completo com a assinatura, confirmado). O problema era só a pré-visualização dentro do próprio painel — trocado o formato de link direto (o antigo "uc?export=view" tem ficado instável para incorporação em <img>) pelo endpoint de miniatura do Drive, mais confiável para isso.'
     ]},
