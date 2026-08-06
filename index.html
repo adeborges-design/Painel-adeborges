@@ -5592,6 +5592,408 @@ function entrRenderModal(uid, loadingMsg) {
 }
 window.entrRenderModal = entrRenderModal;
 
+// --- MÓDULO ACORDOS COM A PARTE CONTRÁRIA -----------------------------
+// Controla acordos (ex.: trabalhistas) em que a parte contrária paga um valor,
+// à vista ou parcelado. O escritório recebe, retém o percentual de honorários
+// e repassa o restante ao cliente — mesma lógica do repasse de aluguel, mas
+// aqui o pagador é a parte contrária e o destinatário do repasse é o cliente.
+function accE(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+function accNum(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  var s = String(v).trim().replace(/[^\d,.\-]/g, '');
+  if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if (s.indexOf(',') >= 0) s = s.replace(',', '.');
+  var n = parseFloat(s); return isNaN(n) ? 0 : n;
+}
+function accBRL(v) { return 'R$ ' + accNum(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function accFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+function accDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function accIsoFromBR(s) { if (!s) return ''; var p = String(s).split('/'); if (p.length !== 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
+function accMesAtual() { var d = new Date(); return ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+function accProxMes(mes) { var p = mes.split('/'); var m = parseInt(p[0], 10), a = parseInt(p[1], 10); m++; if (m > 12) { m = 1; a++; } return ('0' + m).slice(-2) + '/' + a; }
+function accCard(cls, l, v, s) { return '<div class="loc-stat ' + cls + '"><div class="loc-stat-label">' + l + '</div><div class="loc-stat-value">' + v + '</div><div class="loc-stat-sub">' + s + '</div></div>'; }
+function accChip(cls, l, n) { return '<div class="loc-chip ' + cls + '">' + l + ': <b>' + n + '</b></div>'; }
+
+window.accContratos = [];
+window.accLancamentos = [];
+var accSelMes = null;
+var accLive = false;
+
+window.abrirAcordos = function () {
+  document.getElementById('acordosOverlay').classList.add('open');
+  var sel = document.getElementById('ac-processo');
+  sel.innerHTML = '<option value="">Selecionar processo...</option>';
+  allProcessos.slice().sort(function (a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }); }).forEach(function (p) {
+    var opt = document.createElement('option');
+    opt.value = p._uid; opt.textContent = p.nome + (p.processo ? ' - ' + p.processo : '');
+    sel.appendChild(opt);
+  });
+  carregarAcordos();
+};
+
+window.carregarAcordos = async function () {
+  var dot = document.getElementById('accSyncDot'), txt = document.getElementById('accSyncTxt');
+  var c = getConfig();
+  if (!c || !c.apiKey || !c.sheetId) {
+    accContratos = []; accLancamentos = []; accLive = false;
+    if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'planilha não configurada';
+    accRefreshMeses(); accRenderContratos(); accRender(); return;
+  }
+  if (dot) dot.className = 'dot load'; if (txt) txt.textContent = 'sincronizando…';
+  try {
+    var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
+    var k = '?key=' + c.apiKey;
+    var r1 = await fetch(base + encodeURIComponent('ACORDO_CONTRATOS!A1:O500') + k);
+    var r2 = await fetch(base + encodeURIComponent('ACORDO_LANCAMENTOS!A1:L3000') + k);
+    var d1 = r1.ok ? await r1.json() : { values: [] };
+    var d2 = r2.ok ? await r2.json() : { values: [] };
+    var rc = d1.values || [], rl = d2.values || [];
+    accContratos = rc.length < 2 ? [] : rc.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rc[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    accLancamentos = rl.length < 2 ? [] : rl.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rl[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    accLive = true;
+    var now = new Date();
+    if (dot) dot.className = 'dot live'; if (txt) txt.textContent = 'sincronizado às ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+  } catch (e) {
+    accContratos = []; accLancamentos = []; accLive = false;
+    if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'falha ao ler a planilha: ' + e.message;
+  }
+  accRefreshMeses();
+  accRenderContratos();
+  accRender();
+};
+
+function accRefreshMeses() {
+  var sel = document.getElementById('accMesSel');
+  var meses = {};
+  accLancamentos.forEach(function (l) { if (l['Mes']) meses[l['Mes']] = true; });
+  var hoje = accMesAtual();
+  meses[hoje] = true;
+  var arr = Object.keys(meses).sort(function (a, b) {
+    var pa = a.split('/'), pb = b.split('/');
+    return (parseInt(pa[1]) * 100 + parseInt(pa[0])) - (parseInt(pb[1]) * 100 + parseInt(pb[0]));
+  });
+  var atual = sel.value || accSelMes || hoje;
+  sel.innerHTML = arr.map(function (m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
+  sel.value = arr.indexOf(atual) >= 0 ? atual : hoje;
+  accSelMes = sel.value;
+}
+
+// ---------- ACORDOS CADASTRADOS ----------
+window.accToggleContratos = function () {
+  var s = document.getElementById('accContratosSection');
+  s.classList.toggle('loc-hidden');
+};
+
+window.accPreencherDoProcesso = function () {
+  var uid = document.getElementById('ac-processo').value;
+  var p = allProcessos.find(function (x) { return String(x._uid) === String(uid); });
+  if (!p) return;
+  document.getElementById('ac-cliente').value = p.nome || '';
+  document.getElementById('ac-parteContraria').value = p.outra || '';
+};
+
+window.accNovoContrato = function () {
+  document.getElementById('ac-id').value = '';
+  document.getElementById('ac-processo').value = '';
+  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-obs'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('ac-ativo').value = 'Sim';
+  document.getElementById('accCFormTitle').textContent = 'Novo acordo';
+  document.getElementById('ac-msg').textContent = '';
+  document.getElementById('accContratosSection').classList.remove('loc-hidden');
+};
+
+window.accEditarContrato = function (id) {
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(id); });
+  if (!c) return;
+  document.getElementById('ac-id').value = c['ID'];
+  var sel = document.getElementById('ac-processo');
+  var p = allProcessos.find(function (x) { return String(x.processo || '').trim() === String(c['Nr Processo'] || '').trim() && String(x.nome || '').trim() === String(c['Cliente'] || '').trim(); });
+  sel.value = p ? p._uid : '';
+  document.getElementById('ac-cliente').value = c['Cliente'] || '';
+  document.getElementById('ac-parteContraria').value = c['Parte Contraria'] || '';
+  document.getElementById('ac-ativo').value = c['Ativo'] || 'Sim';
+  document.getElementById('ac-valorTotal').value = accNum(c['Valor Total Acordo']) || '';
+  document.getElementById('ac-numParcelas').value = c['Numero Parcelas'] || '';
+  document.getElementById('ac-percentual').value = c['Percentual Honorarios'] || '';
+  document.getElementById('ac-diaVenc').value = c['Dia Vencimento'] || '';
+  document.getElementById('ac-diaRep').value = c['Dia Repasse'] || '';
+  document.getElementById('ac-banco').value = c['Banco Cliente'] || '';
+  document.getElementById('ac-agencia').value = c['Agencia Cliente'] || '';
+  document.getElementById('ac-conta').value = c['Conta Cliente'] || '';
+  document.getElementById('ac-pix').value = c['Pix Cliente'] || '';
+  document.getElementById('ac-obs').value = c['Observacoes'] || '';
+  document.getElementById('accCFormTitle').textContent = 'Editar acordo';
+  document.getElementById('ac-msg').textContent = '';
+  document.getElementById('accContratosSection').classList.remove('loc-hidden');
+};
+
+window.accSalvarContrato = function () {
+  var id = document.getElementById('ac-id').value;
+  var processo = document.getElementById('ac-processo').value;
+  var p = allProcessos.find(function (x) { return String(x._uid) === String(processo); });
+  var cliente = document.getElementById('ac-cliente').value.trim();
+  var parteContraria = document.getElementById('ac-parteContraria').value.trim();
+  var valorTotal = accNum(document.getElementById('ac-valorTotal').value);
+  var numParcelas = parseInt(document.getElementById('ac-numParcelas').value) || 0;
+  var percentual = accNum(document.getElementById('ac-percentual').value);
+  var msgEl = document.getElementById('ac-msg');
+
+  if (!cliente || !parteContraria) { msgEl.textContent = 'Preencha cliente e parte contrária.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!valorTotal || !numParcelas) { msgEl.textContent = 'Informe valor total e número de parcelas.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!accLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+
+  var campos = {
+    'Nr Processo': p ? (p.processo || '') : '',
+    'Cliente': cliente, 'Parte Contraria': parteContraria,
+    'Valor Total Acordo': valorTotal, 'Numero Parcelas': numParcelas, 'Percentual Honorarios': percentual,
+    'Dia Vencimento': document.getElementById('ac-diaVenc').value, 'Dia Repasse': document.getElementById('ac-diaRep').value,
+    'Ativo': document.getElementById('ac-ativo').value,
+    'Banco Cliente': document.getElementById('ac-banco').value, 'Agencia Cliente': document.getElementById('ac-agencia').value,
+    'Conta Cliente': document.getElementById('ac-conta').value, 'Pix Cliente': document.getElementById('ac-pix').value,
+    'Observacoes': document.getElementById('ac-obs').value
+  };
+  msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
+  var body = { acao: id ? 'atualizar_acc' : 'lancar_acc', campos: campos }; if (id) body.id = id;
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(function () {
+    msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+    setTimeout(function () { carregarAcordos(); }, 1200);
+  }).catch(function (e) { msgEl.textContent = 'Erro: ' + e.message; msgEl.style.color = 'var(--red)'; });
+};
+
+window.accExcluirContrato = function (id) {
+  if (!confirm('Excluir este acordo? As parcelas já lançadas não são apagadas automaticamente.')) return;
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) }).then(function () {
+    setTimeout(function () { carregarAcordos(); }, 1000);
+  });
+};
+
+function accRenderContratos() {
+  var tb = document.getElementById('accContratosTbody');
+  if (!tb) return;
+  tb.innerHTML = accContratos.map(function (c) {
+    return '<tr>'
+      + '<td>' + accE(c['Nr Processo']) + '</td>'
+      + '<td>' + accE(c['Cliente']) + '</td>'
+      + '<td>' + accE(c['Parte Contraria']) + '</td>'
+      + '<td class="loc-money">' + accBRL(c['Valor Total Acordo']) + '</td>'
+      + '<td style="text-align:center">' + accE(c['Numero Parcelas']) + '</td>'
+      + '<td style="text-align:center">' + accE(c['Percentual Honorarios']) + '%</td>'
+      + '<td style="text-align:center">' + accE(c['Ativo']) + '</td>'
+      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhum acordo cadastrado.</td></tr>';
+}
+
+// ---------- GERAR MÊS SEGUINTE ----------
+window.accGerarProximoMes = function () {
+  if (!accLive) { alert('Configure a planilha para gerar lançamentos.'); return; }
+  var mesBase = accSelMes || accMesAtual();
+  var proximoMes = accProxMes(mesBase);
+  if (!confirm('Gerar as parcelas de ' + proximoMes + ' para todos os acordos ativos?')) return;
+  var ativos = accContratos.filter(function (c) { return String(c['Ativo']).toLowerCase() === 'sim'; });
+  if (!ativos.length) { alert('Nenhum acordo ativo cadastrado.'); return; }
+  var pendentes = ativos.length, gerados = 0;
+  ativos.forEach(function (c) {
+    var jaExiste = accLancamentos.some(function (l) { return l['Contrato'] === c['ID'] && l['Mes'] === proximoMes; });
+    if (jaExiste) { pendentes--; if (pendentes === 0) finalizar(); return; }
+    var totalParcelas = parseInt(c['Numero Parcelas']) || 1;
+    var jaGeradas = accLancamentos.filter(function (l) { return l['Contrato'] === c['ID']; }).length;
+    if (jaGeradas >= totalParcelas) { pendentes--; if (pendentes === 0) finalizar(); return; }
+    var valorPrevisto = accNum(c['Valor Total Acordo']) / totalParcelas;
+    var mp = proximoMes.split('/');
+    var diaVenc = ('0' + (parseInt(c['Dia Vencimento']) || 10)).slice(-2);
+    var campos = {
+      'Contrato': c['ID'], 'Mes': proximoMes, 'Data Prevista': diaVenc + '/' + mp[0] + '/' + mp[1],
+      'Valor Previsto': valorPrevisto.toFixed(2), 'Status Recebimento': 'Pendente',
+      'Data Recebimento': '', 'Valor Recebido': '', 'Valor Honorarios': '', 'Valor Repasse': '',
+      'Status Repasse': 'Pendente', 'Data Repasse': ''
+    };
+    fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) }).then(function () {
+      gerados++; pendentes--; if (pendentes === 0) finalizar();
+    });
+  });
+  function finalizar() {
+    setTimeout(async function () {
+      await carregarAcordos();
+      var sel = document.getElementById('accMesSel');
+      if (Array.from(sel.options).some(function (o) { return o.value === proximoMes; })) { sel.value = proximoMes; accSelMes = proximoMes; accRender(); }
+    }, 1200);
+  }
+};
+
+// ---------- RENDER PRINCIPAL ----------
+window.accRender = function () {
+  var sel = document.getElementById('accMesSel');
+  if (sel && sel.value) accSelMes = sel.value;
+  var lista = accLancamentos.filter(function (l) { return l['Mes'] === accSelMes; });
+  lista.sort(function (a, b) {
+    var ca = accContratos.find(function (x) { return x['ID'] === a['Contrato']; }) || {};
+    var cb = accContratos.find(function (x) { return x['ID'] === b['Contrato']; }) || {};
+    return (accNum(ca['Dia Vencimento']) || 99) - (accNum(cb['Dia Vencimento']) || 99);
+  });
+
+  var totalPrevisto = 0, totalHonorarios = 0, emCaixa = 0, jaRepassado = 0;
+  var cRecRec = 0, cRecPend = 0, cRecAtras = 0, cRepFeito = 0, cRepPend = 0;
+  lista.forEach(function (l) {
+    totalPrevisto += accNum(l['Valor Previsto']);
+    var recebido = accNum(l['Valor Recebido']);
+    var hon = accNum(l['Valor Honorarios']);
+    var rep = accNum(l['Valor Repasse']);
+    totalHonorarios += hon;
+    var statusRec = l['Status Recebimento'] || 'Pendente';
+    var repassou = l['Status Repasse'] === 'Repassado';
+    if (statusRec === 'Recebido') cRecRec++; else if (statusRec === 'Atrasado') cRecAtras++; else cRecPend++;
+    if (repassou) { cRepFeito++; jaRepassado += rep; } else { cRepPend++; if (recebido > 0) emCaixa += rep; }
+  });
+
+  document.getElementById('accStats').innerHTML =
+    accCard('dourado', 'Parcelas do mês', accBRL(totalPrevisto), lista.length + ' lançamento(s)') +
+    accCard('azul', 'Honorários do mês', accBRL(totalHonorarios), 'sobre o que já foi recebido') +
+    accCard('roxo', 'Em caixa, aguardando repasse', accBRL(emCaixa), 'já recebido da parte contrária, falta repassar') +
+    accCard('verde', 'Já repassado aos clientes', accBRL(jaRepassado), 'repasses concluídos no mês');
+  document.getElementById('accChips').innerHTML =
+    '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + accChip('pago', 'Recebidos', cRecRec) + accChip('pend', 'Pendentes', cRecPend) + accChip('atras', 'Atrasados', cRecAtras) + '</div>' +
+    '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao cliente</span>' + accChip('pago', 'Repassados', cRepFeito) + accChip('pend', 'Pendentes', cRepPend) + '</div>';
+
+  var tb = document.getElementById('accTbody');
+  tb.innerHTML = lista.map(function (l) {
+    var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+    var statusRec = l['Status Recebimento'] || 'Pendente';
+    var statusRep = l['Status Repasse'] || 'Pendente';
+    return '<tr>'
+      + '<td class="loc-num">' + accE(c['Nr Processo']) + '</td>'
+      + '<td>' + accE(c['Cliente']) + '</td>'
+      + '<td>' + accE(c['Parte Contraria']) + '</td>'
+      + '<td style="text-align:center">' + accE(c['Dia Vencimento'] || '-') + '</td>'
+      + '<td><select class="loc-row-select" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
+      + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
+      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td style="text-align:center">' + accE(c['Dia Repasse'] || '-') + '</td>'
+      + '<td><select class="loc-row-select" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td style="text-align:center"><button class="loc-send-btn" title="Ver/imprimir informe de repasse" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button></td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>';
+};
+
+function accAtualizarLancamento(id, campos) {
+  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  if (l) Object.keys(campos).forEach(function (k) { l[k] = campos[k]; });
+  accRender();
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_acl', id: id, campos: campos }) });
+}
+window.accSetStatusRecebimento = function (id, val) {
+  var campos = { 'Status Recebimento': val };
+  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  if (val === 'Recebido' && l && !l['Data Recebimento']) campos['Data Recebimento'] = accFdt(new Date());
+  accAtualizarLancamento(id, campos);
+};
+window.accSetValorRecebido = function (id, val, contratoId) {
+  var c = accContratos.find(function (x) { return x['ID'] === contratoId; }) || {};
+  var recebido = accNum(val);
+  var pct = accNum(c['Percentual Honorarios']);
+  var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  accAtualizarLancamento(id, { 'Valor Recebido': recebido, 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
+};
+window.accSetRepasse = function (id, val) { accAtualizarLancamento(id, { 'Valor Repasse': accNum(val) }); };
+window.accSetStatusRepasse = function (id, val) {
+  var campos = { 'Status Repasse': val };
+  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  if (val === 'Repassado' && l && !l['Data Repasse']) campos['Data Repasse'] = accFdt(new Date());
+  accAtualizarLancamento(id, campos);
+};
+window.accSetDataRepasse = function (id, val) { accAtualizarLancamento(id, { 'Data Repasse': accDtBRfromInput(val) }); };
+
+// ---------- RECIBO (Informe de Repasse) ----------
+window.accAbrirRecibo = function (lancamentoId) {
+  var l = accLancamentos.find(function (x) { return x['ID'] === lancamentoId; });
+  if (!l) { alert('Lançamento não encontrado.'); return; }
+  var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+  var recebido = accNum(l['Valor Recebido']) || accNum(l['Valor Previsto']);
+  var honorarios = accNum(l['Valor Honorarios']);
+  var repasse = accNum(l['Valor Repasse']);
+  var pct = accNum(c['Percentual Honorarios']);
+
+  var valoresHtml = '<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao acordo do processo abaixo, mês de referência indicado.</div>'
+    + '<div>Valor recebido da parte contrária: <strong>' + accBRL(recebido) + '</strong></div>'
+    + '<div>(−) Honorários advocatícios (' + accE(pct) + '%): <strong>-' + accBRL(honorarios) + '</strong></div>';
+
+  var contaHtml = (!c['Banco Cliente'] && !c['Agencia Cliente'] && !c['Conta Cliente'] && !c['Pix Cliente'])
+    ? '<div style="color:#8fadd4">Conta não cadastrada — edite o acordo em 📋 Acordos cadastrados.</div>'
+    : '<div>Titular: <strong>' + accE(c['Cliente'] || '') + '</strong></div>'
+      + (c['Banco Cliente'] ? '<div>Banco: <strong>' + accE(c['Banco Cliente']) + '</strong></div>' : '')
+      + (c['Agencia Cliente'] ? '<div>Agência: <strong>' + accE(c['Agencia Cliente']) + '</strong></div>' : '')
+      + (c['Conta Cliente'] ? '<div>Conta: <strong>' + accE(c['Conta Cliente']) + '</strong></div>' : '')
+      + (c['Pix Cliente'] ? '<div>Chave Pix: <strong>' + accE(c['Pix Cliente']) + '</strong></div>' : '');
+
+  document.getElementById('reciboAcordoCard').innerHTML =
+    '<div class="parc-header">'
+    + '<div><div class="parc-header-title">Informe de Repasse — Acordo</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+    + '</div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-section-label">Processo</div><div class="parc-processo-nome">' + accE(c['Cliente'] || '') + '</div><div class="parc-processo-num">Processo nº ' + accE(c['Nr Processo'] || '(sem número)') + ' — Ref. ' + accE(l['Mes'] || '') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Parte Contrária</div><div class="parc-box">' + accE(c['Parte Contraria'] || '—') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Valores</div><div class="parc-box">' + valoresHtml + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Total Repassado</div><div class="parc-tarefa-box"><strong>' + accBRL(repasse) + '</strong>'
+    + '<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao acordo de <strong>' + accE(l['Mes'] || '') + '</strong></div></div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Dados Bancários do Cliente (Repasse)</div><div class="parc-box">' + contaHtml + '</div></div>'
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
+
+  document.getElementById('modalReciboAcordo').classList.add('open');
+};
+window.accReciboImprimir = function () {
+  document.body.classList.add('printing-recibo-acordo');
+  setTimeout(function () { window.print(); document.body.classList.remove('printing-recibo-acordo'); }, 200);
+};
+window.accReciboEnviarWhats = function () {
+  var texto = document.getElementById('reciboAcordoCard').innerText;
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+};
+window.accReciboEnviarEmail = function () {
+  var texto = document.getElementById('reciboAcordoCard').innerText;
+  window.open('mailto:?subject=' + encodeURIComponent('Informe de Repasse') + '&body=' + encodeURIComponent(texto));
+};
+window.accReciboEnviarImagem = function () {
+  var card = document.getElementById('reciboAcordoCard');
+  html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#0d1525' }).then(function (canvas) {
+    canvas.toBlob(function (blob) {
+      var file = new File([blob], 'informe-repasse.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Informe de Repasse' });
+      } else {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'informe-repasse.png'; a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+  });
+};
+
+window.accExportCSV = function () {
+  var mes = accSelMes;
+  var lista = accLancamentos.filter(function (l) { return l['Mes'] === mes; });
+  var linhas = [['Processo', 'Cliente', 'Parte Contraria', 'Status Recebimento', 'Valor Recebido', 'Honorarios', 'Repasse', 'Status Repasse', 'Data Repasse']];
+  lista.forEach(function (l) {
+    var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+    linhas.push([c['Nr Processo'], c['Cliente'], c['Parte Contraria'], l['Status Recebimento'], accNum(l['Valor Recebido']), accNum(l['Valor Honorarios']), accNum(l['Valor Repasse']), l['Status Repasse'], l['Data Repasse']]);
+  });
+  var csv = linhas.map(function (r) { return r.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
+  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'acordos-' + mes.replace('/', '-') + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+};
+
 // --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
 let _honEditId = null;
@@ -8290,6 +8692,130 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- PAINEL DE ACORDOS COM A PARTE CONTRÁRIA -->
+<div class="loc-overlay" id="acordosOverlay">
+  <div class="loc-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
+    <div class="loc-title">💰 Acordos com a Parte Contrária</div>
+    <div class="loc-sync"><span class="dot" id="accSyncDot"></span><span id="accSyncTxt">—</span></div>
+    <button class="loc-btn" onclick="carregarAcordos()">🔄 Atualizar</button>
+    <span class="user-menu-slot"></span>
+    <button class="loc-btn" onclick="document.getElementById('acordosOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+  <div class="loc-body">
+    <div class="loc-stats" id="accStats"></div>
+    <div class="loc-chips" id="accChips"></div>
+    <div class="loc-toolbar">
+      <div class="loc-mes-wrap">
+        <label>Mês</label>
+        <select class="loc-select" id="accMesSel" onchange="accRender()"></select>
+      </div>
+      <button class="loc-btn primary" onclick="accNovoContrato()">💰 Novo acordo</button>
+      <button class="loc-btn" onclick="accToggleContratos()">📋 Acordos cadastrados</button>
+      <button class="loc-btn" onclick="accGerarProximoMes()">➕ Gerar mês seguinte</button>
+      <button class="loc-btn" onclick="accExportCSV()">⬇️ Exportar CSV</button>
+    </div>
+
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('accNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
+      <div class="loc-note lf-tip-content" id="accNote">
+        Cada <strong>acordo</strong> representa um processo em que a parte contrária vai pagar um valor (à vista ou parcelado) — típico de acordos trabalhistas, mas serve pra qualquer ação com acordo. Cadastre o acordo em "📋 Acordos cadastrados" (valor total, número de parcelas, percentual de honorários e dados bancários do cliente para o repasse). O painel gera uma parcela por mês automaticamente. Quando a parte contrária pagar, marque "Recebido" e informe o valor — os honorários e o valor de repasse ao cliente são calculados sozinhos (mas você pode ajustar o repasse manualmente se precisar). Depois de repassar ao cliente, marque "Repassado" e gere o recibo em "🖨️" na linha do lançamento.
+      </div>
+    </div>
+
+    <!-- LANÇAMENTOS DO MÊS -->
+    <div class="loc-section-title">Parcelas do mês — recebimento da parte contrária e repasse ao cliente</div>
+    <div class="loc-table-wrap">
+      <table class="loc-table">
+        <thead><tr>
+          <th>Processo</th><th>Cliente</th><th>Parte Contrária</th>
+          <th style="text-align:center">Venc.</th>
+          <th>Status Recebimento</th>
+          <th style="text-align:right">Valor Recebido (R$)</th>
+          <th style="text-align:right">Honorários (R$)</th>
+          <th style="text-align:right">Repasse Cliente (R$)</th>
+          <th style="text-align:center">Dia Repasse</th>
+          <th>Status Repasse</th><th>Data Repasse</th>
+          <th style="text-align:center">Ações</th>
+        </tr></thead>
+        <tbody id="accTbody"></tbody>
+      </table>
+    </div>
+    <div class="loc-note" id="accListaNote"></div>
+
+    <!-- ACORDOS CADASTRADOS -->
+    <div id="accContratosSection" class="loc-hidden">
+      <div class="loc-section-title" id="accCFormTitle">Novo acordo</div>
+      <div class="loc-cform">
+        <input type="hidden" id="ac-id">
+        <div class="loc-cfield full"><label>Processo *</label>
+          <select class="loc-cinput" id="ac-processo" onchange="accPreencherDoProcesso()">
+            <option value="">Selecionar processo...</option>
+          </select>
+        </div>
+        <div class="loc-cfield half"><label>Cliente *</label><input class="loc-cinput" id="ac-cliente" placeholder="Nome do cliente"></div>
+        <div class="loc-cfield half"><label>Parte Contrária *</label><input class="loc-cinput" id="ac-parteContraria" placeholder="Nome de quem paga o acordo"></div>
+        <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="ac-ativo"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Valor Total do Acordo (R$) *</label><input class="loc-cinput" id="ac-valorTotal" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Número de Parcelas *</label><input class="loc-cinput" id="ac-numParcelas" type="number" min="1" placeholder="Ex.: 12"></div>
+        <div class="loc-cfield"><label>Percentual de Honorários (%) *</label><input class="loc-cinput" id="ac-percentual" type="number" step="0.01" placeholder="Ex.: 30"></div>
+        <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="ac-diaVenc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
+        <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="ac-diaRep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários do cliente (para o repasse)</div>
+        <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="ac-banco" placeholder="Ex.: Itaú"></div>
+        <div class="loc-cfield half"><label>Agência</label><input class="loc-cinput" id="ac-agencia" placeholder="0000"></div>
+        <div class="loc-cfield half"><label>Conta</label><input class="loc-cinput" id="ac-conta" placeholder="00000-0"></div>
+        <div class="loc-cfield half"><label>Chave Pix</label><input class="loc-cinput" id="ac-pix" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
+        <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="ac-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="ac-msg"></span>
+          <button class="loc-btn" onclick="accNovoContrato()">Limpar</button>
+          <button class="loc-btn primary" onclick="accSalvarContrato()">💾 Salvar acordo</button>
+        </div>
+      </div>
+      <div class="loc-table-wrap">
+        <table class="loc-table"><thead><tr><th>Processo</th><th>Cliente</th><th>Parte Contrária</th><th style="text-align:right">Valor Total</th><th style="text-align:center">Parcelas</th><th style="text-align:center">Honorários (%)</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
+        <tbody id="accContratosTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECIBO DE ACORDO (Informe de Repasse ao Cliente) -->
+<div class="modal-repasse-overlay" id="modalReciboAcordo">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">Informe de Repasse — Acordo</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalReciboAcordo').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div class="parc-card" id="reciboAcordoCard"></div>
+      <div class="reciboloc-actions" style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn-parc-wpp" onclick="accReciboEnviarWhats()">📱 WhatsApp</button>
+        <button class="btn-parc-email" onclick="accReciboEnviarEmail()">✉️ E-mail</button>
+        <button class="btn-parc-img" onclick="accReciboEnviarImagem()">📸 Foto</button>
+        <button class="btn-recibo-print" style="flex:none" onclick="accReciboImprimir()">🖨 Imprimir/PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  body.printing-recibo-acordo * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; }
+  body.printing-recibo-acordo > * { display:none !important; }
+  body.printing-recibo-acordo #modalReciboAcordo {
+    display:flex !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:9999 !important; overflow:visible !important;
+  }
+  body.printing-recibo-acordo .reciboloc-toolbar,
+  body.printing-recibo-acordo .reciboloc-actions { display:none !important; }
+  body.printing-recibo-acordo .repasse-wrap { box-shadow:none !important; width:100% !important; max-width:100% !important; background:transparent !important; }
+  body.printing-recibo-acordo .reciboloc-inner { padding:0 !important; }
+  body.printing-recibo-acordo .parc-card { margin:0 auto !important; max-width:480px !important; }
+</style>
+
 <!-- MODAL CALCULADORA DE IPTU -->
 <div class="modal-cobr-overlay" id="modalCalcIptu">
   <div class="cobr-wrap" style="max-width:520px">
@@ -9509,6 +10035,14 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-alertas" id="homeAlertLoc"></div>
       </div>
       <div class="home-module">
+        <div class="home-card loc" onclick="abrirAcordos()">
+          <div class="arrow">→</div>
+          <div class="ic">💰</div>
+          <div class="ctitle">Acordos</div>
+          <div class="cdesc">Valores da parte contrária, honorários e repasse ao cliente</div>
+        </div>
+      </div>
+      <div class="home-module">
         <div class="home-card cont" onclick="openContas()">
           <div class="arrow">→</div>
           <div class="ic">💸</div>
@@ -9668,6 +10202,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
+        '<button class="home-user-item" onclick="abrirAcordos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
@@ -9688,6 +10223,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '06/ago/2026', itens: [
+      'Novo painel "💰 Acordos com a Parte Contrária" — controla valores que a parte contrária paga (típico de acordos trabalhistas, mas serve para qualquer ação com acordo), à vista ou parcelado.',
+      'Cada acordo é vinculado a um processo (puxa cliente e parte contrária automaticamente) e tem percentual de honorários próprio, editável (não precisa ser igual ao contrato de honorários).',
+      'Ao marcar uma parcela como recebida e informar o valor, o sistema calcula sozinho os honorários retidos e o valor de repasse ao cliente — mas você pode ajustar o repasse manualmente se precisar.',
+      'Gera "Informe de Repasse" para o cliente, com os dados bancários dele, no mesmo padrão visual dos recibos de locação — imprimir, WhatsApp, e-mail ou foto.',
+      'Acesso pelo menu do usuário ("Acordos") ou pelo card na tela inicial.'
+    ]},
     { data: '05/ago/2026 (13)', itens: [
       'Corrigido: contrato com entrada + 1 parcela aparecia como "Único" em vez de "Parcelado" — agora considera a entrada na contagem.',
       'A forma de pagamento (PIX, boleto, desconto em repasse...) agora aparece no cabeçalho do card de honorários, junto com Contrato/Recebido/Saldo.',
