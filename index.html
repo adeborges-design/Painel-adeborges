@@ -5149,10 +5149,17 @@ window.atendSalvar = async function (uid) {
   }
   stEl.textContent = '⏳ salvando...';
   try {
-    await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) });
+    var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) });
+    var d = await r.json();
+    if (!d.ok) { stEl.innerHTML = '<span style="color:var(--red)">❌ ' + (d.error || 'o Apps Script recusou') + '</span>'; return; }
     stEl.innerHTML = '<span style="color:var(--green)">Salvo!</span>';
-    setTimeout(async function () { await carregarAtendimentos(); atendRenderModal(uid); }, 1200);
-  } catch (e) { stEl.innerHTML = '<span style="color:var(--red)">Erro: ' + e.message + '</span>'; }
+  } catch (e2) {
+    try {
+      await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_atend', campos: campos }) });
+      stEl.innerHTML = '<span style="color:var(--green)">Enviado (sem confirmação de leitura)</span>';
+    } catch (e) { stEl.innerHTML = '<span style="color:var(--red)">Erro: ' + e.message + '</span>'; return; }
+  }
+  setTimeout(async function () { await carregarAtendimentos(); atendRenderModal(uid); }, 1200);
 };
 window.atendExcluir = async function (id, uid) {
   if (!confirm('Excluir esse registro de atendimento?')) return;
@@ -5183,7 +5190,8 @@ function atendRenderModal(uid, loadingMsg) {
     return '<div class="cp-item"><div><div class="desc">' + (TIPO_ICON[a['Tipo']] || '📌') + ' ' + atEsc(a['Tipo'])
       + (desp && atNbr(a['Valor']) ? ' <span class="hon-badge hv-badge-fut">' + atFmr(atNbr(a['Valor'])) + '</span>' : '')
       + (reemb ? (pago ? ' <span class="hon-badge hv-badge-paga">reembolsado</span>' : ' <span class="hon-badge hv-badge-hoje">a reembolsar</span>') : '') + '</div>'
-      + '<div class="meta">' + atEsc(a['Data Lancamento'] || '-') + ' · ' + atEsc(a['Descricao'] || '') + '</div></div>'
+      + '<div class="meta">' + atEsc(a['Data Lancamento'] || '-') + ' · ' + atEsc(a['Descricao'] || '') + '</div>'
+      + (a['Observacoes'] ? '<div class="meta" style="color:var(--muted);font-style:italic">obs.: ' + atEsc(a['Observacoes']) + '</div>' : '') + '</div>'
       + '<button class="cp-btn ex" title="Excluir" onclick="atendExcluir(\'' + atEsc(a['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
   }).join('') : '<div class="hon-empty">Nenhum atendimento registrado ainda.</div>';
   wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">📋 Histórico de Atendimento — ' + atEsc(p.nome) + '</div><button class="cp-btn" onclick="atendFechar()">✕</button></div>'
@@ -10428,6 +10436,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '06/ago/2026 (12)', itens: [
+      'Corrigido: o campo "Observações" do Histórico de Atendimento salvava certo, mas nunca aparecia em lugar nenhum ao ver o histórico — só a Descrição era exibida. Agora aparece em itálico logo abaixo de cada registro.',
+      'Gravação de atendimento também deixou de esconder erros (mesmo modo silencioso já corrigido antes em Entregas e Acordos).'
+    ]},
     { data: '06/ago/2026 (11)', itens: [
       'Corrigido: faltava o destaque no botão "Resumo dos Locadores" quando aberto — agora os três botões de Locações (Contratos, Resumo dos Locadores, Repasse por locador) acendem juntos.',
       'O aviso de honorários a vencer/atrasados não fica mais flutuando por cima da lista de processos — virou um 6º card na mesma fileira de estatísticas (Casos Ativos, Crítico/Urgente...), só aparece quando há algo pendente, e clica pra abrir o Controle de Honorários.'
