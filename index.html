@@ -8880,9 +8880,10 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
         <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
-        <div class="cobr-secao full">Outras cobranças e desconto</div>
-        <div class="loc-cfield full"><label>Outras cobranças — descrição</label><input class="loc-cinput" id="cobr-outras-desc" placeholder="Ex.: Reparo portão, ração de dedetização..."></div>
-        <div class="loc-cfield"><label>Outras cobranças — valor (R$)</label><input class="loc-cinput" id="cobr-outras-valor" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="cobr-secao full">Outras cobranças</div>
+        <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma ao repasse do locador (ex.: reparo cobrado do inquilino). Valor <strong>negativo</strong> desconta do locador (ex.: conta de luz ou IPTU que você paga e recupera do repasse) — é só digitar com o sinal de menos na frente.</div>
+        <div id="cobr-outras-lista"></div>
+        <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
         <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div></div>
@@ -9235,12 +9236,16 @@ window.cpRenderFixas=cpRenderFixas;
   function state(){var s=loadState();s.overrides=s.overrides||{};s.extra=s.extra||[];return s;}
   function keyOf(l){return l.mes+'|'+l.contrato;}
   function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function itemComSinal(desc,valor){
+    var neg=valor<0;
+    return '<div>('+(neg?'−':'+')+') '+desc+': <strong>'+(neg?'-':'')+BRL(Math.abs(valor))+'</strong></div>';
+  }
   function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   function num(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf('/')>=0)return 0;/* célula corrompida (data) => inválida */if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
   function mesRef(s){s=String(s||'').trim();if(s.indexOf('/')>=0){var p=s.split('/');if(p.length===3)return ('0'+p[1]).slice(-2)+'/'+p[2];if(p.length===2)return ('0'+p[0]).slice(-2)+'/'+p[1];}return s;}
   // Repasse efetivo: usa o Valor Repasse lançado manualmente (inclusive R$ 0,00); se nunca foi lançado, sugere Aluguel − Taxa.
   function encargosOf(l){
-    return (l.iptu||0)+(l.condominio||0)+(l.aguaPriv||0)+(l.gasPriv||0)+(l.aguaComum||0)+(l.gasPiscina||0)+(l.energiaComum||0)+(l.taxaLeitura||0)+(l.fundoFerias||0)+(l.decimoTerceiro||0)+(l.outrasValor||0)-(l.desconto||0);
+    return (l.iptu||0)+(l.condominio||0)+(l.aguaPriv||0)+(l.gasPriv||0)+(l.aguaComum||0)+(l.gasPiscina||0)+(l.energiaComum||0)+(l.taxaLeitura||0)+(l.fundoFerias||0)+(l.decimoTerceiro||0)+somaOutrasCobrancas(l)-(l.desconto||0);
   }
   function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l));}
 
@@ -9452,8 +9457,18 @@ window.cpRenderFixas=cpRenderFixas;
     var existentes=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato;});
     var lista=document.getElementById('coprop-lista');
     lista.innerHTML='';
-    if(existentes.length){existentes.forEach(function(o){copropAdicionarLinha(o);});}
-    else{copropAdicionarLinha({Nome:c.locador||'',Percentual:100});}
+    var vazio=document.getElementById('coprop-vazio-msg');
+    if(vazio)vazio.remove();
+    if(existentes.length){
+      existentes.forEach(function(o){copropAdicionarLinha(o);});
+    }else{
+      var aviso=document.createElement('div');
+      aviso.id='coprop-vazio-msg';
+      aviso.style.cssText='color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--border);border-radius:10px;margin-bottom:10px';
+      aviso.innerHTML='Nenhum proprietário cadastrado ainda para este imóvel.'
+        +(c.locador?'<br><button type="button" class="loc-btn" style="margin-top:8px;padding:5px 12px;font-size:12px" onclick="this.parentElement.remove();copropAdicionarLinha({Nome:\''+E(c.locador).replace(/'/g,"\\'")+'\',Percentual:100})">usar "'+E(c.locador)+'" (o locador do contrato) como primeiro proprietário, 100%</button>':'');
+      lista.appendChild(aviso);
+    }
     copropAtualizarSoma();
     document.getElementById('coprop-msg').textContent='';
     document.getElementById('modalCoprop').classList.add('open');
@@ -9498,21 +9513,22 @@ window.cpRenderFixas=cpRenderFixas;
     var ok=Math.abs(soma-100)<0.01;
     el.innerHTML='Soma dos percentuais: <strong style="color:'+(ok?'var(--green)':'var(--red)')+'">'+soma.toFixed(2)+'%</strong>'+(ok?' ✓':' — deveria somar 100%');
   };
-  window.copropSalvarTodos=function(){
+  window.copropSalvarTodos=async function(){
     var contrato=document.getElementById('coprop-contrato').value;
     var msgEl=document.getElementById('coprop-msg');
+    var btn=document.querySelector('#modalCoprop .loc-btn.primary');
     if(!live){msgEl.textContent='Configure a planilha (Config) para salvar.';msgEl.style.color='var(--red)';return;}
     var linhas=Array.from(document.querySelectorAll('#coprop-lista .coprop-linha'));
     if(!linhas.length){msgEl.textContent='Adicione ao menos um proprietário.';msgEl.style.color='var(--red)';return;}
-    var soma=0;
     var pendentes=linhas.length+copropRemovidos.length;
     if(pendentes===0){msgEl.textContent='Nada para salvar.';return;}
-    msgEl.textContent='⏳ salvando...'; msgEl.style.color='var(--muted)';
-    function checarFim(){pendentes--;if(pendentes<=0){
-      msgEl.innerHTML='<span style="color:var(--green)">✓ Salvo!</span>';
-      setTimeout(function(){carregarAlugueis();copropFechar();},1200);
-    }}
-    linhas.forEach(function(div){
+    if(btn)btn.disabled=true;
+    var erro=null;
+    // Salva UM DE CADA VEZ (aguardando terminar antes do próximo) — evita que gravações
+    // simultâneas na mesma aba se atropelem e dupliquem/percam linhas.
+    for(var i=0;i<linhas.length;i++){
+      var div=linhas[i];
+      msgEl.textContent='⏳ salvando '+(i+1)+' de '+linhas.length+'...'; msgEl.style.color='var(--muted)';
       var idEl=div.querySelector('.cp-id');
       var campos={
         'Contrato':contrato,'Nome':div.querySelector('.cp-nome').value.trim(),'CPF_CNPJ':div.querySelector('.cp-cpf').value.trim(),
@@ -9522,11 +9538,31 @@ window.cpRenderFixas=cpRenderFixas;
       };
       var acao=idEl.value?'atualizar_loccop':'lancar_loccop';
       var body={acao:acao,campos:campos}; if(idEl.value)body.id=idEl.value;
-      fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}).then(checarFim).catch(checarFim);
-    });
-    copropRemovidos.forEach(function(id){
-      fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_loccop',id:id})}).then(checarFim).catch(checarFim);
-    });
+      try{
+        var r=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
+        var d=await r.json();
+        if(!d.ok){erro=d.error||'recusado pelo Apps Script';break;}
+        if(!idEl.value&&d.id)idEl.value=d.id;
+      }catch(e){
+        try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});}
+        catch(e2){erro=e2.message;break;}
+      }
+    }
+    if(!erro){
+      for(var j=0;j<copropRemovidos.length;j++){
+        msgEl.textContent='⏳ removendo...';
+        try{
+          var r2=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_loccop',id:copropRemovidos[j]})});
+          await r2.json();
+        }catch(e3){
+          try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_loccop',id:copropRemovidos[j]})});}catch(e4){}
+        }
+      }
+    }
+    if(btn)btn.disabled=false;
+    if(erro){msgEl.innerHTML='<span style="color:var(--red)">❌ '+erro+'</span>';return;}
+    msgEl.innerHTML='<span style="color:var(--green)">✓ Salvo!</span>';
+    setTimeout(function(){carregarAlugueis();copropFechar();},1200);
   };
 
   // ---------- LISTA / OVERRIDES ----------
@@ -9719,7 +9755,7 @@ window.cpRenderFixas=cpRenderFixas;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
     var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
-      'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':w.outrasValor||0,
+      'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
       'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0};
@@ -9730,7 +9766,20 @@ window.cpRenderFixas=cpRenderFixas;
   var COBR_CAMPOS_NUM=[['cobr-condominio','condominio'],['cobr-agua-priv','aguaPriv'],['cobr-gas-priv','gasPriv'],
     ['cobr-agua-comum','aguaComum'],['cobr-gas-piscina','gasPiscina'],['cobr-energia-comum','energiaComum'],
     ['cobr-taxa-leitura','taxaLeitura'],['cobr-fundo-ferias','fundoFerias'],['cobr-decimo-terceiro','decimoTerceiro'],
-    ['cobr-iptu','iptu'],['cobr-multa','multa'],['cobr-juros','juros'],['cobr-outras-valor','outrasValor'],['cobr-desconto','desconto']];
+    ['cobr-iptu','iptu'],['cobr-multa','multa'],['cobr-juros','juros'],['cobr-desconto','desconto']];
+  var cobrItemSeq=0;
+  window.cobrAdicionarItem=function(desc,valor){
+    var uid='ci'+(cobrItemSeq++);
+    var div=document.createElement('div');
+    div.className='cobr-item-linha';
+    div.id=uid;
+    div.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:6px';
+    div.innerHTML=
+      '<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01" style="flex:2" value="'+E(desc||'')+'">'
+      +'<input class="loc-cinput cobr-item-valor" type="number" step="0.01" placeholder="-4,05 desconta / 50 soma" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="cobrAtualizarPreview()">'
+      +'<button type="button" class="loc-btn" style="padding:6px 10px;color:var(--red);border-color:var(--red)" onclick="document.getElementById(\''+uid+'\').remove();cobrAtualizarPreview()">🗑️</button>';
+    document.getElementById('cobr-outras-lista').appendChild(div);
+  };
   window.abrirModalCobrancas=function(contrato){
     var l=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!l)return;
@@ -9739,7 +9788,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
-    document.getElementById('cobr-outras-desc').value=l.outrasDesc||'';
+    document.getElementById('cobr-outras-lista').innerHTML='';
+    parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor);});
     cobrAtualizarPreview();
     document.getElementById('modalCobrancas').classList.add('open');
   };
@@ -9750,11 +9800,15 @@ window.cpRenderFixas=cpRenderFixas;
       var v=num(document.getElementById(p[0]).value);
       tot+=(p[1]==='desconto')?-v:v;
     });
+    Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-valor')).forEach(function(inp){tot+=num(inp.value);});
     document.getElementById('cobrTotalPreview').textContent=BRL(tot);
   };
   window.salvarCobrancas=function(){
     var contrato=document.getElementById('cobr-contrato').value;
-    var patch={outrasDesc:document.getElementById('cobr-outras-desc').value.trim(),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
+    var itens=Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).map(function(div){
+      return {desc:div.querySelector('.cobr-item-desc').value.trim(),valor:num(div.querySelector('.cobr-item-valor').value)};
+    });
+    var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
     setOverride(contrato,patch);
     gravarSheet(contrato);
@@ -9867,6 +9921,30 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
   var _reciboLocContrato=null, _reciboLocTipo=null, _reciboLocImgCache=null;
   var CONTA_ESCRITORIO={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
+  // ---------- OUTRAS COBRANÇAS (lista com vários itens; valor negativo desconta do
+  // repasse, positivo soma) — resolve o caso de contas de luz/água/IPTU que você paga
+  // e desconta do locador, junto com itens que devem ser repassados normalmente.
+  // Guardado como texto simples na mesma coluna de sempre: "descrição::valor||descrição::valor".
+  function parseOutrasCobrancas(l){
+    var bruto=String(l.outrasDesc||'').trim();
+    if(!bruto)return [];
+    if(bruto.indexOf('::')<0){
+      // formato antigo (uma descrição + um valor separado) - mantém funcionando pra registros já existentes
+      var v=num(l.outrasValor);
+      return v?[{desc:bruto,valor:v}]:[];
+    }
+    return bruto.split('||').map(function(par){
+      var partes=par.split('::');
+      return {desc:(partes[0]||'').trim(),valor:num(partes[1])};
+    }).filter(function(it){return it.desc||it.valor;});
+  }
+  function montarOutrasCobrancas(itens){
+    return itens.filter(function(it){return it.desc||it.valor;}).map(function(it){return it.desc.trim()+'::'+num(it.valor);}).join('||');
+  }
+  function somaOutrasCobrancas(l){
+    return parseOutrasCobrancas(l).reduce(function(s,it){return s+it.valor;},0);
+  }
+
   function reciboLocItensCondo(w){
     return [
       ['Cota de condomínio',w.condominio],
@@ -9878,7 +9956,7 @@ window.cpRenderFixas=cpRenderFixas;
       ['Taxa de leitura',w.taxaLeitura],
       ['Fundo de férias',w.fundoFerias],
       ['13º salário (fundo)',w.decimoTerceiro]
-    ];
+    ].concat(parseOutrasCobrancas(w).map(function(it){return [it.desc,it.valor];}));
   }
   function reciboLocContaDestino(c){
     if(c.contaRecebimento==='locador'){
@@ -9913,7 +9991,7 @@ window.cpRenderFixas=cpRenderFixas;
   // percentual do repasse total do imóvel, com IR descontado se marcado para ele.
   function reciboLocDadosProprietario(w,c,owner){
     var itensCondo=reciboLocItensCondo(w);
-    var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>(+) '+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
+    var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
     var repTotal=effRep(w);
     var pct=num(owner.Percentual);
     var baseOwner=Math.round(repTotal*pct/100*100)/100;
@@ -9963,7 +10041,7 @@ window.cpRenderFixas=cpRenderFixas;
       badgeHtml='';
       totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)+(w.outrasValor||0)-(w.desconto||0);
       totalLabel='Total a ser pago';
-      var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>'+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
+      var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
         +(w.aluguel?'<div>Aluguel: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
@@ -9986,7 +10064,7 @@ window.cpRenderFixas=cpRenderFixas;
       badgeHtml='';
       totalValor=effRep(w);
       totalLabel='Total repassado';
-      var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>(+) '+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
+      var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
         +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
@@ -10800,6 +10878,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (6)', itens: [
+      'Achada a causa raiz real da duplicação de proprietários: ao abrir "👥 proprietários" pela primeira vez, o sistema criava sozinho uma linha usando o nome do Locador do contrato — se isso acontecesse de novo (ex.: reabrir rápido antes da lista atualizar), duplicava. Removida essa criação automática: agora, se não houver proprietário cadastrado, aparece um aviso com um botão para usar o locador do contrato como primeiro proprietário só se você clicar.'
+    ]},
+    { data: '07/ago/2026 (5)', itens: [
+      'Corrigido bug sério: ao salvar vários proprietários de uma vez, o Apps Script podia atropelar os pedidos (duas gravações simultâneas pegando o mesmo ID) — resultado eram proprietários duplicados e outros sumindo. Agora salva um de cada vez, em sequência, e adicionei uma trava no Apps Script como proteção extra.',
+      '"Outras cobranças" nos encargos de Locação virou uma lista com vários itens (não mais só um). Cada item pode somar ao repasse do locador (valor positivo) ou descontar (valor negativo) — resolve o caso de contas de luz/água/IPTU que você paga direto e desconta do locador, junto com cobranças que devem ser repassadas normalmente. O informe de repasse mostra cada item separado, com "(+)" ou "(−)" conforme o sinal — testado reproduzindo seu recibo real, bateu certinho.'
+    ]},
     { data: '07/ago/2026 (4)', itens: [
       'A tabela de IR usada nos informes de repasse agora é editável — botão "⚙️ Tabela de IR" na barra de Locações (ou o atalho dentro do cadastro de proprietários). Dá pra ajustar as 5 faixas da tabela progressiva e os valores do redutor da Lei 15.270/2025 quando a Receita reajustar, sem precisar mexer no código. Tem também um testador rápido ("digite um valor, veja o IR calculado na hora") e um botão pra restaurar os valores padrão de 2026 se precisar.'
     ]},
