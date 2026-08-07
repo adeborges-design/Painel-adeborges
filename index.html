@@ -372,8 +372,8 @@
   /* TOP STATS */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
     margin-bottom: 24px;
   }
 
@@ -381,23 +381,23 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 16px;
+    padding: 13px 14px;
     transition: border-color 0.2s;
   }
 
   .stat-card:hover { border-color: var(--border2); }
 
   .stat-card .label {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--muted);
     font-weight: 500;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .stat-card .value {
     font-family: 'DM Serif Display', serif;
-    font-size: 28px;
+    font-size: 24px;
     line-height: 1;
   }
 
@@ -2317,6 +2317,11 @@
         <div class="label">PROVIDÊNCIAS</div>
         <div class="value" id="st-providencias" style="color:var(--yellow)">—</div>
         <div class="sub">ações pendentes</div>
+      </div>
+      <div class="stat-card" id="st-honorarios-card" style="cursor:pointer;display:none" onclick="if(typeof abrirHonorarios==='function')abrirHonorarios()" title="Ver Controle de Honorários">
+        <div class="label">HONORÁRIOS</div>
+        <div class="value" id="st-honorarios-venc" style="color:var(--red)">—</div>
+        <div class="sub" id="st-honorarios-venc-sub">a vencer/atrasados</div>
       </div>
     </div>
 
@@ -7861,20 +7866,24 @@ function addBtns(){
 }
 function upBanner(){
  var r=calcAlertas();
- var el=document.getElementById('vencBanner');
- if(!r.atras.length&&!r.sem.length){if(el)el.remove();return;}
- if(!el){
-  el=document.createElement('div');el.id='vencBanner';
-  el.style.cssText='position:fixed;bottom:16px;right:16px;z-index:800;background:var(--surface2,#1a1e28);border-radius:12px;padding:12px 16px;max-width:340px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--text,#e8eaf0)';
-  el.onclick=function(){if(typeof abrirHonorarios==='function')abrirHonorarios();};
-  document.body.appendChild(el);
- }
- el.style.border='1px solid '+(r.atras.length?'#e05454':'#e07c3a');
- var html='';
- if(r.atras.length){html+='<div style="color:#e05454;font-weight:700;margin-bottom:4px">&#9888;&#65039; '+r.atras.length+' parcela(s) EM ATRASO</div>'+r.atras.slice(0,3).map(function(i){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(i.cli)+' — '+esc(i.ref)+' '+fmr(i.valor)+' (venceu '+fdt(i.venc)+', há '+i.dias+'d)</div>';}).join('');if(r.atras.length>3)html+='<div style="color:#9ba3c0">+'+(r.atras.length-3)+' outra(s)...</div>';}
- if(r.sem.length){html+='<div style="color:#e07c3a;font-weight:700;margin:6px 0 4px">&#128276; '+r.sem.length+' vence(m) nos próximos 7 dias</div>'+r.sem.slice(0,3).map(function(i){return '<div style="color:#9ba3c0;margin:2px 0">'+esc(i.cli)+' — '+esc(i.ref)+' '+fmr(i.valor)+' ('+(i.dias===0?'HOJE':fdt(i.venc))+')</div>';}).join('');if(r.sem.length>3)html+='<div style="color:#9ba3c0">+'+(r.sem.length-3)+' outra(s)...</div>';}
- html+='<div style="color:#5b8dee;margin-top:6px;font-size:11px">clique para abrir o Controle de Honorários</div>';
- el.innerHTML=html;
+ var oldEl=document.getElementById('vencBanner');if(oldEl)oldEl.remove(); // remove o banner flutuante antigo, se ainda existir de uma sessao anterior
+ var card=document.getElementById('st-honorarios-card');
+ if(!card)return;
+ var total=r.atras.length+r.sem.length;
+ if(!total){card.style.display='none';return;}
+ card.style.display='';
+ var valEl=document.getElementById('st-honorarios-venc');
+ var subEl=document.getElementById('st-honorarios-venc-sub');
+ valEl.textContent=total;
+ valEl.style.color=r.atras.length?'var(--red)':'var(--yellow)';
+ var partes=[];
+ if(r.atras.length)partes.push(r.atras.length+' atrasada(s)');
+ if(r.sem.length)partes.push(r.sem.length+' a vencer (7d)');
+ subEl.textContent=partes.join(', ');
+ card.title=[].concat(
+   r.atras.slice(0,3).map(function(i){return '⚠️ '+i.cli+' — '+fmr(i.valor)+' (venceu há '+i.dias+'d)';}),
+   r.sem.slice(0,3).map(function(i){return '🔔 '+i.cli+' — '+fmr(i.valor)+' ('+(i.dias===0?'HOJE':fdt(i.venc))+')';})
+ ).join('\n')+'\n\nclique para abrir o Controle de Honorários';
 }
 if(typeof renderHonorarios==='function'){var _r=window.renderHonorarios;window.renderHonorarios=function(){_r();try{addBtns();upBanner();}catch(e){console.error('v4',e);}};}
 window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId&&typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}},3500);});
@@ -8727,7 +8736,7 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" id="btnLocContratos" onclick="locToggleContratos()">📋 Contratos</button>
-      <button class="loc-btn" onclick="locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
+      <button class="loc-btn" id="btnLocResumo" onclick="locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
       <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
       <button class="loc-btn" id="btnLocRepasse" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
@@ -9354,7 +9363,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Repassado'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>Já repassado</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
   }
   window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);document.getElementById('btnLocRepasse').classList.toggle('active',showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
-  window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();};
+  window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);document.getElementById('btnLocResumo').classList.toggle('active',showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();};
 
   // ---------- RESUMO DOS LOCADORES (estrutural, por contrato ativo) ----------
   function renderResumoLocadores(){
@@ -10419,6 +10428,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '06/ago/2026 (11)', itens: [
+      'Corrigido: faltava o destaque no botão "Resumo dos Locadores" quando aberto — agora os três botões de Locações (Contratos, Resumo dos Locadores, Repasse por locador) acendem juntos.',
+      'O aviso de honorários a vencer/atrasados não fica mais flutuando por cima da lista de processos — virou um 6º card na mesma fileira de estatísticas (Casos Ativos, Crítico/Urgente...), só aparece quando há algo pendente, e clica pra abrir o Controle de Honorários.'
+    ]},
     { data: '06/ago/2026 (10)', itens: [
       'Botões "Acordos cadastrados", "Contratos" e "Repasse por locador (mês)" agora ficam destacados (cor dourada) quando a seção correspondente está aberta — antes não dava pra saber pelo botão se já estava expandido ou não.'
     ]},
