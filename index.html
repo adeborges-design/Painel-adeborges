@@ -8658,6 +8658,11 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-stat.roxo{border-left:3px solid var(--purple)} .loc-stat.roxo .loc-stat-value{color:var(--purple)}
   .loc-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
   .loc-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+  .loc-chip.filtro-ativo{background:var(--accent2);border-color:var(--accent2);color:#0d1525;font-weight:700}
+  .loc-chip.filtro-ativo b{color:#0d1525}
+  .loc-stat-clicavel{border-radius:12px;transition:transform .1s}
+  .loc-stat-clicavel:hover{transform:translateY(-2px)}
+  .loc-stat-clicavel.filtro-ativo .loc-stat{outline:2px solid var(--accent2)}
   .loc-chip b{font-family:'DM Sans',sans-serif}
   .loc-chip.pago b{color:var(--green)} .loc-chip.pend b{color:var(--yellow)} .loc-chip.atras b{color:var(--red)} .loc-chip.ativos b{color:var(--blue)}
   .loc-chips-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
@@ -9306,13 +9311,15 @@ window.cpRenderFixas=cpRenderFixas;
 
   window.abrirAlugueis=function(){document.getElementById('locOverlay').classList.add('open');carregarAlugueis();};
 
+  window.locFiltroAtivo = 'all';
+  window.locFiltrar = function (tipo) { locFiltroAtivo = (locFiltroAtivo === tipo) ? 'all' : tipo; locRender(); };
   window.locRender=function(){
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
-    var lst=workingList().filter(function(l){return l.mes===selMes;});
-    lst.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
+    var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
+    lstTodos.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
     var alug=0,taxa=0,repLiq=0,emCaixa=0;
     var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0;
-    lst.forEach(function(l){
+    lstTodos.forEach(function(l){
       alug+=l.aluguel;taxa+=l.taxa;
       var rep=effRep(l);
       var recebeu=(l.statusAluguel==='Recebido');
@@ -9322,16 +9329,30 @@ window.cpRenderFixas=cpRenderFixas;
       if(recebeu&&!repassou)emCaixa+=rep;
     });
     var ativos=DATA.contratos.filter(function(c){return c.ativo;}).length;
+    function ativoCls(tipo){return locFiltroAtivo===tipo?' filtro-ativo':'';}
     document.getElementById('locStats').innerHTML=
-      card('dourado','Aluguéis do mês',BRL(alug),lst.length+' lançamentos')+
-      card('azul','Taxa de adm. do mês',BRL(taxa),'sua receita de administração')+
-      card('roxo','Em caixa, aguardando repasse',BRL(emCaixa),'já recebido do locatário, falta repassar')+
-      card('verde','Já repassado aos locadores',BRL(repLiq),'repasses concluídos no mês');
+      '<div onclick="locFiltrar(\'all\')" style="cursor:pointer">'+card('dourado','Aluguéis do mês',BRL(alug),lstTodos.length+' lançamentos')+'</div>'+
+      '<div style="cursor:default">'+card('azul','Taxa de adm. do mês',BRL(taxa),'sua receita de administração')+'</div>'+
+      '<div class="loc-stat-clicavel'+ativoCls('rep_aguardando')+'" onclick="locFiltrar(\'rep_aguardando\')" style="cursor:pointer" title="Ver só o que já foi recebido do locatário e ainda precisa ser repassado">'+card('roxo','Em caixa, aguardando repasse',BRL(emCaixa),'já recebido do locatário, falta repassar — clique pra ver')+'</div>'+
+      '<div class="loc-stat-clicavel'+ativoCls('rep_feito')+'" onclick="locFiltrar(\'rep_feito\')" style="cursor:pointer" title="Ver os repasses já concluídos no mês">'+card('verde','Já repassado aos locadores',BRL(repLiq),'repasses concluídos no mês — clique pra ver')+'</div>';
     document.getElementById('locChips').innerHTML=
-      '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec)+chip('pend','Pendentes',cAlPend)+chip('atras','Atrasados',cAlAtras)+chip('ativos','Contratos ativos',ativos)+'</div>'+
-      '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito)+chip('pend','Pendentes',cRepPend)+chip('atras','Atrasados',cRepAtras)+'</div>';
+      '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec,'al_recebido')+chip('pend','Pendentes',cAlPend,'al_pendente')+chip('atras','Atrasados',cAlAtras,'al_atrasado')+chip('ativos','Contratos ativos',ativos,null)+'</div>'+
+      '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito,'rep_feito')+chip('pend','Pendentes',cRepPend,'rep_pendente')+chip('atras','Atrasados',cRepAtras,'rep_atrasado')+'</div>'+
+      (locFiltroAtivo!=='all'?'<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="locFiltrar(\''+locFiltroAtivo+'\')">✕ Limpar filtro</button></div>':'');
+    var lst=lstTodos.filter(function(l){
+      if(locFiltroAtivo==='all')return true;
+      var recebeu=(l.statusAluguel==='Recebido'),repassou=(l.statusRep==='Repassado');
+      if(locFiltroAtivo==='al_recebido')return l.statusAluguel==='Recebido';
+      if(locFiltroAtivo==='al_pendente')return l.statusAluguel==='Pendente';
+      if(locFiltroAtivo==='al_atrasado')return l.statusAluguel==='Atrasado';
+      if(locFiltroAtivo==='rep_aguardando')return recebeu&&!repassou;
+      if(locFiltroAtivo==='rep_feito')return repassou;
+      if(locFiltroAtivo==='rep_pendente')return !repassou&&l.statusRep!=='Atrasado';
+      if(locFiltroAtivo==='rep_atrasado')return l.statusRep==='Atrasado';
+      return true;
+    });
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
-    document.getElementById('locTbody').innerHTML=lst.map(function(l){
+    document.getElementById('locTbody').innerHTML=(lst.length?lst:[]).map(function(l){
       var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=l.repManual;
       var repassou=(l.statusRep==='Repassado');
       var repDate=diaMes(c.rep,selMes);
@@ -9356,14 +9377,18 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
         '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button> <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\')">💬</button></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">Nenhum lançamento neste mês.</td></tr>';
-    if(showRepasse)renderRepasse(lst);
+    }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
+    if(showRepasse)renderRepasse(lstTodos);
     if(showResumoLocadores)renderResumoLocadores();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
     document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Encargos</b> (clique para editar) reúne condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), IPTU (parcela do mês), outras cobranças e desconto — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel + Multa + Juros − Taxa + Encargos, mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
-  function chip(cls,l,n){return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';}
+  function chip(cls,l,n,filtro){
+    if(!filtro)return '<div class="loc-chip '+cls+'">'+l+': <b>'+n+'</b></div>';
+    var ativo=window.locFiltroAtivo===filtro;
+    return '<div class="loc-chip '+cls+(ativo?' filtro-ativo':'')+'" style="cursor:pointer" onclick="locFiltrar(\''+filtro+'\')" title="Clique para filtrar a lista">'+l+': <b>'+n+'</b></div>';
+  }
 
   function renderRepasse(lst){
     var byLoc={};
@@ -10436,6 +10461,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (2)', itens: [
+      'Controle de recebidos/repasses em Locações agora é filtrável: clique em qualquer chip (Recebidos, Pendentes, Atrasados, Repassados...) ou nos cards "Em caixa, aguardando repasse" e "Já repassado aos locadores" para filtrar a lista na hora — clique de novo para limpar o filtro.',
+      'Isso resolve especificamente "quais aluguéis já recebi mas ainda preciso repassar": clique no card roxo "Em caixa, aguardando repasse" e a lista mostra só esses.'
+    ]},
     { data: '07/ago/2026', itens: [
       'Corrigido: ao gerar o mês, a coluna de Repasse era gravada com o texto "0,00" (não vazia de verdade), fazendo o sistema tratar isso como "valor definido manualmente" e nunca sugerir o cálculo automático (Aluguel − Taxa + Encargos). Agora fica realmente vazia, e o campo já aparece preenchido com a sugestão — mas continua editável pra ajustar quando precisar.',
       'Atenção: essa correção só vale para os meses gerados a partir de agora. Os 23 lançamentos de 08/2026 já gerados continuam com "0,00" fixo até você limpar essas células na planilha (aba LOC_LANCAMENTOS, coluna I "Valor Repasse") — depois de limpas, o sistema volta a sugerir o valor sozinho.'
