@@ -3637,6 +3637,7 @@ function saveConfig() {
   try{if(typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}
   try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
+  try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
   try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
@@ -5612,6 +5613,39 @@ function accDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p
 function accIsoFromBR(s) { if (!s) return ''; var p = String(s).split('/'); if (p.length !== 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
 function accMesAtual() { var d = new Date(); return ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
 function accProxMes(mes) { var p = mes.split('/'); var m = parseInt(p[0], 10), a = parseInt(p[1], 10); m++; if (m > 12) { m = 1; a++; } return ('0' + m).slice(-2) + '/' + a; }
+
+// Calcula a data de cada parcela conforme a frequência escolhida.
+// "diario" pula sábado e domingo (fecha exatamente com o caso de pagamentos diários em dias úteis).
+function accCalcularDatasParcelas(dataInicioStr, frequencia, numParcelas) {
+  var datas = [];
+  if (!dataInicioStr || !numParcelas) return datas;
+  var d = new Date(dataInicioStr + 'T00:00:00');
+  if (frequencia === 'diario') {
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    for (var i = 0; i < numParcelas; i++) {
+      datas.push(new Date(d));
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    }
+  } else if (frequencia === 'semanal') {
+    for (var i2 = 0; i2 < numParcelas; i2++) { datas.push(new Date(d)); d.setDate(d.getDate() + 7); }
+  } else if (frequencia === 'quinzenal') {
+    for (var i3 = 0; i3 < numParcelas; i3++) { datas.push(new Date(d)); d.setDate(d.getDate() + 14); }
+  } else {
+    var diaOriginal = d.getDate();
+    for (var i4 = 0; i4 < numParcelas; i4++) {
+      if (i4 === 0) {
+        datas.push(new Date(d));
+      } else {
+        var novoMes = d.getMonth() + 1, novoAno = d.getFullYear();
+        if (novoMes > 11) { novoMes = 0; novoAno++; }
+        var ultimoDiaDoMes = new Date(novoAno, novoMes + 1, 0).getDate();
+        d = new Date(novoAno, novoMes, Math.min(diaOriginal, ultimoDiaDoMes));
+        datas.push(new Date(d));
+      }
+    }
+  }
+  return datas;
+}
 function accCard(cls, l, v, s) { return '<div class="loc-stat ' + cls + '"><div class="loc-stat-label">' + l + '</div><div class="loc-stat-value">' + v + '</div><div class="loc-stat-sub">' + s + '</div></div>'; }
 function accChip(cls, l, n) { return '<div class="loc-chip ' + cls + '">' + l + ': <b>' + n + '</b></div>'; }
 
@@ -5700,9 +5734,10 @@ window.accPreencherDoProcesso = function () {
 window.accNovoContrato = function () {
   document.getElementById('ac-id').value = '';
   document.getElementById('ac-processo').value = '';
-  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-obs'].forEach(function (id) {
+  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-dataInicio', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-obs'].forEach(function (id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('ac-frequencia').value = 'mensal';
   document.getElementById('ac-ativo').value = 'Sim';
   document.getElementById('accCFormTitle').textContent = 'Novo acordo';
   document.getElementById('ac-msg').textContent = '';
@@ -5722,6 +5757,8 @@ window.accEditarContrato = function (id) {
   document.getElementById('ac-valorTotal').value = accNum(c['Valor Total Acordo']) || '';
   document.getElementById('ac-numParcelas').value = c['Numero Parcelas'] || '';
   document.getElementById('ac-percentual').value = c['Percentual Honorarios'] || '';
+  document.getElementById('ac-dataInicio').value = accIsoFromBR(c['Data Inicio']);
+  document.getElementById('ac-frequencia').value = c['Frequencia'] || 'mensal';
   document.getElementById('ac-diaVenc').value = c['Dia Vencimento'] || '';
   document.getElementById('ac-diaRep').value = c['Dia Repasse'] || '';
   document.getElementById('ac-banco').value = c['Banco Cliente'] || '';
@@ -5753,6 +5790,7 @@ window.accSalvarContrato = function () {
     'Nr Processo': p ? (p.processo || '') : '',
     'Cliente': cliente, 'Parte Contraria': parteContraria,
     'Valor Total Acordo': valorTotal, 'Numero Parcelas': numParcelas, 'Percentual Honorarios': percentual,
+    'Data Inicio': accDtBRfromInput(document.getElementById('ac-dataInicio').value), 'Frequencia': document.getElementById('ac-frequencia').value,
     'Dia Vencimento': document.getElementById('ac-diaVenc').value, 'Dia Repasse': document.getElementById('ac-diaRep').value,
     'Ativo': document.getElementById('ac-ativo').value,
     'Banco Cliente': document.getElementById('ac-banco').value, 'Agencia Cliente': document.getElementById('ac-agencia').value,
@@ -5761,17 +5799,48 @@ window.accSalvarContrato = function () {
   };
   msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
   var body = { acao: id ? 'atualizar_acc' : 'lancar_acc', campos: campos }; if (id) body.id = id;
-  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(function () {
-    msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+  (async function () {
+    var resp = null, erroRede = null;
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      resp = await r.json();
+    } catch (e2) {
+      erroRede = e2;
+    }
+    if (erroRede) {
+      // fetch normal nao completou (CORS/rede) - tenta no-cors como ultimo recurso, sem conseguir confirmar
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
+    } else if (!resp || !resp.ok) {
+      // resposta chegou e disse que NAO deu certo - mostra o erro de verdade, sem mascarar
+      msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong><br><span style="font-size:11px">Confira se colou o Código.gs mais recente e implantou uma NOVA VERSÃO.</span>';
+      msgEl.style.color = 'var(--red)';
+      return;
+    } else if (resp.colunasNaoEncontradas && resp.colunasNaoEncontradas.length) {
+      msgEl.innerHTML = '⚠️ Salvo, mas faltam estas colunas na planilha: <strong>' + resp.colunasNaoEncontradas.join(', ') + '</strong>';
+      msgEl.style.color = 'var(--red)';
+      return;
+    } else {
+      msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+    }
     setTimeout(function () { carregarAcordos(); }, 1200);
-  }).catch(function (e) { msgEl.textContent = 'Erro: ' + e.message; msgEl.style.color = 'var(--red)'; });
+  })();
 };
 
 window.accExcluirContrato = function (id) {
   if (!confirm('Excluir este acordo? As parcelas já lançadas não são apagadas automaticamente.')) return;
-  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) }).then(function () {
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'não foi possível excluir');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) }); }
+      catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
+    }
     setTimeout(function () { carregarAcordos(); }, 1000);
-  });
+  })();
 };
 
 function accRenderContratos() {
@@ -5786,12 +5855,65 @@ function accRenderContratos() {
       + '<td style="text-align:center">' + accE(c['Numero Parcelas']) + '</td>'
       + '<td style="text-align:center">' + accE(c['Percentual Honorarios']) + '%</td>'
       + '<td style="text-align:center">' + accE(c['Ativo']) + '</td>'
-      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
+      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" title="Gerar todas as parcelas de uma vez, conforme a frequência" onclick="accGerarTodasParcelas(\'' + accE(c['ID']) + '\')">🗓️ gerar parcelas</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhum acordo cadastrado.</td></tr>';
 }
 
 // ---------- GERAR MÊS SEGUINTE ----------
+// Gera de uma vez TODAS as parcelas de um acordo, nas datas certas conforme a
+// frequência escolhida (mensal, quinzenal, semanal ou diário em dias úteis) —
+// pensado para casos como "20 pagamentos diários de segunda a sexta".
+window.accGerarTodasParcelas = async function (contratoId) {
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); });
+  if (!c) return;
+  if (!accLive) { alert('Configure a planilha para gerar parcelas.'); return; }
+  var totalParcelas = parseInt(c['Numero Parcelas']) || 0;
+  var frequencia = c['Frequencia'] || 'mensal';
+  var dataInicioIso = accIsoFromBR(c['Data Inicio']);
+  if (!dataInicioIso) { alert('Este acordo não tem "Data da 1ª parcela" preenchida — edite o acordo e informe a data antes de gerar as parcelas.'); return; }
+
+  var jaGeradas = accLancamentos.filter(function (l) { return String(l['Contrato']) === String(contratoId); });
+  if (jaGeradas.length) {
+    if (!confirm('Este acordo já tem ' + jaGeradas.length + ' parcela(s) lançada(s). Gerar de novo pode duplicar. Continuar mesmo assim?')) return;
+  }
+
+  var datas = accCalcularDatasParcelas(dataInicioIso, frequencia, totalParcelas);
+  if (!datas.length) { alert('Não foi possível calcular as datas — confira número de parcelas e data de início.'); return; }
+
+  var valorPrevisto = accNum(c['Valor Total Acordo']) / totalParcelas;
+  var freqLabel = { diario: 'diária(s), dia(s) útil(eis)', semanal: 'semanal(is)', quinzenal: 'quinzenal(is)', mensal: 'mensal(is)' }[frequencia] || frequencia;
+  if (!confirm('Gerar ' + datas.length + ' parcela(s) ' + freqLabel + ' de ' + accBRL(valorPrevisto) + ' cada, a partir de ' + accE(c['Data Inicio']) + '?')) return;
+
+  var sucesso = 0, falhas = 0, ultimoErro = '';
+  for (var i = 0; i < datas.length; i++) {
+    var dt = datas[i];
+    var dataBr = ('0' + dt.getDate()).slice(-2) + '/' + ('0' + (dt.getMonth() + 1)).slice(-2) + '/' + dt.getFullYear();
+    var mesRef = ('0' + (dt.getMonth() + 1)).slice(-2) + '/' + dt.getFullYear();
+    var campos = {
+      'Contrato': contratoId, 'Mes': mesRef, 'Data Prevista': dataBr,
+      'Valor Previsto': valorPrevisto.toFixed(2), 'Status Recebimento': 'Pendente',
+      'Data Recebimento': '', 'Valor Recebido': '', 'Valor Honorarios': '', 'Valor Repasse': '',
+      'Status Repasse': 'Pendente', 'Data Repasse': ''
+    };
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) });
+      var d = await r.json();
+      if (d.ok) sucesso++; else { falhas++; ultimoErro = d.error || 'recusado pelo Apps Script'; }
+    } catch (e) {
+      // rede/CORS bloqueou a leitura da resposta - tenta no-cors como ultimo recurso (sem confirmacao)
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) }); sucesso++; }
+      catch (e2) { falhas++; ultimoErro = e2.message; }
+    }
+  }
+  if (falhas > 0) {
+    alert('⚠️ ' + sucesso + ' parcela(s) gerada(s), mas ' + falhas + ' falharam.\n\nErro: ' + ultimoErro + '\n\nConfira se o Código.gs mais recente foi colado no Apps Script E se você implantou uma NOVA VERSÃO (Implantar → Gerenciar implantações → editar → Nova versão).');
+  } else {
+    alert(sucesso + ' parcela(s) gerada(s) com sucesso! Atualizando...');
+  }
+  setTimeout(function () { carregarAcordos(); }, 1500);
+};
+
 window.accGerarProximoMes = function () {
   if (!accLive) { alert('Configure a planilha para gerar lançamentos.'); return; }
   var mesBase = accSelMes || accMesAtual();
@@ -5799,12 +5921,12 @@ window.accGerarProximoMes = function () {
   if (!confirm('Gerar as parcelas de ' + proximoMes + ' para todos os acordos ativos?')) return;
   var ativos = accContratos.filter(function (c) { return String(c['Ativo']).toLowerCase() === 'sim'; });
   if (!ativos.length) { alert('Nenhum acordo ativo cadastrado.'); return; }
-  var pendentes = ativos.length, gerados = 0;
+  var pendentes = ativos.length, gerados = 0, falhas = 0, ultimoErro = '';
   ativos.forEach(function (c) {
-    var jaExiste = accLancamentos.some(function (l) { return l['Contrato'] === c['ID'] && l['Mes'] === proximoMes; });
+    var jaExiste = accLancamentos.some(function (l) { return String(l['Contrato']) === String(c['ID']) && l['Mes'] === proximoMes; });
     if (jaExiste) { pendentes--; if (pendentes === 0) finalizar(); return; }
     var totalParcelas = parseInt(c['Numero Parcelas']) || 1;
-    var jaGeradas = accLancamentos.filter(function (l) { return l['Contrato'] === c['ID']; }).length;
+    var jaGeradas = accLancamentos.filter(function (l) { return String(l['Contrato']) === String(c['ID']); }).length;
     if (jaGeradas >= totalParcelas) { pendentes--; if (pendentes === 0) finalizar(); return; }
     var valorPrevisto = accNum(c['Valor Total Acordo']) / totalParcelas;
     var mp = proximoMes.split('/');
@@ -5815,11 +5937,20 @@ window.accGerarProximoMes = function () {
       'Data Recebimento': '', 'Valor Recebido': '', 'Valor Honorarios': '', 'Valor Repasse': '',
       'Status Repasse': 'Pendente', 'Data Repasse': ''
     };
-    fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) }).then(function () {
-      gerados++; pendentes--; if (pendentes === 0) finalizar();
-    });
+    fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) gerados++; else { falhas++; ultimoErro = d.error || 'recusado pelo Apps Script'; }
+        pendentes--; if (pendentes === 0) finalizar();
+      })
+      .catch(function () {
+        fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_acl', campos: campos }) })
+          .then(function () { gerados++; pendentes--; if (pendentes === 0) finalizar(); })
+          .catch(function (e2) { falhas++; ultimoErro = e2.message; pendentes--; if (pendentes === 0) finalizar(); });
+      });
   });
   function finalizar() {
+    if (falhas > 0) alert('⚠️ ' + gerados + ' gerada(s), ' + falhas + ' falharam.\n\nErro: ' + ultimoErro);
     setTimeout(async function () {
       await carregarAcordos();
       var sel = document.getElementById('accMesSel');
@@ -5834,8 +5965,8 @@ window.accRender = function () {
   if (sel && sel.value) accSelMes = sel.value;
   var lista = accLancamentos.filter(function (l) { return l['Mes'] === accSelMes; });
   lista.sort(function (a, b) {
-    var ca = accContratos.find(function (x) { return x['ID'] === a['Contrato']; }) || {};
-    var cb = accContratos.find(function (x) { return x['ID'] === b['Contrato']; }) || {};
+    var ca = accContratos.find(function (x) { return String(x['ID']) === String(a['Contrato']); }) || {};
+    var cb = accContratos.find(function (x) { return String(x['ID']) === String(b['Contrato']); }) || {};
     return (accNum(ca['Dia Vencimento']) || 99) - (accNum(cb['Dia Vencimento']) || 99);
   });
 
@@ -5864,16 +5995,16 @@ window.accRender = function () {
 
   var tb = document.getElementById('accTbody');
   tb.innerHTML = lista.map(function (l) {
-    var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+    var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
     var statusRec = l['Status Recebimento'] || 'Pendente';
     var statusRep = l['Status Repasse'] || 'Pendente';
     return '<tr>'
       + '<td class="loc-num">' + accE(c['Nr Processo']) + '</td>'
       + '<td>' + accE(c['Cliente']) + '</td>'
       + '<td>' + accE(c['Parte Contraria']) + '</td>'
-      + '<td style="text-align:center">' + accE(c['Dia Vencimento'] || '-') + '</td>'
+      + '<td style="text-align:center">' + accE(l['Data Prevista'] || '-') + '</td>'
       + '<td><select class="loc-row-select" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
-      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
+      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
       + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
       + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center">' + accE(c['Dia Repasse'] || '-') + '</td>'
@@ -5885,19 +6016,46 @@ window.accRender = function () {
 };
 
 function accAtualizarLancamento(id, campos) {
-  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
   if (l) Object.keys(campos).forEach(function (k) { l[k] = campos[k]; });
   accRender();
-  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_acl', id: id, campos: campos }) });
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_acl', id: id, campos: campos }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'recusado');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_acl', id: id, campos: campos }) }); }
+      catch (e2) {
+        var txt = document.getElementById('accSyncTxt');
+        if (txt) { txt.textContent = '⚠️ falha ao salvar — confira o Apps Script'; txt.style.color = 'var(--red)'; }
+      }
+    }
+  })();
 }
 window.accSetStatusRecebimento = function (id, val) {
   var campos = { 'Status Recebimento': val };
-  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
   if (val === 'Recebido' && l && !l['Data Recebimento']) campos['Data Recebimento'] = accFdt(new Date());
   accAtualizarLancamento(id, campos);
 };
+// Atualiza Honorários e Repasse na tela IMEDIATAMENTE enquanto o usuário digita
+// (sem esperar sair do campo) — o salvamento de verdade continua no onchange.
+window.accCalcularAoVivo = function (inputEl, contratoId) {
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); }) || {};
+  var recebido = accNum(inputEl.value);
+  var pct = accNum(c['Percentual Honorarios']);
+  var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  var tr = inputEl.closest('tr');
+  if (!tr) return;
+  var tds = tr.querySelectorAll('td');
+  if (tds[6]) tds[6].textContent = accBRL(honorarios);
+  var repasseInput = tds[7] ? tds[7].querySelector('input') : null;
+  if (repasseInput) repasseInput.value = repasse ? repasse.toFixed(2) : '';
+};
 window.accSetValorRecebido = function (id, val, contratoId) {
-  var c = accContratos.find(function (x) { return x['ID'] === contratoId; }) || {};
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); }) || {};
   var recebido = accNum(val);
   var pct = accNum(c['Percentual Honorarios']);
   var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
@@ -5907,7 +6065,7 @@ window.accSetValorRecebido = function (id, val, contratoId) {
 window.accSetRepasse = function (id, val) { accAtualizarLancamento(id, { 'Valor Repasse': accNum(val) }); };
 window.accSetStatusRepasse = function (id, val) {
   var campos = { 'Status Repasse': val };
-  var l = accLancamentos.find(function (x) { return x['ID'] === id; });
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
   if (val === 'Repassado' && l && !l['Data Repasse']) campos['Data Repasse'] = accFdt(new Date());
   accAtualizarLancamento(id, campos);
 };
@@ -5915,9 +6073,9 @@ window.accSetDataRepasse = function (id, val) { accAtualizarLancamento(id, { 'Da
 
 // ---------- RECIBO (Informe de Repasse) ----------
 window.accAbrirRecibo = function (lancamentoId) {
-  var l = accLancamentos.find(function (x) { return x['ID'] === lancamentoId; });
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
   if (!l) { alert('Lançamento não encontrado.'); return; }
-  var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
   var recebido = accNum(l['Valor Recebido']) || accNum(l['Valor Previsto']);
   var honorarios = accNum(l['Valor Honorarios']);
   var repasse = accNum(l['Valor Repasse']);
@@ -5984,7 +6142,7 @@ window.accExportCSV = function () {
   var lista = accLancamentos.filter(function (l) { return l['Mes'] === mes; });
   var linhas = [['Processo', 'Cliente', 'Parte Contraria', 'Status Recebimento', 'Valor Recebido', 'Honorarios', 'Repasse', 'Status Repasse', 'Data Repasse']];
   lista.forEach(function (l) {
-    var c = accContratos.find(function (x) { return x['ID'] === l['Contrato']; }) || {};
+    var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
     linhas.push([c['Nr Processo'], c['Cliente'], c['Parte Contraria'], l['Status Recebimento'], accNum(l['Valor Recebido']), accNum(l['Valor Honorarios']), accNum(l['Valor Repasse']), l['Status Repasse'], l['Data Repasse']]);
   });
   var csv = linhas.map(function (r) { return r.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
@@ -8659,6 +8817,11 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="cobr-body">
         <input type="hidden" id="cobr-contrato">
+        <div class="cobr-secao full">Aluguel deste mês</div>
+        <div class="loc-cfield full">
+          <label>Aluguel (R$) <span style="font-weight:400;color:var(--muted)">— pré-preenchido com o valor atual; deixe 0,00 se este mês for só multa rescisória/outras cobranças (contrato encerrado)</span></label>
+          <input class="loc-cinput" id="cobr-aluguel-mes" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()">
+        </div>
         <div class="cobr-secao full">Condomínio</div>
         <div class="loc-cfield"><label>Cota de condomínio (R$)</label><input class="loc-cinput" id="cobr-condominio" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
         <div class="loc-cfield"><label>Água (área privativa)</label><input class="loc-cinput" id="cobr-agua-priv" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -8760,8 +8923,17 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Valor Total do Acordo (R$) *</label><input class="loc-cinput" id="ac-valorTotal" type="number" step="0.01" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Número de Parcelas *</label><input class="loc-cinput" id="ac-numParcelas" type="number" min="1" placeholder="Ex.: 12"></div>
         <div class="loc-cfield"><label>Percentual de Honorários (%) *</label><input class="loc-cinput" id="ac-percentual" type="number" step="0.01" placeholder="Ex.: 30"></div>
-        <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="ac-diaVenc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
-        <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="ac-diaRep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
+        <div class="loc-cfield"><label>Data da 1ª parcela *</label><input class="loc-cinput" id="ac-dataInicio" type="date"></div>
+        <div class="loc-cfield"><label>Frequência de pagamento *</label>
+          <select class="loc-cinput" id="ac-frequencia">
+            <option value="mensal">Mensal</option>
+            <option value="quinzenal">Quinzenal (14 em 14 dias)</option>
+            <option value="semanal">Semanal (7 em 7 dias)</option>
+            <option value="diario">Diário (dias úteis, seg. a sex.)</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Dia Vencimento <span style="font-weight:400;color:var(--muted)">(só p/ mensal)</span></label><input class="loc-cinput" id="ac-diaVenc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
+        <div class="loc-cfield"><label>Dia Repasse <span style="font-weight:400;color:var(--muted)">(só p/ mensal)</span></label><input class="loc-cinput" id="ac-diaRep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários do cliente (para o repasse)</div>
         <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="ac-banco" placeholder="Ex.: Itaú"></div>
         <div class="loc-cfield half"><label>Agência</label><input class="loc-cinput" id="ac-agencia" placeholder="0000"></div>
@@ -9043,7 +9215,7 @@ window.cpRenderFixas=cpRenderFixas;
       // Auto-correção: se o Aluguel/Taxa do lançamento vier vazio ou corrompido
       // (ex.: célula gravada como data na planilha), usa o valor do contrato.
       var ct=contratosById[l.contrato]||{};
-      var aluguel=(l.aluguel&&l.aluguel>0)?l.aluguel:num(ct.aluguel);
+      var aluguel=(l.aluguel!=null&&l.aluguel!=='')?num(l.aluguel):num(ct.aluguel);
       var multa=num(l.multa);
       var juros=num(l.juros);
       var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round((aluguel+multa+juros)*(num(ct.taxaPct)/100)*100)/100;
@@ -9061,6 +9233,7 @@ window.cpRenderFixas=cpRenderFixas;
              outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,
              statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
       if(o){
+        if(o.aluguel!=null)r.aluguel=num(o.aluguel);
         if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
         if(o.statusRep)r.statusRep=o.statusRep;
         if(o.dataPag!=null)r.dataPag=o.dataPag;
@@ -9202,7 +9375,7 @@ window.cpRenderFixas=cpRenderFixas;
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
-    var campos={'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
+    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':w.outrasValor||0,
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
@@ -9221,6 +9394,7 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contrato]||{};
     document.getElementById('cobr-contrato').value=contrato;
     document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
+    document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
     document.getElementById('cobr-outras-desc').value=l.outrasDesc||'';
     cobrAtualizarPreview();
@@ -9228,7 +9402,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.fecharModalCobrancas=function(){document.getElementById('modalCobrancas').classList.remove('open');};
   window.cobrAtualizarPreview=function(){
-    var tot=0;
+    var tot=num(document.getElementById('cobr-aluguel-mes').value);
     COBR_CAMPOS_NUM.forEach(function(p){
       var v=num(document.getElementById(p[0]).value);
       tot+=(p[1]==='desconto')?-v:v;
@@ -9237,7 +9411,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.salvarCobrancas=function(){
     var contrato=document.getElementById('cobr-contrato').value;
-    var patch={outrasDesc:document.getElementById('cobr-outras-desc').value.trim()};
+    var patch={outrasDesc:document.getElementById('cobr-outras-desc').value.trim(),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
     setOverride(contrato,patch);
     gravarSheet(contrato);
@@ -9411,7 +9585,7 @@ window.cpRenderFixas=cpRenderFixas;
       totalLabel='Total a ser pago';
       var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>'+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
       valoresHtml=introValores
-        +'<div>Aluguel: <strong>'+BRL(w.aluguel)+'</strong></div>'
+        +(w.aluguel?'<div>Aluguel: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
         +(w.juros?'<div>Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +linhasCondo
@@ -9434,7 +9608,7 @@ window.cpRenderFixas=cpRenderFixas;
       totalLabel='Total repassado';
       var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>(+) '+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
       valoresHtml=introValores
-        +'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>'
+        +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
         +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
@@ -9507,7 +9681,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
       txt+='*LOCATÁRIO:* '+(c.locatario||'')+' — CPF/CNPJ '+(c.cpfLocatario||'—')+'\n';
       txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n\n';
-      txt+='Aluguel: '+fmt(w.aluguel)+'\n';
+      if(w.aluguel)txt+='Aluguel: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='Juros: '+fmt(w.juros)+'\n';
       if(condoTotal)txt+='Condomínio: '+fmt(condoTotal)+'\n';
@@ -9528,7 +9702,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
       txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n\n';
-      txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
+      if(w.aluguel)txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
       txt+='(−) Taxa de administração: -'+fmt(w.taxa)+'\n';
@@ -9701,7 +9875,7 @@ window.cpRenderFixas=cpRenderFixas;
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
       'Multa Atraso Perc':num(document.getElementById('lc-multa-atraso-pct').value)
     };
-    if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Aluguel){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel.';return;}
+    if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
     var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
     // atualização local imediata (sessão)
@@ -10040,7 +10214,12 @@ window.cpRenderFixas=cpRenderFixas;
           <div class="ic">💰</div>
           <div class="ctitle">Acordos</div>
           <div class="cdesc">Valores da parte contrária, honorários e repasse ao cliente</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Recebido da parte contrária no mês"><div class="v" id="hc-acc-receb" style="color:var(--green)">—</div><div class="l">recebido no mês</div><span class="cnum-spark-wrap" id="spark-acc-receb"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Aguardando repasse ao cliente"><div class="v" id="hc-acc-pend" style="color:var(--yellow)">—</div><div class="l">repasses pendentes</div><span class="cnum-spark-wrap" id="spark-acc-pend"></span></div>
+          </div>
         </div>
+        <div class="home-alertas" id="homeAlertAcc"></div>
       </div>
       <div class="home-module">
         <div class="home-card cont" onclick="openContas()">
@@ -10141,7 +10320,7 @@ window.cpRenderFixas=cpRenderFixas;
   function renderNotifBell(){
     var badge=document.getElementById('notifBadge');var panel=document.getElementById('notifPanelBody');
     if(!badge||!panel)return;
-    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertas','homeAlertCartoes'];
+    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertAcc','homeAlertas','homeAlertCartoes'];
     var reg=window.__notifReg||{};
     var itens=ordem.map(function(id){return reg[id];}).filter(Boolean);
     if(!itens.length){
@@ -10223,6 +10402,37 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '06/ago/2026 (8)', itens: [
+      'Corrigido problema sério: todas as gravações de Acordos (criar acordo, gerar parcelas, marcar recebido/repassado) usavam um modo que escondia qualquer erro — se o Apps Script recusasse, o painel mesmo assim dizia "Salvo!". Agora mostra o erro de verdade, incluindo um lembrete de conferir se o Código.gs foi colado e uma NOVA VERSÃO implantada.',
+      'Corrigido mais um ponto com o mesmo bug de tipo de ID (número vs texto) na geração de parcelas mês a mês.'
+    ]},
+    { data: '06/ago/2026 (7)', itens: [
+      'Achada a causa raiz de verdade do cálculo de honorários/repasse não funcionar: o ID do contrato vem da planilha como NÚMERO, mas 8 dos 9 lugares que comparavam esse ID no código esperavam TEXTO — a comparação falhava silenciosamente. Corrigido em todos os pontos. Reproduzi o bug exato (testando com ID numérico) e confirmei a correção antes de enviar.',
+      'Isso também explica por que o formulário de "editar" sempre mostrava os dados certos, mas a tabela de lançamentos não — só o "editar" já tinha a comparação correta.'
+    ]},
+    { data: '06/ago/2026 (6)', itens: [
+      'Corrigido: a coluna "Venc." da tabela de Acordos mostrava um campo vazio (só fazia sentido pra frequência mensal) — agora mostra a data real de cada parcela.',
+      'Honorários e Repasse agora recalculam instantaneamente enquanto você digita o valor recebido — antes só recalculava ao sair do campo, o que podia parecer que não estava funcionando.',
+      'Conferido cálculo de honorários/repasse e salvamento de PIX com os mesmos valores do relato — ambos corretos em teste isolado. Se algum acordo antigo ainda mostrar PIX em branco, edite e salve de novo com esta versão.'
+    ]},
+    { data: '06/ago/2026 (5)', itens: [
+      'Acordos agora têm "Frequência de pagamento": Mensal, Quinzenal, Semanal ou Diário (dias úteis, pula sábado/domingo) — resolve casos como acordos trabalhistas com pagamento diário.',
+      'Novo botão "🗓️ gerar parcelas" na lista de acordos cadastrados: gera TODAS as parcelas de uma vez, já nas datas certas, a partir da "Data da 1ª parcela" e da frequência escolhida — não precisa mais gerar mês a mês.',
+      'Testado com o caso de 20 parcelas diárias em dias úteis: gerou certinho, pulando fins de semana e atravessando a virada de mês sem problema. Também corrigido um bug na frequência mensal com dia 29/30/31 (caía errado em meses mais curtos, como fevereiro).'
+    ]},
+    { data: '06/ago/2026 (4)', itens: [
+      'Card "Acordos" na tela inicial estava sem números, diferente de todos os outros (Processos, Locações, Contas, Honorários) — o que desalinhava o layout. Agora mostra "recebido no mês" e "repasses pendentes", igual aos demais.',
+      'Alerta de parcelas de acordo atrasadas agora aparece na tela inicial (e no sino de notificações), igual já acontecia com aluguéis atrasados e honorários a vencer.',
+      'Dados de Acordos agora carregam automaticamente ao abrir o painel, junto com Processos/Honorários/Contas/Locações — não precisa mais abrir a tela de Acordos manualmente pra os números aparecerem na inicial.'
+    ]},
+    { data: '06/ago/2026 (3)', itens: [
+      'Corrigido de vez o caso de contrato rescindido cobrando só a multa: agora dá pra editar o Aluguel de um MÊS específico (novo campo no topo do quadro de Encargos, já vem preenchido com o valor atual) — antes só dava pra mudar o padrão do contrato inteiro, e mesmo assim um lançamento já gerado não era afetado.',
+      'Corrigidos três problemas em cadeia que impediam isso de funcionar: o cálculo tratava aluguel=0 como "não preenchido" (voltava pro valor do contrato), o valor não estava sendo salvo de volta na planilha, e mesmo salvo, não era aplicado no recibo. Testado com o cenário real (contrato 23.145.4) — recibo agora sai só com a multa, sem aluguel duplicado.'
+    ]},
+    { data: '06/ago/2026 (2)', itens: [
+      'Corrigido: não era possível salvar um contrato de locação com Aluguel = 0,00 (útil para contrato rescindido, cobrando só a multa rescisória) — o sistema tratava "0" como campo vazio e bloqueava.',
+      'O recibo de aluguel e o informe de repasse agora escondem a linha "Aluguel" quando o valor é zero, em vez de mostrar "Aluguel: R$ 0,00" — fica limpo cobrando só a multa (lançada em Encargos) ou outras cobranças.'
+    ]},
     { data: '06/ago/2026', itens: [
       'Novo painel "💰 Acordos com a Parte Contrária" — controla valores que a parte contrária paga (típico de acordos trabalhistas, mas serve para qualquer ação com acordo), à vista ou parcelado.',
       'Cada acordo é vinculado a um processo (puxa cliente e parte contrária automaticamente) e tem percentual de honorários próprio, editável (não precisa ser igual ao contrato de honorários).',
@@ -10578,6 +10788,32 @@ window.cpRenderFixas=cpRenderFixas;
       renderSpark('spark-loc-pend','loc-pend',locPend,'var(--yellow)');
       setCritActive('hc-loc-pend',r.atrasados>0);
     }}catch(e){}
+    // Acordos
+    try{
+      var accM=(function(){var d=new Date();return ('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();})();
+      var accLanc=(window.accLancamentos||[]).filter(function(l){return l['Mes']===accM;});
+      var accReceb=0,accPend=0;
+      accLanc.forEach(function(l){
+        var recebido=parseFloat(String(l['Valor Recebido']||'0').replace(',','.'))||0;
+        accReceb+=recebido;
+        if(l['Status Repasse']!=='Repassado')accPend++;
+      });
+      document.getElementById('hc-acc-receb').textContent=BRLf(accReceb);
+      document.getElementById('hc-acc-pend').textContent=accPend;
+      renderSpark('spark-acc-receb','acc-receb',accReceb,'var(--green)');
+      renderSpark('spark-acc-pend','acc-pend',accPend,'var(--yellow)');
+      var accAtrasadas=accLanc.filter(function(l){return l['Status Recebimento']==='Atrasado';});
+      setCritActive('hc-acc-pend',accAtrasadas.length>0);
+      if(!accAtrasadas.length){setAlertBox('homeAlertAcc',null);}
+      else{
+        var ha='<div class="ha-tit venc">💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s) ('+accM+')</div>'
+          +accAtrasadas.slice(0,8).map(function(l){
+            var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+            return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Previsto'])||0)+' (parte contrária: '+E(ct['Parte Contraria']||'-')+')</div>';
+          }).join('');
+        setAlertBox('homeAlertAcc','💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s)','var(--red)',ha,'abrir Acordos','abrirAcordos()');
+      }
+    }catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
     try{
       var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
@@ -10779,7 +11015,7 @@ window.cpRenderFixas=cpRenderFixas;
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
-    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();}}catch(e){}},800);
+    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();}}catch(e){}},800);
     // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
     setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
