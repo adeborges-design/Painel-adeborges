@@ -8754,6 +8754,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" id="btnLocRepasse" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
+      <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
@@ -9090,6 +9091,80 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL CONFIGURAÇÃO DA TABELA DE IR -->
+<div class="modal-repasse-overlay" id="modalIRConfig">
+  <div class="repasse-wrap" style="max-width:640px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">⚙️ Tabela de IR sobre aluguel</div>
+      <button class="btn-form-cancel" onclick="irConfigFechar()">✕</button>
+    </div>
+    <div style="padding:20px;max-height:75vh;overflow-y:auto">
+      <div class="loc-note" style="margin-bottom:14px">
+        Valores usados para calcular a retenção de IRRF nos informes de repasse. Vêm preenchidos com a tabela vigente
+        (2026), mas a Receita costuma reajustar essas faixas — edite aqui quando mudar, sem precisar mexer no código.
+        As alterações ficam salvas neste navegador.
+      </div>
+      <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent2);margin-bottom:8px">Tabela progressiva mensal</div>
+      <div id="ir-faixas-lista"></div>
+      <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent2);margin:18px 0 8px">Redutor (Lei nº 15.270/2025)</div>
+      <div class="loc-cform" style="padding:0;border:none;background:none">
+        <div class="loc-cfield"><label>Isento até (R$)</label><input class="loc-cinput" id="ir-redutor-isencao" type="number" step="0.01"></div>
+        <div class="loc-cfield"><label>Redutor máximo (R$)</label><input class="loc-cinput" id="ir-redutor-max" type="number" step="0.01"></div>
+        <div class="loc-cfield"><label>Faixa intermediária até (R$)</label><input class="loc-cinput" id="ir-redutor-superior" type="number" step="0.01"></div>
+        <div class="loc-cfield"><label>Constante A da fórmula</label><input class="loc-cinput" id="ir-redutor-a" type="number" step="0.01"></div>
+        <div class="loc-cfield"><label>Constante B da fórmula</label><input class="loc-cinput" id="ir-redutor-b" type="number" step="0.000001"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Fórmula da faixa intermediária: redutor = Constante A − (Constante B × rendimento). Vale entre "Isento até" e "Faixa intermediária até"; acima disso não há redutor.</div>
+
+      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent2);margin-bottom:8px">Testar um valor</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="loc-cfield" style="margin:0"><label>Rendimento mensal (R$)</label><input class="loc-cinput" id="ir-teste-valor" type="number" step="0.01" placeholder="Ex.: 4584.25" oninput="irConfigTestar()"></div>
+        </div>
+        <div id="ir-teste-resultado" style="margin-top:8px;font-size:13px"></div>
+      </div>
+
+      <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <button class="loc-btn" onclick="irConfigRestaurarPadrao()">↺ Restaurar padrão (2026)</button>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="ir-msg" style="font-size:12px"></span>
+          <button class="loc-btn primary" onclick="irConfigSalvar()">💾 Salvar tabela</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COPROPRIETÁRIOS (múltiplos locadores por imóvel, com percentual) -->
+<div class="modal-repasse-overlay" id="modalCoprop">
+  <div class="repasse-wrap" style="max-width:760px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">👥 Proprietários do imóvel</div>
+      <button class="btn-form-cancel" onclick="copropFechar()">✕</button>
+    </div>
+    <div style="padding:20px;max-height:75vh;overflow-y:auto">
+      <input type="hidden" id="coprop-contrato">
+      <div id="coprop-titulo-imovel" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+      <div class="loc-note" style="margin-bottom:14px">
+        Cadastre aqui cada proprietário do imóvel e o percentual de participação de cada um (a soma deve fechar 100%).
+        O <strong>inquilino continua recebendo um único recibo</strong> com o valor total do aluguel — só o <strong>informe de repasse</strong>
+        sai dividido, um para cada proprietário, já com a retenção de IR calculada quando marcada. A retenção na fonte só se
+        aplica quando quem paga o aluguel é pessoa jurídica; avalie caso a caso antes de marcar "Retém IR".
+        <a href="javascript:void(0)" onclick="irConfigAbrir()" style="color:var(--accent2)">⚙️ Ajustar a tabela de IR</a>
+      </div>
+      <div id="coprop-lista"></div>
+      <button type="button" class="loc-btn" onclick="copropAdicionarLinha()" style="margin-top:4px">+ adicionar proprietário</button>
+      <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <span id="coprop-soma" style="font-size:13px;color:var(--muted)"></span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="coprop-msg" style="font-size:12px"></span>
+          <button class="loc-btn primary" onclick="copropSalvarTodos()">💾 Salvar proprietários</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) -->
 <div class="modal-repasse-overlay" id="modalReciboLoc">
   <div class="repasse-wrap">
@@ -9212,6 +9287,7 @@ window.cpRenderFixas=cpRenderFixas;
       var k='?key='+c.apiKey;
       var r1=await fetch(base+encodeURIComponent('LOC_CONTRATOS!A1:Z500')+k);
       var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:Z3000')+k);
+      var r3=await fetch(base+encodeURIComponent('LOC_COPROPRIETARIOS!A1:J500')+k).catch(function(){return null;});
       if(!r1.ok||!r2.ok) throw new Error('HTTP '+r1.status+'/'+r2.status);
       var d1=await r1.json(), d2=await r2.json();
       var rc=d1.values||[], rl=d2.values||[];
@@ -9234,15 +9310,223 @@ window.cpRenderFixas=cpRenderFixas;
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
       DATA={contratos:contratos,lancamentos:lancamentos,desmembramento:desm};
+      try{
+        if(r3&&r3.ok){
+          var d3=await r3.json(); var rcop=d3.values||[];
+          window.locCoprop = rcop.length<2?[]:(function(){var mcop=hidx(rcop[0]);return rcop.slice(1).filter(function(x){return x[0];}).map(function(row){
+            return {ID:String(cell(row,mcop,'ID')),Contrato:String(cell(row,mcop,'Contrato')),Nome:cell(row,mcop,'Nome'),CPF_CNPJ:cell(row,mcop,'CPF_CNPJ'),Percentual:num(cell(row,mcop,'Percentual')),Banco:cell(row,mcop,'Banco'),Agencia:cell(row,mcop,'Agencia'),Conta:cell(row,mcop,'Conta'),Pix:cell(row,mcop,'Pix'),RetemIR:cell(row,mcop,'RetemIR')};
+          });})();
+        } else { window.locCoprop = []; }
+      }catch(e2){ window.locCoprop = []; }
       indexContratos(); live=true;
       var now=new Date(); lastSync=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
       if(dot){dot.className='dot live';} if(txt)txt.textContent='sincronizado com a planilha às '+lastSync;
     }catch(e){
       live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
+      window.locCoprop=[];
       indexContratos();
       if(dot){dot.className='dot local';} if(txt)txt.textContent='falha ao ler a planilha ('+e.message+') — usando dados locais';
     }
     locRefreshMeses(); locRender();
+  };
+  window.locCoprop = window.locCoprop || [];
+
+  // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
+  // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
+  // pela Lei nº 15.270/2025, que zera o imposto até R$5.000/mês e reduz parcialmente até
+  // R$7.350/mês. Só se aplica quando quem paga o aluguel é pessoa jurídica a pessoa física
+  // — quando o locatário também é pessoa física, não há retenção na fonte (o locador recolhe
+  // sozinho pelo Carnê-Leão). Por isso a retenção é opcional por proprietário ("Retém IR?"),
+  // e cabe a você decidir quando ela se aplica no caso concreto.
+  // Os valores abaixo são editáveis em "⚙️ Tabela de IR" (ficam salvos neste navegador),
+  // já que a Receita costuma reajustar essas faixas de tempos em tempos.
+  var IR_PADRAO={
+    faixas:[
+      {limite:2428.80,aliquota:0,deduzir:0},
+      {limite:2826.65,aliquota:7.5,deduzir:182.16},
+      {limite:3751.05,aliquota:15,deduzir:394.16},
+      {limite:4664.68,aliquota:22.5,deduzir:675.49},
+      {limite:null,aliquota:27.5,deduzir:908.73}
+    ],
+    redutorLimiteIsencao:5000,redutorMaximo:312.89,redutorLimiteSuperior:7350,
+    redutorConstanteA:978.62,redutorConstanteB:0.133145
+  };
+  function irTabelaAtual(){
+    try{var s=localStorage.getItem('lexflow_tabela_ir');if(s)return Object.assign({},IR_PADRAO,JSON.parse(s));}catch(e){}
+    return IR_PADRAO;
+  }
+  function locCalcularIR(rendimentoMensal){
+    var r=num(rendimentoMensal);
+    if(r<=0)return 0;
+    var t=irTabelaAtual();
+    var aliquota=0,deduzir=0;
+    for(var i=0;i<t.faixas.length;i++){
+      var f=t.faixas[i];
+      if(f.limite==null||r<=f.limite){aliquota=f.aliquota/100;deduzir=f.deduzir;break;}
+    }
+    var impostoBruto=Math.max(r*aliquota-deduzir,0);
+    var redutor=0;
+    if(r<=t.redutorLimiteIsencao)redutor=Math.min(impostoBruto,t.redutorMaximo);
+    else if(r<=t.redutorLimiteSuperior)redutor=Math.max(t.redutorConstanteA-(t.redutorConstanteB*r),0);
+    return Math.round(Math.max(impostoBruto-redutor,0)*100)/100;
+  }
+  window.locCalcularIR=locCalcularIR;
+
+  // ---------- TELA DE CONFIGURAÇÃO DA TABELA DE IR ----------
+  window.irConfigAbrir=function(){
+    var t=irTabelaAtual();
+    var lista=document.getElementById('ir-faixas-lista');
+    lista.innerHTML=t.faixas.map(function(f,idx){
+      return '<div class="loc-cform" style="padding:0;border:none;background:none;margin-bottom:8px" data-idx="'+idx+'">'
+        +'<div class="loc-cfield"><label>Até quanto (R$)'+(f.limite==null?' <span style="color:var(--muted);font-weight:400">— última faixa, sem limite</span>':'')+'</label><input class="loc-cinput ir-limite" type="number" step="0.01" value="'+(f.limite==null?'':f.limite)+'" placeholder="sem limite"'+(f.limite==null?' disabled':'')+'></div>'
+        +'<div class="loc-cfield"><label>Alíquota (%)</label><input class="loc-cinput ir-aliquota" type="number" step="0.01" value="'+f.aliquota+'"></div>'
+        +'<div class="loc-cfield"><label>Parcela a deduzir (R$)</label><input class="loc-cinput ir-deduzir" type="number" step="0.01" value="'+f.deduzir+'"></div>'
+        +'</div>';
+    }).join('');
+    document.getElementById('ir-redutor-isencao').value=t.redutorLimiteIsencao;
+    document.getElementById('ir-redutor-max').value=t.redutorMaximo;
+    document.getElementById('ir-redutor-superior').value=t.redutorLimiteSuperior;
+    document.getElementById('ir-redutor-a').value=t.redutorConstanteA;
+    document.getElementById('ir-redutor-b').value=t.redutorConstanteB;
+    document.getElementById('ir-msg').textContent='';
+    document.getElementById('ir-teste-resultado').textContent='';
+    document.getElementById('modalIRConfig').classList.add('open');
+  };
+  window.irConfigFechar=function(){document.getElementById('modalIRConfig').classList.remove('open');};
+  window.irConfigSalvar=function(){
+    var faixas=Array.from(document.querySelectorAll('#ir-faixas-lista > div')).map(function(div,idx){
+      var limiteEl=div.querySelector('.ir-limite');
+      var ultimaFaixa=idx===document.querySelectorAll('#ir-faixas-lista > div').length-1;
+      return {
+        limite: ultimaFaixa?null:num(limiteEl.value),
+        aliquota: num(div.querySelector('.ir-aliquota').value),
+        deduzir: num(div.querySelector('.ir-deduzir').value)
+      };
+    });
+    var tabela={
+      faixas:faixas,
+      redutorLimiteIsencao:num(document.getElementById('ir-redutor-isencao').value),
+      redutorMaximo:num(document.getElementById('ir-redutor-max').value),
+      redutorLimiteSuperior:num(document.getElementById('ir-redutor-superior').value),
+      redutorConstanteA:num(document.getElementById('ir-redutor-a').value),
+      redutorConstanteB:num(document.getElementById('ir-redutor-b').value)
+    };
+    try{
+      localStorage.setItem('lexflow_tabela_ir',JSON.stringify(tabela));
+      document.getElementById('ir-msg').innerHTML='<span style="color:var(--green)">✓ Tabela salva neste navegador. Já vale para os próximos cálculos.</span>';
+      if(_reciboLocW&&_reciboLocOwners&&_reciboLocOwners.length)window.reciboLocTrocarProprietario(document.querySelector('#reciboLocCard select')?document.querySelector('#reciboLocCard select').value:0);
+    }catch(e){document.getElementById('ir-msg').innerHTML='<span style="color:var(--red)">Erro ao salvar: '+e.message+'</span>';}
+  };
+  window.irConfigRestaurarPadrao=function(){
+    if(!confirm('Restaurar a tabela de IR para os valores padrão (2026)? Isso apaga qualquer ajuste que você tenha feito.'))return;
+    try{localStorage.removeItem('lexflow_tabela_ir');}catch(e){}
+    irConfigAbrir();
+    document.getElementById('ir-msg').innerHTML='<span style="color:var(--green)">✓ Restaurado para o padrão.</span>';
+  };
+  window.irConfigTestar=function(){
+    var v=num(document.getElementById('ir-teste-valor').value);
+    if(!v){document.getElementById('ir-teste-resultado').textContent='';return;}
+    // aplica os valores JA DIGITADOS na tela (sem precisar salvar primeiro), pra conferir antes de confirmar
+    var faixas=Array.from(document.querySelectorAll('#ir-faixas-lista > div')).map(function(div,idx,arr){
+      var ultimaFaixa=idx===arr.length-1;
+      return {limite:ultimaFaixa?null:num(div.querySelector('.ir-limite').value),aliquota:num(div.querySelector('.ir-aliquota').value),deduzir:num(div.querySelector('.ir-deduzir').value)};
+    });
+    var t={faixas:faixas,redutorLimiteIsencao:num(document.getElementById('ir-redutor-isencao').value),redutorMaximo:num(document.getElementById('ir-redutor-max').value),redutorLimiteSuperior:num(document.getElementById('ir-redutor-superior').value),redutorConstanteA:num(document.getElementById('ir-redutor-a').value),redutorConstanteB:num(document.getElementById('ir-redutor-b').value)};
+    var aliquota=0,deduzir=0;
+    for(var i=0;i<t.faixas.length;i++){var f=t.faixas[i];if(f.limite==null||v<=f.limite){aliquota=f.aliquota/100;deduzir=f.deduzir;break;}}
+    var impostoBruto=Math.max(v*aliquota-deduzir,0);
+    var redutor=0;
+    if(v<=t.redutorLimiteIsencao)redutor=Math.min(impostoBruto,t.redutorMaximo);
+    else if(v<=t.redutorLimiteSuperior)redutor=Math.max(t.redutorConstanteA-(t.redutorConstanteB*v),0);
+    var final=Math.round(Math.max(impostoBruto-redutor,0)*100)/100;
+    document.getElementById('ir-teste-resultado').innerHTML='Imposto bruto: <strong>'+BRL(impostoBruto)+'</strong> — Redutor: <strong>-'+BRL(redutor)+'</strong> — <span style="color:var(--accent2)">IR a reter: <strong>'+BRL(final)+'</strong></span>';
+  };
+
+  // ---------- COPROPRIETÁRIOS (múltiplos locadores por imóvel, com percentual) ----------
+  var copropRemovidos=[];
+  window.copropAbrir=function(contrato){
+    var c=contratosById[contrato]||{};
+    document.getElementById('coprop-contrato').value=contrato;
+    document.getElementById('coprop-titulo-imovel').textContent=contrato+' — '+(c.end||'');
+    copropRemovidos=[];
+    var existentes=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato;});
+    var lista=document.getElementById('coprop-lista');
+    lista.innerHTML='';
+    if(existentes.length){existentes.forEach(function(o){copropAdicionarLinha(o);});}
+    else{copropAdicionarLinha({Nome:c.locador||'',Percentual:100});}
+    copropAtualizarSoma();
+    document.getElementById('coprop-msg').textContent='';
+    document.getElementById('modalCoprop').classList.add('open');
+  };
+  window.copropFechar=function(){document.getElementById('modalCoprop').classList.remove('open');};
+  var copropSeq=0;
+  window.copropAdicionarLinha=function(dados){
+    dados=dados||{};
+    var uid='cp'+(copropSeq++);
+    var lista=document.getElementById('coprop-lista');
+    var div=document.createElement('div');
+    div.className='coprop-linha';
+    div.id=uid;
+    div.style.cssText='border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px';
+    div.innerHTML=
+      '<input type="hidden" class="cp-id" value="'+E(dados.ID||'')+'">'
+      +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+      +'<div class="loc-cfield"><label>Nome do proprietário</label><input class="loc-cinput cp-nome" value="'+E(dados.Nome||'')+'"></div>'
+      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cp-cpf" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Percentual (%)</label><input class="loc-cinput cp-pct" type="number" step="0.01" value="'+E(dados.Percentual||'')+'" oninput="copropAtualizarSoma()"></div>'
+      +'<div class="loc-cfield"><label>Banco</label><input class="loc-cinput cp-banco" value="'+E(dados.Banco||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Agência</label><input class="loc-cinput cp-agencia" value="'+E(dados.Agencia||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Conta</label><input class="loc-cinput cp-conta" value="'+E(dados.Conta||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Chave Pix</label><input class="loc-cinput cp-pix" value="'+E(dados.Pix||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Retém IR na fonte?</label><select class="loc-cinput cp-ir"><option value="Não"'+(String(dados.RetemIR||'').toLowerCase()!=='sim'?' selected':'')+'>Não</option><option value="Sim"'+(String(dados.RetemIR||'').toLowerCase()==='sim'?' selected':'')+'>Sim</option></select></div>'
+      +'</div>'
+      +'<button type="button" class="loc-btn" style="margin-top:8px;color:var(--red);border-color:var(--red);padding:5px 12px;font-size:12px" onclick="copropRemoverLinha(\''+uid+'\')">🗑️ remover este proprietário</button>';
+    lista.appendChild(div);
+  };
+  window.copropRemoverLinha=function(uid){
+    var div=document.getElementById(uid);
+    if(!div)return;
+    var idEl=div.querySelector('.cp-id');
+    if(idEl&&idEl.value)copropRemovidos.push(idEl.value);
+    div.remove();
+    copropAtualizarSoma();
+  };
+  window.copropAtualizarSoma=function(){
+    var soma=0;
+    document.querySelectorAll('#coprop-lista .cp-pct').forEach(function(inp){soma+=num(inp.value);});
+    var el=document.getElementById('coprop-soma');
+    var ok=Math.abs(soma-100)<0.01;
+    el.innerHTML='Soma dos percentuais: <strong style="color:'+(ok?'var(--green)':'var(--red)')+'">'+soma.toFixed(2)+'%</strong>'+(ok?' ✓':' — deveria somar 100%');
+  };
+  window.copropSalvarTodos=function(){
+    var contrato=document.getElementById('coprop-contrato').value;
+    var msgEl=document.getElementById('coprop-msg');
+    if(!live){msgEl.textContent='Configure a planilha (Config) para salvar.';msgEl.style.color='var(--red)';return;}
+    var linhas=Array.from(document.querySelectorAll('#coprop-lista .coprop-linha'));
+    if(!linhas.length){msgEl.textContent='Adicione ao menos um proprietário.';msgEl.style.color='var(--red)';return;}
+    var soma=0;
+    var pendentes=linhas.length+copropRemovidos.length;
+    if(pendentes===0){msgEl.textContent='Nada para salvar.';return;}
+    msgEl.textContent='⏳ salvando...'; msgEl.style.color='var(--muted)';
+    function checarFim(){pendentes--;if(pendentes<=0){
+      msgEl.innerHTML='<span style="color:var(--green)">✓ Salvo!</span>';
+      setTimeout(function(){carregarAlugueis();copropFechar();},1200);
+    }}
+    linhas.forEach(function(div){
+      var idEl=div.querySelector('.cp-id');
+      var campos={
+        'Contrato':contrato,'Nome':div.querySelector('.cp-nome').value.trim(),'CPF_CNPJ':div.querySelector('.cp-cpf').value.trim(),
+        'Percentual':num(div.querySelector('.cp-pct').value),'Banco':div.querySelector('.cp-banco').value.trim(),
+        'Agencia':div.querySelector('.cp-agencia').value.trim(),'Conta':div.querySelector('.cp-conta').value.trim(),
+        'Pix':div.querySelector('.cp-pix').value.trim(),'RetemIR':div.querySelector('.cp-ir').value
+      };
+      var acao=idEl.value?'atualizar_loccop':'lancar_loccop';
+      var body={acao:acao,campos:campos}; if(idEl.value)body.id=idEl.value;
+      fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}).then(checarFim).catch(checarFim);
+    });
+    copropRemovidos.forEach(function(id){
+      fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_loccop',id:id})}).then(checarFim).catch(checarFim);
+    });
   };
 
   // ---------- LISTA / OVERRIDES ----------
@@ -9624,6 +9908,43 @@ window.cpRenderFixas=cpRenderFixas;
     if(!dia||p.length!==2)return '';
     return (dia.length===1?'0'+dia:dia)+'/'+p[0]+'/'+p[1];
   }
+  var _reciboLocOwners=[],_reciboLocW=null,_reciboLocC=null,_reciboLocContratoNum=null;
+  // Monta os valores do informe de repasse para UM proprietário específico: sua fatia
+  // percentual do repasse total do imóvel, com IR descontado se marcado para ele.
+  function reciboLocDadosProprietario(w,c,owner){
+    var itensCondo=reciboLocItensCondo(w);
+    var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return '<div>(+) '+it[0]+': <strong>'+BRL(it[1])+'</strong></div>';}).join('');
+    var repTotal=effRep(w);
+    var pct=num(owner.Percentual);
+    var baseOwner=Math.round(repTotal*pct/100*100)/100;
+    var retemIR=String(owner.RetemIR||'').toLowerCase()==='sim';
+    var irValor=retemIR?locCalcularIR(baseOwner):0;
+    var liquido=Math.round((baseOwner-irValor)*100)/100;
+    var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel, mês de referência indicado.</div>';
+    var valoresHtml=introValores
+      +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
+      +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
+      +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
+      +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
+      +linhasCondoRep
+      +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
+      +(w.outrasValor?'<div>(+) '+E(w.outrasDesc||'Outras cobranças')+': <strong>'+BRL(w.outrasValor)+'</strong></div>':'')
+      +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
+      +'<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.2)">(=) Total do repasse do imóvel (100%): <strong>'+BRL(repTotal)+'</strong></div>'
+      +'<div>Participação de '+E(owner.Nome)+': <strong>'+pct+'%</strong> = <strong>'+BRL(baseOwner)+'</strong></div>'
+      +(retemIR?'<div>(−) IRRF retido na fonte: <strong>-'+BRL(irValor)+'</strong></div>':'');
+    var contaHtml=reciboLocContaHtml({titular:owner.Nome||'',banco:owner.Banco||'',agencia:owner.Agencia||'',conta:owner.Conta||'',pix:owner.Pix||''});
+    var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido':'')+'</div>';
+    return {valoresHtml:valoresHtml,totalValor:liquido,totalLabel:retemIR?'Total líquido repassado (após IR)':'Total repassado',totalRodape:totalRodape,contaHtml:contaHtml};
+  }
+  window.reciboLocTrocarProprietario=function(idx){
+    var owner=_reciboLocOwners[parseInt(idx)];
+    if(!owner||!_reciboLocW)return;
+    var d=reciboLocDadosProprietario(_reciboLocW,_reciboLocC,owner);
+    document.getElementById('reciboLocValoresSecao').innerHTML='<div class="parc-section-label">Valores</div><div class="parc-box">'+d.valoresHtml+'</div>';
+    document.getElementById('reciboLocTotalSecao').innerHTML='<div class="parc-section-label">'+d.totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(d.totalValor)+'</strong>'+d.totalRodape+'</div>';
+    document.getElementById('reciboLocContaSecao').innerHTML='<div class="parc-section-label">Dados bancários do proprietário (repasse)</div><div class="parc-box">'+d.contaHtml+'</div>';
+  };
   window.abrirReciboLoc=function(contrato,tipo){
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!w){alert('Não há lançamento deste contrato no mês selecionado.');return;}
@@ -9681,6 +10002,24 @@ window.cpRenderFixas=cpRenderFixas;
       disclaimer='';
     }
 
+    // Se o imóvel tem coproprietários cadastrados, o informe de repasse (não o recibo do
+    // inquilino) é dividido: cada proprietário recebe o seu percentual, com IR calculado
+    // quando marcado. Guarda os dados p/ o seletor poder trocar de proprietário sem reabrir.
+    var owners=(tipo!=='aluguel')?(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato;}):[];
+    _reciboLocOwners=owners; _reciboLocW=w; _reciboLocC=c; _reciboLocContratoNum=contrato;
+    var ownerSelectorHtml='';
+    if(owners.length){
+      var somaPct=owners.reduce(function(s,o){return s+num(o.Percentual);},0);
+      ownerSelectorHtml='<div class="parc-section entr-no-print"><div class="parc-section-label">Proprietário (imóvel com '+owners.length+' coproprietários'+(Math.abs(somaPct-100)>0.5?' — atenção: percentuais somam '+somaPct.toFixed(1)+'%, não 100%':'')+')</div>'
+        +'<select class="loc-cinput" onchange="reciboLocTrocarProprietario(this.value)" style="width:100%">'
+        +owners.map(function(o,idx){return '<option value="'+idx+'">'+E(o.Nome)+' — '+num(o.Percentual)+'%</option>';}).join('')
+        +'</select></div>';
+      var d=reciboLocDadosProprietario(w,c,owners[0]);
+      titulo='Informe de Repasse'; badgeHtml='';
+      valoresHtml=d.valoresHtml; totalValor=d.totalValor; totalLabel=d.totalLabel; totalRodape=d.totalRodape;
+      contaTitulo='Dados bancários do proprietário (repasse)'; contaHtml=d.contaHtml;
+    }
+
     document.getElementById('reciboLocTitulo').textContent=titulo;
     document.getElementById('reciboLocCard').innerHTML=
       '<div class="parc-header">'
@@ -9689,12 +10028,12 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>'
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
-      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>'
+      +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
       +'<div class="parc-section"><div class="parc-section-label">Locatário</div><div class="parc-box">'+E(c.locatario||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocatario||'—')+'</div></div>'
-      +'<div class="parc-section"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
-      +'<div class="parc-section"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
+      +'<div class="parc-section" id="reciboLocValoresSecao"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
+      +'<div class="parc-section" id="reciboLocTotalSecao"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
       +vencSection
-      +'<div class="parc-section"><div class="parc-section-label">'+contaTitulo+'</div><div class="parc-box">'+contaHtml+'</div></div>'
+      +'<div class="parc-section" id="reciboLocContaSecao"><div class="parc-section-label">'+contaTitulo+'</div><div class="parc-box">'+contaHtml+'</div></div>'
       +(disclaimer?'<div class="parc-section" style="margin-bottom:0"><div style="font-size:11px;color:#a8c4e8">'+disclaimer+'</div></div>':'')
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
@@ -9864,7 +10203,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
-        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
+        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
@@ -10461,6 +10800,15 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (4)', itens: [
+      'A tabela de IR usada nos informes de repasse agora é editável — botão "⚙️ Tabela de IR" na barra de Locações (ou o atalho dentro do cadastro de proprietários). Dá pra ajustar as 5 faixas da tabela progressiva e os valores do redutor da Lei 15.270/2025 quando a Receita reajustar, sem precisar mexer no código. Tem também um testador rápido ("digite um valor, veja o IR calculado na hora") e um botão pra restaurar os valores padrão de 2026 se precisar.'
+    ]},
+    { data: '07/ago/2026 (3)', itens: [
+      'Novo: imóveis com múltiplos proprietários. Cadastre cada um (nome, CPF/CNPJ, percentual, dados bancários próprios) no botão "👥 proprietários" da lista de contratos — a soma dos percentuais precisa fechar 100%.',
+      'O informe de repasse agora mostra um seletor pra trocar entre os proprietários: cada um vê só a sua fatia (percentual × repasse total do imóvel), com os próprios dados bancários.',
+      'Retenção de IR na fonte por proprietário (opcional, "Retém IR?" no cadastro): calcula automaticamente pela tabela progressiva mensal de 2026, já com o redutor da Lei 15.270/2025 (isento até R$5.000, redução parcial até R$7.350). A retenção só se aplica quando o locatário é pessoa jurídica — avalie caso a caso antes de marcar.',
+      'O recibo do inquilino não muda em nada: continua mostrando só o valor total do aluguel, independente de quantos proprietários o imóvel tiver.'
+    ]},
     { data: '07/ago/2026 (2)', itens: [
       'Controle de recebidos/repasses em Locações agora é filtrável: clique em qualquer chip (Recebidos, Pendentes, Atrasados, Repassados...) ou nos cards "Em caixa, aguardando repasse" e "Já repassado aos locadores" para filtrar a lista na hora — clique de novo para limpar o filtro.',
       'Isso resolve especificamente "quais aluguéis já recebi mas ainda preciso repassar": clique no card roxo "Em caixa, aguardando repasse" e a lista mostra só esses.'
