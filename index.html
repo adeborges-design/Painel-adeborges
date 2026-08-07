@@ -5720,7 +5720,9 @@ function accRefreshMeses() {
 // ---------- ACORDOS CADASTRADOS ----------
 window.accToggleContratos = function () {
   var s = document.getElementById('accContratosSection');
-  s.classList.toggle('loc-hidden');
+  var hide = !s.classList.contains('loc-hidden');
+  s.classList.toggle('loc-hidden', hide);
+  document.getElementById('btnAccContratos').classList.toggle('active', !hide);
 };
 
 window.accPreencherDoProcesso = function () {
@@ -5741,7 +5743,7 @@ window.accNovoContrato = function () {
   document.getElementById('ac-ativo').value = 'Sim';
   document.getElementById('accCFormTitle').textContent = 'Novo acordo';
   document.getElementById('ac-msg').textContent = '';
-  document.getElementById('accContratosSection').classList.remove('loc-hidden');
+  document.getElementById('accContratosSection').classList.remove('loc-hidden'); document.getElementById('btnAccContratos').classList.add('active');
 };
 
 window.accEditarContrato = function (id) {
@@ -5768,7 +5770,7 @@ window.accEditarContrato = function (id) {
   document.getElementById('ac-obs').value = c['Observacoes'] || '';
   document.getElementById('accCFormTitle').textContent = 'Editar acordo';
   document.getElementById('ac-msg').textContent = '';
-  document.getElementById('accContratosSection').classList.remove('loc-hidden');
+  document.getElementById('accContratosSection').classList.remove('loc-hidden'); document.getElementById('btnAccContratos').classList.add('active');
 };
 
 window.accSalvarContrato = function () {
@@ -5847,6 +5849,17 @@ function accRenderContratos() {
   var tb = document.getElementById('accContratosTbody');
   if (!tb) return;
   tb.innerHTML = accContratos.map(function (c) {
+    var lancDoAcordo = accLancamentos.filter(function (l) { return String(l['Contrato']) === String(c['ID']); });
+    var totalRecebido = 0, totalRepassado = 0, totalRepassePendente = 0;
+    lancDoAcordo.forEach(function (l) {
+      var recebido = accNum(l['Valor Recebido']);
+      var repasse = accNum(l['Valor Repasse']);
+      totalRecebido += recebido;
+      if (l['Status Repasse'] === 'Repassado') totalRepassado += repasse;
+      else if (recebido > 0) totalRepassePendente += repasse;
+    });
+    var totalAcordo = accNum(c['Valor Total Acordo']);
+    var faltaReceber = Math.max(totalAcordo - totalRecebido, 0);
     return '<tr>'
       + '<td>' + accE(c['Nr Processo']) + '</td>'
       + '<td>' + accE(c['Cliente']) + '</td>'
@@ -5854,10 +5867,12 @@ function accRenderContratos() {
       + '<td class="loc-money">' + accBRL(c['Valor Total Acordo']) + '</td>'
       + '<td style="text-align:center">' + accE(c['Numero Parcelas']) + '</td>'
       + '<td style="text-align:center">' + accE(c['Percentual Honorarios']) + '%</td>'
+      + '<td class="loc-money"><span style="color:var(--green)">' + accBRL(totalRecebido) + '</span><br><span style="color:var(--muted);font-size:11px">falta ' + accBRL(faltaReceber) + '</span></td>'
+      + '<td class="loc-money"><span style="color:var(--accent2)">' + accBRL(totalRepassado) + '</span><br><span style="color:var(--yellow);font-size:11px">pendente ' + accBRL(totalRepassePendente) + '</span></td>'
       + '<td style="text-align:center">' + accE(c['Ativo']) + '</td>'
       + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" title="Gerar todas as parcelas de uma vez, conforme a frequência" onclick="accGerarTodasParcelas(\'' + accE(c['ID']) + '\')">🗓️ gerar parcelas</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
       + '</tr>';
-  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhum acordo cadastrado.</td></tr>';
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Nenhum acordo cadastrado.</td></tr>';
 }
 
 // ---------- GERAR MÊS SEGUINTE ----------
@@ -8635,6 +8650,8 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-btn:hover{border-color:var(--accent);color:var(--accent)}
   .loc-btn.primary{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent)}
   .loc-btn.primary:hover{background:var(--accent2);color:#fff}
+  .loc-btn.active{background:var(--accent2);color:#0d1525;font-weight:700;border-color:var(--accent2)}
+  .loc-btn.active:hover{background:var(--accent2);opacity:.9}
   .loc-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin:22px 0 12px}
   .loc-section-title:first-of-type{margin-top:8px}
   .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
@@ -8709,10 +8726,10 @@ window.cpRenderFixas=cpRenderFixas;
         <select class="loc-select" id="locMesSel" onchange="locRender()"></select>
       </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
-      <button class="loc-btn" onclick="locToggleContratos()">📋 Contratos</button>
+      <button class="loc-btn" id="btnLocContratos" onclick="locToggleContratos()">📋 Contratos</button>
       <button class="loc-btn" onclick="locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
       <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
-      <button class="loc-btn" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
+      <button class="loc-btn" id="btnLocRepasse" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
     </div>
@@ -8875,7 +8892,7 @@ window.cpRenderFixas=cpRenderFixas;
         <select class="loc-select" id="accMesSel" onchange="accRender()"></select>
       </div>
       <button class="loc-btn primary" onclick="accNovoContrato()">💰 Novo acordo</button>
-      <button class="loc-btn" onclick="accToggleContratos()">📋 Acordos cadastrados</button>
+      <button class="loc-btn" id="btnAccContratos" onclick="accToggleContratos()">📋 Acordos cadastrados</button>
       <button class="loc-btn" onclick="accGerarProximoMes()">➕ Gerar mês seguinte</button>
       <button class="loc-btn" onclick="accExportCSV()">⬇️ Exportar CSV</button>
     </div>
@@ -8947,7 +8964,7 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
       </div>
       <div class="loc-table-wrap">
-        <table class="loc-table"><thead><tr><th>Processo</th><th>Cliente</th><th>Parte Contrária</th><th style="text-align:right">Valor Total</th><th style="text-align:center">Parcelas</th><th style="text-align:center">Honorários (%)</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
+        <table class="loc-table"><thead><tr><th>Processo</th><th>Cliente</th><th>Parte Contrária</th><th style="text-align:right">Valor Total</th><th style="text-align:center">Parcelas</th><th style="text-align:center">Honorários (%)</th><th style="text-align:right">Recebido</th><th style="text-align:right">Repassado</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
         <tbody id="accContratosTbody"></tbody></table>
       </div>
     </div>
@@ -9336,7 +9353,7 @@ window.cpRenderFixas=cpRenderFixas;
     lst.forEach(function(l){var c=contratosById[l.contrato]||{};var nome=c.locador||'—';byLoc[nome]=byLoc[nome]||{pago:0,itens:[]};var rep=effRep(l);if(l.statusRep==='Repassado')byLoc[nome].pago+=rep;byLoc[nome].itens.push({loc:c.locatario||l.contrato,rep:rep,st:l.statusRep});});
     document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Repassado'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>Já repassado</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
   }
-  window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
+  window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);document.getElementById('btnLocRepasse').classList.toggle('active',showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
   window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();};
 
   // ---------- RESUMO DOS LOCADORES (estrutural, por contrato ativo) ----------
@@ -9792,7 +9809,7 @@ window.cpRenderFixas=cpRenderFixas;
   function n2(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
   // ---------- CONTRATOS (cadastro / edição) ----------
-  window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);if(!hide)locRenderContratos();};
+  window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);document.getElementById('btnLocContratos').classList.toggle('active',!hide);if(!hide)locRenderContratos();};
   function locRenderContratos(){
     var tb=document.getElementById('locContratosTbody');
     var listaOrdenada=DATA.contratos.slice().sort(function(a,b){return String(a.locador||'').localeCompare(String(b.locador||''),'pt-BR',{sensitivity:'base'});});
@@ -10402,6 +10419,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '06/ago/2026 (10)', itens: [
+      'Botões "Acordos cadastrados", "Contratos" e "Repasse por locador (mês)" agora ficam destacados (cor dourada) quando a seção correspondente está aberta — antes não dava pra saber pelo botão se já estava expandido ou não.'
+    ]},
+    { data: '06/ago/2026 (9)', itens: [
+      'Adicionado totalizador na lista de "Acordos cadastrados": cada acordo agora mostra o total já Recebido (com o que ainda Falta receber embaixo) e o total já Repassado ao cliente (com o Pendente de repasse embaixo) — soma de todas as parcelas do acordo inteiro, não só do mês selecionado.'
+    ]},
     { data: '06/ago/2026 (8)', itens: [
       'Corrigido problema sério: todas as gravações de Acordos (criar acordo, gerar parcelas, marcar recebido/repassado) usavam um modo que escondia qualquer erro — se o Apps Script recusasse, o painel mesmo assim dizia "Salvo!". Agora mostra o erro de verdade, incluindo um lembrete de conferir se o Código.gs foi colado e uma NOVA VERSÃO implantada.',
       'Corrigido mais um ponto com o mesmo bug de tipo de ID (número vs texto) na geração de parcelas mês a mês.'
