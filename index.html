@@ -10436,6 +10436,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026', itens: [
+      'Corrigido: ao gerar o mês, a coluna de Repasse era gravada com o texto "0,00" (não vazia de verdade), fazendo o sistema tratar isso como "valor definido manualmente" e nunca sugerir o cálculo automático (Aluguel − Taxa + Encargos). Agora fica realmente vazia, e o campo já aparece preenchido com a sugestão — mas continua editável pra ajustar quando precisar.',
+      'Atenção: essa correção só vale para os meses gerados a partir de agora. Os 23 lançamentos de 08/2026 já gerados continuam com "0,00" fixo até você limpar essas células na planilha (aba LOC_LANCAMENTOS, coluna I "Valor Repasse") — depois de limpas, o sistema volta a sugerir o valor sozinho.'
+    ]},
     { data: '06/ago/2026 (12)', itens: [
       'Corrigido: o campo "Observações" do Histórico de Atendimento salvava certo, mas nunca aparecia em lugar nenhum ao ver o histórico — só a Descrição era exibida. Agora aparece em itálico logo abaixo de cada registro.',
       'Gravação de atendimento também deixou de esconder erros (mesmo modo silencioso já corrigido antes em Entregas e Acordos).'
