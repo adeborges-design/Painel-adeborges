@@ -9785,7 +9785,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<span style="font-size:11px;color:var(--muted)">Repetição:</span>'
       +'<select class="loc-cinput cobr-item-tipo" style="width:auto;padding:4px 8px;font-size:12px" onchange="cobrToggleParcelas(this)">'
       +'<option value="pontual"'+(tipo==='pontual'?' selected':'')+'>Só este mês</option>'
-      +'<option value="mensal"'+(tipo==='mensal'?' selected':'')+'>Todo mês (sozinho)</option>'
+      +'<option value="mensal"'+(tipo==='mensal'?' selected':'')+'>Todo mês (repete sozinho, sem digitar de novo)</option>'
       +'<option value="parcelado"'+(tipo==='parcelado'?' selected':'')+'>Parcelado</option>'
       +'</select>'
       +'<span class="cobr-item-parcelas-wrap" style="display:'+(tipo==='parcelado'?'flex':'none')+';gap:6px;align-items:center">'
@@ -10103,9 +10103,14 @@ window.cpRenderFixas=cpRenderFixas;
         if(irO){totalIRCoprop+=irO;nomesIR.push(o.Nome+' (BC: '+BRL(baseO)+')');}
       });
       totalIRCoprop=Math.round(totalIRCoprop*100)/100;
-      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
+      // Itens NEGATIVOS de "outras cobranças" (IPTU, contas de água/luz que você paga e desconta
+      // do locador) são assunto só entre escritório e locador — não aparecem pro inquilino, que só
+      // vê o que efetivamente é cobrado dele (aluguel + itens positivos, como reparo cobrado dele).
+      var itensCondoInquilino=itensCondo.filter(function(it){return (it[1]||0)>0;});
+      var condoTotalInquilino=itensCondoInquilino.reduce(function(s,it){return s+(it[1]||0);},0);
+      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotalInquilino+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
       totalLabel='Total a ser pago';
-      var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
+      var linhasCondo=itensCondoInquilino.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
         +(w.aluguel?'<div>Aluguel: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
@@ -10222,7 +10227,9 @@ window.cpRenderFixas=cpRenderFixas;
         if(irO){totalIRCoprop2+=irO;nomesIR2.push(o.Nome);}
       });
       totalIRCoprop2=Math.round(totalIRCoprop2*100)/100;
-      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0)-totalIRCoprop2;
+      var itensCondoInquilino2=itensCondo.filter(function(it){return (it[1]||0)>0;});
+      var condoTotalInquilino2=itensCondoInquilino2.reduce(function(s,it){return s+(it[1]||0);},0);
+      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotalInquilino2+(w.iptu||0)-(w.desconto||0)-totalIRCoprop2;
       txt+='*DEMONSTRATIVO / RECIBO DE ALUGUEL*\n';
       txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
@@ -10232,7 +10239,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.aluguel)txt+='Aluguel: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='Juros: '+fmt(w.juros)+'\n';
-      itensCondo.filter(function(it){return it[1];}).forEach(function(it){txt+=it[0]+': '+fmt(it[1])+'\n';});
+      itensCondoInquilino2.forEach(function(it){txt+=it[0]+': '+fmt(it[1])+'\n';});
       if(w.iptu)txt+='IPTU: '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='Desconto: -'+fmt(w.desconto)+'\n';
       if(totalIRCoprop2)txt+='(−) IRRF retido na fonte pelo locatário — '+nomesIR2.join(', ')+': -'+fmt(totalIRCoprop2)+'\n';
@@ -10949,6 +10956,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (11)', itens: [
+      'Recibo do inquilino não mostra mais os itens que só valem entre escritório e locador (IPTU, contas de luz/água que você paga e desconta) — agora ele só vê o aluguel e o que é efetivamente cobrado dele (itens positivos, como um reparo cobrado). O informe do locador continua mostrando tudo, igual antes.',
+      'Esclarecido o texto "Todo mês (sozinho)" nos itens recorrentes de encargos — agora diz "repete sozinho, sem digitar de novo", mais claro.'
+    ]},
     { data: '07/ago/2026 (10)', itens: [
       'Recibo do inquilino agora desconta o IRRF retido na fonte, quando algum proprietário do imóvel está marcado "Retém IR" — reflete que é o locatário (pessoa jurídica) quem retém e recolhe esse imposto, pagando ao escritório já o valor líquido. Mostra de qual(is) proprietário(s) é o IR, com a base de cálculo de cada um. Testado contra o recibo real: bateu exatamente (R$31.359,37 − R$3.403,18 = R$27.956,19).'
     ]},
