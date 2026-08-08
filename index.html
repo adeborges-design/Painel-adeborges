@@ -10028,29 +10028,43 @@ window.cpRenderFixas=cpRenderFixas;
   var _reciboLocOwners=[],_reciboLocW=null,_reciboLocC=null,_reciboLocContratoNum=null;
   // Monta os valores do informe de repasse para UM proprietário específico: sua fatia
   // percentual do repasse total do imóvel, com IR descontado se marcado para ele.
+  // Monta os valores do informe de repasse para UM proprietário específico. O IR incide
+  // SÓ sobre a fatia dele no ALUGUEL (não no repasse todo) — por isso primeiro calcula o
+  // líquido do aluguel (aluguel% − taxa% − IR), e depois soma a fatia de cada encargo
+  // separadamente (multa/juros somam, IPTU/contas descontam, cada um no percentual dele).
   function reciboLocDadosProprietario(w,c,owner){
-    var itensCondo=reciboLocItensCondo(w);
-    var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
-    var repTotal=effRep(w);
     var pct=num(owner.Percentual);
-    var baseOwner=Math.round(repTotal*pct/100*100)/100;
+    var alugShare=Math.round((w.aluguel||0)*pct/100*100)/100;
+    var taxaShare=Math.round((w.taxa||0)*pct/100*100)/100;
     var retemIR=String(owner.RetemIR||'').toLowerCase()==='sim';
-    var irValor=retemIR?locCalcularIR(baseOwner):0;
-    var liquido=Math.round((baseOwner-irValor)*100)/100;
-    var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel, mês de referência indicado.</div>';
+    var irValor=retemIR?locCalcularIR(alugShare):0;
+    var liquidoAluguel=Math.round((alugShare-taxaShare-irValor)*100)/100;
+
+    var multaShare=Math.round((w.multa||0)*pct/100*100)/100;
+    var jurosShare=Math.round((w.juros||0)*pct/100*100)/100;
+    var iptuShare=Math.round((w.iptu||0)*pct/100*100)/100;
+    var descontoShare=Math.round((w.desconto||0)*pct/100*100)/100;
+    var itensCondo=reciboLocItensCondo(w); // condomínio, água, gás... + itens de "outras cobranças" já parseados
+    var linhasEncargos=itensCondo.filter(function(it){return it[1];}).map(function(it){
+      var valorShare=Math.round(it[1]*pct/100*100)/100;
+      return {desc:it[0],valor:valorShare};
+    });
+    var encargosShare=multaShare+jurosShare+iptuShare-descontoShare+linhasEncargos.reduce(function(s,it){return s+it.valor;},0);
+
+    var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação da participação de '+pct+'% de '+E(owner.Nome)+' no aluguel e nos encargos do imóvel, mês de referência indicado.</div>';
     var valoresHtml=introValores
-      +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
-      +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
-      +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
-      +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
-      +linhasCondoRep
-      +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
-      +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
-      +'<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.2)">(=) Total do repasse do imóvel (100%): <strong>'+BRL(repTotal)+'</strong></div>'
-      +'<div>Participação de '+E(owner.Nome)+': <strong>'+pct+'%</strong> = <strong>'+BRL(baseOwner)+'</strong></div>'
-      +(retemIR?'<div>(−) IRRF retido na fonte: <strong>-'+BRL(irValor)+'</strong></div>':'');
+      +(alugShare?'<div>Aluguel recebido ('+pct+'%): <strong>'+BRL(alugShare)+'</strong></div>':'')
+      +(taxaShare?'<div>(−) Taxa de administração ('+pct+'%): <strong>-'+BRL(taxaShare)+'</strong></div>':'')
+      +(retemIR?'<div>(−) IRRF retido na fonte: <strong>-'+BRL(irValor)+'</strong></div>':'')
+      +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">(=) Líquido do aluguel: <strong>'+BRL(liquidoAluguel)+'</strong></div>'
+      +(multaShare?'<div>(+) Multa ('+pct+'%): <strong>'+BRL(multaShare)+'</strong></div>':'')
+      +(jurosShare?'<div>(+) Juros ('+pct+'%): <strong>'+BRL(jurosShare)+'</strong></div>':'')
+      +linhasEncargos.map(function(it){return itemComSinal(it.desc+' ('+pct+'%)',it.valor);}).join('')
+      +(iptuShare?'<div>(+) IPTU ('+pct+'%): <strong>'+BRL(iptuShare)+'</strong></div>':'')
+      +(descontoShare?'<div>(−) Desconto ('+pct+'%): <strong>-'+BRL(descontoShare)+'</strong></div>':'');
     var contaHtml=reciboLocContaHtml({titular:owner.Nome||'',banco:owner.Banco||'',agencia:owner.Agencia||'',conta:owner.Conta||'',pix:owner.Pix||''});
-    var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido':'')+'</div>';
+    var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido sobre o aluguel':'')+'</div>';
+    var liquido=Math.round((liquidoAluguel+encargosShare)*100)/100;
     return {valoresHtml:valoresHtml,totalValor:liquido,totalLabel:retemIR?'Total líquido repassado (após IR)':'Total repassado',totalRodape:totalRodape,contaHtml:contaHtml};
   }
   window.reciboLocTrocarProprietario=function(idx){
@@ -10912,6 +10926,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (9)', itens: [
+      'Corrigida a fórmula do informe por proprietário: o IR agora incide só sobre a fatia dele no ALUGUEL (não no repasse todo com encargos misturados) — Aluguel% − Taxa% − IR primeiro, depois soma/desconta a fatia de cada encargo separadamente (multa, juros, condomínio, IPTU, outras cobranças), cada um no percentual do proprietário. Testado contra o recibo real que você mandou: bateu exatamente (R$15.679,69 de base e R$3.403,18 de IR retido).'
+    ]},
     { data: '07/ago/2026 (8)', itens: [
       'Corrigido bug sério introduzido na última atualização: sobrou código antigo em 7 pontos (recibo do inquilino, informe de repasse, informe por proprietário, e as versões de texto pra WhatsApp/e-mail) que ainda tratava a lista de "outras cobranças" do jeito antigo — causava o texto bruto de armazenamento vazando no recibo (tipo "IPTU::-597.58::parcelado:7:10||...") e o valor somado em dobro no total. Testado reproduzindo o cenário exato do seu print (IPTU parcelado + 4 contas descontando + coproprietária) — saiu limpo, sem duplicar.'
     ]},
