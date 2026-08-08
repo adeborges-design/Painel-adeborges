@@ -8881,7 +8881,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">Outras cobranças</div>
-        <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma ao repasse do locador (ex.: reparo cobrado do inquilino). Valor <strong>negativo</strong> desconta do locador (ex.: conta de luz ou IPTU que você paga e recupera do repasse) — é só digitar com o sinal de menos na frente.</div>
+        <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma ao repasse do locador (ex.: reparo cobrado do inquilino). Valor <strong>negativo</strong> desconta do locador (ex.: conta de luz ou IPTU que você paga e recupera do repasse). Em "Repetição", escolha <strong>"Só este mês"</strong> pra algo pontual, <strong>"Todo mês"</strong> pra algo fixo que se repete sozinho, ou <strong>"Parcelado"</strong> pra IPTU e afins — o sistema avança a parcela sozinho a cada mês gerado, e para automaticamente quando chegar na última.</div>
         <div id="cobr-outras-lista"></div>
         <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
         <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -9768,17 +9768,38 @@ window.cpRenderFixas=cpRenderFixas;
     ['cobr-taxa-leitura','taxaLeitura'],['cobr-fundo-ferias','fundoFerias'],['cobr-decimo-terceiro','decimoTerceiro'],
     ['cobr-iptu','iptu'],['cobr-multa','multa'],['cobr-juros','juros'],['cobr-desconto','desconto']];
   var cobrItemSeq=0;
-  window.cobrAdicionarItem=function(desc,valor){
+  window.cobrAdicionarItem=function(desc,valor,tipo,parcelaAtual,parcelaTotal){
+    tipo=tipo||'pontual';
     var uid='ci'+(cobrItemSeq++);
     var div=document.createElement('div');
     div.className='cobr-item-linha';
     div.id=uid;
-    div.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:6px';
+    div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px';
     div.innerHTML=
-      '<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01" style="flex:2" value="'+E(desc||'')+'">'
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+      +'<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01, IPTU..." style="flex:2" value="'+E(desc||'')+'">'
       +'<input class="loc-cinput cobr-item-valor" type="number" step="0.01" placeholder="-4,05 desconta / 50 soma" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="cobrAtualizarPreview()">'
-      +'<button type="button" class="loc-btn" style="padding:6px 10px;color:var(--red);border-color:var(--red)" onclick="document.getElementById(\''+uid+'\').remove();cobrAtualizarPreview()">🗑️</button>';
+      +'<button type="button" class="loc-btn" style="padding:6px 10px;color:var(--red);border-color:var(--red)" onclick="document.getElementById(\''+uid+'\').remove();cobrAtualizarPreview()">🗑️</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      +'<span style="font-size:11px;color:var(--muted)">Repetição:</span>'
+      +'<select class="loc-cinput cobr-item-tipo" style="width:auto;padding:4px 8px;font-size:12px" onchange="cobrToggleParcelas(this)">'
+      +'<option value="pontual"'+(tipo==='pontual'?' selected':'')+'>Só este mês</option>'
+      +'<option value="mensal"'+(tipo==='mensal'?' selected':'')+'>Todo mês (sozinho)</option>'
+      +'<option value="parcelado"'+(tipo==='parcelado'?' selected':'')+'>Parcelado</option>'
+      +'</select>'
+      +'<span class="cobr-item-parcelas-wrap" style="display:'+(tipo==='parcelado'?'flex':'none')+';gap:6px;align-items:center">'
+      +'<span style="font-size:11px;color:var(--muted)">esta é a parcela</span>'
+      +'<input class="loc-cinput cobr-item-parcela-atual" type="number" min="1" style="width:56px;padding:4px 6px;font-size:12px" value="'+(parcelaAtual||1)+'">'
+      +'<span style="font-size:11px;color:var(--muted)">de</span>'
+      +'<input class="loc-cinput cobr-item-parcela-total" type="number" min="1" style="width:56px;padding:4px 6px;font-size:12px" value="'+(parcelaTotal||1)+'">'
+      +'</span>'
+      +'</div>';
     document.getElementById('cobr-outras-lista').appendChild(div);
+  };
+  window.cobrToggleParcelas=function(sel){
+    var wrap=sel.parentElement.querySelector('.cobr-item-parcelas-wrap');
+    if(wrap)wrap.style.display=sel.value==='parcelado'?'flex':'none';
   };
   window.abrirModalCobrancas=function(contrato){
     var l=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
@@ -9789,7 +9810,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
     document.getElementById('cobr-outras-lista').innerHTML='';
-    parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor);});
+    parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal);});
     cobrAtualizarPreview();
     document.getElementById('modalCobrancas').classList.add('open');
   };
@@ -9806,7 +9827,12 @@ window.cpRenderFixas=cpRenderFixas;
   window.salvarCobrancas=function(){
     var contrato=document.getElementById('cobr-contrato').value;
     var itens=Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).map(function(div){
-      return {desc:div.querySelector('.cobr-item-desc').value.trim(),valor:num(div.querySelector('.cobr-item-valor').value)};
+      return {
+        desc:div.querySelector('.cobr-item-desc').value.trim(),valor:num(div.querySelector('.cobr-item-valor').value),
+        tipo:div.querySelector('.cobr-item-tipo').value,
+        parcelaAtual:parseInt(div.querySelector('.cobr-item-parcela-atual').value)||0,
+        parcelaTotal:parseInt(div.querySelector('.cobr-item-parcela-total').value)||0
+      };
     });
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
@@ -9924,25 +9950,38 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- OUTRAS COBRANÇAS (lista com vários itens; valor negativo desconta do
   // repasse, positivo soma) — resolve o caso de contas de luz/água/IPTU que você paga
   // e desconta do locador, junto com itens que devem ser repassados normalmente.
-  // Guardado como texto simples na mesma coluna de sempre: "descrição::valor||descrição::valor".
+  // Cada item tem uma RECORRÊNCIA: pontual (só este mês), mensal (repete todo mês sozinho)
+  // ou parcelado (repete por N meses, contando a parcela atual, ex.: IPTU 7/10) — o backend
+  // (gerar_mes_loc) carrega isso automaticamente pro mês seguinte, sem precisar redigitar.
+  // Guardado como texto simples: "descrição::valor::tipo::parcelaAtual::parcelaTotal||...".
   function parseOutrasCobrancas(l){
     var bruto=String(l.outrasDesc||'').trim();
     if(!bruto)return [];
     if(bruto.indexOf('::')<0){
       // formato antigo (uma descrição + um valor separado) - mantém funcionando pra registros já existentes
       var v=num(l.outrasValor);
-      return v?[{desc:bruto,valor:v}]:[];
+      return v?[{desc:bruto,valor:v,tipo:'pontual',parcelaAtual:0,parcelaTotal:0}]:[];
     }
     return bruto.split('||').map(function(par){
       var partes=par.split('::');
-      return {desc:(partes[0]||'').trim(),valor:num(partes[1])};
+      return {
+        desc:(partes[0]||'').trim(),valor:num(partes[1]),
+        tipo:partes[2]||'pontual',
+        parcelaAtual:parseInt(partes[3])||0,parcelaTotal:parseInt(partes[4])||0
+      };
     }).filter(function(it){return it.desc||it.valor;});
   }
   function montarOutrasCobrancas(itens){
-    return itens.filter(function(it){return it.desc||it.valor;}).map(function(it){return it.desc.trim()+'::'+num(it.valor);}).join('||');
+    return itens.filter(function(it){return it.desc||it.valor;}).map(function(it){
+      return it.desc.trim()+'::'+num(it.valor)+'::'+(it.tipo||'pontual')+'::'+(it.parcelaAtual||0)+'::'+(it.parcelaTotal||0);
+    }).join('||');
   }
   function somaOutrasCobrancas(l){
     return parseOutrasCobrancas(l).reduce(function(s,it){return s+it.valor;},0);
+  }
+  // Descrição pronta pra exibir (acrescenta "(atual/total)" quando for parcelado)
+  function descComParcela(it){
+    return it.tipo==='parcelado'&&it.parcelaTotal?it.desc+' ('+it.parcelaAtual+'/'+it.parcelaTotal+')':it.desc;
   }
 
   function reciboLocItensCondo(w){
@@ -9956,7 +9995,7 @@ window.cpRenderFixas=cpRenderFixas;
       ['Taxa de leitura',w.taxaLeitura],
       ['Fundo de férias',w.fundoFerias],
       ['13º salário (fundo)',w.decimoTerceiro]
-    ].concat(parseOutrasCobrancas(w).map(function(it){return [it.desc,it.valor];}));
+    ].concat(parseOutrasCobrancas(w).map(function(it){return [descComParcela(it),it.valor];}));
   }
   function reciboLocContaDestino(c){
     if(c.contaRecebimento==='locador'){
@@ -10878,6 +10917,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (7)', itens: [
+      'Itens de "Outras cobranças" em Locações agora têm recorrência: "Só este mês" (pontual), "Todo mês" (repete sozinho) ou "Parcelado" (ex.: IPTU 7/10 — avança pra 8/10 sozinho a cada "Gerar mês seguinte", e para automaticamente ao chegar na última parcela). Antes tudo era pontual e precisava ser redigitado todo mês.',
+      'Testado com o cenário real: IPTU parcelado avançou a parcela sozinho, taxa mensal fixa se repetiu igual, e o item pontual não voltou no mês seguinte.'
+    ]},
     { data: '07/ago/2026 (6)', itens: [
       'Achada a causa raiz real da duplicação de proprietários: ao abrir "👥 proprietários" pela primeira vez, o sistema criava sozinho uma linha usando o nome do Locador do contrato — se isso acontecesse de novo (ex.: reabrir rápido antes da lista atualizar), duplicava. Removida essa criação automática: agora, se não houver proprietário cadastrado, aparece um aviso com um botão para usar o locador do contrato como primeiro proprietário só se você clicar.'
     ]},
