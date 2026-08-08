@@ -5827,7 +5827,7 @@ window.accSalvarContrato = function () {
     'Ativo': document.getElementById('ac-ativo').value,
     'Banco Cliente': document.getElementById('ac-banco').value, 'Agencia Cliente': document.getElementById('ac-agencia').value,
     'Conta Cliente': document.getElementById('ac-conta').value, 'Pix Cliente': document.getElementById('ac-pix').value,
-    'Advogado Parceiro': document.getElementById('ac-parceiroNome').value.trim(), 'Percentual Parceiro': num(document.getElementById('ac-parceiroPct').value),
+    'Advogado Parceiro': document.getElementById('ac-parceiroNome').value.trim(), 'Percentual Parceiro': accNum(document.getElementById('ac-parceiroPct').value),
     'Banco Parceiro': document.getElementById('ac-parceiroBanco').value, 'Agencia Parceiro': document.getElementById('ac-parceiroAgencia').value,
     'Conta Parceiro': document.getElementById('ac-parceiroConta').value, 'Pix Parceiro': document.getElementById('ac-parceiroPix').value,
     'Observacoes': document.getElementById('ac-obs').value
@@ -11023,6 +11023,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (14)', itens: [
+      'Corrigido: o botão "Salvar acordo" tinha parado de funcionar — usei por engano a função de outro módulo (Locações) num dos campos novos do Advogado Parceiro, o que travava o salvamento inteiro com um erro silencioso. Testado de novo salvando um acordo completo (com parceiro, valores em vírgula) e confirmado funcionando.'
+    ]},
     { data: '07/ago/2026 (13)', itens: [
       'Padronizado em TODO o sistema: qualquer campo de valor (dinheiro ou percentual) agora aceita vírgula OU ponto pra centavos — antes só Locações e Acordos aceitavam os dois; o resto (Honorários, Contas a Pagar, Atendimentos, Processos, gerador de recibo PIX) exigia ponto e rejeitava vírgula em silêncio, sem avisar.',
       'Testado campo por campo em todos os módulos (Locações, Acordos, Honorários, Contas a Pagar, Atendimentos, Processos, recibo PIX) digitando com vírgula — todos gravando e calculando certo agora.'
