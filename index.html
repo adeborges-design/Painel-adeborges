@@ -2157,6 +2157,17 @@
 </head>
 <body>
 <script>
+  // Converte texto digitado com vírgula OU ponto pra número — usada em todos os campos
+  // de valor do sistema (agora todos aceitam os dois formatos, não só os de Locações/Acordos
+  // que já tinham isso). Fica em window pra estar disponível em qualquer bloco de script.
+  window.numFlex = function(v){
+    v=String(v==null?'':v).trim();
+    if(!v)return 0;
+    if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}
+    else if(v.indexOf(',')>=0){v=v.replace(',','.');}
+    var n=parseFloat(v);
+    return isNaN(n)?0:n;
+  };
   (function(){
     try{
       if(localStorage.getItem('lexflow_dark_mode')==='1'){document.documentElement.classList.add('dark-mode');}
@@ -2448,7 +2459,7 @@
 
           <div class="hon-field">
             <label>Valor Total do Contrato (R$)</label>
-            <input type="number" class="hon-input" id="hon-valorContrato" min="0" step="0.01" placeholder="0,00">
+            <input type="text" inputmode="decimal" class="hon-input" id="hon-valorContrato" placeholder="0,00">
           </div>
 
           <div class="hon-field">
@@ -2458,12 +2469,12 @@
 
           <div class="hon-field">
             <label>Valor da Entrada (R$)</label>
-            <input type="number" class="hon-input" id="hon-valorEntrada" min="0" step="0.01" placeholder="0,00">
+            <input type="text" inputmode="decimal" class="hon-input" id="hon-valorEntrada" placeholder="0,00">
           </div>
 
           <div class="hon-field">
             <label>Valor das Parcelas (R$)</label>
-            <input type="number" class="hon-input" id="hon-valorParcela" min="0" step="0.01" placeholder="0,00">
+            <input type="text" inputmode="decimal" class="hon-input" id="hon-valorParcela" placeholder="0,00">
           </div>
 
           <div class="hon-field">
@@ -2493,7 +2504,7 @@
 
           <div class="hon-field">
             <label>Valor Recebido (R$) *</label>
-            <input type="number" class="hon-input" id="hon-valorRecebido" min="0" step="0.01" placeholder="0,00">
+            <input type="text" inputmode="decimal" class="hon-input" id="hon-valorRecebido" placeholder="0,00">
           </div>
 
           <div class="hon-field">
@@ -2541,7 +2552,7 @@
 
           <div class="hon-field" id="honRepasseFields" style="display:none">
             <label>Valor Repasse ao Parceiro (R$)</label>
-            <input type="number" class="hon-input" id="hon-valorRepasse" min="0" step="0.01" placeholder="0,00">
+            <input type="text" inputmode="decimal" class="hon-input" id="hon-valorRepasse" placeholder="0,00">
           </div>
 
           <div class="hon-field" id="honStatusRepasseField" style="display:none">
@@ -2942,7 +2953,7 @@
         <div class="form-grid form-grid-3">
           <div class="form-field">
             <label>Valor Total (R$)</label>
-            <input type="number" id="ed-honorarios" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="ed-honorarios">
           </div>
           <div class="form-field">
             <label>Nº de Parcelas</label>
@@ -2950,11 +2961,11 @@
           </div>
           <div class="form-field">
             <label>Valor da Entrada (R$)</label>
-            <input type="number" id="ed-entrada" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="ed-entrada">
           </div>
           <div class="form-field">
             <label>Valor da Parcela (R$)</label>
-            <input type="number" id="ed-valorParcela" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="ed-valorParcela">
           </div>
           <div class="form-field">
             <label>Dia do Vencimento</label>
@@ -3228,7 +3239,7 @@
         <div class="form-grid form-grid-3">
           <div class="form-field">
             <label>Valor Total (R$)</label>
-            <input type="number" id="cad-honorarios" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="cad-honorarios">
           </div>
           <div class="form-field">
             <label>Nº de Parcelas</label>
@@ -3236,11 +3247,11 @@
           </div>
           <div class="form-field">
             <label>Valor da Entrada (R$)</label>
-            <input type="number" id="cad-entrada" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="cad-entrada">
           </div>
           <div class="form-field">
             <label>Valor da Parcela (R$)</label>
-            <input type="number" id="cad-valorParcela" min="0" step="0.01">
+            <input type="text" inputmode="decimal" id="cad-valorParcela">
           </div>
           <div class="form-field">
             <label>Dia do Vencimento</label>
@@ -3413,11 +3424,11 @@
       <div class="recibo-valores-box" style="grid-template-columns:1fr 1fr 160px">
         <div class="recibo-field">
           <label class="recibo-label">Honorários (R$)</label>
-          <input type="number" class="recibo-input" id="recHonorarios" value="0" min="0" step="0.01" oninput="calcTotal()">
+          <input type="text" inputmode="decimal" class="recibo-input" id="recHonorarios" value="0" oninput="calcTotal()">
         </div>
         <div class="recibo-field">
           <label class="recibo-label">Despesas / Custas (R$)</label>
-          <input type="number" class="recibo-input" id="recDespesas" value="0" min="0" step="0.01" oninput="calcTotal()">
+          <input type="text" inputmode="decimal" class="recibo-input" id="recDespesas" value="0" oninput="calcTotal()">
         </div>
         <div class="recibo-pix-area">
           <div class="recibo-pix-label">Pagamento via PIX</div>
@@ -4753,8 +4764,8 @@ function abrirRecibo(uid) {
 }
 
 function calcTotal() {
-  const hon = parseFloat(document.getElementById('recHonorarios').value) || 0;
-  const desp = parseFloat(document.getElementById('recDespesas').value) || 0;
+  const hon = numFlex(document.getElementById('recHonorarios').value) || 0;
+  const desp = numFlex(document.getElementById('recDespesas').value) || 0;
   const total = hon + desp;
   document.getElementById('recTotal').textContent =
     'R$ ' + total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -5143,7 +5154,7 @@ window.atendSalvar = async function (uid) {
     'Observacoes': (document.getElementById('atend-obs') || {}).value || ''
   };
   if (tipo === 'Despesa com o cliente') {
-    campos['Valor'] = (document.getElementById('atend-valor') || {}).value || '';
+    campos['Valor'] = numFlex((document.getElementById('atend-valor') || {}).value || '');
     campos['Reembolsavel'] = (document.getElementById('atend-reemb') || {}).value || 'Não';
     campos['Status Reembolso'] = (document.getElementById('atend-statusReemb') || {}).value || 'Pendente';
   }
@@ -5202,7 +5213,7 @@ function atendRenderModal(uid, loadingMsg) {
     + '<div class="cp-field"><label>Data</label><input id="atend-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
     + '<div class="cp-field cp-full"><label>Descrição *</label><input id="atend-desc" placeholder="Ex.: Cliente ligou perguntando sobre a audiência"></div>'
     + '<div id="atendDespesaFields" style="display:none" class="cp-full"><div class="cp-form" style="padding:0;border:none;margin:0">'
-      + '<div class="cp-field"><label>Valor (R$)</label><input id="atend-valor" type="number" step="0.01" placeholder="0,00"></div>'
+      + '<div class="cp-field"><label>Valor (R$)</label><input id="atend-valor" type="text" inputmode="decimal" placeholder="0,00"></div>'
       + '<div class="cp-field"><label>Reembolsável?</label><select id="atend-reemb"><option value="Não">Não</option><option value="Sim">Sim</option></select></div>'
       + '<div class="cp-field"><label>Status reembolso</label><select id="atend-statusReemb"><option value="Pendente">Pendente</option><option value="Reembolsado">Reembolsado</option></select></div>'
     + '</div></div>'
@@ -5749,7 +5760,7 @@ window.accPreencherDoProcesso = function () {
 window.accNovoContrato = function () {
   document.getElementById('ac-id').value = '';
   document.getElementById('ac-processo').value = '';
-  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-dataInicio', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-obs'].forEach(function (id) {
+  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-dataInicio', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-parceiroNome', 'ac-parceiroPct', 'ac-parceiroBanco', 'ac-parceiroAgencia', 'ac-parceiroConta', 'ac-parceiroPix', 'ac-obs'].forEach(function (id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('ac-frequencia').value = 'mensal';
@@ -5780,6 +5791,12 @@ window.accEditarContrato = function (id) {
   document.getElementById('ac-agencia').value = c['Agencia Cliente'] || '';
   document.getElementById('ac-conta').value = c['Conta Cliente'] || '';
   document.getElementById('ac-pix').value = c['Pix Cliente'] || '';
+  document.getElementById('ac-parceiroNome').value = c['Advogado Parceiro'] || '';
+  document.getElementById('ac-parceiroPct').value = c['Percentual Parceiro'] || '';
+  document.getElementById('ac-parceiroBanco').value = c['Banco Parceiro'] || '';
+  document.getElementById('ac-parceiroAgencia').value = c['Agencia Parceiro'] || '';
+  document.getElementById('ac-parceiroConta').value = c['Conta Parceiro'] || '';
+  document.getElementById('ac-parceiroPix').value = c['Pix Parceiro'] || '';
   document.getElementById('ac-obs').value = c['Observacoes'] || '';
   document.getElementById('accCFormTitle').textContent = 'Editar acordo';
   document.getElementById('ac-msg').textContent = '';
@@ -5810,6 +5827,9 @@ window.accSalvarContrato = function () {
     'Ativo': document.getElementById('ac-ativo').value,
     'Banco Cliente': document.getElementById('ac-banco').value, 'Agencia Cliente': document.getElementById('ac-agencia').value,
     'Conta Cliente': document.getElementById('ac-conta').value, 'Pix Cliente': document.getElementById('ac-pix').value,
+    'Advogado Parceiro': document.getElementById('ac-parceiroNome').value.trim(), 'Percentual Parceiro': num(document.getElementById('ac-parceiroPct').value),
+    'Banco Parceiro': document.getElementById('ac-parceiroBanco').value, 'Agencia Parceiro': document.getElementById('ac-parceiroAgencia').value,
+    'Conta Parceiro': document.getElementById('ac-parceiroConta').value, 'Pix Parceiro': document.getElementById('ac-parceiroPix').value,
     'Observacoes': document.getElementById('ac-obs').value
   };
   msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
@@ -6038,7 +6058,9 @@ window.accRender = function () {
       + '<td style="text-align:center">' + accE(c['Dia Repasse'] || '-') + '</td>'
       + '<td><select class="loc-row-select" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
-      + '<td style="text-align:center"><button class="loc-send-btn" title="Ver/imprimir informe de repasse" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button></td>'
+      + '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
+      + (c['Advogado Parceiro'] ? ' <button class="loc-send-btn" title="Ver/imprimir informe ao advogado parceiro" onclick="accAbrirReciboParceiro(\'' + accE(l['ID']) + '\')">👤</button>' : '')
+      + '</td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>';
 };
@@ -6100,6 +6122,44 @@ window.accSetStatusRepasse = function (id, val) {
 window.accSetDataRepasse = function (id, val) { accAtualizarLancamento(id, { 'Data Repasse': accDtBRfromInput(val) }); };
 
 // ---------- RECIBO (Informe de Repasse) ----------
+window.accAbrirReciboParceiro = function (lancamentoId) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
+  if (!l) { alert('Lançamento não encontrado.'); return; }
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+  if (!c['Advogado Parceiro']) { alert('Este acordo não tem advogado parceiro cadastrado. Edite o acordo em "📋 Acordos cadastrados" para adicionar.'); return; }
+  var honorarios = accNum(l['Valor Honorarios']);
+  var pctParceiro = accNum(c['Percentual Parceiro']);
+  var valorParceiro = Math.round(honorarios * pctParceiro / 100 * 100) / 100;
+
+  var valoresHtml = '<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação da participação do parceiro nos honorários referentes ao acordo abaixo, mês de referência indicado.</div>'
+    + '<div>Honorários do escritório: <strong>' + accBRL(honorarios) + '</strong></div>'
+    + '<div>Participação de ' + accE(c['Advogado Parceiro']) + ' (' + accE(pctParceiro) + '%): <strong>' + accBRL(valorParceiro) + '</strong></div>';
+
+  var contaHtml = (!c['Banco Parceiro'] && !c['Agencia Parceiro'] && !c['Conta Parceiro'] && !c['Pix Parceiro'])
+    ? '<div style="color:#8fadd4">Conta não cadastrada — edite o acordo em 📋 Acordos cadastrados.</div>'
+    : '<div>Titular: <strong>' + accE(c['Advogado Parceiro'] || '') + '</strong></div>'
+      + (c['Banco Parceiro'] ? '<div>Banco: <strong>' + accE(c['Banco Parceiro']) + '</strong></div>' : '')
+      + (c['Agencia Parceiro'] ? '<div>Agência: <strong>' + accE(c['Agencia Parceiro']) + '</strong></div>' : '')
+      + (c['Conta Parceiro'] ? '<div>Conta: <strong>' + accE(c['Conta Parceiro']) + '</strong></div>' : '')
+      + (c['Pix Parceiro'] ? '<div>Chave Pix: <strong>' + accE(c['Pix Parceiro']) + '</strong></div>' : '');
+
+  document.getElementById('reciboAcordoCard').innerHTML =
+    '<div class="parc-header">'
+    + '<div><div class="parc-header-title">Informe ao Advogado Parceiro</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+    + '</div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-section-label">Processo</div><div class="parc-processo-nome">' + accE(c['Cliente'] || '') + '</div><div class="parc-processo-num">Processo nº ' + accE(c['Nr Processo'] || '(sem número)') + ' — Ref. ' + accE(l['Mes'] || '') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Parte Contrária</div><div class="parc-box">' + accE(c['Parte Contraria'] || '—') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Valores</div><div class="parc-box">' + valoresHtml + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Total ao Parceiro</div><div class="parc-tarefa-box"><strong>' + accBRL(valorParceiro) + '</strong>'
+    + '<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao acordo de <strong>' + accE(l['Mes'] || '') + '</strong></div></div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Dados Bancários do Parceiro</div><div class="parc-box">' + contaHtml + '</div></div>'
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
+
+  document.getElementById('modalReciboAcordo').classList.add('open');
+};
+
 window.accAbrirRecibo = function (lancamentoId) {
   var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
   if (!l) { alert('Lançamento não encontrado.'); return; }
@@ -6405,7 +6465,7 @@ function limparHonForm() {
 
 async function salvarHonorario() {
   const uid = document.getElementById('hon-processo').value;
-  const valRecebido = document.getElementById('hon-valorRecebido').value;
+  const valRecebido = numFlex(document.getElementById('hon-valorRecebido').value);
   const parcelaRef = document.getElementById('hon-parcelaRef').value;
 
   if (!uid && !_honEditId) {
@@ -6428,10 +6488,10 @@ async function salvarHonorario() {
     'Nr Processo': p ? p.processo : '',
     'Cliente': p ? p.nome : '',
     'Tipo Contrato': document.getElementById('hon-tipoContrato').value,
-    'Valor Total Contrato': document.getElementById('hon-valorContrato').value,
+    'Valor Total Contrato': numFlex(document.getElementById('hon-valorContrato').value),
     'Número de Parcelas': document.getElementById('hon-numParcelas').value,
-    'Valor da Entrada': document.getElementById('hon-valorEntrada').value,
-    'Valor da Parcela': document.getElementById('hon-valorParcela').value,
+    'Valor da Entrada': numFlex(document.getElementById('hon-valorEntrada').value),
+    'Valor da Parcela': numFlex(document.getElementById('hon-valorParcela').value),
     'Dia Vencimento': document.getElementById('hon-diaVenc').value,
     'Objeto do Contrato': document.getElementById('hon-objeto').value,
     'Responsavel Pagamento': document.getElementById('hon-respPagamento').value,
@@ -6445,7 +6505,7 @@ async function salvarHonorario() {
     'Recibo Nr': document.getElementById('hon-recibo').value,
     'Quem Recebeu': document.getElementById('hon-quemRecebeu').value,
     'Parceiro': document.getElementById('hon-parceiro').value,
-    'Valor Repasse Parceiro': document.getElementById('hon-valorRepasse').value,
+    'Valor Repasse Parceiro': numFlex(document.getElementById('hon-valorRepasse').value),
     'Status Repasse': document.getElementById('hon-statusRepasse').value,
     'Observacoes': document.getElementById('hon-obs').value,
   };
@@ -7055,10 +7115,10 @@ async function salvarEdicao() {
     'Data Audiência': inputParaData(document.getElementById('ed-dataAudi').value),
     'Horário Audiência': document.getElementById('ed-horAudi').value,
     'Local da Audiência': document.getElementById('ed-localAudi').value,
-    'Valor dos Honorários': document.getElementById('ed-honorarios').value,
+    'Valor dos Honorários': numFlex(document.getElementById('ed-honorarios').value),
     'Número de parcelas': document.getElementById('ed-parcelas').value,
-    'Valor da parcela de entrada': document.getElementById('ed-entrada').value,
-    'Valor da Parcela': document.getElementById('ed-valorParcela').value,
+    'Valor da parcela de entrada': numFlex(document.getElementById('ed-entrada').value),
+    'Valor da Parcela': numFlex(document.getElementById('ed-valorParcela').value),
     'Dia do Vencimento': document.getElementById('ed-diaVenc').value,
     'Forma de pagamento ': document.getElementById('ed-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('ed-objeto').value,
@@ -7488,10 +7548,10 @@ async function salvarCadastro() {
     'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
     'Link Tribunal': document.getElementById('cad-linkTrib').value,
     'Pasta Drive': document.getElementById('cad-pastaDrive').value,
-    'Valor dos Honorários': document.getElementById('cad-honorarios').value,
+    'Valor dos Honorários': numFlex(document.getElementById('cad-honorarios').value),
     'Número de parcelas': document.getElementById('cad-parcelas').value,
-    'Valor da parcela de entrada': document.getElementById('cad-entrada').value,
-    'Valor da Parcela': document.getElementById('cad-valorParcela').value,
+    'Valor da parcela de entrada': numFlex(document.getElementById('cad-entrada').value),
+    'Valor da Parcela': numFlex(document.getElementById('cad-valorParcela').value),
     'Dia do Vencimento': document.getElementById('cad-diaVenc').value,
     'Forma de pagamento ': document.getElementById('cad-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
@@ -8045,15 +8105,15 @@ function renderContas(){
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
   +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
   +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
-  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
   +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option></select></div>'
   +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
   +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
   +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa 2355</option><option>Itaú Mastercard 6669</option><option>Leroy Merlin Elo 6823</option><option>XP Visa 7503</option><option>Sicredi Mastercard 8727</option><option>Mercado Pago Visa 9390</option></select></div>'
   +'<div class="cp-field"><label>Tipo de conta</label><select id="cp-tipoConta"><option value="Pessoal">Pessoal</option><option value="Escritório">Escritório</option><option value="Locação">Locação (repasse)</option></select></div>'
-  +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
-  +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
   +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
   +'</div><div id="cpLista"></div>';
@@ -8263,7 +8323,7 @@ window.cpEditar=function(id){
 };
 window.cpLancar=async function(){
  var d=document.getElementById('cp-desc').value.trim();
- var v=document.getElementById('cp-valor').value;
+ var v=numFlex(document.getElementById('cp-valor').value);
  var dv=document.getElementById('cp-venc').value;
  var stEl=document.getElementById('cpStatus');
  if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
@@ -8273,8 +8333,8 @@ window.cpLancar=async function(){
  if(cart&&!forma)forma='Cartão de crédito';
  if(/cart[aã]o/i.test(forma)&&!cart){stEl.innerHTML='<span style="color:var(--red)">Selecione qual cartão foi usado (campo "Cartão"), para o saldo do cartão ser atualizado corretamente.</span>';return;}
  stEl.textContent='⏳ salvando...';
- var totd=(document.getElementById('cp-totdiv')||{}).value||'';
- var sald=(document.getElementById('cp-saldodiv')||{}).value||'';
+ var totd=numFlex((document.getElementById('cp-totdiv')||{}).value||'');
+ var sald=numFlex((document.getElementById('cp-saldodiv')||{}).value||'');
  if(document.getElementById('cp-rec').value==='Parcelada'&&totd&&!sald)sald=totd;
  var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Observacoes':document.getElementById('cp-obs').value,'Forma Pagamento':forma,'Banco':(document.getElementById('cp-banco')||{}).value||'','Cartao':cart,'Valor Total Divida':totd,'Saldo Devedor':sald,'Tipo de Conta':(document.getElementById('cp-tipoConta')||{}).value||'Pessoal'};
  var payload;
@@ -8564,12 +8624,12 @@ function cpRenderDrill(nome){
   +'<div class="cp-form" style="margin-bottom:16px">'
   +'<div class="cp-field cp-full"><label>Descrição da compra *</label><input id="cpd-desc" placeholder="Ex.: Compra supermercado"></div>'
   +'<div class="cp-field"><label>Categoria</label><input id="cpd-cat" placeholder="Ex.: Alimentação"></div>'
-  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cpd-valor" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cpd-valor" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cpd-venc" type="date"></div>'
   +'<div class="cp-field"><label>Tipo</label><select id="cpd-rec" onchange="cpdToggleParc()"><option value="Única">À vista</option><option value="Parcelada">Parcelada</option><option value="Mensal">Mensal (recorrente)</option></select></div>'
   +'<div class="cp-field"><label>Tipo de conta</label><select id="cpd-tipoConta"><option value="Pessoal">Pessoal</option><option value="Escritório">Escritório</option><option value="Locação">Locação (repasse)</option></select></div>'
-  +'<div class="cp-field" id="cpdParc1" style="display:none"><label>Valor total da compra (R$)</label><input id="cpd-totdiv" type="number" step="0.01" placeholder="0,00"></div>'
-  +'<div class="cp-field" id="cpdParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cpd-saldodiv" type="number" step="0.01" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpdParc1" style="display:none"><label>Valor total da compra (R$)</label><input id="cpd-totdiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
+  +'<div class="cp-field" id="cpdParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cpd-saldodiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpdStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" onclick="cpLancarCompraCartao(\''+esc(nome)+'\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar compra</button></div>'
   +'</div>'
   +'<div>'+linhas+'</div>';
@@ -8580,14 +8640,14 @@ function cpRenderDrill(nome){
 window.cpdToggleParc=function(){var p=document.getElementById('cpd-rec').value==='Parcelada';['cpdParc1','cpdParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
 window.cpLancarCompraCartao=async function(nome){
  var d=document.getElementById('cpd-desc').value.trim();
- var v=document.getElementById('cpd-valor').value;
+ var v=numFlex(document.getElementById('cpd-valor').value);
  var dv=document.getElementById('cpd-venc').value;
  var stEl=document.getElementById('cpdStatus');
  if(!d||!v||!dv){stEl.innerHTML='<span style="color:var(--red)">Preencha descrição, valor e vencimento.</span>';return;}
  stEl.textContent='⏳ salvando...';
  var rec=document.getElementById('cpd-rec').value;
- var totd=(document.getElementById('cpd-totdiv')||{}).value||'';
- var sald=(document.getElementById('cpd-saldodiv')||{}).value||'';
+ var totd=numFlex((document.getElementById('cpd-totdiv')||{}).value||'');
+ var sald=numFlex((document.getElementById('cpd-saldodiv')||{}).value||'');
  if(rec==='Parcelada'&&totd&&!sald)sald=totd;
  var campos={'Descricao':d,'Categoria':document.getElementById('cpd-cat').value||'Compra no cartão','Fornecedor':'','Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':rec,'Status':'Em aberto','Forma Pagamento':'Cartão de crédito','Cartao':nome,'Valor Total Divida':totd,'Saldo Devedor':sald,'Tipo de Conta':(document.getElementById('cpd-tipoConta')||{}).value||'Pessoal'};
  try{
@@ -8792,7 +8852,7 @@ window.cpRenderFixas=cpRenderFixas;
         <input type="hidden" id="lc-id">
         <div class="loc-cfield half"><label>Nº do Contrato *</label><input class="loc-cinput" id="lc-contrato" placeholder="Ex.: 42.150.1"></div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo"><option>Sim</option><option>Não</option></select></div>
-        <div class="loc-cfield"><label>Taxa Adm (%) *</label><input class="loc-cinput" id="lc-taxa" type="number" step="0.01" placeholder="Ex.: 6"></div>
+        <div class="loc-cfield"><label>Taxa Adm (%) *</label><input class="loc-cinput" id="lc-taxa" type="text" inputmode="decimal" placeholder="Ex.: 6"></div>
         <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" placeholder="Nome do dono do imóvel"></div>
         <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00"></div>
@@ -8809,12 +8869,12 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Conta do locador</label><input class="loc-cinput" id="lc-conta-locador" placeholder="00000-0"></div>
         <div class="loc-cfield half"><label>Chave Pix do locador</label><input class="loc-cinput" id="lc-pix-locador" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
-        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
-        <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="number" step="0.01" placeholder="0,00"></div>
-        <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="number" step="0.01" placeholder="0,00"></div>
-        <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="number" step="0.01" placeholder="Ex.: 2"></div>
+        <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="text" inputmode="decimal" placeholder="Ex.: 2"></div>
         <div class="loc-cfield"><label>&nbsp;</label><input class="loc-cinput" id="lc-spacer" style="visibility:hidden"></div>
         <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
         <div class="loc-cform-actions">
@@ -8860,31 +8920,31 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="cobr-secao full">Aluguel deste mês</div>
         <div class="loc-cfield full">
           <label>Aluguel (R$) <span style="font-weight:400;color:var(--muted)">— pré-preenchido com o valor atual; deixe 0,00 se este mês for só multa rescisória/outras cobranças (contrato encerrado)</span></label>
-          <input class="loc-cinput" id="cobr-aluguel-mes" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()">
+          <input class="loc-cinput" id="cobr-aluguel-mes" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()">
         </div>
         <div class="cobr-secao full">Condomínio</div>
-        <div class="loc-cfield"><label>Cota de condomínio (R$)</label><input class="loc-cinput" id="cobr-condominio" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Água (área privativa)</label><input class="loc-cinput" id="cobr-agua-priv" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Gás (área privativa)</label><input class="loc-cinput" id="cobr-gas-priv" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Água (área comum)</label><input class="loc-cinput" id="cobr-agua-comum" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Gás piscina</label><input class="loc-cinput" id="cobr-gas-piscina" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Energia (área comum)</label><input class="loc-cinput" id="cobr-energia-comum" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Taxa de leitura</label><input class="loc-cinput" id="cobr-taxa-leitura" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Fundo de férias</label><input class="loc-cinput" id="cobr-fundo-ferias" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>13º salário (fundo)</label><input class="loc-cinput" id="cobr-decimo-terceiro" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Cota de condomínio (R$)</label><input class="loc-cinput" id="cobr-condominio" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Água (área privativa)</label><input class="loc-cinput" id="cobr-agua-priv" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Gás (área privativa)</label><input class="loc-cinput" id="cobr-gas-priv" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Água (área comum)</label><input class="loc-cinput" id="cobr-agua-comum" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Gás piscina</label><input class="loc-cinput" id="cobr-gas-piscina" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Energia (área comum)</label><input class="loc-cinput" id="cobr-energia-comum" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Taxa de leitura</label><input class="loc-cinput" id="cobr-taxa-leitura" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Fundo de férias</label><input class="loc-cinput" id="cobr-fundo-ferias" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>13º salário (fundo)</label><input class="loc-cinput" id="cobr-decimo-terceiro" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">IPTU</div>
-        <div class="loc-cfield"><label>Parcela deste mês (R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('cobr-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="cobr-iptu" type="number" step="0.01" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Parcela deste mês (R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('cobr-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="cobr-iptu" type="text" inputmode="decimal" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">Multa e juros (sobre o aluguel)</div>
-        <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
-        <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">Outras cobranças</div>
         <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma ao repasse do locador (ex.: reparo cobrado do inquilino). Valor <strong>negativo</strong> desconta do locador (ex.: conta de luz ou IPTU que você paga e recupera do repasse). Em "Repetição", escolha <strong>"Só este mês"</strong> pra algo pontual, <strong>"Todo mês"</strong> pra algo fixo que se repete sozinho, ou <strong>"Parcelado"</strong> pra IPTU e afins — o sistema avança a parcela sozinho a cada mês gerado, e para automaticamente quando chegar na última.</div>
         <div id="cobr-outras-lista"></div>
         <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
-        <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="number" step="0.01" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div></div>
       </div>
@@ -8961,9 +9021,9 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Cliente *</label><input class="loc-cinput" id="ac-cliente" placeholder="Nome do cliente"></div>
         <div class="loc-cfield half"><label>Parte Contrária *</label><input class="loc-cinput" id="ac-parteContraria" placeholder="Nome de quem paga o acordo"></div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="ac-ativo"><option>Sim</option><option>Não</option></select></div>
-        <div class="loc-cfield"><label>Valor Total do Acordo (R$) *</label><input class="loc-cinput" id="ac-valorTotal" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Valor Total do Acordo (R$) *</label><input class="loc-cinput" id="ac-valorTotal" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Número de Parcelas *</label><input class="loc-cinput" id="ac-numParcelas" type="number" min="1" placeholder="Ex.: 12"></div>
-        <div class="loc-cfield"><label>Percentual de Honorários (%) *</label><input class="loc-cinput" id="ac-percentual" type="number" step="0.01" placeholder="Ex.: 30"></div>
+        <div class="loc-cfield"><label>Percentual de Honorários (%) *</label><input class="loc-cinput" id="ac-percentual" type="text" inputmode="decimal" placeholder="Ex.: 30"></div>
         <div class="loc-cfield"><label>Data da 1ª parcela *</label><input class="loc-cinput" id="ac-dataInicio" type="date"></div>
         <div class="loc-cfield"><label>Frequência de pagamento *</label>
           <select class="loc-cinput" id="ac-frequencia">
@@ -8980,6 +9040,13 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Agência</label><input class="loc-cinput" id="ac-agencia" placeholder="0000"></div>
         <div class="loc-cfield half"><label>Conta</label><input class="loc-cinput" id="ac-conta" placeholder="00000-0"></div>
         <div class="loc-cfield half"><label>Chave Pix</label><input class="loc-cinput" id="ac-pix" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Advogado parceiro (opcional) — recebe parte dos honorários</div>
+        <div class="loc-cfield half"><label>Nome do advogado parceiro</label><input class="loc-cinput" id="ac-parceiroNome" placeholder="Deixe em branco se não houver parceria"></div>
+        <div class="loc-cfield"><label>Percentual sobre os honorários (%)</label><input class="loc-cinput" id="ac-parceiroPct" type="text" inputmode="decimal" placeholder="Ex.: 30"></div>
+        <div class="loc-cfield half"><label>Banco do parceiro</label><input class="loc-cinput" id="ac-parceiroBanco" placeholder="Ex.: Itaú"></div>
+        <div class="loc-cfield half"><label>Agência do parceiro</label><input class="loc-cinput" id="ac-parceiroAgencia" placeholder="0000"></div>
+        <div class="loc-cfield half"><label>Conta do parceiro</label><input class="loc-cinput" id="ac-parceiroConta" placeholder="00000-0"></div>
+        <div class="loc-cfield half"><label>Chave Pix do parceiro</label><input class="loc-cinput" id="ac-parceiroPix" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
         <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="ac-obs"></div>
         <div class="loc-cform-actions">
           <span class="msg" id="ac-msg"></span>
@@ -9039,7 +9106,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="cobr-body" style="grid-template-columns:1fr">
       <div class="cobr-secao full">1) Ano de início da locação (proporcional)</div>
       <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Use quando a locação começou no meio do ano — calcula a parte proporcional do IPTU anual e divide pelos meses de aluguel que ainda serão cobrados até dezembro.</div>
-      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual" type="number" step="0.01" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar(false)"></div>
+      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual" type="text" inputmode="decimal" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar(false)"></div>
       <div class="loc-cfield"><label>Data de início da locação</label><input class="loc-cinput" id="calciptu-data" type="date" oninput="calcIptuAtualizar(true)"></div>
       <div class="loc-cfield"><label>Aluguel é vencido (1ª cobrança ~30 dias após o início)?</label>
         <select class="loc-cinput" id="calciptu-vencido" onchange="calcIptuAtualizar(true)">
@@ -9058,7 +9125,7 @@ window.cpRenderFixas=cpRenderFixas;
 
       <div class="cobr-secao full" style="margin-top:14px">2) Anos completos seguintes (regime normal do carnê)</div>
       <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Use a partir do 2º ano da locação (ou quando o IPTU cobre o ano inteiro) — divide o valor anual pelo número de parcelas do carnê da prefeitura.</div>
-      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual2" type="number" step="0.01" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar2()"></div>
+      <div class="loc-cfield"><label>Valor anual do IPTU (R$)</label><input class="loc-cinput" id="calciptu-anual2" type="text" inputmode="decimal" placeholder="Ex.: 3000,00" oninput="calcIptuAtualizar2()"></div>
       <div class="loc-cfield"><label>Número de parcelas do carnê</label><input class="loc-cinput" id="calciptu-parcelas" type="number" step="1" min="1" value="10" oninput="calcIptuAtualizar2()"></div>
       <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
         <div style="font-size:15px">Valor de cada parcela mensal: <strong id="calciptu-resultado2" style="color:var(--accent2)">R$ 0,00</strong></div>
@@ -9109,18 +9176,18 @@ window.cpRenderFixas=cpRenderFixas;
       <div id="ir-faixas-lista"></div>
       <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent2);margin:18px 0 8px">Redutor (Lei nº 15.270/2025)</div>
       <div class="loc-cform" style="padding:0;border:none;background:none">
-        <div class="loc-cfield"><label>Isento até (R$)</label><input class="loc-cinput" id="ir-redutor-isencao" type="number" step="0.01"></div>
-        <div class="loc-cfield"><label>Redutor máximo (R$)</label><input class="loc-cinput" id="ir-redutor-max" type="number" step="0.01"></div>
-        <div class="loc-cfield"><label>Faixa intermediária até (R$)</label><input class="loc-cinput" id="ir-redutor-superior" type="number" step="0.01"></div>
-        <div class="loc-cfield"><label>Constante A da fórmula</label><input class="loc-cinput" id="ir-redutor-a" type="number" step="0.01"></div>
-        <div class="loc-cfield"><label>Constante B da fórmula</label><input class="loc-cinput" id="ir-redutor-b" type="number" step="0.000001"></div>
+        <div class="loc-cfield"><label>Isento até (R$)</label><input class="loc-cinput" id="ir-redutor-isencao" type="text" inputmode="decimal"></div>
+        <div class="loc-cfield"><label>Redutor máximo (R$)</label><input class="loc-cinput" id="ir-redutor-max" type="text" inputmode="decimal"></div>
+        <div class="loc-cfield"><label>Faixa intermediária até (R$)</label><input class="loc-cinput" id="ir-redutor-superior" type="text" inputmode="decimal"></div>
+        <div class="loc-cfield"><label>Constante A da fórmula</label><input class="loc-cinput" id="ir-redutor-a" type="text" inputmode="decimal"></div>
+        <div class="loc-cfield"><label>Constante B da fórmula</label><input class="loc-cinput" id="ir-redutor-b" type="text" inputmode="decimal"></div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">Fórmula da faixa intermediária: redutor = Constante A − (Constante B × rendimento). Vale entre "Isento até" e "Faixa intermediária até"; acima disso não há redutor.</div>
 
       <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
         <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent2);margin-bottom:8px">Testar um valor</div>
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-          <div class="loc-cfield" style="margin:0"><label>Rendimento mensal (R$)</label><input class="loc-cinput" id="ir-teste-valor" type="number" step="0.01" placeholder="Ex.: 4584.25" oninput="irConfigTestar()"></div>
+          <div class="loc-cfield" style="margin:0"><label>Rendimento mensal (R$)</label><input class="loc-cinput" id="ir-teste-valor" type="text" inputmode="decimal" placeholder="Ex.: 4584.25" oninput="irConfigTestar()"></div>
         </div>
         <div id="ir-teste-resultado" style="margin-top:8px;font-size:13px"></div>
       </div>
@@ -9383,9 +9450,9 @@ window.cpRenderFixas=cpRenderFixas;
     var lista=document.getElementById('ir-faixas-lista');
     lista.innerHTML=t.faixas.map(function(f,idx){
       return '<div class="loc-cform" style="padding:0;border:none;background:none;margin-bottom:8px" data-idx="'+idx+'">'
-        +'<div class="loc-cfield"><label>Até quanto (R$)'+(f.limite==null?' <span style="color:var(--muted);font-weight:400">— última faixa, sem limite</span>':'')+'</label><input class="loc-cinput ir-limite" type="number" step="0.01" value="'+(f.limite==null?'':f.limite)+'" placeholder="sem limite"'+(f.limite==null?' disabled':'')+'></div>'
-        +'<div class="loc-cfield"><label>Alíquota (%)</label><input class="loc-cinput ir-aliquota" type="number" step="0.01" value="'+f.aliquota+'"></div>'
-        +'<div class="loc-cfield"><label>Parcela a deduzir (R$)</label><input class="loc-cinput ir-deduzir" type="number" step="0.01" value="'+f.deduzir+'"></div>'
+        +'<div class="loc-cfield"><label>Até quanto (R$)'+(f.limite==null?' <span style="color:var(--muted);font-weight:400">— última faixa, sem limite</span>':'')+'</label><input class="loc-cinput ir-limite" type="text" inputmode="decimal" value="'+(f.limite==null?'':f.limite)+'" placeholder="sem limite"'+(f.limite==null?' disabled':'')+'></div>'
+        +'<div class="loc-cfield"><label>Alíquota (%)</label><input class="loc-cinput ir-aliquota" type="text" inputmode="decimal" value="'+f.aliquota+'"></div>'
+        +'<div class="loc-cfield"><label>Parcela a deduzir (R$)</label><input class="loc-cinput ir-deduzir" type="text" inputmode="decimal" value="'+f.deduzir+'"></div>'
         +'</div>';
     }).join('');
     document.getElementById('ir-redutor-isencao').value=t.redutorLimiteIsencao;
@@ -9488,7 +9555,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="loc-cform" style="padding:0;border:none;background:none">'
       +'<div class="loc-cfield"><label>Nome do proprietário</label><input class="loc-cinput cp-nome" value="'+E(dados.Nome||'')+'"></div>'
       +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cp-cpf" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
-      +'<div class="loc-cfield"><label>Percentual (%)</label><input class="loc-cinput cp-pct" type="number" step="0.01" value="'+E(dados.Percentual||'')+'" oninput="copropAtualizarSoma()"></div>'
+      +'<div class="loc-cfield"><label>Percentual (%)</label><input class="loc-cinput cp-pct" type="text" inputmode="decimal" value="'+E(dados.Percentual||'')+'" oninput="copropAtualizarSoma()"></div>'
       +'<div class="loc-cfield"><label>Banco</label><input class="loc-cinput cp-banco" value="'+E(dados.Banco||'')+'"></div>'
       +'<div class="loc-cfield"><label>Agência</label><input class="loc-cinput cp-agencia" value="'+E(dados.Agencia||'')+'"></div>'
       +'<div class="loc-cfield"><label>Conta</label><input class="loc-cinput cp-conta" value="'+E(dados.Conta||'')+'"></div>'
@@ -9778,7 +9845,7 @@ window.cpRenderFixas=cpRenderFixas;
     div.innerHTML=
       '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
       +'<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01, IPTU..." style="flex:2" value="'+E(desc||'')+'">'
-      +'<input class="loc-cinput cobr-item-valor" type="number" step="0.01" placeholder="-4,05 desconta / 50 soma" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="cobrAtualizarPreview()">'
+      +'<input class="loc-cinput cobr-item-valor" type="text" inputmode="decimal" placeholder="-4,05 desconta / 50 soma" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="cobrAtualizarPreview()">'
       +'<button type="button" class="loc-btn" style="padding:6px 10px;color:var(--red);border-color:var(--red)" onclick="document.getElementById(\''+uid+'\').remove();cobrAtualizarPreview()">🗑️</button>'
       +'</div>'
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
@@ -10063,7 +10130,7 @@ window.cpRenderFixas=cpRenderFixas;
       +(iptuShare?'<div>(+) IPTU ('+pct+'%): <strong>'+BRL(iptuShare)+'</strong></div>':'')
       +(descontoShare?'<div>(−) Desconto ('+pct+'%): <strong>-'+BRL(descontoShare)+'</strong></div>':'');
     var contaHtml=reciboLocContaHtml({titular:owner.Nome||'',banco:owner.Banco||'',agencia:owner.Agencia||'',conta:owner.Conta||'',pix:owner.Pix||''});
-    var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido sobre o aluguel':'')+'</div>';
+    var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido sobre o aluguel':'')+'</div>';
     var liquido=Math.round((liquidoAluguel+encargosShare)*100)/100;
     return {valoresHtml:valoresHtml,totalValor:liquido,totalLabel:retemIR?'Total líquido repassado (após IR)':'Total repassado',totalRodape:totalRodape,contaHtml:contaHtml};
   }
@@ -10123,7 +10190,7 @@ window.cpRenderFixas=cpRenderFixas;
       var pctMulta=num(c.multaAtrasoPct);
       totalRodape='';
       var vencCorpo=(vencData?'<div>Vencimento: <strong>'+E(vencData)+'</strong></div>':'')
-        +'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa de <strong>'+(pctMulta?pctMulta+'%':'X%')+'</strong>, mais juros e correção monetária.</div>';
+        +'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>';
       vencSection='<div class="parc-section"><div class="parc-section-label">Vencimento</div><div class="parc-box" style="border-color:rgba(224,124,58,0.4)">'+vencCorpo+'</div></div>';
       contaTitulo='Dados bancários para pagamento';
       contaHtml=reciboLocContaHtml(reciboLocContaDestino(c));
@@ -10142,7 +10209,7 @@ window.cpRenderFixas=cpRenderFixas;
         +linhasCondoRep
         +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
         +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
-      totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
+      totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
       contaTitulo='Dados bancários do locador (repasse)';
       contaHtml=reciboLocContaHtml({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
       disclaimer='';
@@ -10246,7 +10313,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='\n*TOTAL A SER PAGO:* '+fmt(totalPago)+'\n';
       var vencData=reciboLocVencimentoStr(w,c); var pctMulta=num(c.multaAtrasoPct);
       if(vencData)txt+='Vencimento: '+vencData+'\n';
-      txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa de '+(pctMulta?pctMulta+'%':'X%')+', mais juros e correção monetária.\n\n';
+      txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n\n';
       txt+='*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
       txt+=contaTxt(reciboLocContaDestino(c));
       txt+='\nEste recibo/demonstrativo tem validade como comprovante de pagamento apenas após a efetiva quitação do valor acima.\n';
@@ -10265,7 +10332,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.iptu)txt+='(+) IPTU: '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
-      txt+='Referente ao aluguel de '+mesExtenso(w.mes)+'\n\n';
+      txt+='Referente ao aluguel vencido em '+mesExtenso(w.mes)+'\n\n';
       txt+='*DADOS BANCÁRIOS DO LOCADOR (REPASSE)*\n';
       txt+=contaTxt({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
     }
@@ -10956,6 +11023,15 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (13)', itens: [
+      'Padronizado em TODO o sistema: qualquer campo de valor (dinheiro ou percentual) agora aceita vírgula OU ponto pra centavos — antes só Locações e Acordos aceitavam os dois; o resto (Honorários, Contas a Pagar, Atendimentos, Processos, gerador de recibo PIX) exigia ponto e rejeitava vírgula em silêncio, sem avisar.',
+      'Testado campo por campo em todos os módulos (Locações, Acordos, Honorários, Contas a Pagar, Atendimentos, Processos, recibo PIX) digitando com vírgula — todos gravando e calculando certo agora.'
+    ]},
+    { data: '07/ago/2026 (12)', itens: [
+      'Locações: o campo "Multa por atraso (%)" já existia no contrato (logo após o IPTU) — se ainda aparecer sem preencher, o recibo agora mostra "multa contratual" em vez do "X%" cru.',
+      'Locações: o texto do informe de repasse mudou de "Referente ao aluguel de [mês]" para "Referente ao aluguel vencido em [mês]".',
+      'Acordos: novo campo "Advogado Parceiro" no cadastro do acordo (nome, percentual sobre os honorários, dados bancários) — quando preenchido, aparece um botão 👤 na tabela de lançamentos para gerar o informe de repasse específico pro parceiro, com a fatia dele calculada automaticamente.'
+    ]},
     { data: '07/ago/2026 (11)', itens: [
       'Recibo do inquilino não mostra mais os itens que só valem entre escritório e locador (IPTU, contas de luz/água que você paga e desconta) — agora ele só vê o aluguel e o que é efetivamente cobrado dele (itens positivos, como um reparo cobrado). O informe do locador continua mostrando tudo, igual antes.',
       'Esclarecido o texto "Todo mês (sozinho)" nos itens recorrentes de encargos — agora diz "repete sozinho, sem digitar de novo", mais claro.'
