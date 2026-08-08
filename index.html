@@ -10045,7 +10045,6 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
       +linhasCondoRep
       +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
-      +(w.outrasValor?'<div>(+) '+E(w.outrasDesc||'Outras cobranças')+': <strong>'+BRL(w.outrasValor)+'</strong></div>':'')
       +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
       +'<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.2)">(=) Total do repasse do imóvel (100%): <strong>'+BRL(repTotal)+'</strong></div>'
       +'<div>Participação de '+E(owner.Nome)+': <strong>'+pct+'%</strong> = <strong>'+BRL(baseOwner)+'</strong></div>'
@@ -10078,7 +10077,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(tipo==='aluguel'){
       titulo='Demonstrativo / Recibo de Aluguel';
       badgeHtml='';
-      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)+(w.outrasValor||0)-(w.desconto||0);
+      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0);
       totalLabel='Total a ser pago';
       var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
@@ -10087,7 +10086,6 @@ window.cpRenderFixas=cpRenderFixas;
         +(w.juros?'<div>Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +linhasCondo
         +(w.iptu?'<div>IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.outrasValor?'<div>'+E(w.outrasDesc||'Outras cobranças')+': <strong>'+BRL(w.outrasValor)+'</strong></div>':'')
         +(w.desconto?'<div>Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
       var vencData=reciboLocVencimentoStr(w,c);
       var pctMulta=num(c.multaAtrasoPct);
@@ -10111,7 +10109,6 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
         +linhasCondoRep
         +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.outrasValor?'<div>(+) '+E(w.outrasDesc||'Outras cobranças')+': <strong>'+BRL(w.outrasValor)+'</strong></div>':'')
         +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
       totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel de <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
       contaTitulo='Dados bancários do locador (repasse)';
@@ -10189,7 +10186,7 @@ window.cpRenderFixas=cpRenderFixas;
       return t;
     }
     if(_reciboLocTipo==='aluguel'){
-      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)+(w.outrasValor||0)-(w.desconto||0);
+      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0);
       txt+='*DEMONSTRATIVO / RECIBO DE ALUGUEL*\n';
       txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
@@ -10199,9 +10196,8 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.aluguel)txt+='Aluguel: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='Juros: '+fmt(w.juros)+'\n';
-      if(condoTotal)txt+='Condomínio: '+fmt(condoTotal)+'\n';
+      itensCondo.filter(function(it){return it[1];}).forEach(function(it){txt+=it[0]+': '+fmt(it[1])+'\n';});
       if(w.iptu)txt+='IPTU: '+fmt(w.iptu)+'\n';
-      if(w.outrasValor)txt+=(w.outrasDesc||'Outras cobranças')+': '+fmt(w.outrasValor)+'\n';
       if(w.desconto)txt+='Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL A SER PAGO:* '+fmt(totalPago)+'\n';
       var vencData=reciboLocVencimentoStr(w,c); var pctMulta=num(c.multaAtrasoPct);
@@ -10221,9 +10217,8 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
       txt+='(−) Taxa de administração: -'+fmt(w.taxa)+'\n';
-      if(condoTotal)txt+='(+) Condomínio: '+fmt(condoTotal)+'\n';
+      itensCondo.filter(function(it){return it[1];}).forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+fmt(Math.abs(it[1]))+'\n';});
       if(w.iptu)txt+='(+) IPTU: '+fmt(w.iptu)+'\n';
-      if(w.outrasValor)txt+='(+) '+(w.outrasDesc||'Outras cobranças')+': '+fmt(w.outrasValor)+'\n';
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
       txt+='Referente ao aluguel de '+mesExtenso(w.mes)+'\n\n';
@@ -10917,6 +10912,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (8)', itens: [
+      'Corrigido bug sério introduzido na última atualização: sobrou código antigo em 7 pontos (recibo do inquilino, informe de repasse, informe por proprietário, e as versões de texto pra WhatsApp/e-mail) que ainda tratava a lista de "outras cobranças" do jeito antigo — causava o texto bruto de armazenamento vazando no recibo (tipo "IPTU::-597.58::parcelado:7:10||...") e o valor somado em dobro no total. Testado reproduzindo o cenário exato do seu print (IPTU parcelado + 4 contas descontando + coproprietária) — saiu limpo, sem duplicar.'
+    ]},
     { data: '07/ago/2026 (7)', itens: [
       'Itens de "Outras cobranças" em Locações agora têm recorrência: "Só este mês" (pontual), "Todo mês" (repete sozinho) ou "Parcelado" (ex.: IPTU 7/10 — avança pra 8/10 sozinho a cada "Gerar mês seguinte", e para automaticamente ao chegar na última parcela). Antes tudo era pontual e precisava ser redigitado todo mês.',
       'Testado com o cenário real: IPTU parcelado avançou a parcela sozinho, taxa mensal fixa se repetiu igual, e o item pontual não voltou no mês seguinte.'
