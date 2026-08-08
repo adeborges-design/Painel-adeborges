@@ -10091,7 +10091,19 @@ window.cpRenderFixas=cpRenderFixas;
     if(tipo==='aluguel'){
       titulo='Demonstrativo / Recibo de Aluguel';
       badgeHtml='';
-      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0);
+      // Quando o locatário é pessoa jurídica, é ele quem retém e recolhe o IRRF devido pelo(s)
+      // proprietário(s) pessoa física — por isso o valor que ele efetivamente paga já sai
+      // líquido desse imposto (a diferença fica retida por ele, não pelo escritório).
+      var coprietariosIR=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato&&String(o.RetemIR||'').toLowerCase()==='sim';});
+      var totalIRCoprop=0,nomesIR=[];
+      coprietariosIR.forEach(function(o){
+        var pctO=num(o.Percentual);
+        var baseO=Math.round((w.aluguel||0)*pctO/100*100)/100;
+        var irO=locCalcularIR(baseO);
+        if(irO){totalIRCoprop+=irO;nomesIR.push(o.Nome+' (BC: '+BRL(baseO)+')');}
+      });
+      totalIRCoprop=Math.round(totalIRCoprop*100)/100;
+      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
       totalLabel='Total a ser pago';
       var linhasCondo=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
@@ -10100,7 +10112,8 @@ window.cpRenderFixas=cpRenderFixas;
         +(w.juros?'<div>Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +linhasCondo
         +(w.iptu?'<div>IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.desconto?'<div>Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
+        +(w.desconto?'<div>Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
+        +(totalIRCoprop?'<div>(−) IRRF retido na fonte pelo locatário — '+E(nomesIR.join(', '))+': <strong>-'+BRL(totalIRCoprop)+'</strong></div>':'');
       var vencData=reciboLocVencimentoStr(w,c);
       var pctMulta=num(c.multaAtrasoPct);
       totalRodape='';
@@ -10200,7 +10213,16 @@ window.cpRenderFixas=cpRenderFixas;
       return t;
     }
     if(_reciboLocTipo==='aluguel'){
-      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0);
+      var coprietariosIR2=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato&&String(o.RetemIR||'').toLowerCase()==='sim';});
+      var totalIRCoprop2=0,nomesIR2=[];
+      coprietariosIR2.forEach(function(o){
+        var pctO=num(o.Percentual);
+        var baseO=Math.round((w.aluguel||0)*pctO/100*100)/100;
+        var irO=locCalcularIR(baseO);
+        if(irO){totalIRCoprop2+=irO;nomesIR2.push(o.Nome);}
+      });
+      totalIRCoprop2=Math.round(totalIRCoprop2*100)/100;
+      var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotal+(w.iptu||0)-(w.desconto||0)-totalIRCoprop2;
       txt+='*DEMONSTRATIVO / RECIBO DE ALUGUEL*\n';
       txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
@@ -10213,6 +10235,7 @@ window.cpRenderFixas=cpRenderFixas;
       itensCondo.filter(function(it){return it[1];}).forEach(function(it){txt+=it[0]+': '+fmt(it[1])+'\n';});
       if(w.iptu)txt+='IPTU: '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='Desconto: -'+fmt(w.desconto)+'\n';
+      if(totalIRCoprop2)txt+='(−) IRRF retido na fonte pelo locatário — '+nomesIR2.join(', ')+': -'+fmt(totalIRCoprop2)+'\n';
       txt+='\n*TOTAL A SER PAGO:* '+fmt(totalPago)+'\n';
       var vencData=reciboLocVencimentoStr(w,c); var pctMulta=num(c.multaAtrasoPct);
       if(vencData)txt+='Vencimento: '+vencData+'\n';
@@ -10926,6 +10949,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (10)', itens: [
+      'Recibo do inquilino agora desconta o IRRF retido na fonte, quando algum proprietário do imóvel está marcado "Retém IR" — reflete que é o locatário (pessoa jurídica) quem retém e recolhe esse imposto, pagando ao escritório já o valor líquido. Mostra de qual(is) proprietário(s) é o IR, com a base de cálculo de cada um. Testado contra o recibo real: bateu exatamente (R$31.359,37 − R$3.403,18 = R$27.956,19).'
+    ]},
     { data: '07/ago/2026 (9)', itens: [
       'Corrigida a fórmula do informe por proprietário: o IR agora incide só sobre a fatia dele no ALUGUEL (não no repasse todo com encargos misturados) — Aluguel% − Taxa% − IR primeiro, depois soma/desconta a fatia de cada encargo separadamente (multa, juros, condomínio, IPTU, outras cobranças), cada um no percentual do proprietário. Testado contra o recibo real que você mandou: bateu exatamente (R$15.679,69 de base e R$3.403,18 de IR retido).'
     ]},
