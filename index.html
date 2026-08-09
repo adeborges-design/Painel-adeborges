@@ -9351,6 +9351,29 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL MANUAL DO SISTEMA -->
+<div class="modal-repasse-overlay" id="modalManual">
+  <div class="repasse-wrap" style="max-width:820px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📖 Manual do Sistema</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalManual').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px 20px 0">
+      <select class="loc-cinput" id="manualPainelSelect" onchange="manualMostrar()" style="width:100%">
+        <option value="dashboard">🏠 Painel Inicial (Dashboard)</option>
+        <option value="processos">⚖️ Processos</option>
+        <option value="honorarios">💰 Honorários</option>
+        <option value="contas">💳 Contas a Pagar</option>
+        <option value="atendimentos">📞 Atendimentos</option>
+        <option value="entregas">📦 Entregas</option>
+        <option value="acordos">🤝 Acordos com a Parte Contrária</option>
+        <option value="locacoes">🏘️ Locações</option>
+      </select>
+    </div>
+    <div id="manualConteudo" style="padding:16px 20px 24px;max-height:65vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- MODAL AVISOS AO LOCATÁRIO/LOCADOR -->
 <div class="modal-repasse-overlay" id="modalAvisoLoc">
   <div class="repasse-wrap" style="max-width:720px">
@@ -11305,6 +11328,10 @@ window.cpRenderFixas=cpRenderFixas;
           Novo processo
         </button>
         <div class="home-user-divider"></div>
+        <button class="home-user-item" onclick="abrirManual();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Manual do Sistema
+        </button>
         <button class="home-user-item" onclick="document.getElementById('modalConfig').classList.add('open');document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
           Configurações
@@ -11532,6 +11559,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
         '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="abrirManual();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual do Sistema</button>'+
         '<button class="home-user-item" onclick="document.getElementById(\'modalConfig\').classList.add(\'open\');this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Configurações</button>'+
       '</div>'+
     '</div>';
@@ -11548,6 +11576,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (10)', itens: [
+      'Histórico de atualizações agora mostra só as 5 versões mais recentes (antes crescia sem limite e ficava enorme de rolar).',
+      'Novo: "📖 Manual do Sistema" — acessível pelo menu do usuário, logo acima de "Configurações". Um manual pra cada painel (Dashboard, Processos, Honorários, Contas a Pagar, Atendimentos, Entregas, Acordos, Locações), explicando as principais funções de cada um.'
+    ]},
     { data: '08/ago/2026 (9)', itens: [
       'Aviso 1 (aluguel em atraso): corrigido — não fala mais "para evitar multa", já que após o vencimento a multa e os juros já incidem de fato, não é algo evitável nesse ponto.',
       'Aviso 2 (renovação com reajuste): removida a menção a "conforme previsto em contrato", já que após o vencimento o reajuste muitas vezes vem com valor novo negociado, não necessariamente o do contrato antigo.',
@@ -11769,11 +11801,98 @@ window.cpRenderFixas=cpRenderFixas;
   function renderLfChangelog(){
     var box=document.getElementById('lfChangelogBox');
     if(!box)return;
-    box.innerHTML=LF_CHANGELOG.map(function(v){
+    // Mostra só as 5 atualizações mais recentes (a lista completa fica registrada no código,
+    // pra não crescer sem limite na tela).
+    box.innerHTML=LF_CHANGELOG.slice(0,5).map(function(v){
       return '<div class="lf-changelog-versao"><div class="lf-changelog-data">'+v.data+'</div><ul>'+v.itens.map(function(it){return '<li>'+it+'</li>';}).join('')+'</ul></div>';
     }).join('');
   }
   document.addEventListener('DOMContentLoaded', renderLfChangelog);
+
+  // ---------- MANUAL DO SISTEMA ----------
+  var MH='<div style="font-family:\'DM Serif Display\',serif;font-size:16px;color:var(--accent2);margin:16px 0 8px">'; // abre título de seção
+  var MP='<div style="margin-bottom:10px;line-height:1.6">'; // abre parágrafo
+  var ML='<ul style="margin:6px 0 14px 20px;line-height:1.7">'; // abre lista
+  var MANUAL_CONTEUDO={
+    dashboard: MH+'Visão geral</div>'
+      +MP+'A tela inicial reúne um resumo de tudo: processos ativos, honorários a receber, contas a pagar, locações e acordos. Os cards com número piscando (borda colorida) indicam algo que precisa de atenção — clique em qualquer um deles pra ir direto ao que importa.</div>'
+      +MH+'Alertas automáticos</div>'
+      +MP+'Abaixo dos cards aparecem avisos automáticos quando existem: honorários a vencer/atrasados, aluguéis atrasados, parcelas de acordo atrasadas ou repasses pendentes, contratos de locação vencendo em até 60 dias, e contas de cartão próximas do vencimento. Clique em "abrir" em qualquer aviso pra ir direto à tela correspondente.</div>'
+      +MH+'Saldos e fluxo de caixa</div>'
+      +MP+'Mostra o saldo de cada conta bancária/cartão cadastrado e um resumo de entradas x saídas do mês. Os valores são calculados a partir dos lançamentos de Honorários e Contas a Pagar.</div>'
+      +MH+'Menu do usuário</div>'
+      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, acessar este Manual ou as Configurações.</div>',
+
+    processos: MH+'Cadastro e edição</div>'
+      +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem (ESAJ, etc.) e anotações.</div>'
+      +MH+'Filtros e busca</div>'
+      +MP+'Na lateral esquerda, filtre por urgência (Crítico/Urgente/Atenção/Normal/Monitorar) ou por área do direito. A busca no topo aceita nome do cliente, número do processo ou tipo de ação — atalho de teclado: tecla "/".</div>'
+      +MH+'Cards de estatística</div>'
+      +MP+'Casos Ativos, Crítico/Urgente, Prazo mais próximo, Audiências, Providências e Honorários (quando há algo vencendo) — todos clicáveis, cada um filtra a lista automaticamente.</div>'
+      +MH+'Documentos e ações rápidas</div>'
+      +ML+'<li>Gerar Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto e editável direto na tela, com botão de imprimir/copiar.</li>'
+      +'<li>Compartilhar atualização com o cliente via WhatsApp (card com a fase do processo).</li>'
+      +'<li>Vincular processos incidentais a um processo principal.</li>'
+      +'<li>Histórico de Atendimento (ligações, WhatsApp, despesas reembolsáveis) e Entregas (documentos entregues, com assinatura digital) — acessíveis a partir do card do processo.</li></ul>',
+
+    honorarios: MH+'Lançamento de contrato de honorários</div>'
+      +MP+'Vincula o contrato de honorários a um processo/cliente já cadastrado. Aceita contrato Único ou Parcelado (com entrada + parcelas), e permite repasse a um advogado parceiro (com percentual).</div>'
+      +MH+'Controle de recebimento</div>'
+      +MP+'Cada parcela é lançada individualmente, com data, forma de pagamento, quem recebeu e status. O sistema mostra, no card do processo, quais parcelas estão vencendo nos próximos 7 dias ou já atrasadas.</div>'
+      +MH+'Recibo PIX</div>'
+      +MP+'Gera um recibo de pagamento pronto, com QR Code PIX embutido, pra enviar ao cliente.</div>',
+
+    contas: MH+'Lançamento de contas a pagar</div>'
+      +MP+'Registra despesas do escritório: descrição, categoria, fornecedor, valor, vencimento, forma de pagamento. Aceita recorrência (mensal automática) e parcelamento (com valor total da dívida e saldo devedor, útil para cartão de crédito).</div>'
+      +MH+'Cartões de crédito</div>'
+      +MP+'Cadastre seus cartões com dia de fechamento/vencimento — as compras lançadas num cartão específico entram automaticamente na fatura certa, e o painel avisa quando a fatura está perto de vencer.</div>'
+      +MH+'Status</div>'
+      +MP+'Pendente, Pago, Atrasado — atualizados manualmente ou automaticamente quando a data de vencimento passa.</div>',
+
+    atendimentos: MH+'Histórico de atendimento</div>'
+      +MP+'Registre cada contato com o cliente (ligação, WhatsApp, e-mail, reunião) vinculado ao processo, com data, descrição e observações — fica tudo num histórico só, acessível a partir do card do processo em Processos.</div>'
+      +MH+'Despesas reembolsáveis</div>'
+      +MP+'Quando o tipo do atendimento é "Despesa com o cliente", aparece um campo de valor — útil para controlar deslocamentos, cópias e outras despesas que o cliente deve reembolsar.</div>',
+
+    entregas: MH+'Registro de entregas</div>'
+      +MP+'Documenta a entrega de documentos físicos ou digitais a clientes/terceiros, vinculado ao processo: tipo de entrega, destinatário, data, local.</div>'
+      +MH+'Assinatura digital</div>'
+      +MP+'Duas formas: assinar na tela (o destinatário assina direto no aparelho, e o comprovante fica salvo com imagem da assinatura) ou imprimir para assinar fisicamente (gera o recibo em papel).</div>',
+
+    acordos: MH+'Cadastro do acordo</div>'
+      +MP+'Registra um acordo extrajudicial com a parte contrária: cliente, parte contrária, valor total, número de parcelas, percentual de honorários do escritório, frequência de pagamento (diário, semanal, quinzenal ou mensal) e dados bancários do cliente para repasse.</div>'
+      +MH+'Advogado parceiro</div>'
+      +MP+'Se houver parceria com outro advogado, cadastre o nome, percentual sobre os honorários do escritório (não sobre o valor total do acordo) e dados bancários dele. Um botão "👤" aparece na lista de lançamentos para gerar o informe específico do parceiro.</div>'
+      +MH+'Gerar parcelas</div>'
+      +MP+'Botão "🗓️ gerar parcelas" cria automaticamente todo o cronograma de pagamento, respeitando a frequência escolhida (pulando fins de semana quando diário).</div>'
+      +MH+'Informe de repasse</div>'
+      +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
+
+    locacoes: MH+'Cadastro de contrato</div>'
+      +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários e condomínio/IPTU padrão.</div>'
+      +MH+'Coproprietários</div>'
+      +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
+      +MH+'Encargos do mês</div>'
+      +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado).</div>'
+      +MH+'Filtros clicáveis</div>'
+      +MP+'Os cards e chips no topo (Em caixa aguardando repasse, Já repassado, Recebidos, Atrasados...) são clicáveis e filtram a lista na hora.</div>'
+      +MH+'Relatório do Locador</div>'
+      +MP+'Reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono.</div>'
+      +MH+'Avisos ao locatário/locador</div>'
+      +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
+      +MH+'Alertas de vigência</div>'
+      +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
+      +MH+'Tabela de IR</div>'
+      +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>'
+  };
+  window.abrirManual=function(){
+    document.getElementById('modalManual').classList.add('open');
+    manualMostrar();
+  };
+  window.manualMostrar=function(){
+    var tipo=document.getElementById('manualPainelSelect').value;
+    document.getElementById('manualConteudo').innerHTML=MANUAL_CONTEUDO[tipo]||'<div style="color:var(--muted)">Conteúdo não encontrado.</div>';
+  };
 
   window.toggleDarkMode=function(){
     var isDark=document.documentElement.classList.toggle('dark-mode');
