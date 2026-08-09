@@ -8832,6 +8832,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
+      <button class="loc-btn" onclick="relLocadorAbrir()">📄 Relatório do Locador</button>
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
@@ -8886,6 +8887,8 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Conta do locador</label><input class="loc-cinput" id="lc-conta-locador" placeholder="00000-0"></div>
         <div class="loc-cfield half"><label>Chave Pix do locador</label><input class="loc-cinput" id="lc-pix-locador" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
+        <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date"></div>
+        <div class="loc-cfield"><label>Vigência — fim</label><input class="loc-cinput" id="lc-vig-fim" type="date"></div>
         <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
@@ -9100,6 +9103,15 @@ window.cpRenderFixas=cpRenderFixas;
 
 <style>
   body.printing-recibo-acordo * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rel-locador * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rel-locador html, body.printing-rel-locador body { background:#fff !important; margin:0 !important; padding:0 !important; }
+  body.printing-rel-locador > * { display:none !important; }
+  body.printing-rel-locador #modalRelLocador {
+    display:flex !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:9999 !important; overflow:visible !important;
+  }
+  body.printing-rel-locador .parceiro-toolbar,
+  body.printing-rel-locador .entr-no-print { display:none !important; }
   body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; }
   body.printing-recibo-acordo > * { display:none !important; }
   body.printing-recibo-acordo #modalReciboAcordo {
@@ -9220,6 +9232,26 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL RELATÓRIO DO LOCADOR (consolidado, para locadores com múltiplos imóveis) -->
+<div class="modal-repasse-overlay" id="modalRelLocador">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📄 Relatório do Locador</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRelLocador').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print">
+      <div class="loc-note" style="margin-bottom:14px">Escolha o locador — o relatório reúne todos os imóveis dele (inclusive onde ele é só coproprietário), com vigência, valores e status de cada contrato. Bom para quem tem mais de um imóvel administrado por você.</div>
+      <select class="loc-cinput" id="relLocadorSelect" style="width:100%;margin-bottom:14px" onchange="relLocadorGerar()"></select>
+    </div>
+    <div id="relLocadorCard" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="relLocadorEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="relLocadorEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-recibo-print" onclick="relLocadorImprimir()">🖨 Imprimir/PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL COPROPRIETÁRIOS (múltiplos locadores por imóvel, com percentual) -->
 <div class="modal-repasse-overlay" id="modalCoprop">
   <div class="repasse-wrap" style="max-width:760px">
@@ -9320,6 +9352,23 @@ window.cpRenderFixas=cpRenderFixas;
   function state(){var s=loadState();s.overrides=s.overrides||{};s.extra=s.extra||[];return s;}
   function keyOf(l){return l.mes+'|'+l.contrato;}
   function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  // Converte "DD/MM/AAAA" (ou o formato que o Sheets às vezes devolve sozinho quando a célula
+  // vira tipo Data) pra "AAAA-MM-DD", que é o que <input type="date"> espera.
+  function locIsoFromBR(s){
+    s=String(s||'').trim();
+    if(!s)return '';
+    if(s.indexOf('/')>=0){
+      var p=s.split('/');
+      if(p.length!==3)return '';
+      var dd=('0'+p[0]).slice(-2),mm=('0'+p[1]).slice(-2),aaaa=p[2];
+      if(aaaa.length!==4||isNaN(parseInt(dd))||isNaN(parseInt(mm)))return '';
+      return aaaa+'-'+mm+'-'+dd;
+    }
+    var m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m)return m[1]+'-'+m[2]+'-'+m[3];
+    return '';
+  }
+  function locDtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
   function itemComSinal(desc,valor){
     var neg=valor<0;
     return '<div>('+(neg?'−':'+')+') '+desc+': <strong>'+(neg?'-':'')+BRL(Math.abs(valor))+'</strong></div>';
@@ -9384,7 +9433,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino')};
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato')};
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
@@ -10159,6 +10208,79 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('reciboLocTotalSecao').innerHTML='<div class="parc-section-label">'+d.totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(d.totalValor)+'</strong>'+d.totalRodape+'</div>';
     document.getElementById('reciboLocContaSecao').innerHTML='<div class="parc-section-label">Dados bancários do proprietário (repasse)</div><div class="parc-box">'+d.contaHtml+'</div>';
   };
+  // ---------- RELATÓRIO DO LOCADOR (consolidado, vários imóveis) ----------
+  window.relLocadorAbrir=function(){
+    var nomes={};
+    DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
+    (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var sel=document.getElementById('relLocadorSelect');
+    sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    document.getElementById('relLocadorCard').innerHTML='';
+    document.getElementById('modalRelLocador').classList.add('open');
+  };
+  function relLocadorImoveis(nome){
+    var imoveis=[];
+    DATA.contratos.forEach(function(c){
+      if(c.locador&&c.locador.trim()===nome){
+        imoveis.push({contrato:c,pct:100,viaCoprop:false});
+      }
+    });
+    (window.locCoprop||[]).forEach(function(o){
+      if(!o.Nome||o.Nome.trim()!==nome)return;
+      var c=contratosById[o.Contrato];
+      if(!c)return;
+      if(imoveis.find(function(i){return i.contrato.contrato===c.contrato;}))return; // já listado como locador principal
+      imoveis.push({contrato:c,pct:num(o.Percentual),viaCoprop:true});
+    });
+    return imoveis;
+  }
+  window.relLocadorGerar=function(){
+    var nome=document.getElementById('relLocadorSelect').value;
+    var card=document.getElementById('relLocadorCard');
+    if(!nome){card.innerHTML='';return;}
+    var imoveis=relLocadorImoveis(nome);
+    if(!imoveis.length){card.innerHTML='<div class="loc-note">Nenhum imóvel encontrado para este locador.</div>';return;}
+    var ativos=imoveis.filter(function(i){return i.contrato.ativo;});
+    var somaAluguel=ativos.reduce(function(s,i){return s+(i.contrato.aluguel||0)*i.pct/100;},0);
+    var blocos=imoveis.map(function(i){
+      var c=i.contrato;
+      var vig=(c.vigInicio||c.vigFim)?(E(c.vigInicio||'—')+' até '+E(c.vigFim||'—')):'não informada';
+      return '<div class="parc-section"><div class="parc-box">'
+        +'<div style="font-weight:700;color:var(--accent2);margin-bottom:4px">'+E(c.end||'(sem endereço)')+'</div>'
+        +'<div>Contrato nº <strong>'+E(c.contrato)+'</strong>'+(i.viaCoprop?' — participação de <strong>'+i.pct+'%</strong>':'')+'</div>'
+        +'<div>Locatário: <strong>'+E(c.locatario||'—')+'</strong></div>'
+        +'<div>Vigência: <strong>'+vig+'</strong></div>'
+        +'<div>Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': <strong>'+BRL((c.aluguel||0)*i.pct/100)+'</strong></div>'
+        +'<div>Status: <strong style="color:'+(c.ativo?'var(--green)':'var(--red)')+'">'+(c.ativo?'Ativo':'Inativo')+'</strong></div>'
+        +'</div></div>';
+    }).join('');
+    card.innerHTML=
+      '<div class="parc-header">'
+      +'<div><div class="parc-header-title">Relatório de Imóveis</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+      +'</div>'
+      +'<div class="parc-body">'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">'+imoveis.length+' imóvel(is) administrado(s), '+ativos.length+' ativo(s) — emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div>'
+      +blocos
+      +'<div class="parc-section"><div class="parc-section-label">Resumo</div><div class="parc-tarefa-box"><strong>'+BRL(somaAluguel)+'</strong><div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Soma dos aluguéis dos imóveis ativos (já considerando a fatia de participação em cada um)</div></div></div>'
+      +'</div>'
+      +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
+  };
+  window.relLocadorImprimir=function(){
+    document.body.classList.add('printing-rel-locador');
+    setTimeout(function(){window.print();document.body.classList.remove('printing-rel-locador');},200);
+  };
+  window.relLocadorEnviarWhats=function(){
+    var texto=document.getElementById('relLocadorCard').innerText;
+    if(!texto.trim()){alert('Selecione um locador primeiro.');return;}
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  };
+  window.relLocadorEnviarEmail=function(){
+    var texto=document.getElementById('relLocadorCard').innerText;
+    if(!texto.trim()){alert('Selecione um locador primeiro.');return;}
+    window.open('mailto:?subject='+encodeURIComponent('Relatório de Imóveis')+'&body='+encodeURIComponent(texto));
+  };
+
   window.abrirReciboLoc=function(contrato,tipo){
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!w){alert('Não há lançamento deste contrato no mês selecionado.');return;}
@@ -10457,7 +10579,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
     locRenderContratos();document.getElementById('lc-contrato').focus();
@@ -10477,6 +10599,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-conta-locador').value=c.contaLocador||'';
     document.getElementById('lc-pix-locador').value=c.pixLocador||'';
     document.getElementById('lc-end').value=c.end||'';
+    document.getElementById('lc-vig-inicio').value=locIsoFromBR(c.vigInicio);
+    document.getElementById('lc-vig-fim').value=locIsoFromBR(c.vigFim);
     document.getElementById('lc-aluguel').value=num(c.aluguel)||'';
     document.getElementById('lc-taxa').value=num(c.taxaPct)||'';
     document.getElementById('lc-venc').value=c.venc||'';
@@ -10503,6 +10627,8 @@ window.cpRenderFixas=cpRenderFixas;
       'Conta Locador':document.getElementById('lc-conta-locador').value.trim(),
       'Pix Locador':document.getElementById('lc-pix-locador').value.trim(),
       'Endereco':document.getElementById('lc-end').value.trim(),
+      'Data Inicio Contrato':locDtBRfromInput(document.getElementById('lc-vig-inicio').value),
+      'Data Fim Contrato':locDtBRfromInput(document.getElementById('lc-vig-fim').value),
       'Aluguel':num(document.getElementById('lc-aluguel').value),
       'Taxa Perc':num(document.getElementById('lc-taxa').value),
       'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
@@ -10515,7 +10641,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
@@ -11040,6 +11166,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026', itens: [
+      'Novo: Relatório do Locador em Locações — botão "📄 Relatório do Locador" na barra de ferramentas. Escolhe o locador e o relatório reúne automaticamente todos os imóveis dele, inclusive onde ele é só coproprietário (com a fatia proporcional do aluguel calculada certinho). Mostra vigência, valores, locatário e status de cada contrato, com soma total no fim. Feito principalmente para locadores com mais de um imóvel. Envia por WhatsApp, e-mail ou imprime/PDF.',
+      'Adicionado campo de vigência (data início e fim) ao cadastro de contrato de Locação — não existia antes.',
+      'Testado com um locador com 3 imóveis (2 próprios + 1 como coproprietário 30%) — relatório saiu certo, com a soma proporcional batendo (R$6.500,00).'
+    ]},
     { data: '07/ago/2026 (17)', itens: [
       'Corrigido bug sério: a busca de dados de Acordos na planilha estava limitada até a coluna O (só até "Conta Cliente") — ou seja, "Pix Cliente" e todo o bloco do Advogado Parceiro nunca chegavam a ser buscados da planilha, mesmo estando salvos lá. Por isso sumiam ao editar. Ampliado o intervalo de busca; testado com um registro completo (cliente + parceiro) e todos os campos vieram certos.'
     ]},
