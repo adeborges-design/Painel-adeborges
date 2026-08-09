@@ -8922,6 +8922,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
       <button class="loc-btn" onclick="relLocadorAbrir()">📄 Relatório do Locador</button>
+      <button class="loc-btn" onclick="avisoAbrir()">✉️ Avisos</button>
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
@@ -8978,6 +8979,14 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
         <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date"></div>
         <div class="loc-cfield"><label>Vigência — fim</label><input class="loc-cinput" id="lc-vig-fim" type="date"></div>
+        <div class="loc-cfield"><label>Índice de reajuste do aluguel</label><select class="loc-cinput" id="lc-indice-reajuste">
+          <option value="">Não definido</option>
+          <option value="IGP-M">IGP-M</option>
+          <option value="IPCA">IPCA</option>
+          <option value="INPC">INPC</option>
+          <option value="IGP-DI">IGP-DI</option>
+          <option value="Outro">Outro (definir na hora do aviso)</option>
+        </select></div>
         <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
@@ -9209,6 +9218,19 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-locador .rel-imovel-bloco,
   body.printing-rel-locador .parc-header,
   body.printing-rel-locador .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body.printing-aviso-loc html, body.printing-aviso-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-aviso-loc > * { display:none !important; }
+  body.printing-aviso-loc #modalAvisoLoc {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-aviso-loc #modalAvisoLoc .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-aviso-loc .parceiro-toolbar,
+  body.printing-aviso-loc .entr-no-print { display:none !important; }
   body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; }
   body.printing-recibo-acordo > * { display:none !important; }
   body.printing-recibo-acordo #modalReciboAcordo {
@@ -9325,6 +9347,40 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn primary" onclick="irConfigSalvar()">💾 Salvar tabela</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AVISOS AO LOCATÁRIO/LOCADOR -->
+<div class="modal-repasse-overlay" id="modalAvisoLoc">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">✉️ Avisos ao Locatário/Locador</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalAvisoLoc').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print">
+      <div class="loc-cform" style="padding:0;border:none;background:none">
+        <div class="loc-cfield full"><label>Contrato / Imóvel</label><select class="loc-cinput" id="avisoContratoSelect" onchange="avisoGerar()"></select></div>
+        <div class="loc-cfield full"><label>Tipo de aviso</label><select class="loc-cinput" id="avisoTipoSelect" onchange="avisoGerar()">
+          <option value="atraso_aluguel">1. Aluguel não pago na data de vencimento</option>
+          <option value="venc_renovacao_reajuste">2. Contrato vencido — renovação com reajuste do aluguel</option>
+          <option value="venc_renovacao">3. Contrato vencido — necessidade de renovação</option>
+          <option value="titularidade_sabesp">4. Alteração de titularidade — SABESP (água)</option>
+          <option value="titularidade_enel">5. Alteração de titularidade — ENEL (energia)</option>
+          <option value="titularidade_comgas">6. Alteração de titularidade — COMGÁS (gás)</option>
+          <option value="denuncia_vazia">7. Denúncia vazia — fim do contrato, locador não tem interesse em continuar</option>
+          <option value="reajuste_anual">8. Reajuste anual do aluguel</option>
+          <option value="atraso_locador">9. Aviso ao locador — aluguel em atraso, monitorando</option>
+        </select></div>
+        <div id="avisoExtrasWrap"></div>
+      </div>
+    </div>
+    <div id="avisoCard" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="avisoEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="avisoEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
+      <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
     </div>
   </div>
 </div>
@@ -9531,7 +9587,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato')};
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste')};
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
@@ -10462,6 +10518,147 @@ window.cpRenderFixas=cpRenderFixas;
     abrirEmailFlex('Relatório de Imóveis — '+nome, relLocadorMontarTexto(nome));
   };
 
+  // ---------- AVISOS AO LOCATÁRIO/LOCADOR ----------
+  var AVISO_DEFS={
+    atraso_aluguel:{ label:'Aluguel não pago na data de vencimento', corpo:function(c,ex){
+      return [
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Verificamos que o aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', com vencimento no dia '+(c.venc||'—')+' de cada mês, ainda não consta como pago em nossos registros.',
+        'Valor do aluguel: '+BRL(c.aluguel||0)+'.',
+        'Solicitamos a regularização o quanto antes, a fim de evitar a incidência de multa'+(c.multaAtrasoPct?' de '+c.multaAtrasoPct+'%':' contratual')+' e juros de mora, conforme previsto em contrato.',
+        'Caso o pagamento já tenha sido efetuado, favor desconsiderar este aviso e nos encaminhar o comprovante para conferência.'
+      ];
+    }},
+    venc_renovacao_reajuste:{ label:'Contrato vencido — renovação com reajuste', corpo:function(c,ex){
+      return [
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Informamos que o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', teve seu prazo encerrado em '+(c.vigFim||'data não informada')+'.',
+        'Diante disso, faz-se necessária a formalização da renovação contratual, com o consequente reajuste do valor do aluguel, conforme previsto em contrato.',
+        'Solicitamos manifestação sobre o interesse na continuidade da locação, para que possamos providenciar o respectivo aditivo contratual.'
+      ];
+    }},
+    venc_renovacao:{ label:'Contrato vencido — necessidade de renovação', corpo:function(c,ex){
+      return [
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Informamos que o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', teve seu prazo encerrado em '+(c.vigFim||'data não informada')+'.',
+        'Solicitamos manifestação sobre o interesse na continuidade da locação, para que possamos providenciar a renovação contratual.'
+      ];
+    }},
+    titularidade_sabesp:{ label:'Alteração de titularidade — SABESP', corpo:function(c,ex){return avisoTitularidade(c,'água','SABESP');}},
+    titularidade_enel:{ label:'Alteração de titularidade — ENEL', corpo:function(c,ex){return avisoTitularidade(c,'energia elétrica','ENEL');}},
+    titularidade_comgas:{ label:'Alteração de titularidade — COMGÁS', corpo:function(c,ex){return avisoTitularidade(c,'gás','COMGÁS');}},
+    denuncia_vazia:{ label:'Denúncia vazia — fim do contrato', corpo:function(c,ex){
+      return [
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Vimos, pelo presente, comunicar formalmente o encerramento da locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', ao término do prazo contratual (vigência até '+(c.vigFim||'—')+'), não havendo interesse do locador em sua continuidade.',
+        'Solicitamos a desocupação do imóvel na data de encerramento do contrato, ou no prazo legal aplicável, bem como a entrega das chaves e a quitação de eventuais pendências (aluguéis, encargos e reparos), para a devida vistoria de entrega.'
+      ];
+    }},
+    reajuste_anual:{ label:'Reajuste anual do aluguel', extras:true, corpo:function(c,ex){
+      var pct=num(ex&&ex.pct);
+      var novoValor=Math.round((c.aluguel||0)*(1+pct/100)*100)/100;
+      var indice=(ex&&ex.indice)||c.indiceReajuste||'contratual';
+      return [
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Em conformidade com o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informamos que o valor do aluguel será reajustado pelo índice '+indice+', aplicando-se o percentual de '+String(pct||0).replace('.',',')+'% sobre o valor vigente.',
+        'Valor atual: '+BRL(c.aluguel||0)+'.',
+        'Novo valor: '+BRL(novoValor)+'.',
+        'O novo valor passará a vigorar a partir do próximo vencimento, dia '+(c.venc||'—')+'.'
+      ];
+    }},
+    atraso_locador:{ label:'Ao locador — aluguel em atraso, monitorando', paraLocador:true, corpo:function(c,ex){
+      return [
+        'Prezado(a) '+(c.locador||'Locador')+',',
+        'Informamos que o aluguel do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', locatário '+(c.locatario||'—')+', encontra-se em atraso.',
+        'Estamos monitorando a situação e adotando as providências de cobrança cabíveis, e manteremos V.Sa. informado(a) sobre a evolução do caso.'
+      ];
+    }}
+  };
+  function avisoTitularidade(c,servico,concessionaria){
+    return [
+      'Prezado(a) '+(c.locatario||'Locatário')+',',
+      'Conforme cláusula contratual, informamos a necessidade de providenciar a alteração de titularidade da conta de consumo de '+servico+' ('+concessionaria+') referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', para o seu nome, enquanto locatário(a).',
+      'Solicitamos que, após realizada a alteração, nos seja encaminhado o número do protocolo da solicitação junto à '+concessionaria+', para nossos registros.'
+    ];
+  }
+  window.avisoAbrir=function(){
+    var sel=document.getElementById('avisoContratoSelect');
+    sel.innerHTML=(DATA.contratos||[]).filter(function(c){return c.ativo;}).map(function(c){return '<option value="'+E(c.contrato)+'">'+E(c.contrato)+' — '+E(c.end||c.locatario||'')+'</option>';}).join('');
+    document.getElementById('modalAvisoLoc').classList.add('open');
+    avisoGerar();
+  };
+  window.avisoGerar=function(){
+    var contratoNum=document.getElementById('avisoContratoSelect').value;
+    var tipo=document.getElementById('avisoTipoSelect').value;
+    var c=contratosById[contratoNum];
+    var extrasWrap=document.getElementById('avisoExtrasWrap');
+    var def=AVISO_DEFS[tipo];
+    if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';return;}
+    if(def.extras){
+      if(!extrasWrap.querySelector('.aviso-extras-linha')){
+        extrasWrap.innerHTML='<div class="aviso-extras-linha" style="display:flex;gap:10px;flex-wrap:wrap">'
+          +'<div class="loc-cfield"><label>Índice de reajuste</label><input class="loc-cinput" id="aviso-indice" value="'+E(c.indiceReajuste||'')+'" placeholder="Ex.: IGP-M"></div>'
+          +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="aviso-pct" type="text" inputmode="decimal" placeholder="Ex.: 4,5" oninput="avisoGerar()"></div>'
+          +'</div>';
+      }
+    }else{
+      extrasWrap.innerHTML='';
+    }
+    var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
+    var paragrafos=def.corpo(c,ex);
+    var destinatarioLabel=def.paraLocador?'Locador':'Locatário';
+    var destinatarioNome=def.paraLocador?(c.locador||'—'):(c.locatario||'—');
+    var corpoHtml=paragrafos.map(function(p){return '<div style="margin-bottom:8px">'+E(p)+'</div>';}).join('');
+    document.getElementById('avisoCard').innerHTML=
+      '<div class="parc-header">'
+      +'<div><div class="parc-header-title">'+E(def.label)+'</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+      +'</div>'
+      +'<div class="parc-body">'
+      +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'—')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato||'—')+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">'+destinatarioLabel+'</div><div class="parc-box">'+E(destinatarioNome)+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Mensagem</div><div class="parc-box">'+corpoHtml+'</div></div>'
+      +'</div>'
+      +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — '+new Date().toLocaleDateString('pt-BR')+'</div>';
+  };
+  function avisoMontarTexto(){
+    var contratoNum=document.getElementById('avisoContratoSelect').value;
+    var tipo=document.getElementById('avisoTipoSelect').value;
+    var c=contratosById[contratoNum];
+    var def=AVISO_DEFS[tipo];
+    if(!c||!def)return '';
+    var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
+    var paragrafos=def.corpo(c,ex);
+    var txt='*'+def.label.toUpperCase()+'*\n';
+    txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
+    txt+=paragrafos.join('\n\n');
+    txt+='\n\nDr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
+    return txt;
+  }
+  window.avisoCopiarTexto=function(){
+    var texto=avisoMontarTexto();
+    if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){alert('Texto copiado!');}).catch(function(){alert('Não consegui copiar. Selecione o texto na tela.');});
+    }else{alert('Selecione o texto na tela e copie manualmente.');}
+  };
+  window.avisoEnviarWhats=function(){
+    var texto=avisoMontarTexto();
+    if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  };
+  window.avisoEnviarEmail=function(){
+    var contratoNum=document.getElementById('avisoContratoSelect').value;
+    var tipo=document.getElementById('avisoTipoSelect').value;
+    var def=AVISO_DEFS[tipo];
+    var texto=avisoMontarTexto();
+    if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    abrirEmailFlex((def?def.label:'Aviso')+' — '+contratoNum,texto);
+  };
+  window.avisoImprimir=function(){
+    document.body.classList.add('printing-aviso-loc');
+    setTimeout(function(){window.print();document.body.classList.remove('printing-aviso-loc');},200);
+  };
+
   window.abrirReciboLoc=function(contrato,tipo){
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!w){alert('Não há lançamento deste contrato no mês selecionado.');return;}
@@ -10760,7 +10957,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
     locRenderContratos();document.getElementById('lc-contrato').focus();
@@ -10782,6 +10979,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-end').value=c.end||'';
     document.getElementById('lc-vig-inicio').value=locIsoFromBR(c.vigInicio);
     document.getElementById('lc-vig-fim').value=locIsoFromBR(c.vigFim);
+    document.getElementById('lc-indice-reajuste').value=c.indiceReajuste||'';
     document.getElementById('lc-aluguel').value=num(c.aluguel)||'';
     document.getElementById('lc-taxa').value=num(c.taxaPct)||'';
     document.getElementById('lc-venc').value=c.venc||'';
@@ -10810,6 +11008,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Endereco':document.getElementById('lc-end').value.trim(),
       'Data Inicio Contrato':locDtBRfromInput(document.getElementById('lc-vig-inicio').value),
       'Data Fim Contrato':locDtBRfromInput(document.getElementById('lc-vig-fim').value),
+      'Indice Reajuste':document.getElementById('lc-indice-reajuste').value,
       'Aluguel':num(document.getElementById('lc-aluguel').value),
       'Taxa Perc':num(document.getElementById('lc-taxa').value),
       'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
@@ -10822,7 +11021,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
@@ -11347,6 +11546,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (8)', itens: [
+      'Novo: "✉️ Avisos" em Locações — 9 modelos de mensagem prontos, já preenchidos com os dados do contrato selecionado: (1) aluguel não pago, (2) contrato vencido com reajuste, (3) contrato vencido sem reajuste, (4/5/6) troca de titularidade SABESP/ENEL/COMGÁS, (7) denúncia vazia, (8) reajuste anual (calcula o novo valor sozinho a partir do percentual que você digitar), (9) aviso ao locador sobre atraso. Envia por WhatsApp, e-mail (já usando sua preferência configurada) ou copia o texto, com o mesmo visual dos outros recibos.',
+      'Adicionado campo "Índice de reajuste" (IGP-M, IPCA, INPC, IGP-DI ou Outro) no cadastro do contrato — usado como sugestão no aviso de reajuste.',
+      'Testado os 9 modelos com um contrato completo — todos os dados batem certo, inclusive o cálculo do reajuste (R$2.000 + 4,5% = R$2.090,00).'
+    ]},
     { data: '08/ago/2026 (7)', itens: [
       'Novo: alertas de vigência de contrato em Locações. Quando faltam 60 dias ou menos pro fim do prazo, aparece um aviso "vencendo em X dias". Quando o prazo já venceu e o inquilino continua no imóvel, aparece o aviso "vigorando por prazo indeterminado" (regra da Lei do Inquilinato, art. 46, §1º). Usa o campo "Vigência — fim" do cadastro do contrato — se esse campo estiver vazio, o contrato não entra em nenhum dos dois alertas. Testado nos limites exatos (60 dias entra, 61 não entra).'
     ]},
