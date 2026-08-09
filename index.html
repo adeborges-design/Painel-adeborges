@@ -1224,6 +1224,18 @@
     .parc-header-title { color: #1a2a4a !important; }
     .parc-header-sub { color: #4a5a7a !important; }
     .parc-footer { background: #f4f6f9 !important; border-top: 1px solid #c8d0dc !important; color: #5a6578 !important; }
+    .parc-section-label { color: #5a7bab !important; }
+    .parc-section-label::before { background: #3a6ac8 !important; }
+    .parc-processo-nome { color: #1a2a4a !important; }
+    .parc-processo-num { color: #3a6ac8 !important; }
+    .parc-processo-meta { color: #4a6585 !important; }
+    .parc-box { background: #eef2fa !important; border-color: #c8d4e8 !important; color: #2d3b52 !important; }
+    .parc-box strong, .parc-box b { color: #142440 !important; }
+    .parc-tarefa-box { background: #fbf3e3 !important; border-color: #d4a017 !important; color: #6b5116 !important; }
+    .parc-tarefa-box strong, .parc-tarefa-box b { color: #4a3810 !important; }
+    .rel-imovel-bloco [style*="color:var(--accent2)"] { color: #1a2a4a !important; }
+    .rel-imovel-bloco [style*="color:var(--green)"] { color: #1a7a3a !important; }
+    .rel-imovel-bloco [style*="color:var(--red)"] { color: #b02a2a !important; }
 
     /* Esconder TUDO por padrão */
     body > * { display: none !important; }
@@ -11211,7 +11223,7 @@ window.cpRenderFixas=cpRenderFixas;
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
     { data: '08/ago/2026 (4)', itens: [
-      'Cabeçalho e rodapé de todos os recibos/informes (repasse, aluguel, acordo, parceiro, relatório do locador) ficaram mais claros ao imprimir/gerar PDF — antes usavam as mesmas faixas escuras da tela, que pesavam no papel e gastavam tinta à toa. Agora usam tons claros de azul/cinza com texto escuro, mantendo o visual escuro só na tela.'
+      'Corrigidas TODAS as cores de texto dos recibos/informes ao imprimir/gerar PDF (repasse, aluguel, acordo, parceiro, relatório do locador) — não só o cabeçalho e rodapé, mas título de cada bloco, "Contrato nº", valores, status Ativo/Inativo e o resumo final. Antes usavam as cores clarinhas feitas pra tela escura, ficando sem contraste e difícil de ler no papel. Testado gerando PDF real com 9 imóveis — tudo legível e com bom contraste agora.'
     ]},
     { data: '08/ago/2026 (3)', itens: [
       'Corrigido de vez o corte de cards no meio da página ao imprimir/gerar PDF do Relatório do Locador — o "overflow: hidden" do modal atrapalhava a paginação mesmo com a proteção que já tinha sido colocada. Testado gerando um PDF real com 9 imóveis (igual ao caso do Cachirulo Participações): nenhum card cortado, cada um pula inteiro pra próxima página quando não cabe.'
