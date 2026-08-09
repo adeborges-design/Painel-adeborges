@@ -5634,7 +5634,24 @@ function accNum(v) {
 function accBRL(v) { return 'R$ ' + accNum(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function accFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
 function accDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-function accIsoFromBR(s) { if (!s) return ''; var p = String(s).split('/'); if (p.length !== 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
+// Converte pra formato de <input type="date"> (AAAA-MM-DD). Tolera tanto "DD/MM/AAAA" (o formato
+// que o próprio painel grava) quanto formatos que o Google Sheets às vezes devolve sozinho quando
+// a célula vira tipo Data (ex.: "2026-08-15T00:00:00.000Z" ou "2026-08-15") — sem isso, o campo
+// de data ficava em branco mesmo com o valor certo salvo na planilha.
+function accIsoFromBR(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  if (s.indexOf('/') >= 0) {
+    var p = s.split('/');
+    if (p.length !== 3) return '';
+    var dd = ('0' + p[0]).slice(-2), mm = ('0' + p[1]).slice(-2), aaaa = p[2];
+    if (aaaa.length !== 4 || isNaN(parseInt(dd)) || isNaN(parseInt(mm))) return '';
+    return aaaa + '-' + mm + '-' + dd;
+  }
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  return '';
+}
 function accMesAtual() { var d = new Date(); return ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
 function accProxMes(mes) { var p = mes.split('/'); var m = parseInt(p[0], 10), a = parseInt(p[1], 10); m++; if (m > 12) { m = 1; a++; } return ('0' + m).slice(-2) + '/' + a; }
 
@@ -6055,7 +6072,7 @@ window.accRender = function () {
       + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
       + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
       + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
-      + '<td style="text-align:center">' + accE(c['Dia Repasse'] || '-') + '</td>'
+      + '<td style="text-align:center">' + (c['Dia Repasse'] ? accE(c['Dia Repasse']) + 'd' : '-') + '</td>'
       + '<td><select class="loc-row-select" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
@@ -8999,7 +9016,7 @@ window.cpRenderFixas=cpRenderFixas;
           <th style="text-align:right">Valor Recebido (R$)</th>
           <th style="text-align:right">Honorários (R$)</th>
           <th style="text-align:right">Repasse Cliente (R$)</th>
-          <th style="text-align:center">Dia Repasse</th>
+          <th style="text-align:center">Prazo Repasse</th>
           <th>Status Repasse</th><th>Data Repasse</th>
           <th style="text-align:center">Ações</th>
         </tr></thead>
@@ -9034,7 +9051,7 @@ window.cpRenderFixas=cpRenderFixas;
           </select>
         </div>
         <div class="loc-cfield"><label>Dia Vencimento <span style="font-weight:400;color:var(--muted)">(só p/ mensal)</span></label><input class="loc-cinput" id="ac-diaVenc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
-        <div class="loc-cfield"><label>Dia Repasse <span style="font-weight:400;color:var(--muted)">(só p/ mensal)</span></label><input class="loc-cinput" id="ac-diaRep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
+        <div class="loc-cfield"><label>Repassar em até <span style="font-weight:400;color:var(--muted)">(dias após receber da parte contrária)</span></label><input class="loc-cinput" id="ac-diaRep" type="number" min="0" placeholder="Ex.: 5"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários do cliente (para o repasse)</div>
         <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="ac-banco" placeholder="Ex.: Itaú"></div>
         <div class="loc-cfield half"><label>Agência</label><input class="loc-cinput" id="ac-agencia" placeholder="0000"></div>
@@ -11023,6 +11040,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (16)', itens: [
+      'Corrigido o rótulo confuso "Dia Repasse (só p/ mensal)" no cadastro de acordo — agora é "Repassar em até [X] dias após receber da parte contrária", funciona pra qualquer frequência (diário, semanal, parcelado, mensal), não só mensal.',
+      'Novo alerta de verdade: quando um acordo já foi recebido mas o repasse ao cliente passa do prazo configurado, aparece um aviso na tela inicial (💰 pendências em Acordos), junto com os atrasos de recebimento que já existiam. Testado com um caso atrasado e outro dentro do prazo — pegou só o certo.'
+    ]},
+    { data: '07/ago/2026 (15)', itens: [
+      'Corrigido: o campo "Data Repasse" em Acordos podia ficar em branco mesmo com o valor certo salvo — achei duas causas: dia/mês sem zero à esquerda (ex.: "5/8/2026") não era aceito pelo campo de data do navegador, e o Google Sheets às vezes devolve a data num formato diferente (tipo "2026-08-15T00:00:00.000Z") quando a célula vira tipo Data sozinha. Agora tolera os dois casos.'
+    ]},
     { data: '07/ago/2026 (14)', itens: [
       'Corrigido: o botão "Salvar acordo" tinha parado de funcionar — usei por engano a função de outro módulo (Locações) num dos campos novos do Advogado Parceiro, o que travava o salvamento inteiro com um erro silencioso. Testado de novo salvando um acordo completo (com parceiro, valores em vírgula) e confirmado funcionando.'
     ]},
@@ -11491,15 +11515,39 @@ window.cpRenderFixas=cpRenderFixas;
       renderSpark('spark-acc-receb','acc-receb',accReceb,'var(--green)');
       renderSpark('spark-acc-pend','acc-pend',accPend,'var(--yellow)');
       var accAtrasadas=accLanc.filter(function(l){return l['Status Recebimento']==='Atrasado';});
-      setCritActive('hc-acc-pend',accAtrasadas.length>0);
-      if(!accAtrasadas.length){setAlertBox('homeAlertAcc',null);}
+      // Repasse atrasado: ja recebeu da parte contraria, ainda nao repassou ao cliente, e ja
+      // passou do prazo (em dias) configurado no acordo — vale pra qualquer mes, nao so o atual.
+      var hojeMs=new Date().setHours(0,0,0,0);
+      function accParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+      var repasseAtrasados=(window.accLancamentos||[]).filter(function(l){
+        if(l['Status Recebimento']!=='Recebido'||l['Status Repasse']==='Repassado')return false;
+        var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+        var prazoDias=parseInt(ct['Dia Repasse'])||0;
+        if(!prazoDias)return false;
+        var dataReceb=accParseDataBR(l['Data Recebimento']);
+        if(!dataReceb)return false;
+        return (hojeMs-dataReceb)/86400000>prazoDias;
+      });
+      setCritActive('hc-acc-pend',accAtrasadas.length>0||repasseAtrasados.length>0);
+      if(!accAtrasadas.length&&!repasseAtrasados.length){setAlertBox('homeAlertAcc',null);}
       else{
-        var ha='<div class="ha-tit venc">💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s) ('+accM+')</div>'
-          +accAtrasadas.slice(0,8).map(function(l){
-            var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
-            return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Previsto'])||0)+' (parte contrária: '+E(ct['Parte Contraria']||'-')+')</div>';
-          }).join('');
-        setAlertBox('homeAlertAcc','💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s)','var(--red)',ha,'abrir Acordos','abrirAcordos()');
+        var ha='';
+        if(accAtrasadas.length){
+          ha+='<div class="ha-tit venc">💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s) ('+accM+')</div>'
+            +accAtrasadas.slice(0,8).map(function(l){
+              var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+              return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Previsto'])||0)+' (parte contrária: '+E(ct['Parte Contraria']||'-')+')</div>';
+            }).join('');
+        }
+        if(repasseAtrasados.length){
+          ha+='<div class="ha-tit venc">👤 '+repasseAtrasados.length+' repasse(s) ao cliente atrasado(s)</div>'
+            +repasseAtrasados.slice(0,8).map(function(l){
+              var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+              return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Repasse'])||0)+' (recebido em '+E(l['Data Recebimento']||'-')+')</div>';
+            }).join('');
+        }
+        var totalAlertas=accAtrasadas.length+repasseAtrasados.length;
+        setAlertBox('homeAlertAcc','💰 '+totalAlertas+' pendência(s) em Acordos','var(--red)',ha,'abrir Acordos','abrirAcordos()');
       }
     }catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
