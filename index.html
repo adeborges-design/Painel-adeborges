@@ -1233,9 +1233,19 @@
     .parc-box strong, .parc-box b { color: #142440 !important; }
     .parc-tarefa-box { background: #fbf3e3 !important; border-color: #d4a017 !important; color: #6b5116 !important; }
     .parc-tarefa-box strong, .parc-tarefa-box b { color: #4a3810 !important; }
+    /* Rede de segurança: qualquer texto dentro do recibo com cor clara (feita pra tela
+       escura) que eu não tenha listado nominalmente cai aqui, virando escuro/legível. As
+       regras específicas abaixo (mesma especificidade, mas escritas depois) ganham a
+       prioridade pra manter verde/vermelho de status e o tom âmbar do resumo. */
+    .parc-body [style*="color:#8"], .parc-body [style*="color:#9"], .parc-body [style*="color:#a"],
+    .parc-body [style*="color:#b"], .parc-body [style*="color:#c"], .parc-body [style*="color:#d"],
+    .parc-body [style*="color:#e"], .parc-body [style*="color:#f"] { color: #2d3b52 !important; }
     .rel-imovel-bloco [style*="color:var(--accent2)"] { color: #1a2a4a !important; }
     .rel-imovel-bloco [style*="color:var(--green)"] { color: #1a7a3a !important; }
     .rel-imovel-bloco [style*="color:var(--red)"] { color: #b02a2a !important; }
+    .parc-tarefa-box [style*="color:#c8d8f0"] { color: #6b5116 !important; }
+    .parc-body [style*="color:#8fadd4"] { color: #4a6585 !important; }
+    .parc-body [style*="color:#f2d3b0"] { color: #8a5a1a !important; }
 
     /* Esconder TUDO por padrão */
     body > * { display: none !important; }
@@ -9276,6 +9286,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-wpp" onclick="relLocadorEnviarWhats()">📱 WhatsApp</button>
       <button class="btn-parc-email" onclick="relLocadorEnviarEmail()">✉️ E-mail</button>
       <button class="btn-recibo-print" onclick="relLocadorImprimir()">🖨 Imprimir/PDF</button>
+      <button class="loc-btn" onclick="relLocadorCopiarTexto()">📋 Copiar texto</button>
     </div>
   </div>
 </div>
@@ -10316,7 +10327,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Locatário: '+(c.locatario||'—')+'\n';
       txt+='Vigência: '+vig+'\n';
       txt+='Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': '+BRL(c.aluguel*i.pct/100)+'\n';
-      txt+='－－－－－－－－－－\n';
+      txt+='－－－－－－－－－－\n\n';
     });
     txt+='\n*TOTAL (imóveis ativos):* '+BRL(somaAluguel)+'\n\n';
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
@@ -10326,6 +10337,16 @@ window.cpRenderFixas=cpRenderFixas;
     document.body.classList.add('printing-rel-locador');
     setTimeout(function(){window.print();document.body.classList.remove('printing-rel-locador');},200);
   };
+  window.relLocadorCopiarTexto=function(){
+    var nome=document.getElementById('relLocadorSelect').value;
+    if(!nome){alert('Selecione um locador primeiro.');return;}
+    var texto=relLocadorMontarTexto(nome);
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){alert('Texto copiado! Já pode colar onde precisar (WhatsApp, e-mail, etc.).');}).catch(function(){alert('Não consegui copiar automaticamente. Selecione o texto na tela e copie manualmente.');});
+    }else{
+      alert('Seu navegador não permite copiar automaticamente. Selecione o texto na tela e copie manualmente.');
+    }
+  };
   window.relLocadorEnviarWhats=function(){
     var nome=document.getElementById('relLocadorSelect').value;
     if(!nome){alert('Selecione um locador primeiro.');return;}
@@ -10334,7 +10355,24 @@ window.cpRenderFixas=cpRenderFixas;
   window.relLocadorEnviarEmail=function(){
     var nome=document.getElementById('relLocadorSelect').value;
     if(!nome){alert('Selecione um locador primeiro.');return;}
-    window.open('mailto:?subject='+encodeURIComponent('Relatório de Imóveis — '+nome)+'&body='+encodeURIComponent(relLocadorMontarTexto(nome)));
+    var texto=relLocadorMontarTexto(nome);
+    // Links "mailto:" têm limite de tamanho (geralmente ~2000 caracteres) — um relatório com
+    // vários imóveis passa disso fácil e o e-mail simplesmente não abria, sem erro nenhum.
+    // Por isso: copia o texto completo pra área de transferência e abre o e-mail só com o
+    // assunto preenchido, pedindo pra colar (Ctrl+V) o corpo.
+    var abrir=function(){window.open('mailto:?subject='+encodeURIComponent('Relatório de Imóveis — '+nome));};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){
+        alert('Texto do relatório copiado! Vou abrir seu e-mail — é só colar (Ctrl+V ou Cmd+V) no corpo da mensagem.');
+        abrir();
+      }).catch(function(){
+        alert('Não consegui copiar automaticamente. Abrindo o e-mail — copie o texto do relatório na tela e cole no corpo.');
+        abrir();
+      });
+    }else{
+      alert('Abrindo o e-mail — copie o texto do relatório na tela (botão direito > copiar) e cole no corpo da mensagem.');
+      abrir();
+    }
   };
 
   window.abrirReciboLoc=function(contrato,tipo){
@@ -11222,6 +11260,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (5)', itens: [
+      'Corrigido o texto do resumo do Relatório do Locador na impressão/PDF, que ainda ficava quase invisível (cor clara de mais, escapou da correção anterior) — e criada uma "rede de segurança" geral no CSS de impressão, pra pegar qualquer outra cor clara que eu tenha esquecido em qualquer recibo do sistema.',
+      'Corrigido o envio por e-mail, que não funcionava com relatórios de vários imóveis — o link de e-mail tem um limite de tamanho (geralmente ~2.000 caracteres) que o texto ultrapassava fácil, e o e-mail simplesmente não abria, sem aviso nenhum. Agora copia o texto completo pra área de transferência e abre o e-mail só com o assunto — é só colar (Ctrl+V) no corpo.',
+      'Adicionado botão "📋 Copiar texto" como alternativa, útil se WhatsApp/e-mail do navegador não abrirem do jeito esperado.',
+      'Texto do WhatsApp ganhou mais espaço entre cada imóvel, ficando mais fácil de diferenciar um do outro.'
+    ]},
     { data: '08/ago/2026 (4)', itens: [
       'Corrigidas TODAS as cores de texto dos recibos/informes ao imprimir/gerar PDF (repasse, aluguel, acordo, parceiro, relatório do locador) — não só o cabeçalho e rodapé, mas título de cada bloco, "Contrato nº", valores, status Ativo/Inativo e o resumo final. Antes usavam as cores clarinhas feitas pra tela escura, ficando sem contraste e difícil de ler no papel. Testado gerando PDF real com 9 imóveis — tudo legível e com bom contraste agora.'
     ]},
