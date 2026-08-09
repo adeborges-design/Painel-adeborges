@@ -10525,7 +10525,8 @@ window.cpRenderFixas=cpRenderFixas;
         'Prezado(a) '+(c.locatario||'Locatário')+',',
         'Verificamos que o aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', com vencimento no dia '+(c.venc||'—')+' de cada mês, ainda não consta como pago em nossos registros.',
         'Valor do aluguel: '+BRL(c.aluguel||0)+'.',
-        'Solicitamos a regularização o quanto antes, a fim de evitar a incidência de multa'+(c.multaAtrasoPct?' de '+c.multaAtrasoPct+'%':' contratual')+' e juros de mora, conforme previsto em contrato.',
+        'Sobre o valor em aberto já incidem, desde o vencimento, multa'+(c.multaAtrasoPct?' de '+c.multaAtrasoPct+'%':' contratual')+' e juros de mora, conforme previsto em contrato, que se agravam a cada dia de atraso.',
+        'Solicitamos a regularização o quanto antes, para que a dívida não aumente ainda mais.',
         'Caso o pagamento já tenha sido efetuado, favor desconsiderar este aviso e nos encaminhar o comprovante para conferência.'
       ];
     }},
@@ -10533,7 +10534,7 @@ window.cpRenderFixas=cpRenderFixas;
       return [
         'Prezado(a) '+(c.locatario||'Locatário')+',',
         'Informamos que o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', teve seu prazo encerrado em '+(c.vigFim||'data não informada')+'.',
-        'Diante disso, faz-se necessária a formalização da renovação contratual, com o consequente reajuste do valor do aluguel, conforme previsto em contrato.',
+        'Diante disso, faz-se necessária a formalização da renovação contratual, com o consequente reajuste do valor do aluguel.',
         'Solicitamos manifestação sobre o interesse na continuidade da locação, para que possamos providenciar o respectivo aditivo contratual.'
       ];
     }},
@@ -10616,21 +10617,22 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'—')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato||'—')+'</div></div>'
       +'<div class="parc-section"><div class="parc-section-label">'+destinatarioLabel+'</div><div class="parc-box">'+E(destinatarioNome)+'</div></div>'
-      +'<div class="parc-section"><div class="parc-section-label">Mensagem</div><div class="parc-box">'+corpoHtml+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text">'+corpoHtml+'</div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — '+new Date().toLocaleDateString('pt-BR')+'</div>';
   };
   function avisoMontarTexto(){
-    var contratoNum=document.getElementById('avisoContratoSelect').value;
     var tipo=document.getElementById('avisoTipoSelect').value;
-    var c=contratosById[contratoNum];
     var def=AVISO_DEFS[tipo];
-    if(!c||!def)return '';
-    var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
-    var paragrafos=def.corpo(c,ex);
+    if(!def)return '';
+    var box=document.getElementById('avisoMensagemBox');
+    if(!box)return '';
+    // Lê o texto de dentro da caixa de mensagem (que pode ter sido editado manualmente antes
+    // de enviar), em vez de gerar de novo do zero — assim as edições não se perdem.
+    var corpo=box.innerText.trim();
     var txt='*'+def.label.toUpperCase()+'*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
-    txt+=paragrafos.join('\n\n');
+    txt+=corpo;
     txt+='\n\nDr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
@@ -11546,6 +11548,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (9)', itens: [
+      'Aviso 1 (aluguel em atraso): corrigido — não fala mais "para evitar multa", já que após o vencimento a multa e os juros já incidem de fato, não é algo evitável nesse ponto.',
+      'Aviso 2 (renovação com reajuste): removida a menção a "conforme previsto em contrato", já que após o vencimento o reajuste muitas vezes vem com valor novo negociado, não necessariamente o do contrato antigo.',
+      'Todos os 9 avisos agora têm o texto da mensagem editável — clique direto no texto pra ajustar antes de enviar, igual já funciona em Procuração e Contrato de Honorários. O que for editado é o que vai no WhatsApp/e-mail/impressão.'
+    ]},
     { data: '08/ago/2026 (8)', itens: [
       'Novo: "✉️ Avisos" em Locações — 9 modelos de mensagem prontos, já preenchidos com os dados do contrato selecionado: (1) aluguel não pago, (2) contrato vencido com reajuste, (3) contrato vencido sem reajuste, (4/5/6) troca de titularidade SABESP/ENEL/COMGÁS, (7) denúncia vazia, (8) reajuste anual (calcula o novo valor sozinho a partir do percentual que você digitar), (9) aviso ao locador sobre atraso. Envia por WhatsApp, e-mail (já usando sua preferência configurada) ou copia o texto, com o mesmo visual dos outros recibos.',
       'Adicionado campo "Índice de reajuste" (IGP-M, IPCA, INPC, IGP-DI ou Outro) no cadastro do contrato — usado como sugestão no aviso de reajuste.',
