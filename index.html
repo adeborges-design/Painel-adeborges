@@ -5719,7 +5719,7 @@ window.carregarAcordos = async function () {
   try {
     var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
     var k = '?key=' + c.apiKey;
-    var r1 = await fetch(base + encodeURIComponent('ACORDO_CONTRATOS!A1:O500') + k);
+    var r1 = await fetch(base + encodeURIComponent('ACORDO_CONTRATOS!A1:Z500') + k);
     var r2 = await fetch(base + encodeURIComponent('ACORDO_LANCAMENTOS!A1:L3000') + k);
     var d1 = r1.ok ? await r1.json() : { values: [] };
     var d2 = r2.ok ? await r2.json() : { values: [] };
@@ -11040,6 +11040,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '07/ago/2026 (17)', itens: [
+      'Corrigido bug sério: a busca de dados de Acordos na planilha estava limitada até a coluna O (só até "Conta Cliente") — ou seja, "Pix Cliente" e todo o bloco do Advogado Parceiro nunca chegavam a ser buscados da planilha, mesmo estando salvos lá. Por isso sumiam ao editar. Ampliado o intervalo de busca; testado com um registro completo (cliente + parceiro) e todos os campos vieram certos.'
+    ]},
     { data: '07/ago/2026 (16)', itens: [
       'Corrigido o rótulo confuso "Dia Repasse (só p/ mensal)" no cadastro de acordo — agora é "Repassar em até [X] dias após receber da parte contrária", funciona pra qualquer frequência (diário, semanal, parcelado, mensal), não só mensal.',
       'Novo alerta de verdade: quando um acordo já foi recebido mas o repasse ao cliente passa do prazo configurado, aparece um aviso na tela inicial (💰 pendências em Acordos), junto com os atrasos de recebimento que já existiam. Testado com um caso atrasado e outro dentro do prazo — pegou só o certo.'
