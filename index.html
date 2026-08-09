@@ -3597,6 +3597,18 @@
       <input type="text" class="form-input" id="inputSheetName" placeholder="PROCESSOS">
     </div>
 
+    <div class="form-group">
+      <label class="form-label">E-MAIL PREFERIDO (ao clicar em "✉️ E-mail")</label>
+      <select class="form-input" id="inputEmailPref">
+        <option value="padrao">Padrão do sistema (abre o app de e-mail do computador)</option>
+        <option value="gmail">Gmail (abre direto no navegador)</option>
+        <option value="outlook">Outlook.com / Office 365 (abre direto no navegador)</option>
+      </select>
+      <div style="margin-top:6px;font-size:11px;color:var(--muted)">
+        Se o "Padrão do sistema" abrir um app quebrado ou desatualizado (Outlook Desktop, por exemplo), escolha Gmail ou Outlook.com aqui.
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
       <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
@@ -3666,10 +3678,54 @@ function getConfig() {
   };
 }
 
+// Preferência de qual serviço de e-mail abrir ao clicar em "✉️ E-mail" em qualquer recibo do
+// sistema — separada da config da planilha, pra poder trocar sem precisar reconfigurar nada.
+function getEmailPref(){
+  try{return localStorage.getItem('lexflow_email_pref')||'padrao';}catch(e){return 'padrao';}
+}
+function setEmailPref(v){
+  try{localStorage.setItem('lexflow_email_pref',v);}catch(e){}
+}
+// Abre o e-mail no serviço escolhido pelo usuário. Se o corpo for grande (mailto e os links
+// de compor do Gmail/Outlook web têm limite de tamanho de URL), copia o texto pro clipboard e
+// abre só com o assunto, evitando o e-mail simplesmente não abrir sem aviso nenhum.
+function abrirEmailFlex(assunto, corpo){
+  corpo = corpo || '';
+  var pref = getEmailPref();
+  var GRANDE = 1500;
+  var precisaCopiar = corpo.length > GRANDE;
+  function montarUrl(comCorpo){
+    var s = encodeURIComponent(assunto || '');
+    var b = comCorpo ? encodeURIComponent(corpo) : '';
+    if (pref === 'gmail') return 'https://mail.google.com/mail/?view=cm&fs=1&su=' + s + (comCorpo ? '&body=' + b : '');
+    if (pref === 'outlook') return 'https://outlook.live.com/mail/0/deeplink/compose?subject=' + s + (comCorpo ? '&body=' + b : '');
+    return 'mailto:?subject=' + s + (comCorpo ? '&body=' + b : '');
+  }
+  if (!precisaCopiar) {
+    window.open(montarUrl(true), pref === 'padrao' ? undefined : '_blank');
+    return;
+  }
+  var abrir = function(){ window.open(montarUrl(false), pref === 'padrao' ? undefined : '_blank'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(corpo).then(function(){
+      alert('Texto copiado! Vou abrir seu e-mail — é só colar (Ctrl+V ou Cmd+V) no corpo da mensagem.');
+      abrir();
+    }).catch(function(){
+      alert('Não consegui copiar automaticamente. Abrindo o e-mail — copie o texto na tela e cole no corpo.');
+      abrir();
+    });
+  } else {
+    alert('Abrindo o e-mail — copie o texto na tela (botão direito > copiar) e cole no corpo da mensagem.');
+    abrir();
+  }
+}
+
 function saveConfig() {
   const sheetId = document.getElementById('inputSheetId').value.trim();
   const apiKey = document.getElementById('inputApiKey').value.trim();
   const sheetName = document.getElementById('inputSheetName').value.trim() || CONFIG_DEFAULTS.sheetName;
+  const emailPref = document.getElementById('inputEmailPref').value;
+  setEmailPref(emailPref);
 
   if (!sheetId || !apiKey) {
     alert('Preencha o ID da planilha e a chave de API.');
@@ -6254,7 +6310,7 @@ window.accReciboEnviarWhats = function () {
 };
 window.accReciboEnviarEmail = function () {
   var texto = document.getElementById('reciboAcordoCard').innerText;
-  window.open('mailto:?subject=' + encodeURIComponent('Informe de Repasse') + '&body=' + encodeURIComponent(texto));
+  abrirEmailFlex('Informe de Repasse', texto);
 };
 window.accReciboEnviarImagem = function () {
   var card = document.getElementById('reciboAcordoCard');
@@ -7660,6 +7716,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (cfg.sheetId) document.getElementById('inputSheetId').value = cfg.sheetId;
   if (cfg.apiKey) document.getElementById('inputApiKey').value = cfg.apiKey;
   if (cfg.sheetName) document.getElementById('inputSheetName').value = cfg.sheetName;
+  var elEmailPref = document.getElementById('inputEmailPref');
+  if (elEmailPref) elEmailPref.value = getEmailPref();
 
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
@@ -8849,6 +8907,7 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="loc-body">
     <div class="loc-stats" id="locStats"></div>
     <div class="loc-chips" id="locChips"></div>
+    <div id="locAlertaVigencia" style="margin:10px 0"></div>
     <div class="loc-toolbar">
       <div class="loc-mes-wrap">
         <label>Mês</label>
@@ -9805,6 +9864,50 @@ window.cpRenderFixas=cpRenderFixas;
 
   window.locFiltroAtivo = 'all';
   window.locFiltrar = function (tipo) { locFiltroAtivo = (locFiltroAtivo === tipo) ? 'all' : tipo; locRender(); };
+  // ---------- ALERTAS DE VIGÊNCIA DO CONTRATO ----------
+  // Dois avisos, com base em "Data Fim Contrato": (1) prazo já venceu e o inquilino
+  // continua no imóvel — por força da Lei do Inquilinato (art. 46, §1º), o contrato passa a
+  // vigorar por prazo indeterminado automaticamente; (2) faltam 60 dias ou menos pro fim do
+  // prazo — aviso pra decidir renovação/aditivo antes de virar prazo indeterminado.
+  function locAtualizarAlertaVigencia(){
+    var host=document.getElementById('locAlertaVigencia');
+    if(!host)return;
+    var hoje=new Date();hoje.setHours(0,0,0,0);
+    function parseVig(s){
+      var p=String(s||'').split('/');
+      if(p.length!==3)return null;
+      var d=new Date(+p[2],+p[1]-1,+p[0]);
+      d.setHours(0,0,0,0);
+      return isNaN(d.getTime())?null:d;
+    }
+    var vencidos=[],aVencer=[];
+    (DATA.contratos||[]).forEach(function(c){
+      if(!c.ativo)return;
+      var fim=parseVig(c.vigFim);
+      if(!fim)return;
+      var dias=Math.round((fim-hoje)/86400000);
+      if(dias<0)vencidos.push({c:c,dias:-dias});
+      else if(dias<=60)aVencer.push({c:c,dias:dias});
+    });
+    if(!vencidos.length&&!aVencer.length){host.innerHTML='';return;}
+    aVencer.sort(function(a,b){return a.dias-b.dias;});
+    vencidos.sort(function(a,b){return b.dias-a.dias;});
+    var html='';
+    if(aVencer.length){
+      html+='<div style="background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.35);border-radius:10px;padding:10px 14px;margin-bottom:8px">'
+        +'<div style="font-weight:700;color:var(--yellow);margin-bottom:4px">⏰ '+aVencer.length+' contrato(s) vencendo em até 60 dias</div>'
+        +aVencer.map(function(a){return '<div style="font-size:12.5px;color:var(--text);margin:2px 0">'+E(a.c.end||a.c.contrato)+' ('+E(a.c.locatario||'')+') — vence em <strong>'+a.dias+' dia(s)</strong></div>';}).join('')
+        +'</div>';
+    }
+    if(vencidos.length){
+      html+='<div style="background:rgba(91,141,238,0.08);border:1px solid rgba(91,141,238,0.3);border-radius:10px;padding:10px 14px">'
+        +'<div style="font-weight:700;color:var(--accent2);margin-bottom:4px">📄 '+vencidos.length+' contrato(s) vigorando por prazo indeterminado</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Prazo original venceu e o inquilino continua no imóvel — por força da Lei do Inquilinato (art. 46, §1º), passou a vigorar por prazo indeterminado.</div>'
+        +vencidos.map(function(a){return '<div style="font-size:12.5px;color:var(--text);margin:2px 0">'+E(a.c.end||a.c.contrato)+' ('+E(a.c.locatario||'')+') — venceu há <strong>'+a.dias+' dia(s)</strong></div>';}).join('')
+        +'</div>';
+    }
+    host.innerHTML=html;
+  }
   window.locRender=function(){
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
     var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
@@ -9872,6 +9975,7 @@ window.cpRenderFixas=cpRenderFixas;
     }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
     if(showRepasse)renderRepasse(lstTodos);
     if(showResumoLocadores)renderResumoLocadores();
+    locAtualizarAlertaVigencia();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
     document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Encargos</b> (clique para editar) reúne condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), IPTU (parcela do mês), outras cobranças e desconto — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel + Multa + Juros − Taxa + Encargos, mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
@@ -10355,24 +10459,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.relLocadorEnviarEmail=function(){
     var nome=document.getElementById('relLocadorSelect').value;
     if(!nome){alert('Selecione um locador primeiro.');return;}
-    var texto=relLocadorMontarTexto(nome);
-    // Links "mailto:" têm limite de tamanho (geralmente ~2000 caracteres) — um relatório com
-    // vários imóveis passa disso fácil e o e-mail simplesmente não abria, sem erro nenhum.
-    // Por isso: copia o texto completo pra área de transferência e abre o e-mail só com o
-    // assunto preenchido, pedindo pra colar (Ctrl+V) o corpo.
-    var abrir=function(){window.open('mailto:?subject='+encodeURIComponent('Relatório de Imóveis — '+nome));};
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(texto).then(function(){
-        alert('Texto do relatório copiado! Vou abrir seu e-mail — é só colar (Ctrl+V ou Cmd+V) no corpo da mensagem.');
-        abrir();
-      }).catch(function(){
-        alert('Não consegui copiar automaticamente. Abrindo o e-mail — copie o texto do relatório na tela e cole no corpo.');
-        abrir();
-      });
-    }else{
-      alert('Abrindo o e-mail — copie o texto do relatório na tela (botão direito > copiar) e cole no corpo da mensagem.');
-      abrir();
-    }
+    abrirEmailFlex('Relatório de Imóveis — '+nome, relLocadorMontarTexto(nome));
   };
 
   window.abrirReciboLoc=function(contrato,tipo){
@@ -10577,7 +10664,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.enviarReciboLocEmail=function(){
     var assunto=(_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');
-    window.open('mailto:?subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(_reciboLocTexto().replace(/\*/g,'')),'_blank');
+    abrirEmailFlex(assunto,_reciboLocTexto().replace(/\*/g,''));
   };
   window.enviarReciboLocImagem=function(){
     getReciboLocImagemFile().then(function(file){
@@ -11260,6 +11347,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (7)', itens: [
+      'Novo: alertas de vigência de contrato em Locações. Quando faltam 60 dias ou menos pro fim do prazo, aparece um aviso "vencendo em X dias". Quando o prazo já venceu e o inquilino continua no imóvel, aparece o aviso "vigorando por prazo indeterminado" (regra da Lei do Inquilinato, art. 46, §1º). Usa o campo "Vigência — fim" do cadastro do contrato — se esse campo estiver vazio, o contrato não entra em nenhum dos dois alertas. Testado nos limites exatos (60 dias entra, 61 não entra).'
+    ]},
+    { data: '08/ago/2026 (6)', itens: [
+      'Novo: preferência de e-mail configurável (Config > "E-mail preferido"). Se o "Padrão do sistema" abrir um app quebrado ou desatualizado no seu computador (como aconteceu com o Outlook Desktop), escolha Gmail ou Outlook.com — abre direto no navegador. Aplica em todos os lugares que enviam e-mail no sistema (recibos de locação, informe de repasse, informe do parceiro, relatório do locador), não precisa configurar em cada um.'
+    ]},
     { data: '08/ago/2026 (5)', itens: [
       'Corrigido o texto do resumo do Relatório do Locador na impressão/PDF, que ainda ficava quase invisível (cor clara de mais, escapou da correção anterior) — e criada uma "rede de segurança" geral no CSS de impressão, pra pegar qualquer outra cor clara que eu tenha esquecido em qualquer recibo do sistema.',
       'Corrigido o envio por e-mail, que não funcionava com relatórios de vários imóveis — o link de e-mail tem um limite de tamanho (geralmente ~2.000 caracteres) que o texto ultrapassava fácil, e o e-mail simplesmente não abria, sem aviso nenhum. Agora copia o texto completo pra área de transferência e abre o e-mail só com o assunto — é só colar (Ctrl+V) no corpo.',
