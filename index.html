@@ -3871,6 +3871,7 @@ function saveConfig() {
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
   try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
+  try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
   try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
@@ -7928,6 +7929,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
     try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
+    try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
   }
 });
 
@@ -9130,6 +9132,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
       <button class="loc-btn" onclick="relLocadorAbrir()">📄 Relatório do Locador</button>
       <button class="loc-btn" onclick="relMensalAbrir()">📅 Relatório Mensal de Repasses</button>
+      <button class="loc-btn" onclick="locLocAbrir()">💼 Despesas/Créditos do Locador</button>
       <button class="loc-btn" onclick="avisoAbrir()">✉️ Avisos</button>
     </div>
 
@@ -9652,6 +9655,27 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DESPESAS/CRÉDITOS DO LOCADOR (não ligados a um imóvel específico, ex.: honorários de ação judicial) -->
+<div class="modal-repasse-overlay" id="modalLocLoc">
+  <div class="repasse-wrap" style="max-width:600px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">💼 Despesas/Créditos do Locador</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalLocLoc').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:16px 20px 0">
+      <div class="loc-note" style="margin-bottom:12px">Para cobranças do locador que não são de um imóvel específico — ex.: honorários de uma ação judicial que ele te pediu pra fazer, descontados do próximo repasse. Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (💰 → 📅) daquele locador, descontando do total.</div>
+      <select class="loc-cinput" id="locLocLocadorSelect" style="width:100%;margin-bottom:12px" onchange="locLocRender()"></select>
+      <div class="loc-cform" style="padding:0;border:none;background:none">
+        <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="locLoc-desc" placeholder="Ex.: Honorários — Ação de despejo processo nº..."></div>
+        <div class="loc-cfield"><label>Valor (R$) — negativo desconta, positivo é crédito a favor dele</label><input class="loc-cinput" id="locLoc-valor" type="text" inputmode="decimal" placeholder="-5000,00"></div>
+        <div class="loc-cfield"><label>Data</label><input class="loc-cinput" id="locLoc-data" type="date"></div>
+        <div class="loc-cfield full"><button type="button" class="loc-btn primary" onclick="locLocAdicionar()" style="width:100%">+ Adicionar lançamento</button></div>
+      </div>
+    </div>
+    <div id="locLocLista" style="padding:14px 20px 20px;max-height:40vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -10850,6 +10874,95 @@ window.cpRenderFixas=cpRenderFixas;
   };
 
   // ---------- RELATÓRIO MENSAL DE REPASSES (extrato financeiro de um mês específico) ----------
+  // ---------- DESPESAS/CRÉDITOS DO LOCADOR (não ligados a um imóvel específico) ----------
+  window.locLocCache=[];
+  window.carregarLocLoc=async function(){
+    try{
+      var cfg=getConfig();
+      if(!cfg||!cfg.apiKey||!cfg.sheetId){window.locLocCache=[];return;}
+      var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:H500')+'?key='+cfg.apiKey);
+      if(!r.ok){window.locLocCache=[];return;}
+      var d=await r.json();
+      var rows=d.values||[];
+      if(rows.length<2){window.locLocCache=[];return;}
+      var hd=rows[0];
+      window.locLocCache=rows.slice(1).filter(function(x){return x[0];}).map(function(row){
+        var o={};hd.forEach(function(h,i){o[h]=row[i]!==undefined?row[i]:'';});return o;
+      });
+    }catch(e){window.locLocCache=[];}
+  };
+  window.locLocAbrir=function(){
+    var nomes={};
+    DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
+    (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var sel=document.getElementById('locLocLocadorSelect');
+    sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    var hoje=new Date();
+    document.getElementById('locLoc-data').value=hoje.toISOString().split('T')[0];
+    document.getElementById('locLocLista').innerHTML='';
+    document.getElementById('modalLocLoc').classList.add('open');
+  };
+  function locLocParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+  window.locLocRender=function(){
+    var nome=document.getElementById('locLocLocadorSelect').value;
+    var host=document.getElementById('locLocLista');
+    if(!nome){host.innerHTML='';return;}
+    var itens=(window.locLocCache||[]).filter(function(x){return String(x['Locador']||'').trim()===nome;})
+      .sort(function(a,b){return (locLocParseDataBR(b['Data'])||0)-(locLocParseDataBR(a['Data'])||0);});
+    if(!itens.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">Nenhum lançamento avulso para este locador ainda.</div>';return;}
+    host.innerHTML=itens.map(function(it){
+      var quitado=String(it['Status']).toLowerCase()==='quitado';
+      var valor=num(it['Valor']);
+      return '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);'+(quitado?'opacity:.5':'')+'">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px">'+E(it['Descricao']||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+E(it['Data']||'')+' · '+(quitado?'Quitado':'Pendente')+'</div>'
+        +'</div>'
+        +'<div style="font-weight:700;color:'+(valor<0?'var(--red)':'var(--green)')+';white-space:nowrap">'+(valor<0?'-':'+')+BRL(Math.abs(valor))+'</div>'
+        +(quitado?'':'<button onclick="locLocMarcarQuitado(\''+E(it['ID'])+'\')" title="Marcar como quitado" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:16px;padding:2px 4px">✓</button>')
+        +'<button onclick="locLocExcluir(\''+E(it['ID'])+'\')" title="Excluir" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px">🗑️</button>'
+        +'</div>';
+    }).join('');
+  };
+  window.locLocAdicionar=async function(){
+    var nome=document.getElementById('locLocLocadorSelect').value;
+    if(!nome){alert('Selecione o locador primeiro.');return;}
+    var desc=document.getElementById('locLoc-desc').value.trim();
+    var valor=num(document.getElementById('locLoc-valor').value);
+    var dataIso=document.getElementById('locLoc-data').value;
+    if(!desc||!valor){alert('Preencha a descrição e o valor.');return;}
+    var dataBR=dataIso?locDtBRfromInput(dataIso):new Date().toLocaleDateString('pt-BR');
+    var temp={ID:'tmp'+Date.now(),Locador:nome,Descricao:desc,Valor:valor,Data:dataBR,Status:'Pendente'};
+    window.locLocCache.unshift(temp);
+    document.getElementById('locLoc-desc').value='';
+    document.getElementById('locLoc-valor').value='';
+    locLocRender();
+    try{
+      var r=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':desc,'Valor':valor,'Data':dataBR,'Status':'Pendente'}})});
+      var d=await r.json();
+      if(d&&d.id)temp.ID=String(d.id);
+    }catch(e){
+      try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':desc,'Valor':valor,'Data':dataBR,'Status':'Pendente'}})});}catch(e2){}
+    }
+  };
+  window.locLocMarcarQuitado=function(id){
+    var it=(window.locLocCache||[]).find(function(x){return String(x['ID'])===String(id);});
+    if(it)it['Status']='Quitado';
+    locLocRender();
+    var hoje=new Date().toLocaleDateString('pt-BR');
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locloc',id:id,campos:{'Status':'Quitado','Data Quitacao':hoje}})}).catch(function(){});
+  };
+  window.locLocExcluir=function(id){
+    window.locLocCache=(window.locLocCache||[]).filter(function(x){return String(x['ID'])!==String(id);});
+    locLocRender();
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locloc',id:id})}).catch(function(){});
+  };
+  // Lista de itens pendentes de um locador, usada pra somar no Relatório Mensal de Repasses
+  function locLocPendentes(nome){
+    return (window.locLocCache||[]).filter(function(x){return String(x['Locador']||'').trim()===nome&&String(x['Status']).toLowerCase()!=='quitado';});
+  }
+
   window.relMensalAbrir=function(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
@@ -10882,8 +10995,9 @@ window.cpRenderFixas=cpRenderFixas;
     if(!nome||!mes){card.innerHTML='';return;}
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
-    if(!linhas.length){card.innerHTML='<div class="loc-note">Nenhum lançamento encontrado para este locador neste mês.</div>';return;}
-    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var avulsos=locLocPendentes(nome);
+    if(!linhas.length&&!avulsos.length){card.innerHTML='<div class="loc-note">Nenhum lançamento encontrado para este locador neste mês.</div>';return;}
+    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0)+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var blocos=linhas.map(function(l,idx){
       var itensHtml=l.itens.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
@@ -10901,6 +11015,12 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
         +'</div></div>';
     }).join('');
+    var avulsosHtml=avulsos.length?
+      '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
+      +'<div class="parc-box" style="border-left:3px solid var(--accent2)">'
+      +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos avulsos (não ligados a um imóvel)</div>'
+      +avulsos.map(function(a){return itemComSinal(a['Descricao']+' ('+a['Data']+')',num(a['Valor']));}).join('')
+      +'</div></div>' : '';
     card.innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">Relatório Mensal de Repasses</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
@@ -10908,7 +11028,8 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is)</div></div>'
       +blocos
-      +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis</div></div></div>'
+      +avulsosHtml
+      +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos avulsos':'')+'</div></div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
   };
@@ -10918,8 +11039,9 @@ window.cpRenderFixas=cpRenderFixas;
     if(!nome||!mes)return '';
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
-    if(!linhas.length)return '';
-    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var avulsos=locLocPendentes(nome);
+    if(!linhas.length&&!avulsos.length)return '';
+    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0)+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var txt='*RELATÓRIO MENSAL DE REPASSES*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
     txt+='Referente a '+mesExtenso(mes)+'\n';
@@ -10935,6 +11057,11 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
+    if(avulsos.length){
+      txt+='*💼 Despesas/Créditos avulsos:*\n';
+      avulsos.forEach(function(a){txt+='('+(num(a['Valor'])<0?'−':'+')+') '+a['Descricao']+' ('+a['Data']+'): '+BRL(Math.abs(num(a['Valor'])))+'\n';});
+      txt+='\n';
+    }
     txt+='*TOTAL GERAL DO MÊS:* '+BRL(totalGeral)+'\n\n';
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
@@ -12005,6 +12132,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (8)', itens: [
+      'Novo em Locações: "💼 Despesas/Créditos do Locador" — pra cobranças que não são de um imóvel específico (ex.: honorários de uma ação judicial que o locador pediu, descontados do próximo repasse). Cadastre o locador, a descrição, o valor (negativo desconta, positivo é crédito a favor dele) e a data. Marque como "Pendente" e o valor entra automaticamente no Relatório Mensal de Repasses (📅) daquele locador, numa seção separada, já somado/descontado no total geral do mês. Marque como "Quitado" quando resolver, e ele para de aparecer nos relatórios seguintes.',
+      'Testado: honorários de R$2.500 descontados de um repasse de R$1.410 — o relatório mostrou corretamente o total geral negativo (-R$1.090,00), indicando que o locador ficou devendo ao escritório naquele mês.'
+    ]},
     { data: '09/ago/2026 (7)', itens: [
       'Novo em Locações: "📅 Relatório Mensal de Repasses" — diferente do "Relatório do Locador" (retrato geral dos contratos), este mostra o extrato financeiro de um mês específico: quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos, respeitando percentual de coproprietário quando houver), status de cada repasse, e o total geral do mês. Envia por WhatsApp, e-mail ou imprime/PDF, mesmo padrão visual dos outros relatórios. Testado com 2 imóveis do mesmo locador — cada cálculo e o total bateram certo.'
     ]},
@@ -12348,6 +12479,8 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono.</div>'
       +MH+'Relatório Mensal de Repasses</div>'
       +MP+'Diferente do anterior: mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, e o total geral do mês.</div>'
+      +MH+'Despesas/Créditos do Locador</div>'
+      +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, o valor (negativo desconta, positivo é crédito a favor dele) e a data. Enquanto estiver "Pendente", o valor aparece automaticamente no Relatório Mensal de Repasses daquele locador, já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
       +MH+'Avisos ao locatário/locador</div>'
       +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
       +MH+'Alertas de vigência</div>'
