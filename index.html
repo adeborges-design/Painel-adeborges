@@ -1777,14 +1777,14 @@
   .modal-doc-overlay.open { display: flex; }
 
   .doc-wrap {
-    background: #f8f5ef;
+    background: #ffffff;
     border-radius: 12px;
     width: 720px;
     max-width: 96vw;
     overflow: hidden;
     box-shadow: 0 24px 80px rgba(0,0,0,0.6);
     margin: auto;
-    color: #1a1a2e;
+    color: #000000;
     font-family: 'DM Sans', sans-serif;
   }
 
@@ -1813,7 +1813,7 @@
     padding: 40px 48px;
     font-size: 13px;
     line-height: 1.8;
-    color: #1a1a2e;
+    color: #000000;
     cursor: text;
   }
 
@@ -1865,7 +1865,7 @@
 
   .doc-subtitulo {
     font-size: 12px;
-    color: #5a5a7a;
+    color: #000000;
   }
 
   .doc-texto {
@@ -1900,7 +1900,7 @@
   .doc-local-data {
     text-align: right;
     font-size: 12px;
-    color: #5a5a7a;
+    color: #000000;
     margin-bottom: 32px;
   }
 
@@ -1913,7 +1913,7 @@
       position: absolute !important;
       top: 0 !important; left: 0 !important;
       width: 100% !important;
-      background: #f8f5ef !important;
+      background: #ffffff !important;
       padding: 0 !important;
       z-index: 9999 !important;
       overflow: visible !important;
@@ -1924,13 +1924,26 @@
       border-radius: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
+      background: #ffffff !important;
+      color: #000000 !important;
     }
     body.printing-doc .doc-body {
       padding: 20px 28px !important;
+      color: #000000 !important;
     }
     body.printing-doc .doc-edit-hint { display: none !important; }
     .modal-recibo-overlay, .modal-card-overlay, .modal-overlay,
     .layout, .header, .sidebar, .main { display: none !important; }
+    /* Numeração de página automática, no rodapé de cada folha impressa */
+    @page {
+      margin: 20mm 15mm 18mm;
+      @bottom-center {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 10px;
+        color: #000000;
+      }
+    }
   }
 
   /* MODAL CARD ATENDIMENTO */
@@ -4691,7 +4704,7 @@ function gerarPeticao(p) {
     expor e requerer o que segue.
   </p>
 
-  <p class="doc-texto" style="text-align:justify;color:#8a93a6;font-style:italic">
+  <p class="doc-texto" style="text-align:justify;color:#6a6a6a">
     [Clique aqui e escreva os fatos e o pedido específico desta petição — este parágrafo é só um ponto de partida,
     edite ou apague livremente antes de gerar o PDF]
   </p>
@@ -4707,8 +4720,11 @@ function gerarPeticao(p) {
     Advogado(a) – OAB/${escHtml(advOabUf)} ${escHtml(advOabNum)}
   </div>
 
-  <div style="margin-top:32px;text-align:center;font-size:12px;color:#4a5568">
-    Telefone: ${escHtml(advTel)} — e-mail: ${escHtml(advEmail)}
+  <div style="margin-top:24px;text-align:center">
+    <div style="border-top:1px solid #000000;width:220px;margin:0 auto 8px"></div>
+    <div style="font-size:12px;color:#000000">
+      Telefone: ${escHtml(advTel)} — e-mail: ${escHtml(advEmail)}
+    </div>
   </div>`;
 }
 
@@ -11683,6 +11699,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (3)', itens: [
+      'Ajustes na Petição e nos demais documentos (Procuração, Contrato, Gratuidade): fundo branco puro e texto preto puro (antes eram tons levemente acinzentados/creme), removido o itálico do parágrafo de instrução, traço separador antes do telefone/e-mail no rodapé, e numeração de página automática ("Página X de Y") no rodapé de cada folha impressa — útil pra petições que passam de uma página.'
+    ]},
     { data: '09/ago/2026 (2)', itens: [
       'Corrigida de vez a moldura escura na impressão/PDF dos informes (repasse, aluguel, acordo, parceiro) — a causa era o elemento "parc-card" que envolve o recibo inteiro, com fundo escuro próprio que nenhuma correção anterior tinha coberto. Testado gerando PDF real: sem moldura preta, fundo todo claro, texto do imóvel legível em preto.'
     ]},
@@ -11957,7 +11976,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Cards de estatística</div>'
       +MP+'Casos Ativos, Crítico/Urgente, Prazo mais próximo, Audiências, Providências e Honorários (quando há algo vencendo) — todos clicáveis, cada um filtra a lista automaticamente.</div>'
       +MH+'Documentos e ações rápidas</div>'
-      +ML+'<li>Gerar Petição, Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto no formato jurídico padrão (endereçamento, qualificação, fecho, assinatura com OAB), editável direto na tela, com botão de imprimir/salvar em PDF. A petição já vem com os dados do processo preenchidos (partes, número, vara) — só falta escrever o pedido específico no parágrafo indicado.</li>'
+      +ML+'<li>Gerar Petição, Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto no formato jurídico padrão (fundo branco, letras pretas, cabeçalho em negrito, endereçamento, qualificação, fecho, assinatura com OAB), editável direto na tela, com botão de imprimir/salvar em PDF. A petição já vem com os dados do processo preenchidos (partes, número, vara) e numeração de página automática — só falta escrever o pedido específico no parágrafo indicado.</li>'
       +'<li>Compartilhar atualização com o cliente via WhatsApp (card com a fase do processo).</li>'
       +'<li>Vincular processos incidentais a um processo principal.</li>'
       +'<li>Histórico de Atendimento (ligações, WhatsApp, despesas reembolsáveis) e Entregas (documentos entregues, com assinatura digital) — acessíveis a partir do card do processo.</li></ul>',
