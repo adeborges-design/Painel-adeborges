@@ -1221,6 +1221,7 @@
        da tela gasta tinta demais e fica pesado impresso. Vale para qualquer recibo que usa
        essas classes (repasse, aluguel, acordo, parceiro, relatório do locador...). */
     .parc-header { background: #e8eef7 !important; border-bottom: 2px solid #5b8dee !important; }
+    .parc-card { background: #fff !important; border: 1px solid #d8dee8 !important; overflow: visible !important; }
     .parc-header-title { color: #1a2a4a !important; }
     .parc-header-sub { color: #4a5a7a !important; }
     .parc-footer { background: #f4f6f9 !important; border-top: 1px solid #c8d0dc !important; color: #5a6578 !important; }
@@ -9328,15 +9329,19 @@ window.cpRenderFixas=cpRenderFixas;
   }
   body.printing-aviso-loc .parceiro-toolbar,
   body.printing-aviso-loc .entr-no-print { display:none !important; }
-  body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; }
+  body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-recibo-acordo > * { display:none !important; }
   body.printing-recibo-acordo #modalReciboAcordo {
-    display:flex !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important;
-    background:#fff !important; padding:24px 0 !important; z-index:9999 !important; overflow:visible !important;
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
   }
   body.printing-recibo-acordo .reciboloc-toolbar,
   body.printing-recibo-acordo .reciboloc-actions { display:none !important; }
-  body.printing-recibo-acordo .repasse-wrap { box-shadow:none !important; width:100% !important; max-width:100% !important; background:transparent !important; }
+  body.printing-recibo-acordo #modalReciboAcordo .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
   body.printing-recibo-acordo .reciboloc-inner { padding:0 !important; }
   body.printing-recibo-acordo .parc-card { margin:0 auto !important; max-width:480px !important; }
 </style>
@@ -9577,15 +9582,19 @@ window.cpRenderFixas=cpRenderFixas;
 
 <style>
   body.printing-recibo-loc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  body.printing-recibo-loc html, body.printing-recibo-loc body { background:#fff !important; margin:0 !important; padding:0 !important; }
+  body.printing-recibo-loc html, body.printing-recibo-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-recibo-loc > * { display:none !important; }
   body.printing-recibo-loc #modalReciboLoc {
-    display:flex !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important;
-    background:#fff !important; padding:24px 0 !important; z-index:9999 !important; overflow:visible !important;
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
   }
   body.printing-recibo-loc .reciboloc-toolbar,
   body.printing-recibo-loc .reciboloc-actions { display:none !important; }
-  body.printing-recibo-loc .repasse-wrap { box-shadow:none !important; width:100% !important; max-width:100% !important; background:transparent !important; }
+  body.printing-recibo-loc #modalReciboLoc .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
   body.printing-recibo-loc .reciboloc-inner { padding:0 !important; }
   body.printing-recibo-loc .parc-card { margin:0 auto !important; max-width:480px !important; }
 </style>
@@ -11674,6 +11683,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (2)', itens: [
+      'Corrigida de vez a moldura escura na impressão/PDF dos informes (repasse, aluguel, acordo, parceiro) — a causa era o elemento "parc-card" que envolve o recibo inteiro, com fundo escuro próprio que nenhuma correção anterior tinha coberto. Testado gerando PDF real: sem moldura preta, fundo todo claro, texto do imóvel legível em preto.'
+    ]},
     { data: '09/ago/2026', itens: [
       'Novo: gerador de Petição em Processos (botão "Petição" no card do processo) — segue a formatação jurídica padrão (endereçamento ao juízo, qualificação das partes, fecho, assinatura com OAB), já preenchida com dados do processo (partes, número, vara). O corpo do pedido fica num parágrafo destacado pra você escrever/editar antes de gerar o PDF (mesmo botão "Imprimir/PDF" que Procuração e Contrato já usam).',
       'Novo em Configurações: dados do advogado (nome, OAB, telefone, e-mail) — usados para preencher automaticamente petições e outros documentos gerados pelo sistema.'
