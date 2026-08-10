@@ -10156,6 +10156,7 @@ window.cpRenderFixas=cpRenderFixas;
         if(o.outrasDesc!=null)r.outrasDesc=o.outrasDesc;
         if(o.outrasValor!=null)r.outrasValor=num(o.outrasValor);
         if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}
+        else if(Object.prototype.hasOwnProperty.call(o,'valorRepasse')){r.repManual=false;} // sinal explícito de "limpar o manual"
       }
       // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar:
       // só faz sentido repassar depois de receber. O valor real (quando Recebido) fica preservado acima.
@@ -10342,7 +10343,11 @@ window.cpRenderFixas=cpRenderFixas;
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
     var rep=effRep(w);
-    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':rep,'Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
+    // "Valor Repasse" só é gravado com um número quando é de fato manual (usuário digitou
+    // direto no campo da tabela). Quando é calculado automaticamente (a partir de aluguel,
+    // taxa e encargos), a célula fica vazia — assim, na próxima leitura, o sistema sabe que
+    // deve continuar calculando sozinho, em vez de "travar" nesse valor pra sempre.
+    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':w.repManual?rep:'','Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
@@ -10424,6 +10429,12 @@ window.cpRenderFixas=cpRenderFixas;
     });
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
+    // Sempre que os componentes (aluguel, condomínio, IPTU, desconto...) são editados por aqui,
+    // o repasse volta a ser calculado automaticamente a partir deles — em vez de continuar preso
+    // num valor antigo gravado na coluna "Valor Repasse" de uma edição anterior (isso causava o
+    // total do informe ficar "travado" com o cálculo de antes, mesmo depois de mudar o aluguel).
+    // null (não zero!) é o sinal que workingList() reconhece como "limpar o manual".
+    patch.valorRepasse=null;
     setOverride(contrato,patch);
     gravarSheet(contrato);
     fecharModalCobrancas();
@@ -11815,6 +11826,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (5)', itens: [
+      'Corrigido bug sério: quando o aluguel ou os encargos de um lançamento eram editados, a coluna "Valor Repasse" da planilha continuava com o total calculado ANTES da edição (nunca era limpa), e o sistema tratava isso como "valor definido manualmente", ignorando os componentes atualizados — o informe mostrava a soma certa dos itens, mas o total final ficava "travado" no valor antigo. Agora, toda vez que você salva a tela de Encargos, o repasse volta a ser calculado automaticamente a partir dos componentes atuais.',
+      'Para lançamentos que já estão com esse problema: abra "💰 Encargos" no lançamento afetado e clique em salvar (mesmo sem mudar nada) — isso já destrava o cálculo.'
+    ]},
     { data: '09/ago/2026 (4)', itens: [
       'Petição: margens ajustadas para 2,5cm, espaçamento entre parágrafos e abaixo do cabeçalho bem maior. A numeração de página automática via CSS nem sempre funciona (limitação do navegador, não do sistema) — por isso foi adicionada uma dica na tela explicando como garantir a numeração pelo recurso nativo do Chrome ("Mais definições" → "Cabeçalhos e rodapés" na janela de impressão).',
       'Novo: "📝 Notas Rápidas" (menu do usuário, estilo bloco de notas) — pra anotar lembretes soltos do que precisa ser lançado no sistema depois (ex.: "valor novo do seguro, lançar quando renovar"), sem fazer nenhum lançamento sozinho. Marca como feito, risca, exclui, e mostra quantas pendências tem direto no menu.'
