@@ -3611,6 +3611,14 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label class="form-label">DADOS DO ADVOGADO (usados em petições e documentos)</label>
+      <input type="text" class="form-input" id="inputAdvNome" placeholder="Nome completo do advogado" style="margin-bottom:8px">
+      <input type="text" class="form-input" id="inputAdvOab" placeholder="OAB — ex.: SP/335600" style="margin-bottom:8px">
+      <input type="text" class="form-input" id="inputAdvTelefone" placeholder="Telefone — ex.: (11) 99931-3712" style="margin-bottom:8px">
+      <input type="text" class="form-input" id="inputAdvEmail" placeholder="E-mail">
+    </div>
+
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
       <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
@@ -3722,12 +3730,27 @@ function abrirEmailFlex(assunto, corpo){
   }
 }
 
+// Dados do advogado (nome, OAB, telefone, e-mail) usados para preencher automaticamente
+// petições e outros documentos gerados pelo sistema. Separado da config da planilha.
+function getAdvogadoInfo(){
+  try{return JSON.parse(localStorage.getItem('lexflow_advogado')||'{}');}catch(e){return {};}
+}
+function setAdvogadoInfo(v){
+  try{localStorage.setItem('lexflow_advogado',JSON.stringify(v));}catch(e){}
+}
+
 function saveConfig() {
   const sheetId = document.getElementById('inputSheetId').value.trim();
   const apiKey = document.getElementById('inputApiKey').value.trim();
   const sheetName = document.getElementById('inputSheetName').value.trim() || CONFIG_DEFAULTS.sheetName;
   const emailPref = document.getElementById('inputEmailPref').value;
   setEmailPref(emailPref);
+  setAdvogadoInfo({
+    nome: document.getElementById('inputAdvNome').value.trim(),
+    oab: document.getElementById('inputAdvOab').value.trim(),
+    telefone: document.getElementById('inputAdvTelefone').value.trim(),
+    email: document.getElementById('inputAdvEmail').value.trim()
+  });
 
   if (!sheetId || !apiKey) {
     alert('Preencha o ID da planilha e a chave de API.');
@@ -4372,6 +4395,12 @@ function renderCard(p, idx) {
               </svg>
               Gratuidade
             </button>
+            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('peticao', this.dataset.uid)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Petição
+            </button>
             <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('contrato', this.dataset.uid)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
@@ -4614,6 +4643,9 @@ function abrirDoc(tipo, uid) {
   } else if (tipo === 'contrato') {
     titulo = 'Contrato de Prestacao de Serviços Advocatícios';
     html = gerarContrato(p);
+  } else if (tipo === 'peticao') {
+    titulo = 'Petição';
+    html = gerarPeticao(p);
   }
 
   document.getElementById('docToolbarTitle').textContent = titulo;
@@ -4626,6 +4658,57 @@ function abrirDoc(tipo, uid) {
   document.getElementById('modalDoc').classList.add('open');
   // Focar no documento apos abrir
   setTimeout(() => docBody.focus(), 300);
+}
+
+function gerarPeticao(p) {
+  var adv = getAdvogadoInfo();
+  var advNome = adv.nome || 'Adenilson Borges da Silva';
+  var advOab = adv.oab || 'SP/335600';
+  var advTel = adv.telefone || '(11) 99931-3712';
+  var advEmail = adv.email || 'adeborges@gmail.com';
+  var oabPartes = advOab.split('/');
+  var advOabUf = oabPartes.length===2 ? oabPartes[0] : 'SP';
+  var advOabNum = oabPartes.length===2 ? oabPartes[1] : advOab;
+
+  var cabecalho = 'EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DE DIREITO'
+    + (p.vara ? ' DA ' + escHtml(p.vara).toUpperCase() : ' DA _________ VARA _________')
+    + (p.tribunal ? ' – ' + escHtml(p.tribunal).toUpperCase() : ' – COMARCA DE _________/SP');
+
+  return `
+  <div class="doc-texto" style="text-align:center;font-weight:700;margin-bottom:28px;line-height:1.5">
+    ${cabecalho}
+  </div>
+
+  <div class="doc-texto" style="margin-bottom:24px">
+    Processo nº: <strong>${escHtml(p.processo || '[número do processo]')}</strong>
+  </div>
+
+  <p class="doc-texto" style="text-align:justify">
+    <strong>${escHtml((p.nome || '[CLIENTE]').toUpperCase())}</strong>, já qualificado(a) nos autos da ação em epígrafe,
+    que move em face de <strong>${escHtml((p.outra || '[PARTE CONTRÁRIA]').toUpperCase())}</strong>,
+    vem, respeitosamente, à presença de Vossa Excelência, por intermédio de seu(sua) advogado(a) que esta subscreve,
+    expor e requerer o que segue.
+  </p>
+
+  <p class="doc-texto" style="text-align:justify;color:#8a93a6;font-style:italic">
+    [Clique aqui e escreva os fatos e o pedido específico desta petição — este parágrafo é só um ponto de partida,
+    edite ou apague livremente antes de gerar o PDF]
+  </p>
+
+  <p class="doc-texto" style="text-align:justify">
+    Termos em que,<br>Pede deferimento.
+  </p>
+
+  <div class="doc-local-data">${dataExtenso()}</div>
+
+  <div style="margin-top:56px;text-align:center;font-size:13px;line-height:1.6">
+    ${escHtml(advNome)}<br>
+    Advogado(a) – OAB/${escHtml(advOabUf)} ${escHtml(advOabNum)}
+  </div>
+
+  <div style="margin-top:32px;text-align:center;font-size:12px;color:#4a5568">
+    Telefone: ${escHtml(advTel)} — e-mail: ${escHtml(advEmail)}
+  </div>`;
 }
 
 function gerarProcuracao(p, tipo) {
@@ -7727,6 +7810,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if (cfg.sheetName) document.getElementById('inputSheetName').value = cfg.sheetName;
   var elEmailPref = document.getElementById('inputEmailPref');
   if (elEmailPref) elEmailPref.value = getEmailPref();
+  var advInfo = getAdvogadoInfo();
+  if (document.getElementById('inputAdvNome')) document.getElementById('inputAdvNome').value = advInfo.nome || 'Adenilson Borges da Silva';
+  if (document.getElementById('inputAdvOab')) document.getElementById('inputAdvOab').value = advInfo.oab || 'SP/335600';
+  if (document.getElementById('inputAdvTelefone')) document.getElementById('inputAdvTelefone').value = advInfo.telefone || '(11) 99931-3712';
+  if (document.getElementById('inputAdvEmail')) document.getElementById('inputAdvEmail').value = advInfo.email || 'adeborges@gmail.com';
 
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
@@ -11586,6 +11674,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026', itens: [
+      'Novo: gerador de Petição em Processos (botão "Petição" no card do processo) — segue a formatação jurídica padrão (endereçamento ao juízo, qualificação das partes, fecho, assinatura com OAB), já preenchida com dados do processo (partes, número, vara). O corpo do pedido fica num parágrafo destacado pra você escrever/editar antes de gerar o PDF (mesmo botão "Imprimir/PDF" que Procuração e Contrato já usam).',
+      'Novo em Configurações: dados do advogado (nome, OAB, telefone, e-mail) — usados para preencher automaticamente petições e outros documentos gerados pelo sistema.'
+    ]},
     { data: '08/ago/2026 (13)', itens: [
       'Corrigido o contraste do nome do imóvel/processo nos recibos e informes (na tela, modo escuro) — estava com uma cor clara-azulada que se perdia contra o fundo, ficando "borrado". Agora usa quase branco, bem mais nítido.'
     ]},
@@ -11853,7 +11945,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Cards de estatística</div>'
       +MP+'Casos Ativos, Crítico/Urgente, Prazo mais próximo, Audiências, Providências e Honorários (quando há algo vencendo) — todos clicáveis, cada um filtra a lista automaticamente.</div>'
       +MH+'Documentos e ações rápidas</div>'
-      +ML+'<li>Gerar Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto e editável direto na tela, com botão de imprimir/copiar.</li>'
+      +ML+'<li>Gerar Petição, Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto no formato jurídico padrão (endereçamento, qualificação, fecho, assinatura com OAB), editável direto na tela, com botão de imprimir/salvar em PDF. A petição já vem com os dados do processo preenchidos (partes, número, vara) — só falta escrever o pedido específico no parágrafo indicado.</li>'
       +'<li>Compartilhar atualização com o cliente via WhatsApp (card com a fase do processo).</li>'
       +'<li>Vincular processos incidentais a um processo principal.</li>'
       +'<li>Histórico de Atendimento (ligações, WhatsApp, despesas reembolsáveis) e Entregas (documentos entregues, com assinatura digital) — acessíveis a partir do card do processo.</li></ul>',
