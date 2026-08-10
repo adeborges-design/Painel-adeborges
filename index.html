@@ -1852,7 +1852,7 @@
 
   .doc-cabecalho {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 44px;
   }
 
   .doc-titulo {
@@ -1870,7 +1870,7 @@
 
   .doc-texto {
     text-align: justify;
-    margin-bottom: 12px;
+    margin-bottom: 22px;
     font-size: 13px;
     line-height: 1.9;
   }
@@ -1932,11 +1932,16 @@
       color: #000000 !important;
     }
     body.printing-doc .doc-edit-hint { display: none !important; }
+    body.printing-doc .doc-print-tip { display: none !important; }
     .modal-recibo-overlay, .modal-card-overlay, .modal-overlay,
     .layout, .header, .sidebar, .main { display: none !important; }
-    /* Numeração de página automática, no rodapé de cada folha impressa */
+    /* Numeração de página automática, no rodapé de cada folha impressa. Aviso: o suporte do
+       Chrome pra esse recurso de CSS (margin boxes) é inconsistente dependendo de como o PDF é
+       gerado — por isso também deixamos a opção nativa do navegador como alternativa (ver
+       instrução abaixo, no botão de imprimir). */
     @page {
-      margin: 20mm 15mm 18mm;
+      size: A4;
+      margin: 2.5cm;
       @bottom-center {
         content: "Página " counter(page) " de " counter(pages);
         font-family: 'DM Sans', sans-serif;
@@ -3357,6 +3362,9 @@
       </button>
       <button class="btn-recibo-fechar" onclick="document.getElementById('modalDoc').classList.remove('open')">✕</button>
     </div>
+    <div class="doc-print-tip" style="padding:6px 20px;font-size:11px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border2)">
+      💡 Pra numeração de página garantida em documentos com mais de 1 página: na janela de impressão, abra "Mais definições" e marque "Cabeçalhos e rodapés".
+    </div>
     <div class="doc-body" id="docBody"></div>
   </div>
 </div>
@@ -3753,6 +3761,89 @@ function setAdvogadoInfo(v){
   try{localStorage.setItem('lexflow_advogado',JSON.stringify(v));}catch(e){}
 }
 
+// ---------- NOTAS RÁPIDAS (estilo Keep Note — lembretes soltos, sem lançar nada sozinho) ----------
+window.notasCache = [];
+window.carregarNotas = async function(){
+  try{
+    var cfg = getConfig();
+    if(!cfg||!cfg.apiKey||!cfg.sheetId){window.notasCache=[];return;}
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('NOTAS_RAPIDAS!A1:D500')+'?key='+cfg.apiKey);
+    if(!r.ok){window.notasCache=[];return;}
+    var d = await r.json();
+    var rows = d.values || [];
+    if(rows.length<2){window.notasCache=[];return;}
+    var hd = rows[0];
+    window.notasCache = rows.slice(1).filter(function(x){return x[0];}).map(function(row){
+      var o={}; hd.forEach(function(h,i){o[h]=row[i]!==undefined?row[i]:'';}); return o;
+    });
+  }catch(e){window.notasCache=[];}
+  atualizarBadgeNotas();
+};
+function atualizarBadgeNotas(){
+  var pendentes=(window.notasCache||[]).filter(function(n){return String(n['Feito']).toLowerCase()!=='sim';}).length;
+  document.querySelectorAll('.notas-badge').forEach(function(b){
+    if(pendentes>0){b.textContent=pendentes;b.style.display='inline-flex';}else{b.style.display='none';}
+  });
+}
+window.notasAbrir=function(){
+  document.getElementById('modalNotas').classList.add('open');
+  document.getElementById('notaTexto').value='';
+  notasRender();
+  document.getElementById('notaTexto').focus();
+};
+function notasRender(){
+  var host=document.getElementById('notasLista');
+  var notas=(window.notasCache||[]).slice().sort(function(a,b){
+    var fa=String(a['Feito']).toLowerCase()==='sim', fb=String(b['Feito']).toLowerCase()==='sim';
+    if(fa!==fb)return fa?1:-1; // pendentes primeiro
+    return String(b['ID'])-String(a['ID']); // mais recentes primeiro dentro de cada grupo
+  });
+  if(!notas.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Nenhuma anotação ainda.</div>';return;}
+  host.innerHTML=notas.map(function(n){
+    var feito=String(n['Feito']).toLowerCase()==='sim';
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<input type="checkbox" '+(feito?'checked':'')+' onchange="notaMarcarFeito(\''+escHtml(n['ID'])+'\',this.checked)" style="margin-top:3px;cursor:pointer">'
+      +'<div style="flex:1;'+(feito?'opacity:.5;text-decoration:line-through':'')+'">'
+      +'<div style="font-size:13px;white-space:pre-wrap">'+escHtml(n['Texto']||'')+'</div>'
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+escHtml(n['Data Criacao']||'')+'</div>'
+      +'</div>'
+      +'<button onclick="notaExcluir(\''+escHtml(n['ID'])+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Excluir">🗑️</button>'
+      +'</div>';
+  }).join('');
+}
+window.notaAdicionar=async function(){
+  var texto=document.getElementById('notaTexto').value.trim();
+  if(!texto)return;
+  var agora=new Date();
+  var dataStr=('0'+agora.getDate()).slice(-2)+'/'+('0'+(agora.getMonth()+1)).slice(-2)+'/'+agora.getFullYear()+' '+('0'+agora.getHours()).slice(-2)+':'+('0'+agora.getMinutes()).slice(-2);
+  // Mostra na hora, sem esperar a gravação (sensação de "bloco de notas" instantâneo)
+  var temp={ID:'tmp'+Date.now(),Texto:texto,'Data Criacao':dataStr,Feito:'Não'};
+  window.notasCache.unshift(temp);
+  document.getElementById('notaTexto').value='';
+  notasRender();
+  atualizarBadgeNotas();
+  try{
+    var r=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_notas',campos:{'Texto':texto,'Data Criacao':dataStr,'Feito':'Não'}})});
+    var d=await r.json();
+    if(d&&d.id)temp.ID=String(d.id);
+  }catch(e){
+    try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_notas',campos:{'Texto':texto,'Data Criacao':dataStr,'Feito':'Não'}})});}catch(e2){}
+  }
+};
+window.notaMarcarFeito=function(id,marcado){
+  var n=(window.notasCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(n)n['Feito']=marcado?'Sim':'Não';
+  notasRender();
+  atualizarBadgeNotas();
+  fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_notas',id:id,campos:{'Feito':marcado?'Sim':'Não'}})}).catch(function(){});
+};
+window.notaExcluir=function(id){
+  window.notasCache=(window.notasCache||[]).filter(function(x){return String(x['ID'])!==String(id);});
+  notasRender();
+  atualizarBadgeNotas();
+  fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_notas',id:id})}).catch(function(){});
+};
+
 function saveConfig() {
   const sheetId = document.getElementById('inputSheetId').value.trim();
   const apiKey = document.getElementById('inputApiKey').value.trim();
@@ -3779,6 +3870,7 @@ function saveConfig() {
   try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
+  try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
   try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
@@ -4689,11 +4781,11 @@ function gerarPeticao(p) {
     + (p.tribunal ? ' – ' + escHtml(p.tribunal).toUpperCase() : ' – COMARCA DE _________/SP');
 
   return `
-  <div class="doc-texto" style="text-align:center;font-weight:700;margin-bottom:28px;line-height:1.5">
+  <div class="doc-texto" style="text-align:center;font-weight:700;margin-bottom:44px;line-height:1.7">
     ${cabecalho}
   </div>
 
-  <div class="doc-texto" style="margin-bottom:24px">
+  <div class="doc-texto" style="margin-bottom:36px">
     Processo nº: <strong>${escHtml(p.processo || '[número do processo]')}</strong>
   </div>
 
@@ -7835,6 +7927,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
+    try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
   }
 });
 
@@ -9466,6 +9559,24 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL NOTAS RÁPIDAS (estilo Keep Note, para anotar lembretes antes de lançar no sistema) -->
+<div class="modal-repasse-overlay" id="modalNotas">
+  <div class="repasse-wrap" style="max-width:520px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📝 Notas Rápidas</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalNotas').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:16px 20px 0">
+      <div class="loc-note" style="margin-bottom:12px">Anote aqui lembretes rápidos do que ainda precisa lançar no sistema (ex.: "valor novo do seguro de vida, lançar quando renovar") — não faz nenhum lançamento sozinho, é só um bloco de notas.</div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="notaTexto" class="loc-cinput" rows="2" placeholder="Digite a anotação..." style="flex:1;resize:vertical" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();notaAdicionar();}"></textarea>
+        <button class="loc-btn primary" onclick="notaAdicionar()" style="white-space:nowrap;padding:10px 16px">+ Adicionar</button>
+      </div>
+    </div>
+    <div id="notasLista" style="padding:14px 20px 20px;max-height:50vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -11449,6 +11560,10 @@ window.cpRenderFixas=cpRenderFixas;
           Novo processo
         </button>
         <div class="home-user-divider"></div>
+        <button class="home-user-item" onclick="notasAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
+          📝 &nbsp;Notas Rápidas
+          <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span>
+        </button>
         <button class="home-user-item" onclick="abrirManual();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
           Manual do Sistema
@@ -11682,6 +11797,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
         '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="notasAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">📝 &nbsp;Notas Rápidas <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<button class="home-user-item" onclick="abrirManual();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual do Sistema</button>'+
         '<button class="home-user-item" onclick="document.getElementById(\'modalConfig\').classList.add(\'open\');this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Configurações</button>'+
       '</div>'+
@@ -11699,6 +11815,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (4)', itens: [
+      'Petição: margens ajustadas para 2,5cm, espaçamento entre parágrafos e abaixo do cabeçalho bem maior. A numeração de página automática via CSS nem sempre funciona (limitação do navegador, não do sistema) — por isso foi adicionada uma dica na tela explicando como garantir a numeração pelo recurso nativo do Chrome ("Mais definições" → "Cabeçalhos e rodapés" na janela de impressão).',
+      'Novo: "📝 Notas Rápidas" (menu do usuário, estilo bloco de notas) — pra anotar lembretes soltos do que precisa ser lançado no sistema depois (ex.: "valor novo do seguro, lançar quando renovar"), sem fazer nenhum lançamento sozinho. Marca como feito, risca, exclui, e mostra quantas pendências tem direto no menu.'
+    ]},
     { data: '09/ago/2026 (3)', itens: [
       'Ajustes na Petição e nos demais documentos (Procuração, Contrato, Gratuidade): fundo branco puro e texto preto puro (antes eram tons levemente acinzentados/creme), removido o itálico do parágrafo de instrução, traço separador antes do telefone/e-mail no rodapé, e numeração de página automática ("Página X de Y") no rodapé de cada folha impressa — útil pra petições que passam de uma página.'
     ]},
@@ -11966,8 +12086,10 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Abaixo dos cards aparecem avisos automáticos quando existem: honorários a vencer/atrasados, aluguéis atrasados, parcelas de acordo atrasadas ou repasses pendentes, contratos de locação vencendo em até 60 dias, e contas de cartão próximas do vencimento. Clique em "abrir" em qualquer aviso pra ir direto à tela correspondente.</div>'
       +MH+'Saldos e fluxo de caixa</div>'
       +MP+'Mostra o saldo de cada conta bancária/cartão cadastrado e um resumo de entradas x saídas do mês. Os valores são calculados a partir dos lançamentos de Honorários e Contas a Pagar.</div>'
+      +MH+'Notas Rápidas</div>'
+      +MP+'Um bloco de notas simples (estilo Keep Note) pra anotar lembretes do que ainda precisa ser lançado no sistema — não faz nenhum lançamento sozinho, é só uma lista de tarefas. Acessível pelo menu do usuário, com um contador vermelho mostrando quantas anotações ainda estão pendentes. Marque como feito (risca o texto) ou exclua quando não precisar mais.</div>'
       +MH+'Menu do usuário</div>'
-      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, acessar este Manual ou as Configurações.</div>',
+      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, anotar uma Nota Rápida, acessar este Manual ou as Configurações.</div>',
 
     processos: MH+'Cadastro e edição</div>'
       +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
