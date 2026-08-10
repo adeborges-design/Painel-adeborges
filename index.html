@@ -2853,6 +2853,7 @@
               <option>ESAJ</option>
               <option>EPROC</option>
               <option>PJE</option>
+              <option>TRF3</option>
               <option>EXTRAJUDICIAL</option>
             </select>
           </div>
@@ -3181,6 +3182,7 @@
               <option>ESAJ</option>
               <option>EPROC</option>
               <option>PJE</option>
+              <option>TRF3</option>
               <option>EXTRAJUDICIAL</option>
             </select>
           </div>
@@ -4420,6 +4422,13 @@ function renderCard(p, idx) {
                 <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
               PJE
+            </a>` : ''}
+            ${p.processo && p.sistema === 'TRF3' ? `
+            <a class="btn-action" href="https://www.trf3.jus.br/pje/acesso-ao-sistema" target="_blank">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              TRF3
             </a>` : ''}
             <button class="btn-action" onclick="event.stopPropagation();copyNumero('${escAttr(p.processo)}')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -10547,7 +10556,6 @@ window.cpRenderFixas=cpRenderFixas;
       return [
         'Prezado(a) '+(c.locatario||'Locatário')+',',
         'Verificamos que o aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', com vencimento no dia '+(c.venc||'—')+' de cada mês, ainda não consta como pago em nossos registros.',
-        'Valor do aluguel: '+BRL(c.aluguel||0)+'.',
         'Sobre o valor em aberto já incidem, desde o vencimento, multa'+(c.multaAtrasoPct?' de '+c.multaAtrasoPct+'%':' contratual')+' e juros de mora, conforme previsto em contrato, que se agravam a cada dia de atraso.',
         'Solicitamos a regularização o quanto antes, para que a dívida não aumente ainda mais.',
         'Caso o pagamento já tenha sido efetuado, favor desconsiderar este aviso e nos encaminhar o comprovante para conferência.'
@@ -11389,10 +11397,25 @@ window.cpRenderFixas=cpRenderFixas;
           <div class="cdesc">Valores da parte contrária, honorários e repasse ao cliente</div>
           <div class="cnums">
             <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Recebido da parte contrária no mês"><div class="v" id="hc-acc-receb" style="color:var(--green)">—</div><div class="l">recebido no mês</div><span class="cnum-spark-wrap" id="spark-acc-receb"></span></div>
-            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Aguardando repasse ao cliente"><div class="v" id="hc-acc-pend" style="color:var(--yellow)">—</div><div class="l">repasses pendentes</div><span class="cnum-spark-wrap" id="spark-acc-pend"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Acordos ativos"><div class="v" id="hc-acc-ativos" style="color:var(--blue)">—</div><div class="l">em andamento</div><span class="cnum-spark-wrap" id="spark-acc-ativos"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Aguardando repasse ao cliente"><div class="v" id="hc-acc-pend" style="color:var(--yellow)">—</div><div class="l">repasses a realizar</div><span class="cnum-spark-wrap" id="spark-acc-pend"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Repasses atrasados (passaram do prazo configurado)"><div class="v" id="hc-acc-atrasados" style="color:var(--red)">—</div><div class="l">repasses atrasados</div><span class="cnum-spark-wrap" id="spark-acc-atrasados"></span></div>
           </div>
         </div>
         <div class="home-alertas" id="homeAlertAcc"></div>
+      </div>
+      <div class="home-module">
+        <div class="home-card hon" onclick="openHonorariosHome()">
+          <div class="arrow">→</div>
+          <div class="ic">💰</div>
+          <div class="ctitle">Honorários</div>
+          <div class="cdesc">Recebimentos e repasses</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver honorários recebidos"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div><span class="cnum-spark-wrap" id="spark-hon-total"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver todos os lançamentos"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div><span class="cnum-spark-wrap" id="spark-hon-qtd"></span></div>
+          </div>
+        </div>
+        <div class="home-alertas" id="homeAlertHon"></div>
       </div>
       <div class="home-module">
         <div class="home-card cont" onclick="openContas()">
@@ -11407,19 +11430,6 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="home-alertas" id="homeAlertas"></div>
         <div class="home-alertas" id="homeAlertCartoes"></div>
-      </div>
-      <div class="home-module">
-        <div class="home-card hon" onclick="openHonorariosHome()">
-          <div class="arrow">→</div>
-          <div class="ic">💰</div>
-          <div class="ctitle">Honorários</div>
-          <div class="cdesc">Recebimentos e repasses</div>
-          <div class="cnums">
-            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver honorários recebidos"><div class="v" id="hc-hon-total" style="color:var(--green)">—</div><div class="l">recebido</div><span class="cnum-spark-wrap" id="spark-hon-total"></span></div>
-            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openHonorariosHome()" title="Ver todos os lançamentos"><div class="v" id="hc-hon-qtd" style="color:var(--muted)">—</div><div class="l">lançamentos</div><span class="cnum-spark-wrap" id="spark-hon-qtd"></span></div>
-          </div>
-        </div>
-        <div class="home-alertas" id="homeAlertHon"></div>
       </div>
     </div>
     <div class="home-config" id="homeConfigMsg"></div>
@@ -11576,6 +11586,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (11)', itens: [
+      'Aviso 1 (aluguel em atraso): removida a linha com o valor do aluguel, ficando só o texto.',
+      'Manual de Acordos: acrescentada a informação de que o módulo cobre tanto acordos judiciais quanto extrajudiciais.',
+      'Card de Acordos na tela inicial ganhou 2 números novos: "em andamento" (acordos ativos) e "repasses atrasados" (passaram do prazo configurado) — antes só mostrava recebido no mês e repasses pendentes.',
+      'Reordenados os cards da tela inicial: "Contas a Pagar" agora fica sozinho embaixo à esquerda (movido pra depois de Honorários na ordem).',
+      'Processos: adicionado TRF3 na lista de sistemas (com link direto https://www.trf3.jus.br/pje/acesso-ao-sistema), junto com ESAJ, EPROC e PJE.'
+    ]},
     { data: '08/ago/2026 (10)', itens: [
       'Histórico de atualizações agora mostra só as 5 versões mais recentes (antes crescia sem limite e ficava enorme de rolar).',
       'Novo: "📖 Manual do Sistema" — acessível pelo menu do usuário, logo acima de "Configurações". Um manual pra cada painel (Dashboard, Processos, Honorários, Contas a Pagar, Atendimentos, Entregas, Acordos, Locações), explicando as principais funções de cada um.'
@@ -11824,7 +11841,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, acessar este Manual ou as Configurações.</div>',
 
     processos: MH+'Cadastro e edição</div>'
-      +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem (ESAJ, etc.) e anotações.</div>'
+      +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
       +MH+'Filtros e busca</div>'
       +MP+'Na lateral esquerda, filtre por urgência (Crítico/Urgente/Atenção/Normal/Monitorar) ou por área do direito. A busca no topo aceita nome do cliente, número do processo ou tipo de ação — atalho de teclado: tecla "/".</div>'
       +MH+'Cards de estatística</div>'
@@ -11860,7 +11877,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Duas formas: assinar na tela (o destinatário assina direto no aparelho, e o comprovante fica salvo com imagem da assinatura) ou imprimir para assinar fisicamente (gera o recibo em papel).</div>',
 
     acordos: MH+'Cadastro do acordo</div>'
-      +MP+'Registra um acordo extrajudicial com a parte contrária: cliente, parte contrária, valor total, número de parcelas, percentual de honorários do escritório, frequência de pagamento (diário, semanal, quinzenal ou mensal) e dados bancários do cliente para repasse.</div>'
+      +MP+'O módulo cobre tanto acordos <strong>judiciais</strong> (homologados em processo em curso) quanto <strong>extrajudiciais</strong> (firmados diretamente entre as partes, sem processo). Registra: cliente, parte contrária, valor total, número de parcelas, percentual de honorários do escritório, frequência de pagamento (diário, semanal, quinzenal ou mensal) e dados bancários do cliente para repasse.</div>'
       +MH+'Advogado parceiro</div>'
       +MP+'Se houver parceria com outro advogado, cadastre o nome, percentual sobre os honorários do escritório (não sobre o valor total do acordo) e dados bancários dele. Um botão "👤" aparece na lista de lançamentos para gerar o informe específico do parceiro.</div>'
       +MH+'Gerar parcelas</div>'
@@ -12176,9 +12193,12 @@ window.cpRenderFixas=cpRenderFixas;
         accReceb+=recebido;
         if(l['Status Repasse']!=='Repassado')accPend++;
       });
+      var accAtivos=(window.accContratos||[]).filter(function(c){return String(c['Ativo']).toLowerCase()==='sim';}).length;
       document.getElementById('hc-acc-receb').textContent=BRLf(accReceb);
+      document.getElementById('hc-acc-ativos').textContent=accAtivos;
       document.getElementById('hc-acc-pend').textContent=accPend;
       renderSpark('spark-acc-receb','acc-receb',accReceb,'var(--green)');
+      renderSpark('spark-acc-ativos','acc-ativos',accAtivos,'var(--blue)');
       renderSpark('spark-acc-pend','acc-pend',accPend,'var(--yellow)');
       var accAtrasadas=accLanc.filter(function(l){return l['Status Recebimento']==='Atrasado';});
       // Repasse atrasado: ja recebeu da parte contraria, ainda nao repassou ao cliente, e ja
@@ -12195,6 +12215,8 @@ window.cpRenderFixas=cpRenderFixas;
         return (hojeMs-dataReceb)/86400000>prazoDias;
       });
       setCritActive('hc-acc-pend',accAtrasadas.length>0||repasseAtrasados.length>0);
+      document.getElementById('hc-acc-atrasados').textContent=repasseAtrasados.length;
+      renderSpark('spark-acc-atrasados','acc-atrasados',repasseAtrasados.length,'var(--red)');
       if(!accAtrasadas.length&&!repasseAtrasados.length){setAlertBox('homeAlertAcc',null);}
       else{
         var ha='';
