@@ -1423,7 +1423,7 @@
   .parc-processo-nome {
     font-size: 15px;
     font-weight: 700;
-    color: #c8d8f0;
+    color: #f0f5ff;
     margin-bottom: 3px;
   }
 
@@ -11586,6 +11586,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '08/ago/2026 (13)', itens: [
+      'Corrigido o contraste do nome do imóvel/processo nos recibos e informes (na tela, modo escuro) — estava com uma cor clara-azulada que se perdia contra o fundo, ficando "borrado". Agora usa quase branco, bem mais nítido.'
+    ]},
+    { data: '08/ago/2026 (12)', itens: [
+      'Corrigido o alerta de "acordos com pagamentos em atraso" (abaixo do card na tela inicial) — antes só disparava se alguém marcasse manualmente o status como "Atrasado". Agora detecta sozinho qualquer parcela cuja data prevista já passou e ainda não foi recebida, mesmo que o status continue "Pendente" — e passou a olhar todos os meses, não só o atual.'
+    ]},
     { data: '08/ago/2026 (11)', itens: [
       'Aviso 1 (aluguel em atraso): removida a linha com o valor do aluguel, ficando só o texto.',
       'Manual de Acordos: acrescentada a informação de que o módulo cobre tanto acordos judiciais quanto extrajudiciais.',
@@ -12200,11 +12206,17 @@ window.cpRenderFixas=cpRenderFixas;
       renderSpark('spark-acc-receb','acc-receb',accReceb,'var(--green)');
       renderSpark('spark-acc-ativos','acc-ativos',accAtivos,'var(--blue)');
       renderSpark('spark-acc-pend','acc-pend',accPend,'var(--yellow)');
-      var accAtrasadas=accLanc.filter(function(l){return l['Status Recebimento']==='Atrasado';});
-      // Repasse atrasado: ja recebeu da parte contraria, ainda nao repassou ao cliente, e ja
-      // passou do prazo (em dias) configurado no acordo — vale pra qualquer mes, nao so o atual.
       var hojeMs=new Date().setHours(0,0,0,0);
       function accParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+      // Atraso de recebimento: considera tanto o que já foi marcado manualmente como "Atrasado"
+      // quanto qualquer parcela cuja Data Prevista já passou e ainda não foi recebida (mesmo que
+      // ninguém tenha trocado o status na tela) — e olha todos os meses, não só o atual.
+      var accAtrasadas=(window.accLancamentos||[]).filter(function(l){
+        if(l['Status Recebimento']==='Recebido')return false;
+        if(l['Status Recebimento']==='Atrasado')return true;
+        var dataPrev=accParseDataBR(l['Data Prevista']);
+        return dataPrev&&dataPrev<hojeMs;
+      });
       var repasseAtrasados=(window.accLancamentos||[]).filter(function(l){
         if(l['Status Recebimento']!=='Recebido'||l['Status Repasse']==='Repassado')return false;
         var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
@@ -12221,10 +12233,10 @@ window.cpRenderFixas=cpRenderFixas;
       else{
         var ha='';
         if(accAtrasadas.length){
-          ha+='<div class="ha-tit venc">💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s) ('+accM+')</div>'
+          ha+='<div class="ha-tit venc">💰 '+accAtrasadas.length+' parcela(s) de acordo atrasada(s)</div>'
             +accAtrasadas.slice(0,8).map(function(l){
               var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
-              return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Previsto'])||0)+' (parte contrária: '+E(ct['Parte Contraria']||'-')+')</div>';
+              return '<div class="ha-item"><b>'+E(ct['Cliente']||'-')+'</b> — '+BRLf(parseFloat(l['Valor Previsto'])||0)+' — ref. '+E(l['Mes']||'-')+' (parte contrária: '+E(ct['Parte Contraria']||'-')+')</div>';
             }).join('');
         }
         if(repasseAtrasados.length){
