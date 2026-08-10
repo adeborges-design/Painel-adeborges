@@ -9129,6 +9129,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
       <button class="loc-btn" onclick="relLocadorAbrir()">📄 Relatório do Locador</button>
+      <button class="loc-btn" onclick="relMensalAbrir()">📅 Relatório Mensal de Repasses</button>
       <button class="loc-btn" onclick="avisoAbrir()">✉️ Avisos</button>
     </div>
 
@@ -9266,7 +9267,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
         <div class="cobr-secao full">Outras cobranças</div>
-        <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma ao repasse do locador (ex.: reparo cobrado do inquilino). Valor <strong>negativo</strong> desconta do locador (ex.: conta de luz ou IPTU que você paga e recupera do repasse). Em "Repetição", escolha <strong>"Só este mês"</strong> pra algo pontual, <strong>"Todo mês"</strong> pra algo fixo que se repete sozinho, ou <strong>"Parcelado"</strong> pra IPTU e afins — o sistema avança a parcela sozinho a cada mês gerado, e para automaticamente quando chegar na última.</div>
+        <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma, <strong>negativo</strong> desconta. Em <strong>"Quem recebe/paga esse valor?"</strong>: escolha <strong>"Repassar ao locador"</strong> pra encargos normais (condomínio, IPTU pago por você e recuperado do locador, reparo cobrado do inquilino...); escolha <strong>"Só entre você e o locatário"</strong> quando o valor não tem nada a ver com o locador — ex.: seguro fiança que você pagou e está cobrando do inquilino em parcelas, e não deve nem somar nem descontar do que o locador recebe. Em "Repetição", escolha <strong>"Só este mês"</strong> pra algo pontual, <strong>"Todo mês"</strong> pra algo fixo que se repete sozinho, ou <strong>"Parcelado"</strong> pra IPTU, seguro fiança e afins — o sistema avança a parcela sozinho a cada mês gerado, e para automaticamente quando chegar na última.</div>
         <div id="cobr-outras-lista"></div>
         <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
         <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -9425,6 +9426,23 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-locador .rel-imovel-bloco,
   body.printing-rel-locador .parc-header,
   body.printing-rel-locador .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body.printing-rel-mensal * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rel-mensal html, body.printing-rel-mensal body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-rel-mensal > * { display:none !important; }
+  body.printing-rel-mensal #modalRelMensal {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-rel-mensal #modalRelMensal .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-rel-mensal .parceiro-toolbar,
+  body.printing-rel-mensal .entr-no-print { display:none !important; }
+  body.printing-rel-mensal .rel-imovel-bloco,
+  body.printing-rel-mensal .parc-header,
+  body.printing-rel-mensal .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-aviso-loc html, body.printing-aviso-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-aviso-loc > * { display:none !important; }
   body.printing-aviso-loc #modalAvisoLoc {
@@ -9633,6 +9651,30 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-email" onclick="avisoEnviarEmail()">✉️ E-mail</button>
       <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIO MENSAL DE REPASSES (o que efetivamente vai pro locador num mês específico) -->
+<div class="modal-repasse-overlay" id="modalRelMensal">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📅 Relatório Mensal de Repasses</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRelMensal').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print">
+      <div class="loc-note" style="margin-bottom:14px">Mostra, para o mês escolhido, quanto de cada imóvel desse locador está sendo repassado (já com taxa e encargos descontados/somados), e o total geral do mês. Diferente do "Relatório do Locador" (que mostra o retrato geral dos contratos) — este é o extrato financeiro de um mês específico.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <select class="loc-cinput" id="relMensalLocadorSelect" style="flex:2;min-width:200px" onchange="relMensalGerar()"></select>
+        <select class="loc-cinput" id="relMensalMesSelect" style="flex:1;min-width:120px" onchange="relMensalGerar()"></select>
+      </div>
+    </div>
+    <div id="relMensalCard" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="relMensalEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="relMensalEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-recibo-print" onclick="relMensalImprimir()">🖨 Imprimir/PDF</button>
+      <button class="loc-btn" onclick="relMensalCopiarTexto()">📋 Copiar texto</button>
     </div>
   </div>
 </div>
@@ -10361,8 +10403,9 @@ window.cpRenderFixas=cpRenderFixas;
     ['cobr-taxa-leitura','taxaLeitura'],['cobr-fundo-ferias','fundoFerias'],['cobr-decimo-terceiro','decimoTerceiro'],
     ['cobr-iptu','iptu'],['cobr-multa','multa'],['cobr-juros','juros'],['cobr-desconto','desconto']];
   var cobrItemSeq=0;
-  window.cobrAdicionarItem=function(desc,valor,tipo,parcelaAtual,parcelaTotal){
+  window.cobrAdicionarItem=function(desc,valor,tipo,parcelaAtual,parcelaTotal,destino){
     tipo=tipo||'pontual';
+    destino=destino||'repasse';
     var uid='ci'+(cobrItemSeq++);
     var div=document.createElement('div');
     div.className='cobr-item-linha';
@@ -10370,9 +10413,16 @@ window.cpRenderFixas=cpRenderFixas;
     div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px';
     div.innerHTML=
       '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
-      +'<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01, IPTU..." style="flex:2" value="'+E(desc||'')+'">'
+      +'<input class="loc-cinput cobr-item-desc" placeholder="Ex.: Conta ENEL - Sala 01, IPTU, Seguro Fiança..." style="flex:2" value="'+E(desc||'')+'">'
       +'<input class="loc-cinput cobr-item-valor" type="text" inputmode="decimal" placeholder="-4,05 desconta / 50 soma" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="cobrAtualizarPreview()">'
       +'<button type="button" class="loc-btn" style="padding:6px 10px;color:var(--red);border-color:var(--red)" onclick="document.getElementById(\''+uid+'\').remove();cobrAtualizarPreview()">🗑️</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">'
+      +'<span style="font-size:11px;color:var(--muted)">Quem recebe/paga esse valor?</span>'
+      +'<select class="loc-cinput cobr-item-destino" style="width:auto;padding:4px 8px;font-size:12px" oninput="cobrAtualizarPreview()">'
+      +'<option value="repasse"'+(destino==='repasse'?' selected':'')+'>Repassar ao locador (soma/desconta do que ele recebe)</option>'
+      +'<option value="escritorio"'+(destino==='escritorio'?' selected':'')+'>Só entre você e o locatário (não entra na conta do locador)</option>'
+      +'</select>'
       +'</div>'
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       +'<span style="font-size:11px;color:var(--muted)">Repetição:</span>'
@@ -10403,7 +10453,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
     document.getElementById('cobr-outras-lista').innerHTML='';
-    parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal);});
+    parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino);});
     cobrAtualizarPreview();
     document.getElementById('modalCobrancas').classList.add('open');
   };
@@ -10414,7 +10464,11 @@ window.cpRenderFixas=cpRenderFixas;
       var v=num(document.getElementById(p[0]).value);
       tot+=(p[1]==='desconto')?-v:v;
     });
-    Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-valor')).forEach(function(inp){tot+=num(inp.value);});
+    Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).forEach(function(div){
+      var destinoEl=div.querySelector('.cobr-item-destino');
+      if(destinoEl&&destinoEl.value==='escritorio')return; // não entra na conta do que vai pro locador
+      tot+=num(div.querySelector('.cobr-item-valor').value);
+    });
     document.getElementById('cobrTotalPreview').textContent=BRL(tot);
   };
   window.salvarCobrancas=function(){
@@ -10424,7 +10478,8 @@ window.cpRenderFixas=cpRenderFixas;
         desc:div.querySelector('.cobr-item-desc').value.trim(),valor:num(div.querySelector('.cobr-item-valor').value),
         tipo:div.querySelector('.cobr-item-tipo').value,
         parcelaAtual:parseInt(div.querySelector('.cobr-item-parcela-atual').value)||0,
-        parcelaTotal:parseInt(div.querySelector('.cobr-item-parcela-total').value)||0
+        parcelaTotal:parseInt(div.querySelector('.cobr-item-parcela-total').value)||0,
+        destino:div.querySelector('.cobr-item-destino').value
       };
     });
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
@@ -10553,37 +10608,46 @@ window.cpRenderFixas=cpRenderFixas;
   // ou parcelado (repete por N meses, contando a parcela atual, ex.: IPTU 7/10) — o backend
   // (gerar_mes_loc) carrega isso automaticamente pro mês seguinte, sem precisar redigitar.
   // Guardado como texto simples: "descrição::valor::tipo::parcelaAtual::parcelaTotal||...".
+  // "destino" decide se o item entra na conta do locador: 'repasse' (padrão) soma/desconta
+  // do repasse normalmente; 'escritorio' é uma cobrança que fica só entre você e o locatário
+  // (ex.: seguro fiança que você pagou e está recuperando em parcelas) — aparece no recibo do
+  // inquilino quando positivo, mas NUNCA entra na conta do que vai pro locador.
   function parseOutrasCobrancas(l){
     var bruto=String(l.outrasDesc||'').trim();
     if(!bruto)return [];
     if(bruto.indexOf('::')<0){
       // formato antigo (uma descrição + um valor separado) - mantém funcionando pra registros já existentes
       var v=num(l.outrasValor);
-      return v?[{desc:bruto,valor:v,tipo:'pontual',parcelaAtual:0,parcelaTotal:0}]:[];
+      return v?[{desc:bruto,valor:v,tipo:'pontual',parcelaAtual:0,parcelaTotal:0,destino:'repasse'}]:[];
     }
     return bruto.split('||').map(function(par){
       var partes=par.split('::');
       return {
         desc:(partes[0]||'').trim(),valor:num(partes[1]),
         tipo:partes[2]||'pontual',
-        parcelaAtual:parseInt(partes[3])||0,parcelaTotal:parseInt(partes[4])||0
+        parcelaAtual:parseInt(partes[3])||0,parcelaTotal:parseInt(partes[4])||0,
+        destino:partes[5]||'repasse'
       };
     }).filter(function(it){return it.desc||it.valor;});
   }
   function montarOutrasCobrancas(itens){
     return itens.filter(function(it){return it.desc||it.valor;}).map(function(it){
-      return it.desc.trim()+'::'+num(it.valor)+'::'+(it.tipo||'pontual')+'::'+(it.parcelaAtual||0)+'::'+(it.parcelaTotal||0);
+      return it.desc.trim()+'::'+num(it.valor)+'::'+(it.tipo||'pontual')+'::'+(it.parcelaAtual||0)+'::'+(it.parcelaTotal||0)+'::'+(it.destino||'repasse');
     }).join('||');
   }
+  // Soma só os itens que realmente afetam o repasse ao locador (destino='repasse') — usada
+  // no cálculo do que vai pro locador. Itens "só escritório" ficam de fora dessa conta.
   function somaOutrasCobrancas(l){
-    return parseOutrasCobrancas(l).reduce(function(s,it){return s+it.valor;},0);
+    return parseOutrasCobrancas(l).filter(function(it){return it.destino!=='escritorio';}).reduce(function(s,it){return s+it.valor;},0);
   }
   // Descrição pronta pra exibir (acrescenta "(atual/total)" quando for parcelado)
   function descComParcela(it){
     return it.tipo==='parcelado'&&it.parcelaTotal?it.desc+' ('+it.parcelaAtual+'/'+it.parcelaTotal+')':it.desc;
   }
 
-  function reciboLocItensCondo(w){
+  function reciboLocItensCondo(w,paraLocador){
+    var outras=parseOutrasCobrancas(w);
+    if(paraLocador)outras=outras.filter(function(it){return it.destino!=='escritorio';});
     return [
       ['Cota de condomínio',w.condominio],
       ['Água (área privativa)',w.aguaPriv],
@@ -10594,7 +10658,7 @@ window.cpRenderFixas=cpRenderFixas;
       ['Taxa de leitura',w.taxaLeitura],
       ['Fundo de férias',w.fundoFerias],
       ['13º salário (fundo)',w.decimoTerceiro]
-    ].concat(parseOutrasCobrancas(w).map(function(it){return [descComParcela(it),it.valor];}));
+    ].concat(outras.map(function(it){return [descComParcela(it),it.valor];}));
   }
   function reciboLocContaDestino(c){
     if(c.contaRecebimento==='locador'){
@@ -10643,7 +10707,7 @@ window.cpRenderFixas=cpRenderFixas;
     var jurosShare=Math.round((w.juros||0)*pct/100*100)/100;
     var iptuShare=Math.round((w.iptu||0)*pct/100*100)/100;
     var descontoShare=Math.round((w.desconto||0)*pct/100*100)/100;
-    var itensCondo=reciboLocItensCondo(w); // condomínio, água, gás... + itens de "outras cobranças" já parseados
+    var itensCondo=reciboLocItensCondo(w,true); // condomínio, água, gás... + itens de "outras cobranças" já parseados (sem os "só escritório")
     var linhasEncargos=itensCondo.filter(function(it){return it[1];}).map(function(it){
       var valorShare=Math.round(it[1]*pct/100*100)/100;
       return {desc:it[0],valor:valorShare};
@@ -10783,6 +10847,120 @@ window.cpRenderFixas=cpRenderFixas;
     var nome=document.getElementById('relLocadorSelect').value;
     if(!nome){alert('Selecione um locador primeiro.');return;}
     abrirEmailFlex('Relatório de Imóveis — '+nome, relLocadorMontarTexto(nome));
+  };
+
+  // ---------- RELATÓRIO MENSAL DE REPASSES (extrato financeiro de um mês específico) ----------
+  window.relMensalAbrir=function(){
+    var nomes={};
+    DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
+    (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var selLoc=document.getElementById('relMensalLocadorSelect');
+    selLoc.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    var meses=mesesDisponiveis();
+    var selMesEl=document.getElementById('relMensalMesSelect');
+    selMesEl.innerHTML=meses.map(function(m){return '<option value="'+m+'">'+E(mesExtenso(m))+'</option>';}).join('');
+    if(meses.indexOf(selMes)>=0)selMesEl.value=selMes;
+    document.getElementById('relMensalCard').innerHTML='';
+    document.getElementById('modalRelMensal').classList.add('open');
+  };
+  // Monta o extrato de UM imóvel específico, num mês específico, já considerando o percentual
+  // (se for coproprietário) e excluindo os itens "só entre escritório e locatário".
+  function relMensalDadosImovel(imovelInfo,mes){
+    var c=imovelInfo.contrato,pct=imovelInfo.pct;
+    var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
+    if(!w)return null;
+    var repTotal=effRep(w);
+    var valorLiq=Math.round(repTotal*pct/100*100)/100;
+    var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep};
+  }
+  window.relMensalGerar=function(){
+    var nome=document.getElementById('relMensalLocadorSelect').value;
+    var mes=document.getElementById('relMensalMesSelect').value;
+    var card=document.getElementById('relMensalCard');
+    if(!nome||!mes){card.innerHTML='';return;}
+    var imoveis=relLocadorImoveis(nome);
+    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
+    if(!linhas.length){card.innerHTML='<div class="loc-note">Nenhum lançamento encontrado para este locador neste mês.</div>';return;}
+    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var blocos=linhas.map(function(l,idx){
+      var itensHtml=l.itens.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
+      return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
+        +'<div class="parc-box" style="border-left:3px solid '+(l.statusRep==='Repassado'?'var(--green)':'var(--yellow)')+'">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+        +'<div style="font-weight:700;color:var(--accent2);font-size:14px">'+(idx+1)+'. '+E(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'</div>'
+        +'<div style="font-size:11px;color:'+(l.statusRep==='Repassado'?'var(--green)':'var(--yellow)')+';font-weight:700;white-space:nowrap;margin-left:10px">'+(l.statusRep==='Repassado'?'● Repassado':'● Pendente')+'</div>'
+        +'</div>'
+        +'<div>Contrato nº <strong>'+E(l.contrato)+'</strong></div>'
+        +'<div>Aluguel: <strong>'+BRL(l.aluguel)+'</strong></div>'
+        +(l.taxa?'<div>(−) Taxa de administração: <strong>-'+BRL(l.taxa)+'</strong></div>':'')
+        +(l.multa?'<div>(+) Multa: <strong>'+BRL(l.multa)+'</strong></div>':'')
+        +(l.juros?'<div>(+) Juros: <strong>'+BRL(l.juros)+'</strong></div>':'')
+        +itensHtml
+        +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
+        +'</div></div>';
+    }).join('');
+    card.innerHTML=
+      '<div class="parc-header">'
+      +'<div><div class="parc-header-title">Relatório Mensal de Repasses</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+      +'</div>'
+      +'<div class="parc-body">'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is)</div></div>'
+      +blocos
+      +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis</div></div></div>'
+      +'</div>'
+      +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
+  };
+  function relMensalMontarTexto(){
+    var nome=document.getElementById('relMensalLocadorSelect').value;
+    var mes=document.getElementById('relMensalMesSelect').value;
+    if(!nome||!mes)return '';
+    var imoveis=relLocadorImoveis(nome);
+    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
+    if(!linhas.length)return '';
+    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var txt='*RELATÓRIO MENSAL DE REPASSES*\n';
+    txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
+    txt+='Referente a '+mesExtenso(mes)+'\n';
+    txt+='═══════════════════\n\n';
+    txt+='*Locador:* '+nome+'\n';
+    txt+=linhas.length+' imóvel(is)\n\n';
+    linhas.forEach(function(l,idx){
+      txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.statusRep==='Repassado'?'✅':'⏳')+'\n';
+      txt+='Contrato nº '+l.contrato+'\n';
+      txt+='Aluguel: '+BRL(l.aluguel)+'\n';
+      if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
+      l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
+      txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
+      txt+='－－－－－－－－－－\n\n';
+    });
+    txt+='*TOTAL GERAL DO MÊS:* '+BRL(totalGeral)+'\n\n';
+    txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
+    return txt;
+  }
+  window.relMensalCopiarTexto=function(){
+    var texto=relMensalMontarTexto();
+    if(!texto){alert('Selecione o locador e o mês primeiro.');return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){alert('Texto copiado!');}).catch(function(){alert('Não consegui copiar. Selecione o texto na tela.');});
+    }else{alert('Selecione o texto na tela e copie manualmente.');}
+  };
+  window.relMensalEnviarWhats=function(){
+    var texto=relMensalMontarTexto();
+    if(!texto){alert('Selecione o locador e o mês primeiro.');return;}
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  };
+  window.relMensalEnviarEmail=function(){
+    var nome=document.getElementById('relMensalLocadorSelect').value;
+    var mes=document.getElementById('relMensalMesSelect').value;
+    var texto=relMensalMontarTexto();
+    if(!texto){alert('Selecione o locador e o mês primeiro.');return;}
+    abrirEmailFlex('Relatório Mensal de Repasses — '+nome+' — '+mesExtenso(mes),texto);
+  };
+  window.relMensalImprimir=function(){
+    document.body.classList.add('printing-rel-mensal');
+    setTimeout(function(){window.print();document.body.classList.remove('printing-rel-mensal');},200);
   };
 
   // ---------- AVISOS AO LOCATÁRIO/LOCADOR ----------
@@ -10985,7 +11163,8 @@ window.cpRenderFixas=cpRenderFixas;
       badgeHtml='';
       totalValor=effRep(w);
       totalLabel='Total repassado';
-      var linhasCondoRep=itensCondo.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
+      var itensCondoLocador=reciboLocItensCondo(w,true);
+      var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
         +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
         +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
@@ -11113,7 +11292,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
       txt+='(−) Taxa de administração: -'+fmt(w.taxa)+'\n';
-      itensCondo.filter(function(it){return it[1];}).forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+fmt(Math.abs(it[1]))+'\n';});
+      reciboLocItensCondo(w,true).filter(function(it){return it[1];}).forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+fmt(Math.abs(it[1]))+'\n';});
       if(w.iptu)txt+='(+) IPTU: '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
@@ -11826,6 +12005,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (7)', itens: [
+      'Novo em Locações: "📅 Relatório Mensal de Repasses" — diferente do "Relatório do Locador" (retrato geral dos contratos), este mostra o extrato financeiro de um mês específico: quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos, respeitando percentual de coproprietário quando houver), status de cada repasse, e o total geral do mês. Envia por WhatsApp, e-mail ou imprime/PDF, mesmo padrão visual dos outros relatórios. Testado com 2 imóveis do mesmo locador — cada cálculo e o total bateram certo.'
+    ]},
+    { data: '09/ago/2026 (6)', itens: [
+      'Novo em Locações: cada item de "Outras cobranças" agora tem a opção "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão, como já era) ou "Só entre você e o locatário" (novo — não entra na conta do que vai pro locador, nem soma nem desconta). Resolve o caso de Seguro Fiança e outras cobranças que você paga e recupera do inquilino, mas que não têm nada a ver com o locador. Continua aparecendo no recibo do inquilino quando positivo (com a numeração de parcela, se for parcelado), mas some completamente do informe do locador.'
+    ]},
     { data: '09/ago/2026 (5)', itens: [
       'Corrigido bug sério: quando o aluguel ou os encargos de um lançamento eram editados, a coluna "Valor Repasse" da planilha continuava com o total calculado ANTES da edição (nunca era limpa), e o sistema tratava isso como "valor definido manualmente", ignorando os componentes atualizados — o informe mostrava a soma certa dos itens, mas o total final ficava "travado" no valor antigo. Agora, toda vez que você salva a tela de Encargos, o repasse volta a ser calculado automaticamente a partir dos componentes atuais.',
       'Para lançamentos que já estão com esse problema: abra "💰 Encargos" no lançamento afetado e clique em salvar (mesmo sem mudar nada) — isso já destrava o cálculo.'
@@ -12156,11 +12341,13 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Coproprietários</div>'
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
       +MH+'Encargos do mês</div>'
-      +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado).</div>'
+      +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado). Cada item também tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe.</div>'
       +MH+'Filtros clicáveis</div>'
       +MP+'Os cards e chips no topo (Em caixa aguardando repasse, Já repassado, Recebidos, Atrasados...) são clicáveis e filtram a lista na hora.</div>'
       +MH+'Relatório do Locador</div>'
       +MP+'Reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono.</div>'
+      +MH+'Relatório Mensal de Repasses</div>'
+      +MP+'Diferente do anterior: mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, e o total geral do mês.</div>'
       +MH+'Avisos ao locatário/locador</div>'
       +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
       +MH+'Alertas de vigência</div>'
