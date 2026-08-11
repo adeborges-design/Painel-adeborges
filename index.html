@@ -6346,14 +6346,39 @@ window.accRender = function () {
     '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + accChip('pago', 'Recebidos', cRecRec) + accChip('pend', 'Pendentes', cRecPend) + accChip('atras', 'Atrasados', cRecAtras) + '</div>' +
     '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao cliente</span>' + accChip('pago', 'Repassados', cRepFeito) + accChip('pend', 'Pendentes', cRepPend) + '</div>';
 
-  var tb = document.getElementById('accTbody');
+  var accHojeMs = new Date().setHours(0, 0, 0, 0);
+  var accAutoAtrasoJaAplicado = window.accAutoAtrasoJaAplicado || (window.accAutoAtrasoJaAplicado = {});
+  function accParseDataBRms(s) { var p = String(s || '').split('/'); if (p.length !== 3) return null; return new Date(+p[2], +p[1] - 1, +p[0]).getTime(); }
+    var tb = document.getElementById('accTbody');
   tb.innerHTML = lista.map(function (l) {
     var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
-    var statusRec = l['Status Recebimento'] || 'Pendente';
-    var statusRep = l['Status Repasse'] || 'Pendente';
+    var statusRecBruto = l['Status Recebimento'] || 'Pendente';
+    // Regra padrão do sistema: se ainda está Pendente e a data prevista já passou, vira Atrasado
+    // sozinho (sem precisar de ação manual) — mesmo critério em Locações, Acordos e Contas a Pagar.
+    var dataPrevMs = accParseDataBRms(l['Data Prevista']);
+    var statusRec = statusRecBruto;
+    if (statusRecBruto === 'Pendente' && dataPrevMs && dataPrevMs < accHojeMs) {
+      statusRec = 'Atrasado';
+      if (!accAutoAtrasoJaAplicado[l['ID']]) {
+        accAutoAtrasoJaAplicado[l['ID']] = true;
+        accAtualizarLancamento(l['ID'], { 'Status Recebimento': 'Atrasado' });
+      }
+    }
+    // Status Repasse acompanha Status Recebimento enquanto não for Recebido (mesma lógica já usada
+    // em Locações: só faz sentido repassar depois de receber, então Pendente/Atrasado "contaminam").
+    var statusRepBruto = l['Status Repasse'] || 'Pendente';
+    var statusRep = statusRec !== 'Recebido' ? statusRec : statusRepBruto;
+    // Dentro do Repasse (já recebido, aguardando repassar ao cliente): mesma regra de atraso por
+    // data, usando o prazo configurado no contrato (Dia Repasse, em dias após o recebimento).
+    if (statusRec === 'Recebido' && statusRepBruto === 'Pendente') {
+      var prazoDias = accNum(c['Dia Repasse']);
+      var dataRecMs = accParseDataBRms(l['Data Recebimento']);
+      if (prazoDias && dataRecMs && (accHojeMs - dataRecMs) / 86400000 > prazoDias) {
+        statusRep = 'Atrasado';
+      }
+    }
     var classeRec = statusRec === 'Recebido' ? 'st-pago' : statusRec === 'Atrasado' ? 'st-atras' : 'st-pend';
     var classeRep = statusRep === 'Repassado' ? 'st-pago' : statusRep === 'Atrasado' ? 'st-atras' : 'st-pend';
-    var temValorRec = accNum(l['Valor Recebido']) > 0;
     return '<tr>'
       + '<td class="loc-num">' + accE(c['Nr Processo']) + '</td>'
       + '<td>' + accE(c['Cliente']) + '</td>'
@@ -6361,12 +6386,15 @@ window.accRender = function () {
       + '<td style="text-align:center">' + accE(l['Data Prevista'] || '-') + '</td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Recebimento']) + '" onchange="accSetDataRecebimento(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td><select class="loc-row-select ' + classeRec + '" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
-      + '<td><input class="loc-row-money' + (temValorRec ? ' valor-confirmado' : '') + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
+      + '<td><input class="loc-row-money ' + classeRec + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
       + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
-      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td><input class="loc-row-money ' + classeRep + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center">' + (c['Dia Repasse'] ? accE(c['Dia Repasse']) + 'd' : '-') + '</td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
-      + '<td><select class="loc-row-select ' + classeRep + '" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td>' + (statusRec !== 'Recebido'
+          ? '<span class="loc-status-badge ' + classeRep + '" title="Segue o Status Recebimento automaticamente. Só pode ser alterado depois que a parcela for marcada como Recebida.">' + statusRep + ' <span class="lock">🔒</span></span>'
+          : '<select class="loc-row-select ' + classeRep + '" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado', 'Atrasado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>'
+        ) + '</td>'
       + '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
       + (c['Advogado Parceiro'] ? ' <button class="loc-send-btn" title="Ver/imprimir informe ao advogado parceiro" onclick="accAbrirReciboParceiro(\'' + accE(l['ID']) + '\')">👤</button>' : '')
       + '</td>'
@@ -9094,6 +9122,9 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
   .loc-row-money.valor-confirmado{color:var(--green);border-color:var(--green)}
+  .loc-row-money.st-pago{color:var(--green);border-color:var(--green)}
+  .loc-row-money.st-pend{color:#a3591f;border-color:var(--orange)}
+  .loc-row-money.st-atras{color:var(--red);border-color:var(--red)}
   .loc-status-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;cursor:default;white-space:nowrap}
   .loc-status-badge.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d}
   .loc-status-badge.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f}
@@ -12244,6 +12275,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (13)', itens: [
+      'Acordos: implantada a mesma automação de status que já existia em Locações. Status Recebimento vira "Atrasado" sozinho quando a data prevista passa e ainda está Pendente (sem precisar de ação manual). Status Repasse acompanha o Status Recebimento automaticamente (Pendente/Atrasado) enquanto não for Recebido — fica travado (🔒) até lá. Depois de Recebido, Status Repasse fica editável e também detecta "Atrasado" sozinho quando passa do prazo configurado no contrato sem ter sido repassado. Valor Recebido e Repasse Cliente agora ficam coloridos conforme o status (verde/laranja/vermelho), igual à cor do status.',
+      'Regra permanente registrada: cores (verde=recebido/pago/repassado, laranja=pendente, vermelho=atrasado) e detecção automática de atraso por data (sem precisar de ação manual) devem seguir esse mesmo padrão em todos os módulos, sempre priorizando a automação.',
+      'Conferido Contas a Pagar: já segue os mesmos princípios (cores e detecção automática por data), só com nomes de classe CSS internos diferentes — não precisou de alteração visível.'
+    ]},
     { data: '09/ago/2026 (12)', itens: [
       'Padronização de cores: em Locações, a "Data pgto/repasse" agora também atualiza o Status Aluguel sozinha (preencher = Recebido/verde, apagar = Pendente/laranja) — mesmo comportamento que acabamos de implantar em Acordos. Regra geral registrada: cores e forma de atualização de status (Pendente=laranja, Atrasado=vermelho, Recebido/Repassado/Pago=verde, sempre priorizando preencher-uma-data-muda-o-status-sozinho) devem ser as mesmas em todos os módulos daqui pra frente.'
     ]},
@@ -12585,6 +12621,8 @@ window.cpRenderFixas=cpRenderFixas;
 
     acordos: MH+'Cadastro do acordo</div>'
       +MP+'O módulo cobre tanto acordos <strong>judiciais</strong> (homologados em processo em curso) quanto <strong>extrajudiciais</strong> (firmados diretamente entre as partes, sem processo). Registra: cliente, parte contrária, valor total, número de parcelas, percentual de honorários do escritório, frequência de pagamento (diário, semanal, quinzenal ou mensal) e dados bancários do cliente para repasse.</div>'
+      +MH+'Status automáticos</div>'
+      +MP+'Status Recebimento vira "Atrasado" sozinho quando a data prevista passa sem confirmação de recebimento — não precisa mexer manualmente. Status Repasse acompanha o Status Recebimento (fica travado, com 🔒) enquanto a parcela não for Recebida; depois de recebida, fica editável e também detecta "Atrasado" sozinho quando passa do prazo de repasse configurado no contrato. Preencher a Data de Recebimento ou Data de Repasse já marca o status certo automaticamente; apagar a data volta pro estado anterior. Cores: verde = recebido/repassado, laranja = pendente, vermelho = atrasado — mesmo padrão em todo o sistema.</div>'
       +MH+'Advogado parceiro</div>'
       +MP+'Se houver parceria com outro advogado, cadastre o nome, percentual sobre os honorários do escritório (não sobre o valor total do acordo) e dados bancários dele. Um botão "👤" aparece na lista de lançamentos para gerar o informe específico do parceiro.</div>'
       +MH+'Gerar parcelas</div>'
