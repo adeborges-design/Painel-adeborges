@@ -6351,23 +6351,27 @@ window.accRender = function () {
     var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
     var statusRec = l['Status Recebimento'] || 'Pendente';
     var statusRep = l['Status Repasse'] || 'Pendente';
+    var classeRec = statusRec === 'Recebido' ? 'st-pago' : statusRec === 'Atrasado' ? 'st-atras' : 'st-pend';
+    var classeRep = statusRep === 'Repassado' ? 'st-pago' : statusRep === 'Atrasado' ? 'st-atras' : 'st-pend';
+    var temValorRec = accNum(l['Valor Recebido']) > 0;
     return '<tr>'
       + '<td class="loc-num">' + accE(c['Nr Processo']) + '</td>'
       + '<td>' + accE(c['Cliente']) + '</td>'
       + '<td>' + accE(c['Parte Contraria']) + '</td>'
       + '<td style="text-align:center">' + accE(l['Data Prevista'] || '-') + '</td>'
-      + '<td><select class="loc-row-select" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
-      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
+      + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Recebimento']) + '" onchange="accSetDataRecebimento(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td><select class="loc-row-select ' + classeRec + '" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td><input class="loc-row-money' + (temValorRec ? ' valor-confirmado' : '') + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
       + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
       + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center">' + (c['Dia Repasse'] ? accE(c['Dia Repasse']) + 'd' : '-') + '</td>'
-      + '<td><select class="loc-row-select" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td><select class="loc-row-select ' + classeRep + '" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
       + '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
       + (c['Advogado Parceiro'] ? ' <button class="loc-send-btn" title="Ver/imprimir informe ao advogado parceiro" onclick="accAbrirReciboParceiro(\'' + accE(l['ID']) + '\')">👤</button>' : '')
       + '</td>'
       + '</tr>';
-  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>';
+  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>';
 };
 
 function accAtualizarLancamento(id, campos) {
@@ -6424,7 +6428,24 @@ window.accSetStatusRepasse = function (id, val) {
   if (val === 'Repassado' && l && !l['Data Repasse']) campos['Data Repasse'] = accFdt(new Date());
   accAtualizarLancamento(id, campos);
 };
-window.accSetDataRepasse = function (id, val) { accAtualizarLancamento(id, { 'Data Repasse': accDtBRfromInput(val) }); };
+window.accSetDataRepasse = function (id, val) {
+  var dataBR = accDtBRfromInput(val);
+  var campos = { 'Data Repasse': dataBR };
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
+  // Preencheu a data → já marca como Repassado sozinho. Apagou a data (e estava Repassado) → volta pra Pendente.
+  if (dataBR) { campos['Status Repasse'] = 'Repassado'; }
+  else if (l && l['Status Repasse'] === 'Repassado') { campos['Status Repasse'] = 'Pendente'; }
+  accAtualizarLancamento(id, campos);
+};
+window.accSetDataRecebimento = function (id, val) {
+  var dataBR = accDtBRfromInput(val);
+  var campos = { 'Data Recebimento': dataBR };
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
+  // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava Recebido) → volta pra Pendente.
+  if (dataBR) { campos['Status Recebimento'] = 'Recebido'; }
+  else if (l && l['Status Recebimento'] === 'Recebido') { campos['Status Recebimento'] = 'Pendente'; }
+  accAtualizarLancamento(id, campos);
+};
 
 // ---------- RECIBO (Informe de Repasse) ----------
 window.accAbrirReciboParceiro = function (lancamentoId) {
@@ -9072,6 +9093,7 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-row-select.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d;font-weight:700}
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
+  .loc-row-money.valor-confirmado{color:var(--green);border-color:var(--green)}
   .loc-status-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;cursor:default;white-space:nowrap}
   .loc-status-badge.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d}
   .loc-status-badge.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f}
@@ -9324,12 +9346,13 @@ window.cpRenderFixas=cpRenderFixas;
         <thead><tr>
           <th>Processo</th><th>Cliente</th><th>Parte Contrária</th>
           <th style="text-align:center">Venc.</th>
+          <th style="text-align:center">Data Receb.</th>
           <th>Status Recebimento</th>
           <th style="text-align:right">Valor Recebido (R$)</th>
           <th style="text-align:right">Honorários (R$)</th>
           <th style="text-align:right">Repasse Cliente (R$)</th>
           <th style="text-align:center">Prazo Repasse</th>
-          <th>Status Repasse</th><th>Data Repasse</th>
+          <th style="text-align:center">Data Repasse</th><th>Status Repasse</th>
           <th style="text-align:center">Ações</th>
         </tr></thead>
         <tbody id="accTbody"></tbody>
@@ -12213,6 +12236,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (11)', itens: [
+      'Tabela de parcelas em Acordos: nova coluna "Data Receb." ao lado de "Venc." — ao preencher, marca sozinho como "Recebido" (verde). "Data Repasse" passou pra antes de "Status Repasse" — ao preencher, marca sozinho como "Repassado" (verde). Se apagar a data, volta pra "Pendente" automaticamente. Cores padronizadas: Pendente laranja, Atrasado vermelho, Recebido/Repassado verde (mesmo padrão já usado em Locações). Valor Recebido fica verde assim que confirmado.'
+    ]},
     { data: '09/ago/2026 (10)', itens: [
       '"💼 Despesas/Créditos do Locador": parcelas agora podem ter valores diferentes entre si (ex.: R$2.500 em R$2.000 + R$500), em vez de dividir sempre igual — cada parcela tem seu próprio campo de valor, com um "+ adicionar parcela" pra quantas precisar.',
       'Relatório Mensal de Repasses ganhou o "Subtotal dos imóveis" (soma só dos aluguéis/repasses), aparecendo entre a lista de imóveis e as despesas/créditos avulsos, antes do total geral final — só aparece quando há as duas coisas juntas (imóveis + avulsos), pra não poluir quando só tem um dos dois.'
