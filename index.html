@@ -8518,56 +8518,71 @@ function renderContas(){
   // Compras individuais de cartão nao aparecem mais na lista geral (deixava a lista enorme) -
   // elas so aparecem dentro do proprio cartão (clique no card em Cartões de Crédito).
   if(isCartaoItem)return;
-  var stH='';var vencStatus='';
-  if(paga){var dp=dbr(c['Data Pagamento']);if(!isCartaoItem&&dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())tk.pagasMes+=v;stH='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
-  else{if(!isCartaoItem)tk.aberto+=v;
-   if(dv){var diff=Math.round((dv-hoje)/86400000);
-    if(diff<0){if(!isCartaoItem)tk.vencidas+=v;stH='<span class="hon-badge hv-badge-atraso">VENCIDA há '+(-diff)+'d</span>';vencStatus='venc';}
-    else if(diff===0){if(!isCartaoItem)tk.avencer+=v;stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';vencStatus='hoje';}
-    else{if(diff<=30&&!isCartaoItem)tk.avencer+=v;stH='<span class="hon-badge hv-badge-fut">vence em '+diff+'d</span>';}}
+  var diff=null,vencStatus='';
+  if(paga){
+   var dp=dbr(c['Data Pagamento']);
+   if(dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())tk.pagasMes+=v;
+  }else{
+   tk.aberto+=v;
+   if(dv){
+    diff=Math.round((dv-hoje)/86400000);
+    if(diff<0){tk.vencidas+=v;vencStatus='venc';}
+    else if(diff===0){tk.avencer+=v;vencStatus='hoje';}
+    else{if(diff<=30)tk.avencer+=v;}
+   }
   }
-  var confHtml='';
+  var statusCls=paga?'st-pago':(vencStatus==='venc'?'st-atras':'st-pend');
+  var statusTxt=paga?'Paga':(vencStatus==='venc'?'Vencida':(vencStatus==='hoje'?'Vence hoje':'Pendente'));
+  var vencSub='';
+  if(!paga&&dv){
+   if(diff<0)vencSub='<div class="loc-atraso">vencida há '+(-diff)+'d</div>';
+   else if(diff===0)vencSub='<div class="loc-atraso">vence hoje</div>';
+   else vencSub='<div class="loc-atraso-ok">vence em '+diff+'d</div>';
+  }else if(paga&&c['Data Pagamento']){
+   vencSub='<div class="loc-atraso-ok">paga em '+esc(c['Data Pagamento'])+'</div>';
+  }
+  var confIcon='';
   if(isFaturaCartao&&c['Cartao']){
    var conf=cpConferirFatura(c);
    if(conf){
-    if(Math.abs(conf.diff)<0.01)confHtml='<div class="cpc-conf" style="font-size:11px;color:var(--green)">✓ confere com os lançamentos no cartão (R$ '+fmr(conf.soma)+')</div>';
-    else confHtml='<div class="cpc-conf" style="font-size:11px;color:var(--red)">⚠ diverge dos lançamentos no cartão: soma R$ '+fmr(conf.soma)+' ('+(conf.diff>0?'faltam R$ '+fmr(conf.diff)+' lançar':'R$ '+fmr(-conf.diff)+' lançados a mais')+')</div>';
-   } else confHtml='<div class="cpc-conf" style="font-size:11px;color:var(--muted)">Sem vencimento para conferir os lançamentos do mês.</div>';
+    confIcon=Math.abs(conf.diff)<0.01
+     ?' <span title="Confere com os lançamentos no cartão (R$ '+fmr(conf.soma)+')" style="color:var(--green)">✓</span>'
+     :' <span title="Diverge dos lançamentos no cartão: soma R$ '+fmr(conf.soma)+' ('+(conf.diff>0?'faltam R$ '+fmr(conf.diff)+' lançar':'R$ '+fmr(-conf.diff)+' lançados a mais')+')" style="color:var(--red)">⚠</span>';
+   }
   }
-  var tagsH='';
-  if(recNorm(c['Recorrencia'])==='mensal')tagsH+='<span class="hon-badge hv-badge-fut">🔁 Mensal</span>';
-  if(recNorm(c['Recorrencia'])==='parcelada')tagsH+='<span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo devedor '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>';
-  if(isCartaoItem)tagsH+='<span class="hon-badge hv-badge-fut" title="Compra no cartão: já incluída na fatura consolidada, não entra nos totais gerais">💳 '+esc(window.cpNomeCartao(c['Cartao']))+' · na fatura</span>';
-  if(isFaturaCartao&&c['Cartao'])tagsH+='<span class="hon-badge hv-badge-fut">🧾 fatura · '+esc(window.cpNomeCartao(c['Cartao']))+'</span>';
-  var metaH='';
-  if(c['Fornecedor'])metaH+='<span>'+esc(c['Fornecedor'])+'</span>';
-  metaH+='<span>venc. '+esc(c['Data Vencimento']||'-')+'</span>';
-  if(c['Forma Pagamento'])metaH+='<span>'+esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):'')+'</span>';
-  if(c['Observacoes'])metaH+='<span>'+esc(String(c['Observacoes']).slice(0,40))+'</span>';
-  var acoesH='<button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'
+  var recTxt='Única';
+  if(recNorm(c['Recorrencia'])==='mensal')recTxt='🔁 Mensal';
+  else if(recNorm(c['Recorrencia'])==='parcelada')recTxt='📆 Parcelada'+(nbr(c['Saldo Devedor'])?' · saldo '+fmr(nbr(c['Saldo Devedor'])):'');
+  var formaTxt=c['Forma Pagamento']?esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):''):'-';
+  if(isFaturaCartao&&c['Cartao'])formaTxt='🧾 '+esc(window.cpNomeCartao(c['Cartao']));
+  var CP_TIPO_SHORT={pessoal:'👤 Pessoal',escritorio:'⚖️ Escritório',locacao:'🏠 Locação'};
+  var tipoLbl=CP_TIPO_SHORT[cpTipoNorm(c['Tipo de Conta'])]||'';
+  var acoesH='<button class="loc-send-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'
    +(paga
      ?(isFaturaCartao&&c['Cartao']
-       ?'<button class="cp-btn" title="Estorna a fatura e as compras pagas junto" onclick="cpEstornarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">↩ Estornar fatura</button>'
-       :'<button class="cp-btn" title="Desfazer esse pagamento" onclick="cpEstornar(\''+esc(c['ID'])+'\')">↩ Estornar</button>')
-     :(isFaturaCartao&&c['Cartao']?'<button class="cp-btn pg" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓ Pagar fatura</button>':'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓ Pagar</button>'))
-   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button>';
-  html+='<div class="cpc-item'+(paga?' paga':(vencStatus?' '+vencStatus:''))+'">'
-   +'<div class="cpc-main">'
-     +'<div class="cpc-top"><span class="cpc-desc">'+esc(c['Descricao'])+'</span>'+(c['Categoria']?'<span class="hon-badge hv-badge-fut">'+esc(c['Categoria'])+'</span>':'')+'</div>'
-     +(tagsH?'<div class="cpc-tags">'+tagsH+'</div>':'')
-     +'<div class="cpc-meta">'+metaH+'</div>'
-     +confHtml
-   +'</div>'
-   +'<div class="cpc-side">'+stH+'<div class="cpc-val">'+fmr(v)+'</div><div class="cpc-acoes">'+acoesH+'</div></div>'
-   +'</div>';
+       ?'<button class="loc-send-btn" title="Estorna a fatura e as compras pagas junto" onclick="cpEstornarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">↩</button>'
+       :'<button class="loc-send-btn" title="Desfazer esse pagamento" onclick="cpEstornar(\''+esc(c['ID'])+'\')">↩</button>')
+     :(isFaturaCartao&&c['Cartao']?'<button class="loc-send-btn" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓</button>':'<button class="loc-send-btn" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓</button>'))
+   +'<button class="loc-send-btn" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button>';
+  var obsTitle=c['Observacoes']?' title="'+esc(String(c['Observacoes']))+'"':'';
+  html+='<tr'+obsTitle+'>'
+   +'<td>'+esc(c['Descricao'])+confIcon+'</td>'
+   +'<td class="loc-num">'+esc(c['Categoria']||'-')+'</td>'
+   +'<td>'+esc(c['Fornecedor']||'-')+'</td>'
+   +'<td class="loc-num">'+tipoLbl+'</td>'
+   +'<td>'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
+   +'<td>'+formaTxt+'</td>'
+   +'<td class="loc-num">'+recTxt+'</td>'
+   +'<td><span class="loc-status-badge '+statusCls+'">'+statusTxt+'</span></td>'
+   +'<td class="loc-money" style="color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
+   +'<td style="text-align:center;white-space:nowrap">'+acoesH+'</td>'
+   +'</tr>';
  });
- ['pessoal','escritorio','locacao'].forEach(function(k){
-  document.getElementById('cpVencidas_'+k).textContent=fmr(tot[k].vencidas);
-  document.getElementById('cpAvencer_'+k).textContent=fmr(tot[k].avencer);
-  document.getElementById('cpPagasMes_'+k).textContent=fmr(tot[k].pagasMes);
-  document.getElementById('cpAberto_'+k).textContent=fmr(tot[k].aberto);
- });
- document.getElementById('cpLista').innerHTML=html||'<div class="hon-empty">Nenhuma conta cadastrada</div>';
+ document.getElementById('cpLista').innerHTML=html
+  ?('<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
+    +'<th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Tipo</th><th>Vencimento</th><th>Forma / Banco</th><th>Recorrência</th><th>Status</th><th>Valor</th><th>Ações</th>'
+    +'</tr></thead><tbody>'+html+'</tbody></table></div>')
+  :'<div class="hon-empty">Nenhuma conta cadastrada</div>';
  try{cpRenderCartoes();}catch(e){}
  try{cpRenderFixas();}catch(e){}
  try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
@@ -9002,32 +9017,43 @@ function cpRenderDrill(nome){
     +'<button class="cp-btn pg" onclick="cpPagarFatura(\''+esc(faturaAtual['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar fatura</button></div>'
   : '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Nenhuma fatura em aberto lançada ainda pra esse cartão — é criada sozinha assim que você lançar a 1ª compra do período.</div>';
  var hojeDr=new Date();hojeDr.setHours(0,0,0,0);
- var linhas=itens.length?itens.map(function(c){
+ var linhas=itens.length?('<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'
+   +'<th style="text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)">Descrição</th>'
+   +'<th style="text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)">Vencimento</th>'
+   +'<th style="text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)">Status</th>'
+   +'<th style="text-align:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)">Valor</th>'
+   +'<th style="text-align:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)">Ações</th>'
+   +'</tr></thead><tbody>'
+   +itens.map(function(c){
   var paga=String(c['Status']).toLowerCase()==='paga';
   var dvDr=dbr(c['Data Vencimento']);
-  var stHDr='';var vencStatusDr='';
-  if(paga){stHDr='<span class="hon-badge hv-badge-paga">PAGA'+(c['Data Pagamento']?' em '+esc(c['Data Pagamento']):'')+'</span>';}
-  else if(dvDr){var diffDr=Math.round((dvDr-hojeDr)/86400000);
-   if(diffDr<0){stHDr='<span class="hon-badge hv-badge-atraso">VENCIDA há '+(-diffDr)+'d</span>';vencStatusDr='venc';}
-   else if(diffDr===0){stHDr='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';vencStatusDr='hoje';}
-   else{stHDr='<span class="hon-badge hv-badge-fut">vence em '+diffDr+'d</span>';}
+  var statusClsDr='st-pend',statusTxtDr='Pendente',vencSubDr='';
+  if(paga){
+   statusClsDr='st-pago';statusTxtDr='Paga';
+   if(c['Data Pagamento'])vencSubDr='<div class="loc-atraso-ok">paga em '+esc(c['Data Pagamento'])+'</div>';
+  }else if(dvDr){
+   var diffDr=Math.round((dvDr-hojeDr)/86400000);
+   if(diffDr<0){statusClsDr='st-atras';statusTxtDr='Vencida';vencSubDr='<div class="loc-atraso">vencida há '+(-diffDr)+'d</div>';}
+   else if(diffDr===0){statusClsDr='st-atras';statusTxtDr='Vence hoje';vencSubDr='<div class="loc-atraso">vence hoje</div>';}
+   else{vencSubDr='<div class="loc-atraso-ok">vence em '+diffDr+'d</div>';}
   }
-  var tagsDr=recNorm(c['Recorrencia'])==='parcelada'?('<span class="hon-badge hv-badge-hoje">📆 Parcelada'+(nbr(c['Saldo Devedor'])?' — saldo '+fmr(nbr(c['Saldo Devedor'])):'')+'</span>'):'';
-  var metaDr='<span>venc. '+esc(c['Data Vencimento']||'-')+'</span>'+(c['Observacoes']?'<span>'+esc(String(c['Observacoes']).slice(0,40))+'</span>':'');
-  var acoesDr='<button class="cp-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\');cpFecharDrill();">✎</button>'
+  var descDr=esc(c['Descricao'])+(c['Categoria']?' <span class="loc-num">· '+esc(c['Categoria'])+'</span>':'')
+   +(recNorm(c['Recorrencia'])==='parcelada'?' <span class="loc-num">· 📆 parcelada'+(nbr(c['Saldo Devedor'])?' (saldo '+fmr(nbr(c['Saldo Devedor']))+')':'')+'</span>':'');
+  var acoesDr='<button class="loc-send-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\');cpFecharDrill();">✎</button>'
    +(paga
-     ?'<button class="cp-btn" title="Desfazer esse pagamento" onclick="cpEstornarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">↩ Estornar</button>'
-     :'<button class="cp-btn pg" title="Marcar como paga" onclick="cpPagarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">✓ Pagar</button>')
-   +'<button class="cp-btn ex" title="Excluir" onclick="cpExcluirDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">🗑️</button>';
-  return '<div class="cpc-item'+(paga?' paga':(vencStatusDr?' '+vencStatusDr:''))+'">'
-   +'<div class="cpc-main">'
-     +'<div class="cpc-top"><span class="cpc-desc">'+esc(c['Descricao'])+'</span>'+(c['Categoria']?'<span class="hon-badge hv-badge-fut">'+esc(c['Categoria'])+'</span>':'')+'</div>'
-     +(tagsDr?'<div class="cpc-tags">'+tagsDr+'</div>':'')
-     +'<div class="cpc-meta">'+metaDr+'</div>'
-   +'</div>'
-   +'<div class="cpc-side">'+stHDr+'<div class="cpc-val">'+fmr(nbr(c['Valor']))+'</div><div class="cpc-acoes">'+acoesDr+'</div></div>'
-   +'</div>';
- }).join(''):'<div class="hon-empty">Nenhuma compra lançada neste cartão ainda.</div>';
+     ?'<button class="loc-send-btn" title="Desfazer esse pagamento" onclick="cpEstornarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">↩</button>'
+     :'<button class="loc-send-btn" title="Marcar como paga" onclick="cpPagarDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">✓</button>')
+   +'<button class="loc-send-btn" title="Excluir" onclick="cpExcluirDrill(\''+esc(c['ID'])+'\',\''+esc(nome)+'\')">🗑️</button>';
+  var obsTitleDr=c['Observacoes']?' title="'+esc(String(c['Observacoes']))+'"':'';
+  return '<tr'+obsTitleDr+'>'
+   +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+descDr+'</td>'
+   +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+esc(c['Data Vencimento']||'-')+vencSubDr+'</td>'
+   +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)"><span class="loc-status-badge '+statusClsDr+'">'+statusTxtDr+'</span></td>'
+   +'<td class="loc-money" style="padding:8px 10px;border-bottom:1px solid var(--border)">'+fmr(nbr(c['Valor']))+'</td>'
+   +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap">'+acoesDr+'</td>'
+   +'</tr>';
+ }).join('')
+   +'</tbody></table>'):'<div class="hon-empty">Nenhuma compra lançada neste cartão ainda.</div>';
 
  wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">💳 '+esc(nome)+'</div><button class="cp-btn" onclick="cpFecharDrill()">✕</button></div>'
   +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Total em aberto no cartão: <strong style="color:var(--accent2)">'+fmr(totAberto)+'</strong> · a fatura abaixo é atualizada sozinha com a soma das compras lançadas aqui, e pagar ela já dá baixa em todas de uma vez.</div>'
