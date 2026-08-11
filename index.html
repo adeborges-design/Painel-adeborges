@@ -11567,7 +11567,15 @@ window.cpRenderFixas=cpRenderFixas;
     if(atual&&atual.statusAluguel!=='Recebido'){locRender();return;}
     var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
-  window.locSetData=function(contrato,iso){setOverride(contrato,{dataPag:isoToBr(iso)});gravarSheet(contrato);locRender();};
+  window.locSetData=function(contrato,iso){
+    var dataBR=isoToBr(iso);
+    var patch={dataPag:dataBR};
+    var atual=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]||{};
+    // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava Recebido) → volta pra Pendente.
+    if(dataBR)patch.statusAluguel='Recebido';
+    else if(atual.statusAluguel==='Recebido')patch.statusAluguel='Pendente';
+    setOverride(contrato,patch);gravarSheet(contrato);locRender();
+  };
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
   window.locSetRepasse=function(contrato,val){
     var v=String(val==null?'':val).trim();
@@ -12236,6 +12244,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (12)', itens: [
+      'Padronização de cores: em Locações, a "Data pgto/repasse" agora também atualiza o Status Aluguel sozinha (preencher = Recebido/verde, apagar = Pendente/laranja) — mesmo comportamento que acabamos de implantar em Acordos. Regra geral registrada: cores e forma de atualização de status (Pendente=laranja, Atrasado=vermelho, Recebido/Repassado/Pago=verde, sempre priorizando preencher-uma-data-muda-o-status-sozinho) devem ser as mesmas em todos os módulos daqui pra frente.'
+    ]},
     { data: '09/ago/2026 (11)', itens: [
       'Tabela de parcelas em Acordos: nova coluna "Data Receb." ao lado de "Venc." — ao preencher, marca sozinho como "Recebido" (verde). "Data Repasse" passou pra antes de "Status Repasse" — ao preencher, marca sozinho como "Repassado" (verde). Se apagar a data, volta pra "Pendente" automaticamente. Cores padronizadas: Pendente laranja, Atrasado vermelho, Recebido/Repassado verde (mesmo padrão já usado em Locações). Valor Recebido fica verde assim que confirmado.'
     ]},
