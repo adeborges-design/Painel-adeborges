@@ -8564,17 +8564,21 @@ function renderContas(){
        :'<button class="loc-send-btn" title="Desfazer esse pagamento" onclick="cpEstornar(\''+esc(c['ID'])+'\')">↩</button>')
      :(isFaturaCartao&&c['Cartao']?'<button class="loc-send-btn" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓</button>':'<button class="loc-send-btn" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓</button>'))
    +'<button class="loc-send-btn" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button>';
-  var obsTitle=c['Observacoes']?' title="'+esc(String(c['Observacoes']))+'"':'';
-  html+='<tr'+obsTitle+'>'
-   +'<td>'+esc(c['Descricao'])+confIcon+'</td>'
-   +'<td class="loc-num">'+esc(c['Categoria']||'-')+'</td>'
-   +'<td>'+esc(c['Fornecedor']||'-')+'</td>'
-   +'<td class="loc-num">'+tipoLbl+'</td>'
-   +'<td>'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
-   +'<td>'+formaTxt+'</td>'
-   +'<td class="loc-num">'+recTxt+'</td>'
-   +'<td><span class="loc-status-badge '+statusCls+'">'+statusTxt+'</span></td>'
-   +'<td class="loc-money" style="color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
+  var obsTitle=c['Observacoes']?(' Obs.: '+String(c['Observacoes'])):'';
+  var descFull=esc(String(c['Descricao']||'')+obsTitle);
+  var fornFull=esc(c['Fornecedor']||'-');
+  var catFull=esc(c['Categoria']||'-');
+  var formaFull=formaTxt.replace(/<[^>]*>/g,'');
+  html+='<tr>'
+   +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+descFull+'">'+esc(c['Descricao'])+confIcon+'</td>'
+   +'<td class="loc-num" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+catFull+'">'+esc(c['Categoria']||'-')+'</td>'
+   +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+fornFull+'">'+esc(c['Fornecedor']||'-')+'</td>'
+   +'<td class="loc-num" style="white-space:nowrap">'+tipoLbl+'</td>'
+   +'<td style="white-space:nowrap">'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
+   +'<td class="loc-num" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+formaFull+'">'+formaTxt+'</td>'
+   +'<td class="loc-num" style="white-space:nowrap">'+recTxt+'</td>'
+   +'<td style="white-space:nowrap"><span class="loc-status-badge '+statusCls+'">'+statusTxt+'</span></td>'
+   +'<td class="loc-money" style="white-space:nowrap;color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
    +'<td style="text-align:center;white-space:nowrap">'+acoesH+'</td>'
    +'</tr>';
  });
