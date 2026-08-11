@@ -9666,17 +9666,22 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-form-cancel" onclick="document.getElementById('modalLocLoc').classList.remove('open')">✕</button>
     </div>
     <div style="padding:16px 20px 0">
-      <div class="loc-note" style="margin-bottom:12px">Para cobranças do locador que não são de um imóvel específico — ex.: honorários de uma ação judicial que ele te pediu pra fazer, descontados do próximo repasse. Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (💰 → 📅) daquele locador, descontando do total.</div>
+      <div class="loc-note" style="margin-bottom:12px">Para cobranças do locador que não são de um imóvel específico — ex.: honorários de uma ação judicial que ele te pediu pra fazer, descontados do próximo repasse. Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (📅) daquele locador, descontando do total. Se for parcelado, cada parcela pode ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) — não precisa ser dividido igual.</div>
       <select class="loc-cinput" id="locLocLocadorSelect" style="width:100%;margin-bottom:12px" onchange="locLocRender()"></select>
       <div class="loc-cform" style="padding:0;border:none;background:none">
         <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="locLoc-desc" placeholder="Ex.: Honorários — Ação de despejo processo nº..."></div>
-        <div class="loc-cfield"><label>Valor total (R$) — negativo desconta, positivo é crédito a favor dele</label><input class="loc-cinput" id="locLoc-valor" type="text" inputmode="decimal" placeholder="-5000,00"></div>
         <div class="loc-cfield"><label>Data (do lançamento, ou da 1ª parcela)</label><input class="loc-cinput" id="locLoc-data" type="date"></div>
         <div class="loc-cfield"><label>Forma</label><select class="loc-cinput" id="locLoc-forma" onchange="locLocTogglePavelas()">
           <option value="vista">À vista</option>
-          <option value="parcelado">Parcelado</option>
+          <option value="parcelado">Parcelado (valores podem ser diferentes)</option>
         </select></div>
-        <div class="loc-cfield" id="locLoc-parcelas-wrap" style="display:none"><label>Número de parcelas</label><input class="loc-cinput" id="locLoc-parcelas" type="number" min="2" placeholder="Ex.: 5"></div>
+        <div class="loc-cfield full" id="locLoc-vista-wrap"><label>Valor (R$) — negativo desconta, positivo é crédito a favor dele</label><input class="loc-cinput" id="locLoc-valor" type="text" inputmode="decimal" placeholder="-5000,00"></div>
+        <div class="loc-cfield full" id="locLoc-parcelas-wrap" style="display:none">
+          <label>Parcelas — cada uma com seu valor (negativo desconta, positivo é crédito)</label>
+          <div id="locLoc-parcelas-lista"></div>
+          <button type="button" class="loc-btn" onclick="locLocAdicionarLinhaParcela()" style="margin-top:6px;padding:6px 12px;font-size:12px">+ adicionar parcela</button>
+          <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">Total das parcelas: <strong id="locLoc-parcelas-total" style="color:var(--accent2)">R$ 0,00</strong></div>
+        </div>
         <div class="loc-cfield full"><button type="button" class="loc-btn primary" onclick="locLocAdicionar()" style="width:100%">+ Adicionar lançamento</button></div>
       </div>
     </div>
@@ -10932,7 +10937,33 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.locLocTogglePavelas=function(){
     var forma=document.getElementById('locLoc-forma').value;
-    document.getElementById('locLoc-parcelas-wrap').style.display=forma==='parcelado'?'flex':'none';
+    document.getElementById('locLoc-vista-wrap').style.display=forma==='parcelado'?'none':'';
+    document.getElementById('locLoc-parcelas-wrap').style.display=forma==='parcelado'?'':'none';
+    if(forma==='parcelado'&&!document.getElementById('locLoc-parcelas-lista').children.length){
+      locLocAdicionarLinhaParcela();
+      locLocAdicionarLinhaParcela();
+    }
+  };
+  window.locLocAdicionarLinhaParcela=function(valor){
+    var n=document.getElementById('locLoc-parcelas-lista').children.length+1;
+    var div=document.createElement('div');
+    div.className='locloc-parcela-linha';
+    div.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:6px';
+    div.innerHTML='<span style="font-size:12px;color:var(--muted);width:60px">Parcela '+n+'</span>'
+      +'<input class="loc-cinput locloc-parcela-valor" type="text" inputmode="decimal" placeholder="-2000,00" style="flex:1" value="'+(valor!=null?valor:'')+'" oninput="locLocAtualizarTotalParcelas()">'
+      +'<button type="button" onclick="this.parentElement.remove();locLocRenumerarParcelas();locLocAtualizarTotalParcelas()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px">🗑️</button>';
+    document.getElementById('locLoc-parcelas-lista').appendChild(div);
+    locLocAtualizarTotalParcelas();
+  };
+  function locLocRenumerarParcelas(){
+    Array.from(document.querySelectorAll('#locLoc-parcelas-lista .locloc-parcela-linha')).forEach(function(div,idx){
+      div.querySelector('span').textContent='Parcela '+(idx+1);
+    });
+  }
+  window.locLocAtualizarTotalParcelas=function(){
+    var tot=0;
+    Array.from(document.querySelectorAll('#locLoc-parcelas-lista .locloc-parcela-valor')).forEach(function(inp){tot+=num(inp.value);});
+    document.getElementById('locLoc-parcelas-total').textContent=BRL(Math.abs(tot))+(tot<0?' (desconta)':tot>0?' (crédito)':'');
   };
   function locLocSomarMeses(dataBR,n){
     var p=dataBR.split('/');
@@ -10943,23 +10974,23 @@ window.cpRenderFixas=cpRenderFixas;
     var nome=document.getElementById('locLocLocadorSelect').value;
     if(!nome){alert('Selecione o locador primeiro.');return;}
     var desc=document.getElementById('locLoc-desc').value.trim();
-    var valorTotal=num(document.getElementById('locLoc-valor').value);
     var dataIso=document.getElementById('locLoc-data').value;
     var forma=document.getElementById('locLoc-forma').value;
-    var numParcelas=forma==='parcelado'?(parseInt(document.getElementById('locLoc-parcelas').value)||0):1;
-    if(!desc||!valorTotal){alert('Preencha a descrição e o valor.');return;}
-    if(forma==='parcelado'&&numParcelas<2){alert('Informe o número de parcelas (mínimo 2), ou troque para "À vista".');return;}
+    if(!desc){alert('Preencha a descrição.');return;}
     var dataBR=dataIso?locDtBRfromInput(dataIso):new Date().toLocaleDateString('pt-BR');
-    // Valor de cada parcela (a última absorve a diferença de arredondamento, pra fechar o total certinho)
-    var valorParcela=Math.round((valorTotal/numParcelas)*100)/100;
-    var somaAteAgora=0;
     var novos=[];
-    for(var i=0;i<numParcelas;i++){
-      var vParc=(i===numParcelas-1)?Math.round((valorTotal-somaAteAgora)*100)/100:valorParcela;
-      somaAteAgora+=vParc;
-      var descParc=numParcelas>1?desc+' ('+(i+1)+'/'+numParcelas+')':desc;
-      var dataParc=locLocSomarMeses(dataBR,i);
-      novos.push({desc:descParc,valor:vParc,data:dataParc});
+    if(forma==='parcelado'){
+      // Cada parcela tem seu PRÓPRIO valor, digitado individualmente — não precisa ser dividido
+      // em partes iguais (ex.: R$2.500 em R$2.000 + R$500).
+      var valoresParcelas=Array.from(document.querySelectorAll('#locLoc-parcelas-lista .locloc-parcela-valor')).map(function(inp){return num(inp.value);}).filter(function(v){return v;});
+      if(valoresParcelas.length<2){alert('Informe o valor de pelo menos 2 parcelas, ou troque para "À vista".');return;}
+      valoresParcelas.forEach(function(v,i){
+        novos.push({desc:desc+' ('+(i+1)+'/'+valoresParcelas.length+')',valor:v,data:locLocSomarMeses(dataBR,i)});
+      });
+    }else{
+      var valor=num(document.getElementById('locLoc-valor').value);
+      if(!valor){alert('Preencha o valor.');return;}
+      novos.push({desc:desc,valor:valor,data:dataBR});
     }
     novos.forEach(function(n){
       var temp={ID:'tmp'+Date.now()+Math.random(),Locador:nome,Descricao:n.desc,Valor:n.valor,Data:n.data,Status:'Pendente'};
@@ -10967,7 +10998,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
     document.getElementById('locLoc-desc').value='';
     document.getElementById('locLoc-valor').value='';
-    document.getElementById('locLoc-parcelas').value='';
+    document.getElementById('locLoc-parcelas-lista').innerHTML='';
     locLocRender();
     for(var j=0;j<novos.length;j++){
       var n2=novos[j];
@@ -11040,7 +11071,9 @@ window.cpRenderFixas=cpRenderFixas;
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
     var avulsos=locLocPendentes(nome,mes);
     if(!linhas.length&&!avulsos.length){card.innerHTML='<div class="loc-note">Nenhum lançamento encontrado para este locador neste mês.</div>';return;}
-    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0)+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
+    var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var totalAvulsos=avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
+    var totalGeral=subtotalImoveis+totalAvulsos;
     var blocos=linhas.map(function(l,idx){
       var itensHtml=l.itens.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
@@ -11064,6 +11097,8 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos avulsos (não ligados a um imóvel)</div>'
       +avulsos.map(function(a){return itemComSinal(a['Descricao']+' ('+a['Data']+')',num(a['Valor']));}).join('')
       +'</div></div>' : '';
+    var subtotalHtml=(linhas.length&&avulsos.length)?
+      '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
     card.innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">Relatório Mensal de Repasses</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
@@ -11071,6 +11106,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is)</div></div>'
       +blocos
+      +subtotalHtml
       +avulsosHtml
       +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos avulsos':'')+'</div></div></div>'
       +'</div>'
@@ -11084,7 +11120,8 @@ window.cpRenderFixas=cpRenderFixas;
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
     var avulsos=locLocPendentes(nome,mes);
     if(!linhas.length&&!avulsos.length)return '';
-    var totalGeral=linhas.reduce(function(s,l){return s+l.valorLiq;},0)+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
+    var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var totalGeral=subtotalImoveis+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var txt='*RELATÓRIO MENSAL DE REPASSES*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
     txt+='Referente a '+mesExtenso(mes)+'\n';
@@ -11100,6 +11137,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
+    if(linhas.length&&avulsos.length)txt+='*Subtotal dos imóveis:* '+BRL(subtotalImoveis)+'\n\n';
     if(avulsos.length){
       txt+='*💼 Despesas/Créditos avulsos:*\n';
       avulsos.forEach(function(a){txt+='('+(num(a['Valor'])<0?'−':'+')+') '+a['Descricao']+' ('+a['Data']+'): '+BRL(Math.abs(num(a['Valor'])))+'\n';});
@@ -12175,6 +12213,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '09/ago/2026 (10)', itens: [
+      '"💼 Despesas/Créditos do Locador": parcelas agora podem ter valores diferentes entre si (ex.: R$2.500 em R$2.000 + R$500), em vez de dividir sempre igual — cada parcela tem seu próprio campo de valor, com um "+ adicionar parcela" pra quantas precisar.',
+      'Relatório Mensal de Repasses ganhou o "Subtotal dos imóveis" (soma só dos aluguéis/repasses), aparecendo entre a lista de imóveis e as despesas/créditos avulsos, antes do total geral final — só aparece quando há as duas coisas juntas (imóveis + avulsos), pra não poluir quando só tem um dos dois.'
+    ]},
     { data: '09/ago/2026 (9)', itens: [
       '"💼 Despesas/Créditos do Locador" agora pode ser à vista ou parcelado — informe o valor total e o número de parcelas, e o sistema cria uma parcela por mês automaticamente (a partir da data escolhida), cada uma aparecendo apenas no Relatório Mensal de Repasses do mês correspondente. Lançamentos à vista continuam aparecendo em qualquer mês enquanto estiverem pendentes. Testado com 3 parcelas de R$1.000 (de R$3.000 total) — cada uma apareceu certinho só no seu mês.'
     ]},
@@ -12524,9 +12566,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Relatório do Locador</div>'
       +MP+'Reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono.</div>'
       +MH+'Relatório Mensal de Repasses</div>'
-      +MP+'Diferente do anterior: mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, e o total geral do mês.</div>'
+      +MP+'Diferente do anterior: mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, o subtotal só dos imóveis, e o total geral do mês (já com despesas/créditos avulsos, se houver).</div>'
       +MH+'Despesas/Créditos do Locador</div>'
-      +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, o valor (negativo desconta, positivo é crédito a favor dele) e a data — pode ser à vista ou parcelado (informe o número de parcelas e o sistema gera uma por mês automaticamente). Enquanto estiver "Pendente", o valor aparece automaticamente no Relatório Mensal de Repasses daquele locador (cada parcela no seu mês certo), já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
+      +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, a data e o valor — pode ser à vista (um valor só) ou parcelado, com cada parcela podendo ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) e uma competência mensal própria. Enquanto estiver "Pendente", o valor aparece automaticamente no Relatório Mensal de Repasses daquele locador (cada parcela no seu mês certo), já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
       +MH+'Avisos ao locatário/locador</div>'
       +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
       +MH+'Alertas de vigência</div>'
