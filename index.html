@@ -3681,6 +3681,31 @@ let allProcessos = [];
 let filteredProcessos = [];
 let currentFilter = 'all';
 let menorPrazoAtual = null;
+window.processoPartes = [];
+// Partes adicionais de um processo (2+ autores, 2+ réus) — aba própria PROCESSO_PARTES,
+// ligada ao processo por "Nr Processo" (mesmo padrão usado por Honorários/Atendimentos/Acordos).
+// Lido direto da API do Sheets (mesmo esquema do LOC_COPROPRIETARIOS em Locações) — falha em
+// silêncio se a aba ainda não existir na planilha, pra não quebrar o carregamento de Processos.
+async function carregarPartesProcesso() {
+  try {
+    const cfg = getConfig();
+    if (!cfg.apiKey || !cfg.sheetId) { window.processoPartes = []; return; }
+    const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId
+      + '/values/' + encodeURIComponent('PROCESSO_PARTES!A1:Z500') + '?key=' + cfg.apiKey;
+    const r = await fetch(url).catch(function () { return null; });
+    if (!r || !r.ok) { window.processoPartes = []; return; }
+    const d = await r.json();
+    const rows = d.values || [];
+    if (rows.length < 2) { window.processoPartes = []; return; }
+    const hd = rows[0].map(function (h) { return String(h || '').trim(); });
+    window.processoPartes = rows.slice(1).filter(function (row) { return row[0]; }).map(function (row) {
+      const o = {};
+      hd.forEach(function (h, i) { o[h] = row[i] || ''; });
+      return o;
+    });
+  } catch (e) { window.processoPartes = window.processoPartes || []; console.error('partes processo', e); }
+}
+window.carregarPartesProcesso = carregarPartesProcesso;
 let currentRamo = 'all';
 let expandedId = null;
 
@@ -3866,6 +3891,7 @@ function saveConfig() {
   document.getElementById('modalConfig').classList.remove('open');
   loadFromSheets();
   // Recarrega também os demais módulos (antes só Processos era atualizado ao trocar a planilha)
+  try{if(typeof carregarPartesProcesso==='function')carregarPartesProcesso();}catch(e){}
   try{if(typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}
   try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
@@ -3904,6 +3930,7 @@ async function loadFromSheets() {
     const data = await resp.json();
     const rows = data.values || [];
     parseProcessos(rows);
+    try { if (typeof carregarPartesProcesso === 'function') carregarPartesProcesso(); } catch (eParte) {}
 
     const now = new Date();
     document.getElementById('syncStatus').textContent =
@@ -4478,6 +4505,13 @@ function renderCard(p, idx) {
               </svg>
               Editar
             </button>
+            <button class="btn-action" style="background:rgba(200,169,110,0.10);border-color:rgba(200,169,110,0.35);color:var(--accent2);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();ptAbrir(this.dataset.uid)" title="Cadastrar 2 ou mais autores/réus com qualificação completa">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+              Partes
+            </button>
             <button class="btn-action" style="background:rgba(224,124,58,0.12);border-color:rgba(224,124,58,0.35);color:var(--orange);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirNotaInterna(this.dataset.uid)" title="Anotação só para uso interno — não aparece pro cliente">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
@@ -4724,6 +4758,73 @@ function qualificacaoParte(p) {
     e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
 }
 
+// ---------- MÚLTIPLAS PARTES (2+ autores / 2+ réus) ----------
+// Lê a aba PROCESSO_PARTES (window.processoPartes, carregada por carregarPartesProcesso())
+// e devolve objetos no MESMO formato que "p" (mesmos nomes de campo usados por qualificacaoParte/
+// ehPessoaJuridica/enderecoCompleto acima), pra reaproveitar essas funções sem duplicar lógica.
+function partesDoProcesso(p, polo) {
+  const proc = String((p && p.processo) || '').trim();
+  if (!proc) return [];
+  return (window.processoPartes || []).filter(function (x) {
+    if (String(x['Nr Processo'] || '').trim() !== proc) return false;
+    if (!polo) return true;
+    return String(x['Polo'] || '').trim().toLowerCase() === polo.toLowerCase();
+  }).map(function (x) {
+    return {
+      nome: x['Nome'] || '', cpfCnpj: x['CPF/CNPJ'] || '', rg: x['RG/ Órgão emissor'] || '',
+      estadoCivil: x['Estado civil'] || '', profissao: x['Profissão'] || '', dataNasc: x['Data de Nascimento'] || '',
+      endereco: x['Endereço - Rua e Número'] || '', bairro: x['Bairro'] || '', complemento: x['Complemento'] || '',
+      cep: x['CEP'] || '', cidade: x['Cidade'] || '', estado: x['Estado (UF)'] || '',
+      telefone: x['Telefone'] || '', email: x['e-mail'] || '', tipoPessoa: x['Tipo de Pessoa'] || '',
+      repNome: x['Representante Nome'] || '', repCpf: x['Representante CPF'] || '', repRg: x['Representante RG'] || '',
+      repCargo: x['Representante Cargo'] || '', rendaMensal: x['Renda Mensal'] || '', numDependentes: x['Numero Dependentes'] || '',
+      nossoCliente: String(x['Nosso Cliente'] || '').trim().toLowerCase() === 'sim', polo: x['Polo'] || ''
+    };
+  });
+}
+// Quem o escritório representa (usado em Procuração/Contrato/Hipossuficiência). Se não houver
+// nenhuma parte marcada "Nosso cliente: Sim", cai pros autores cadastrados; se não houver nem isso,
+// cai no comportamento antigo (o cliente único gravado direto no cadastro do processo) — sem quebrar
+// processos já cadastrados antes desta função existir.
+function clientesDoProcesso(p) {
+  const todas = partesDoProcesso(p, null);
+  const nossos = todas.filter(function (x) { return x.nossoCliente; });
+  if (nossos.length) return nossos;
+  const autores = todas.filter(function (x) { return String(x.polo || '').toLowerCase() === 'autor'; });
+  if (autores.length) return autores;
+  if (todas.length) return todas;
+  return [p];
+}
+// Réus/parte contrária, para a qualificação da Petição. Sem partes cadastradas, cai no campo
+// texto único "outra" que já existia (comportamento antigo, preservado).
+function reusDoProcesso(p) {
+  const reus = partesDoProcesso(p, 'Réu');
+  if (reus.length) return reus;
+  return p.outra ? [{ nome: p.outra }] : [];
+}
+// Enumeração em português: "João", "João e Maria", "João, Maria e Pedro".
+function listaNomes(arr, upper) {
+  const nomes = (arr || []).map(function (x) { return upper ? String(x.nome || '').toUpperCase() : String(x.nome || ''); }).filter(Boolean);
+  if (!nomes.length) return '';
+  if (nomes.length === 1) return nomes[0];
+  return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
+}
+// Bloco de qualificação numerado quando há 2+ partes (ex.: "CONTRATANTE 1:", "CONTRATANTE 2:"),
+// ou sem numeração quando há só uma — pra não mudar o texto de processos com um único cliente.
+function qualificacoesNumeradas(lista, rotulo) {
+  return lista.map(function (parte, i) {
+    const num = lista.length > 1 ? ' ' + (i + 1) : '';
+    return `<strong>${rotulo}${num}:</strong> ${qualificacaoParte(parte)}.`;
+  }).join('<br><br>');
+}
+// Bloco de assinaturas, um por parte, lado a lado (mesmo estilo de .doc-assinaturas já usado
+// no Contrato) — reaproveitado por Procuração/Contrato quando há múltiplas partes.
+function assinaturasMultiplas(lista, rotulo) {
+  return '<div class="doc-assinaturas">' + lista.map(function (parte) {
+    return `<div class="doc-assinatura-linha">${nomeAssinatura(parte)}<br><small>${rotulo}</small></div>`;
+  }).join('') + '</div>';
+}
+
 // Nome exibido acima da linha de assinatura. Pessoa Jurídica: mostra a razão social
 // e, embaixo, "por [representante]" — quem assina fisicamente é o representante, não a empresa.
 function nomeAssinatura(p) {
@@ -4732,6 +4833,157 @@ function nomeAssinatura(p) {
   }
   return escHtml(p.nome);
 }
+
+// ---------- PARTES DO PROCESSO (múltiplos autores/réus, cada um com qualificação completa) ----------
+// Mesmo padrão de "filho ligado ao pai por uma aba própria" já usado em LOC_COPROPRIETARIOS
+// (Locações) — aqui a chave de ligação é "Nr Processo" (mesma chave que Honorários/Atendimentos/
+// Entregas/Acordos já usam pra achar os lançamentos de um processo), não um ID interno.
+var ptRemovidas = [];
+window.ptAbrir = function (uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid));
+  if (!p) return;
+  if (!p.processo) { alert('Preencha o "Número do Processo" no cadastro antes de gerenciar as partes — é por ele que as partes ficam ligadas ao processo.'); return; }
+  document.getElementById('pt-processo').value = p.processo;
+  document.getElementById('pt-titulo-processo').textContent = (p.nome || '(sem nome)') + ' — processo ' + p.processo;
+  ptRemovidas = [];
+  const existentes = (window.processoPartes || []).filter(function (o) { return String(o['Nr Processo'] || '').trim() === String(p.processo).trim(); });
+  const lista = document.getElementById('pt-lista');
+  lista.innerHTML = '';
+  if (existentes.length) {
+    existentes.forEach(function (o) { ptAdicionarLinha(o); });
+  } else {
+    const aviso = document.createElement('div');
+    aviso.id = 'pt-vazio-msg';
+    aviso.style.cssText = 'color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--border);border-radius:10px;margin-bottom:10px';
+    aviso.innerHTML = 'Nenhuma parte cadastrada ainda além do cliente único do cadastro. Os documentos continuam usando esse cliente até você adicionar partes aqui.';
+    lista.appendChild(aviso);
+  }
+  document.getElementById('pt-msg').textContent = '';
+  document.getElementById('modalPartes').classList.add('open');
+};
+window.ptFechar = function () { document.getElementById('modalPartes').classList.remove('open'); };
+var ptSeq = 0;
+window.ptAdicionarLinha = function (dados) {
+  dados = dados || {};
+  const vazio = document.getElementById('pt-vazio-msg'); if (vazio) vazio.remove();
+  const uid = 'pt' + (ptSeq++);
+  const lista = document.getElementById('pt-lista');
+  const div = document.createElement('div');
+  div.className = 'pt-linha';
+  div.id = uid;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px';
+  const polo = dados['Polo'] || 'Autor';
+  const nosso = String(dados['Nosso Cliente'] || (dados.ID ? 'Não' : 'Sim')).trim().toLowerCase() === 'sim';
+  const tipoP = dados['Tipo de Pessoa'] || 'Física';
+  div.innerHTML =
+    '<input type="hidden" class="pt-id" value="' + escHtml(dados.ID || '') + '">'
+    + '<div class="loc-cform" style="padding:0;border:none;background:none">'
+    + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo"><option value="Autor"' + (polo === 'Autor' ? ' selected' : '') + '>Autor</option><option value="Réu"' + (polo === 'Réu' ? ' selected' : '') + '>Réu</option></select></div>'
+    + '<div class="loc-cfield"><label>Nosso cliente?</label><select class="loc-cinput pt-nosso"><option value="Sim"' + (nosso ? ' selected' : '') + '>Sim</option><option value="Não"' + (!nosso ? ' selected' : '') + '>Não</option></select></div>'
+    + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option></select></div>'
+    + '<div class="loc-cfield full"><label>Nome / Razão social</label><input class="loc-cinput pt-nome" value="' + escHtml(dados['Nome'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput pt-cpf" value="' + escHtml(dados['CPF/CNPJ'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>RG / Órgão emissor</label><input class="loc-cinput pt-rg" value="' + escHtml(dados['RG/ Órgão emissor'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Estado civil</label><input class="loc-cinput pt-estadocivil" value="' + escHtml(dados['Estado civil'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Profissão</label><input class="loc-cinput pt-profissao" value="' + escHtml(dados['Profissão'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Data de nascimento</label><input class="loc-cinput pt-datanasc" value="' + escHtml(dados['Data de Nascimento'] || '') + '" placeholder="dd/mm/aaaa"></div>'
+    + '<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput pt-telefone" value="' + escHtml(dados['Telefone'] || '') + '"></div>'
+    + '<div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput pt-email" value="' + escHtml(dados['e-mail'] || '') + '"></div>'
+    + '<div class="loc-cfield full"><label>Endereço - Rua e Número</label><input class="loc-cinput pt-endereco" value="' + escHtml(dados['Endereço - Rua e Número'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Bairro</label><input class="loc-cinput pt-bairro" value="' + escHtml(dados['Bairro'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Complemento</label><input class="loc-cinput pt-complemento" value="' + escHtml(dados['Complemento'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>CEP</label><input class="loc-cinput pt-cep" value="' + escHtml(dados['CEP'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Cidade</label><input class="loc-cinput pt-cidade" value="' + escHtml(dados['Cidade'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Estado (UF)</label><input class="loc-cinput pt-estado" value="' + escHtml(dados['Estado (UF)'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Renda mensal (p/ hipossuf.)</label><input class="loc-cinput pt-renda" value="' + escHtml(dados['Renda Mensal'] || '') + '"></div>'
+    + '<div class="loc-cfield full" style="border-top:1px dashed var(--border2);padding-top:10px;margin-top:2px"><label style="opacity:.8">Representante legal (só se Pessoa Jurídica)</label></div>'
+    + '<div class="loc-cfield"><label>Nome do representante</label><input class="loc-cinput pt-repnome" value="' + escHtml(dados['Representante Nome'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>CPF do representante</label><input class="loc-cinput pt-repcpf" value="' + escHtml(dados['Representante CPF'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>RG do representante</label><input class="loc-cinput pt-reprg" value="' + escHtml(dados['Representante RG'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Cargo do representante</label><input class="loc-cinput pt-repcargo" value="' + escHtml(dados['Representante Cargo'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Nº dependentes (p/ hipossuf.)</label><input class="loc-cinput pt-dependentes" value="' + escHtml(dados['Numero Dependentes'] || '') + '"></div>'
+    + '<div class="loc-cfield full"><label>Observações</label><input class="loc-cinput pt-obs" value="' + escHtml(dados['Observacoes'] || '') + '"></div>'
+    + '</div>'
+    + '<button type="button" class="loc-btn" style="margin-top:8px;color:var(--red);border-color:var(--red);padding:5px 12px;font-size:12px" onclick="ptRemoverLinha(\'' + uid + '\')">🗑️ remover esta parte</button>';
+  lista.appendChild(div);
+};
+window.ptRemoverLinha = function (uid) {
+  const div = document.getElementById(uid);
+  if (!div) return;
+  const idEl = div.querySelector('.pt-id');
+  if (idEl && idEl.value) ptRemovidas.push(idEl.value);
+  div.remove();
+};
+window.ptSalvarTodas = async function () {
+  const processo = document.getElementById('pt-processo').value;
+  const msgEl = document.getElementById('pt-msg');
+  const btn = document.querySelector('#modalPartes .loc-btn.primary');
+  const linhas = Array.from(document.querySelectorAll('#pt-lista .pt-linha'));
+  const pendentes = linhas.length + ptRemovidas.length;
+  if (pendentes === 0) { msgEl.textContent = 'Nada para salvar.'; return; }
+  if (btn) btn.disabled = true;
+  let erro = null;
+  // Salva uma parte de cada vez, aguardando terminar antes da próxima — mesmo cuidado usado em
+  // Coproprietários, pra não atropelar gravações concorrentes na mesma aba da planilha.
+  for (let i = 0; i < linhas.length; i++) {
+    const div = linhas[i];
+    msgEl.textContent = '⏳ salvando ' + (i + 1) + ' de ' + linhas.length + '...'; msgEl.style.color = 'var(--muted)';
+    const idEl = div.querySelector('.pt-id');
+    const campos = {
+      'Nr Processo': processo,
+      'Polo': div.querySelector('.pt-polo').value,
+      'Nosso Cliente': div.querySelector('.pt-nosso').value,
+      'Tipo de Pessoa': div.querySelector('.pt-tipopessoa').value,
+      'Nome': div.querySelector('.pt-nome').value.trim(),
+      'CPF/CNPJ': div.querySelector('.pt-cpf').value.trim(),
+      'RG/ Órgão emissor': div.querySelector('.pt-rg').value.trim(),
+      'Estado civil': div.querySelector('.pt-estadocivil').value.trim(),
+      'Profissão': div.querySelector('.pt-profissao').value.trim(),
+      'Data de Nascimento': div.querySelector('.pt-datanasc').value.trim(),
+      'Representante Nome': div.querySelector('.pt-repnome').value.trim(),
+      'Representante CPF': div.querySelector('.pt-repcpf').value.trim(),
+      'Representante RG': div.querySelector('.pt-reprg').value.trim(),
+      'Representante Cargo': div.querySelector('.pt-repcargo').value.trim(),
+      'Telefone': div.querySelector('.pt-telefone').value.trim(),
+      'e-mail': div.querySelector('.pt-email').value.trim(),
+      'Endereço - Rua e Número': div.querySelector('.pt-endereco').value.trim(),
+      'Bairro': div.querySelector('.pt-bairro').value.trim(),
+      'Complemento': div.querySelector('.pt-complemento').value.trim(),
+      'CEP': div.querySelector('.pt-cep').value.trim(),
+      'Cidade': div.querySelector('.pt-cidade').value.trim(),
+      'Estado (UF)': div.querySelector('.pt-estado').value.trim(),
+      'Renda Mensal': div.querySelector('.pt-renda').value.trim(),
+      'Numero Dependentes': div.querySelector('.pt-dependentes').value.trim(),
+      'Observacoes': div.querySelector('.pt-obs').value.trim()
+    };
+    const acao = idEl.value ? 'atualizar_partes' : 'lancar_partes';
+    const body = { acao: acao, campos: campos }; if (idEl.value) body.id = idEl.value;
+    try {
+      const r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!d.ok) { erro = d.error || 'recusado pelo Apps Script'; break; }
+      if (!idEl.value && d.id) idEl.value = d.id;
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e2) { erro = e2.message; break; }
+    }
+  }
+  if (!erro) {
+    for (let j = 0; j < ptRemovidas.length; j++) {
+      msgEl.textContent = '⏳ removendo...';
+      try {
+        const r2 = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_partes', id: ptRemovidas[j] }) });
+        await r2.json();
+      } catch (e3) {
+        try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_partes', id: ptRemovidas[j] }) }); } catch (e4) {}
+      }
+    }
+  }
+  if (btn) btn.disabled = false;
+  if (erro) { msgEl.innerHTML = '<span style="color:var(--red)">❌ ' + erro + '</span>'; return; }
+  msgEl.innerHTML = '<span style="color:var(--green)">✓ Salvo!</span>';
+  setTimeout(function () { if (typeof carregarPartesProcesso === 'function') carregarPartesProcesso(); ptFechar(); }, 1200);
+};
 
 function abrirDoc(tipo, uid) {
   const p = allProcessos.find(x => x._uid === parseInt(uid));
@@ -4781,6 +5033,14 @@ function gerarPeticao(p) {
     + (p.vara ? ' DA ' + escHtml(p.vara).toUpperCase() : ' DA _________ VARA _________')
     + (p.tribunal ? ' – ' + escHtml(p.tribunal).toUpperCase() : ' – COMARCA DE _________/SP');
 
+  // Múltiplos autores/réus (cadastrados em "Partes"): usa a lista de nomes; sem partes cadastradas,
+  // cai no comportamento antigo (cliente único + campo texto "outra"), sem quebrar processos antigos.
+  var autoresPet = partesDoProcesso(p, 'Autor');
+  var nomesAutores = autoresPet.length ? listaNomes(autoresPet, true) : (p.nome || '[CLIENTE]').toUpperCase();
+  var reusPet = reusDoProcesso(p);
+  var nomesReus = reusPet.length ? listaNomes(reusPet, true) : (p.outra || '[PARTE CONTRÁRIA]').toUpperCase();
+  var pluralAutores = autoresPet.length > 1;
+
   return `
   <div class="doc-texto" style="text-align:center;font-weight:700;margin-bottom:44px;line-height:1.7">
     ${cabecalho}
@@ -4791,9 +5051,9 @@ function gerarPeticao(p) {
   </div>
 
   <p class="doc-texto" style="text-align:justify">
-    <strong>${escHtml((p.nome || '[CLIENTE]').toUpperCase())}</strong>, já qualificado(a) nos autos da ação em epígrafe,
-    que move em face de <strong>${escHtml((p.outra || '[PARTE CONTRÁRIA]').toUpperCase())}</strong>,
-    vem, respeitosamente, à presença de Vossa Excelência, por intermédio de seu(sua) advogado(a) que esta subscreve,
+    <strong>${escHtml(nomesAutores)}</strong>, já qualificado${pluralAutores ? '(a)s' : '(a)'} nos autos da ação em epígrafe,
+    que move${pluralAutores ? 'm' : ''} em face de <strong>${escHtml(nomesReus)}</strong>,
+    vem${pluralAutores ? 'm' : ''}, respeitosamente, à presença de Vossa Excelência, por intermédio de seu(sua) advogado(a) que esta subscreve,
     expor e requerer o que segue.
   </p>
 
@@ -4826,6 +5086,11 @@ function gerarProcuracao(p, tipo) {
     ? p.poderesEspeciais
     : 'os poderes gerais da lei, podendo praticar todos os atos necessários ao fiel desempenho do presente mandato';
 
+  // Múltiplos outorgantes (cadastrados em "Partes" e marcados "Nosso cliente"): qualificação e
+  // assinatura de cada um. Sem partes cadastradas, cai no comportamento antigo (um único outorgante).
+  const outorgantes = clientesDoProcesso(p);
+  const outorgantePlural = outorgantes.length > 1;
+
   return `
   <div class="doc-cabecalho">
     <div class="doc-titulo">Procuracao</div>
@@ -4833,7 +5098,7 @@ function gerarProcuracao(p, tipo) {
   </div>
 
   <p class="doc-texto">
-    <strong>OUTORGANTE:</strong> ${qualificacaoParte(p)}.
+    ${qualificacoesNumeradas(outorgantes, 'OUTORGANTE')}
   </p>
 
   <p class="doc-texto">
@@ -4845,41 +5110,45 @@ function gerarProcuracao(p, tipo) {
   </p>
 
   <p class="doc-texto">
-    <strong>OBJETO:</strong> Pelo presente instrumento particular de procuracao, o(a) Outorgante
-    nomeia e constitui o(a) Outorgado(a) seu(sua) bastante procurador(a), para o foro em geral
+    <strong>OBJETO:</strong> Pelo presente instrumento particular de procuracao, ${outorgantePlural ? 'os(as) Outorgantes nomeiam' : 'o(a) Outorgante nomeia'}
+    e constitu${outorgantePlural ? 'em' : 'i'} o(a) Outorgado(a) seu(sua) bastante procurador(a), para o foro em geral
     ${p.processo ? `no processo nr. <strong>${p.processo}</strong> e em todos os seus incidentes` : 'e em todos os atos e termos que se fizerem necessarios'},
     conferindo-lhe ${poderes}, inclusive para: receber citacao, confessar, reconhecer a procedência
     do pedido, transigir, desistir, renunciar ao direito sobre que se funda a acao, receber e dar
     quitacao, firmar compromisso, substabelecer esta com ou sem reservas de iguais poderes,
     e praticar todos os demais atos necessários ao fiel desempenho deste mandato.
+    ${outorgantePlural ? ' As obrigações e responsabilidades decorrentes deste mandato são assumidas solidariamente por todos(as) os(as) Outorgantes.' : ''}
   </p>
 
   <div class="doc-local-data">${dataExtenso()}.</div>
 
   <div style="margin-top:48px;text-align:center">
+    ${outorgantePlural ? assinaturasMultiplas(outorgantes, 'Outorgante') : `
     <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
-      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(p)}</span><br>
+      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(outorgantes[0])}</span><br>
       <small>Outorgante</small>
-    </div>
+    </div>`}
   </div>`;
 }
 
-function gerarGratuidade(p) {
-  const renda = p.rendaMensal && p.rendaMensal.length > 0
-    ? `R$ ${parseFloat(p.rendaMensal).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+// Uma declaração completa (texto + assinatura) para UM declarante — reaproveitada tanto no caso
+// de cliente único quanto no de múltiplos declarantes (2+ autores), um bloco por pessoa.
+function blocoGratuidade(pessoa, comCabecalho, separador) {
+  const renda = pessoa.rendaMensal && String(pessoa.rendaMensal).length > 0
+    ? `R$ ${parseFloat(pessoa.rendaMensal).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
     : '______________________';
-  const dep = p.numDependentes || '______';
+  const dep = pessoa.numDependentes || '______';
 
   return `
-  <div class="doc-cabecalho">
+  ${comCabecalho ? `<div class="doc-cabecalho">
     <div class="doc-titulo">Declaracao de Hipossuficiência Econômica</div>
     <div class="doc-subtitulo">Para fins de concessão de Gratuidade da Justiça - Art. 99, §3o, CPC</div>
-  </div>
+  </div>` : `<div style="${separador}"></div>`}
 
   <p class="doc-texto">
-    Eu, ${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
-    portador(a) do RG nr. ${campo(p.rg)} e CPF/MF nr. ${campo(p.cpfCnpj)},
-    residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
+    Eu, ${campo(pessoa.nome)}, ${campo(pessoa.estadoCivil)}, ${campo(pessoa.profissao)},
+    portador(a) do RG nr. ${campo(pessoa.rg)} e CPF/MF nr. ${campo(pessoa.cpfCnpj)},
+    residente e domiciliado(a) na ${campo(enderecoCompleto(pessoa))},
     DECLARO, sob as penas da lei, em especial do art. 99, §1o, do Código de Processo Civil,
     que não possuo condicoes de arcar com as custas processuais e honorários advocaticios
     sem prejuízo do próprio sustento e de minha família.
@@ -4905,10 +5174,19 @@ function gerarGratuidade(p) {
 
   <div style="text-align:center;margin-top:48px">
     <div style="border-top:1px solid #1a1a2e;width:60%;margin:0 auto 6px;padding-top:6px;font-size:12px">
-      <span style="font-weight:normal;text-decoration:none">${escHtml(p.nome)}</span><br>
-      <small>CPF: ${escHtml(p.cpfCnpj)}</small>
+      <span style="font-weight:normal;text-decoration:none">${escHtml(pessoa.nome)}</span><br>
+      <small>CPF: ${escHtml(pessoa.cpfCnpj)}</small>
     </div>
   </div>`;
+}
+function gerarGratuidade(p) {
+  // Uma declaração de hipossuficiência é sempre individual — com 2+ clientes cadastrados em
+  // "Partes", gera um bloco completo (texto + assinatura) por pessoa, separados visualmente.
+  // Sem partes cadastradas, cai no comportamento antigo (um único declarante = p).
+  const declarantes = clientesDoProcesso(p);
+  return declarantes.map(function (pessoa, i) {
+    return blocoGratuidade(pessoa, i === 0, 'border-top:2px dashed #ccc;margin:40px 0 0;padding-top:8px');
+  }).join('');
 }
 
 function gerarContrato(p) {
@@ -4941,6 +5219,16 @@ function gerarContrato(p) {
     ? 'prestacao de servicos advocaticios no processo nr. ' + p.processo + ' - ' + (p.tipo || p.ramo || 'servicos juridicos')
     : '______________________');
 
+  // Múltiplos contratantes (2+ clientes cadastrados em "Partes" e marcados "Nosso cliente"):
+  // qualificação numerada de cada um, cláusula de solidariedade adicional e assinatura de todos.
+  // Sem partes cadastradas, cai no comportamento antigo (um único CONTRATANTE = p) e a numeração
+  // das cláusulas fica exatamente igual à de sempre.
+  const contratantes = clientesDoProcesso(p);
+  const solid = contratantes.length > 1;
+  const nVig = solid ? 4 : 3;
+  const nDesp = solid ? 5 : 4;
+  const nForo = solid ? 6 : 5;
+
   return `
   <div class="doc-cabecalho">
     <div class="doc-titulo">Contrato de Prestacao de Serviços Advocatícios</div>
@@ -4952,7 +5240,7 @@ function gerarContrato(p) {
   </p>
 
   <p class="doc-texto">
-    <strong>CONTRATANTE:</strong> ${qualificacaoParte(p)}.
+    ${qualificacoesNumeradas(contratantes, 'CONTRATANTE')}
   </p>
 
   <p class="doc-texto">
@@ -4969,7 +5257,7 @@ function gerarContrato(p) {
 
   <p class="doc-texto">
     <strong>CLAUSULA 2a - DOS HONORÁRIOS.</strong>
-    Pelos serviços prestados, o(a) Contratante pagará ao Contratado o valor total de
+    Pelos serviços prestados, ${solid ? 'os(as) Contratantes pagarão' : 'o(a) Contratante pagará'} ao Contratado o valor total de
     <strong>${valTotal}</strong>,
     ${valEntrada
       ? `sendo <strong>${valEntrada}</strong> a título de entrada, a ser paga em ${dataEntrada}, e o saldo remanescente em <strong>${parcelas}</strong> parcela(s) de <strong>${valParcela}</strong>${parcelaUnica ? '' : ' cada'}, com vencimento ${vencTexto},`
@@ -4977,22 +5265,31 @@ function gerarContrato(p) {
     por meio de <strong>${formaPag}</strong>${formaPag.toUpperCase().includes('PIX') ? ' (Chave PIX - CPF: 051.303.588-56)' : ''}.
   </p>
 
+  ${solid ? `<p class="doc-texto">
+    <strong>CLAUSULA 3a - DA SOLIDARIEDADE.</strong>
+    Os(as) Contratantes acima qualificados(as) respondem <strong>solidariamente</strong> entre si por todas as
+    obrigações assumidas neste contrato, especialmente pelo pagamento integral dos honorários advocatícios
+    previstos na Cláusula 2a, podendo o Contratado exigir de qualquer um(a) deles(as), isolada ou
+    conjuntamente, o cumprimento total da obrigação, nos termos dos arts. 264 e seguintes do Código Civil,
+    sem prejuízo do direito de regresso entre os(as) próprios(as) Contratantes.
+  </p>` : ''}
+
   <p class="doc-texto">
-    <strong>CLAUSULA 3a - DA VIGÊNCIA.</strong>
+    <strong>CLAUSULA ${nVig}a - DA VIGÊNCIA.</strong>
     O presente contrato vigorará até a conclusão dos serviços contratados,
     podendo ser rescindido por qualquer das partes mediante notificacao previa de 15 (quinze) dias,
     nos termos do art. 44 do Regulamento Geral da OAB.
   </p>
 
   <p class="doc-texto">
-    <strong>CLAUSULA 4a - DAS DESPESAS PROCESSUAIS.</strong>
+    <strong>CLAUSULA ${nDesp}a - DAS DESPESAS PROCESSUAIS.</strong>
     As custas judiciais, emolumentos, honorários periciais e demais despesas processuais
-    não estão incluídos nos honorários ora contratados, sendo de responsabilidade exclusiva
-    do(a) Contratante.
+    não estão incluídos nos honorários ora contratados, sendo de responsabilidade${solid ? ' solidária' : ' exclusiva'}
+    do(a)${solid ? '(s)' : ''} Contratante${solid ? '(s)' : ''}.
   </p>
 
   <p class="doc-texto">
-    <strong>CLAUSULA 5a - DO FORO.</strong>
+    <strong>CLAUSULA ${nForo}a - DO FORO.</strong>
     Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controversias
     oriundas do presente contrato.
   </p>
@@ -5000,10 +5297,12 @@ function gerarContrato(p) {
   <div class="doc-local-data">${dataExtenso()}.</div>
 
   <div class="doc-assinaturas">
-    <div class="doc-assinatura-linha">
-      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(p)}</span><br>
+    ${contratantes.map(function (c) {
+      return `<div class="doc-assinatura-linha">
+      <span style="font-weight:normal;text-decoration:none">${nomeAssinatura(c)}</span><br>
       <small>Contratante</small>
-    </div>
+    </div>`;
+    }).join('')}
     <div class="doc-assinatura-linha">
       Dr. Adenilson Borges da Silva<br>
       <small>Contratado - OAB/SP 335.600</small>
@@ -8425,6 +8724,8 @@ var css='#contasPagar{margin-top:30px}'
 +'.cpc-item.venc .cpc-val{color:var(--red)}'
 +'.cpc-item.paga .cpc-val{color:var(--green)}'
 +'.cpc-acoes{display:flex;gap:6px}'
++'#contasOverlay .hon-body{max-width:1760px}'
++'#contasHostBody .loc-table thead th{position:sticky;top:60px;z-index:2;background:var(--surface)}'
 +'@media(max-width:900px){#contasPagar .cp-sum,.cp-form{grid-template-columns:repeat(2,1fr)}}'
 +'@media(max-width:640px){.cpc-item{flex-direction:column}.cpc-side{align-items:flex-start;flex-direction:row;flex-wrap:wrap;width:100%;margin-top:8px}}';
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
@@ -8570,12 +8871,12 @@ function renderContas(){
   var catFull=esc(c['Categoria']||'-');
   var formaFull=formaTxt.replace(/<[^>]*>/g,'');
   html+='<tr>'
-   +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+descFull+'">'+esc(c['Descricao'])+confIcon+'</td>'
-   +'<td class="loc-num" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+catFull+'">'+esc(c['Categoria']||'-')+'</td>'
-   +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+fornFull+'">'+esc(c['Fornecedor']||'-')+'</td>'
+   +'<td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+descFull+'">'+esc(c['Descricao'])+confIcon+'</td>'
+   +'<td class="loc-num" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+catFull+'">'+esc(c['Categoria']||'-')+'</td>'
+   +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+fornFull+'">'+esc(c['Fornecedor']||'-')+'</td>'
    +'<td class="loc-num" style="white-space:nowrap">'+tipoLbl+'</td>'
    +'<td style="white-space:nowrap">'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
-   +'<td class="loc-num" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+formaFull+'">'+formaTxt+'</td>'
+   +'<td class="loc-num" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+formaFull+'">'+formaTxt+'</td>'
    +'<td class="loc-num" style="white-space:nowrap">'+recTxt+'</td>'
    +'<td style="white-space:nowrap"><span class="loc-status-badge '+statusCls+'">'+statusTxt+'</span></td>'
    +'<td class="loc-money" style="white-space:nowrap;color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
@@ -9862,6 +10163,35 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-email" onclick="relLocadorEnviarEmail()">✉️ E-mail</button>
       <button class="btn-recibo-print" onclick="relLocadorImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="relLocadorCopiarTexto()">📋 Copiar texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARTES DO PROCESSO (múltiplos autores/réus, cada um com qualificação completa) -->
+<div class="modal-repasse-overlay" id="modalPartes">
+  <div class="repasse-wrap" style="max-width:900px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">👥 Partes do processo (autores/réus)</div>
+      <button class="btn-form-cancel" onclick="ptFechar()">✕</button>
+    </div>
+    <div style="padding:20px;max-height:75vh;overflow-y:auto">
+      <input type="hidden" id="pt-processo">
+      <div id="pt-titulo-processo" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+      <div class="loc-note" style="margin-bottom:14px">
+        Cadastre aqui cada autor e cada réu do processo, com a qualificação completa de cada um.
+        Marque <strong>"Nosso cliente"</strong> para quem o escritório representa — é isso que entra na
+        Procuração, no Contrato de Honorários e na Declaração de Hipossuficiência (com cláusula de
+        solidariedade adicionada automaticamente quando houver 2 ou mais contratantes). Réus e demais
+        partes marcadas como "Não" entram só na qualificação da Petição.
+        Se nenhuma parte for cadastrada aqui, os documentos continuam usando o cliente único
+        preenchido no cadastro do processo, como antes.
+      </div>
+      <div id="pt-lista"></div>
+      <button type="button" class="loc-btn" onclick="ptAdicionarLinha()" style="margin-top:4px">+ adicionar parte</button>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;align-items:center;gap:10px">
+        <span id="pt-msg" style="font-size:12px"></span>
+        <button class="loc-btn primary" onclick="ptSalvarTodas()">💾 Salvar partes</button>
+      </div>
     </div>
   </div>
 </div>
