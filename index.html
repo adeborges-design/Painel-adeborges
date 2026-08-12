@@ -8724,8 +8724,22 @@ var css='#contasPagar{margin-top:30px}'
 +'.cpc-item.venc .cpc-val{color:var(--red)}'
 +'.cpc-item.paga .cpc-val{color:var(--green)}'
 +'.cpc-acoes{display:flex;gap:6px}'
-+'#contasOverlay .hon-body{max-width:1760px}'
-+'#contasHostBody .loc-table thead th{position:sticky;top:60px;z-index:2;background:var(--surface)}'
++'#contasOverlay .hon-body{max-width:min(1900px,96vw)}'
+// A tabela principal de Contas a Pagar tem altura própria limitada + rolagem vertical interna
+// (em vez de deixar a página inteira rolar) por dois motivos: (1) só assim o cabeçalho fixo
+// (position:sticky) funciona de verdade — sticky só "gruda" em relação ao ancestral que rola de
+// verdade, e overflow-x:auto no wrapper já força overflow-y a virar 'auto' também (regra da spec
+// de CSS), então sem uma altura definida aqui o sticky simplesmente não tinha container pra grudar
+// e os títulos sumiam ao rolar; (2) a barra de rolagem horizontal do wrapper passa a ficar sempre
+// visível a uma altura fixa da tela, em vez de só aparecer lá embaixo depois de rolar a lista
+// inteira (que podia ter dezenas de contas de meses antigos).
++'#contasHostBody .loc-table-wrap{max-height:62vh;overflow-y:auto}'
++'#contasHostBody .loc-table{min-width:1500px;border-collapse:separate;border-spacing:0}'
+// border-collapse:collapse junto com position:sticky tem um bug conhecido de renderização no
+// Chrome/Firefox (as bordas "coladas" da linha de baixo vazam por cima do cabeçalho fixo, cria
+// aquela sujeira visual bem em cima do texto do cabeçalho) — border-collapse:separate com
+// border-spacing:0 evita o bug e continua com a mesma aparência (cada célula já tem border-bottom).
++'#contasHostBody .loc-table thead th{position:sticky;top:0;z-index:2;background:var(--surface)}'
 +'@media(max-width:900px){#contasPagar .cp-sum,.cp-form{grid-template-columns:repeat(2,1fr)}}'
 +'@media(max-width:640px){.cpc-item{flex-direction:column}.cpc-side{align-items:flex-start;flex-direction:row;flex-wrap:wrap;width:100%;margin-top:8px}}';
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
@@ -8782,7 +8796,7 @@ function renderContas(){
   +cpBlocoResumoHtml('escritorio')
   +cpBlocoResumoHtml('locacao')
   +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
-  +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista"></div></div>'
+  +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista" style="display:none"></div></div>'
   +'<div class="cp-form">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
   +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
@@ -8802,7 +8816,12 @@ function renderContas(){
  }
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var tot={pessoal:{vencidas:0,avencer:0,pagasMes:0,aberto:0},escritorio:{vencidas:0,avencer:0,pagasMes:0,aberto:0},locacao:{vencidas:0,avencer:0,pagasMes:0,aberto:0}};
+ // Contas já pagas ficam num bloco recolhido à parte (link "mostrar N pagas"), separado das
+ // contas em aberto — sem isso, meses e meses de contas já quitadas empilhavam na mesma tabela,
+ // deixando a lista enorme e a barra de rolagem horizontal só alcançável lá embaixo de tudo.
  var html='';
+ var htmlPagas='';
+ var qtdPagas=0;
  var abertas=allContas.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';});
  var pagas=allContas.filter(function(c){return String(c['Status']).toLowerCase()==='paga';});
  abertas.sort(function(a,b){return (dbr(a['Data Vencimento'])||hoje)-(dbr(b['Data Vencimento'])||hoje);});
@@ -8870,24 +8889,29 @@ function renderContas(){
   var fornFull=esc(c['Fornecedor']||'-');
   var catFull=esc(c['Categoria']||'-');
   var formaFull=formaTxt.replace(/<[^>]*>/g,'');
-  html+='<tr>'
+  var linhaTr='<tr>'
+   +'<td style="white-space:nowrap">'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
    +'<td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+descFull+'">'+esc(c['Descricao'])+confIcon+'</td>'
    +'<td class="loc-num" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+catFull+'">'+esc(c['Categoria']||'-')+'</td>'
    +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+fornFull+'">'+esc(c['Fornecedor']||'-')+'</td>'
    +'<td class="loc-num" style="white-space:nowrap">'+tipoLbl+'</td>'
-   +'<td style="white-space:nowrap">'+esc(c['Data Vencimento']||'-')+vencSub+'</td>'
    +'<td class="loc-num" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+formaFull+'">'+formaTxt+'</td>'
    +'<td class="loc-num" style="white-space:nowrap">'+recTxt+'</td>'
    +'<td style="white-space:nowrap"><span class="loc-status-badge '+statusCls+'">'+statusTxt+'</span></td>'
    +'<td class="loc-money" style="white-space:nowrap;color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
    +'<td style="text-align:center;white-space:nowrap">'+acoesH+'</td>'
    +'</tr>';
+  if(paga){htmlPagas+=linhaTr;qtdPagas++;}else{html+=linhaTr;}
  });
- document.getElementById('cpLista').innerHTML=html
-  ?('<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
-    +'<th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Tipo</th><th>Vencimento</th><th>Forma / Banco</th><th>Recorrência</th><th>Status</th><th>Valor</th><th>Ações</th>'
-    +'</tr></thead><tbody>'+html+'</tbody></table></div>')
-  :'<div class="hon-empty">Nenhuma conta cadastrada</div>';
+ var theadCp='<tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Tipo</th><th>Forma / Banco</th><th>Recorrência</th><th>Status</th><th>Valor</th><th>Ações</th></tr>';
+ var abertoHtmlCp=html
+  ?('<div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+html+'</tbody></table></div>')
+  :'<div class="hon-empty">Nenhuma conta em aberto</div>';
+ var pagasHtmlCp=qtdPagas
+  ?('<div class="cp-cartoes" style="margin-top:14px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpPagasWrap\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">✓ Contas já pagas ('+qtdPagas+') <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div>'
+    +'<div id="cpPagasWrap" style="display:none;margin-top:10px"><div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+htmlPagas+'</tbody></table></div></div></div>')
+  : '';
+ document.getElementById('cpLista').innerHTML=abertoHtmlCp+pagasHtmlCp;
  try{cpRenderCartoes();}catch(e){}
  try{cpRenderFixas();}catch(e){}
  try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
@@ -9420,12 +9444,20 @@ function cpRenderFixas(){
  });
  dedup.sort(function(a,b){var da=dbr(a['Data Vencimento']),db=dbr(b['Data Vencimento']);return (da?da.getDate():99)-(db?db.getDate():99);});
  if(!dedup.length){host.innerHTML='<div class="hon-empty">Nenhuma conta fixa (recorrência Mensal) cadastrada.</div>';return;}
- host.innerHTML=dedup.map(function(c){
+ var linhasFx=dedup.map(function(c){
   var dv=dbr(c['Data Vencimento']);
-  return '<div class="cp-item"><div><div class="desc">'+esc(c['Descricao'])+'</div>'
-   +'<div class="meta">'+(c['Fornecedor']?esc(c['Fornecedor'])+' · ':'')+(c['Forma Pagamento']?esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):''):'-')+' · todo dia '+(dv?dv.getDate():'-')+'</div></div>'
-   +'<span class="val">'+fmr(nbr(c['Valor']))+'</span></div>';
+  var formaTxtFx=c['Forma Pagamento']?esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):''):'-';
+  return '<tr>'
+   +'<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c['Descricao'])+'">'+esc(c['Descricao'])+'</td>'
+   +'<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c['Fornecedor']||'-')+'">'+esc(c['Fornecedor']||'-')+'</td>'
+   +'<td class="loc-num" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+formaTxtFx+'">'+formaTxtFx+'</td>'
+   +'<td class="loc-num" style="white-space:nowrap">todo dia '+(dv?dv.getDate():'-')+'</td>'
+   +'<td class="loc-money" style="white-space:nowrap">'+fmr(nbr(c['Valor']))+'</td>'
+   +'</tr>';
  }).join('');
+ host.innerHTML='<div class="loc-table-wrap"><table class="loc-table" style="min-width:0"><thead><tr>'
+  +'<th>Descrição</th><th>Fornecedor</th><th>Forma / Banco</th><th>Dia vencimento</th><th>Valor</th>'
+  +'</tr></thead><tbody>'+linhasFx+'</tbody></table></div>';
 }
 window.cpRenderFixas=cpRenderFixas;
 })();
@@ -10226,6 +10258,33 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL COLOCATÁRIOS (múltiplos inquilinos no mesmo contrato) -->
+<div class="modal-repasse-overlay" id="modalColoc">
+  <div class="repasse-wrap" style="max-width:760px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">👥 Inquilinos do contrato</div>
+      <button class="btn-form-cancel" onclick="colocFechar()">✕</button>
+    </div>
+    <div style="padding:20px;max-height:75vh;overflow-y:auto">
+      <input type="hidden" id="coloc-contrato">
+      <div id="coloc-titulo-imovel" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+      <div class="loc-note" style="margin-bottom:14px">
+        Cadastre aqui cada inquilino do contrato (ex.: casal, república, sócios) — todos ficam
+        qualificados no recibo/contrato. O aluguel continua sendo <strong>um valor único por mês</strong>,
+        cobrado solidariamente de todos os inquilinos cadastrados; não há divisão de percentual como
+        do lado dos proprietários. O campo "Locatário" do cadastro do contrato continua sendo usado
+        como responsável principal enquanto nenhum inquilino for cadastrado aqui.
+      </div>
+      <div id="coloc-lista"></div>
+      <button type="button" class="loc-btn" onclick="colocAdicionarLinha()" style="margin-top:4px">+ adicionar inquilino</button>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;align-items:center;gap:10px">
+        <span id="coloc-msg" style="font-size:12px"></span>
+        <button class="loc-btn primary" onclick="colocSalvarTodos()">💾 Salvar inquilinos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) -->
 <div class="modal-repasse-overlay" id="modalReciboLoc">
   <div class="repasse-wrap">
@@ -10374,6 +10433,7 @@ window.cpRenderFixas=cpRenderFixas;
       var r1=await fetch(base+encodeURIComponent('LOC_CONTRATOS!A1:Z500')+k);
       var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:Z3000')+k);
       var r3=await fetch(base+encodeURIComponent('LOC_COPROPRIETARIOS!A1:J500')+k).catch(function(){return null;});
+      var r4=await fetch(base+encodeURIComponent('LOC_COLOCATARIOS!A1:J500')+k).catch(function(){return null;});
       if(!r1.ok||!r2.ok) throw new Error('HTTP '+r1.status+'/'+r2.status);
       var d1=await r1.json(), d2=await r2.json();
       var rc=d1.values||[], rl=d2.values||[];
@@ -10404,18 +10464,30 @@ window.cpRenderFixas=cpRenderFixas;
           });})();
         } else { window.locCoprop = []; }
       }catch(e2){ window.locCoprop = []; }
+      // LOC_COLOCATARIOS: mesmo esquema de "filho ligado ao pai" do coprop, mas pro lado do
+      // inquilino (2+ pessoas no mesmo contrato de locação, ex.: casal, república, sócios).
+      try{
+        if(r4&&r4.ok){
+          var d4=await r4.json(); var rcol=d4.values||[];
+          window.locColoc = rcol.length<2?[]:(function(){var mcol=hidx(rcol[0]);return rcol.slice(1).filter(function(x){return x[0];}).map(function(row){
+            return {ID:String(cell(row,mcol,'ID')),Contrato:String(cell(row,mcol,'Contrato')),Nome:cell(row,mcol,'Nome'),CPF_CNPJ:cell(row,mcol,'CPF_CNPJ'),Telefone:cell(row,mcol,'Telefone'),Email:cell(row,mcol,'Email'),Observacoes:cell(row,mcol,'Observacoes')};
+          });})();
+        } else { window.locColoc = []; }
+      }catch(e3){ window.locColoc = []; }
       indexContratos(); live=true;
       var now=new Date(); lastSync=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
       if(dot){dot.className='dot live';} if(txt)txt.textContent='sincronizado com a planilha às '+lastSync;
     }catch(e){
       live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
       window.locCoprop=[];
+      window.locColoc=[];
       indexContratos();
       if(dot){dot.className='dot local';} if(txt)txt.textContent='falha ao ler a planilha ('+e.message+') — usando dados locais';
     }
     locRefreshMeses(); locRender();
   };
   window.locCoprop = window.locCoprop || [];
+  window.locColoc = window.locColoc || [];
 
   // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
   // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
@@ -10644,6 +10716,108 @@ window.cpRenderFixas=cpRenderFixas;
     if(erro){msgEl.innerHTML='<span style="color:var(--red)">❌ '+erro+'</span>';return;}
     msgEl.innerHTML='<span style="color:var(--green)">✓ Salvo!</span>';
     setTimeout(function(){carregarAlugueis();copropFechar();},1200);
+  };
+
+  // ---------- COLOCATÁRIOS (múltiplos inquilinos no mesmo contrato) ----------
+  var colocRemovidos=[];
+  window.colocAbrir=function(contrato){
+    var c=contratosById[contrato]||{};
+    document.getElementById('coloc-contrato').value=contrato;
+    document.getElementById('coloc-titulo-imovel').textContent=contrato+' — '+(c.end||'');
+    colocRemovidos=[];
+    var existentes=(window.locColoc||[]).filter(function(o){return o.Contrato===contrato;});
+    var lista=document.getElementById('coloc-lista');
+    lista.innerHTML='';
+    if(existentes.length){
+      existentes.forEach(function(o){colocAdicionarLinha(o);});
+    }else{
+      var aviso=document.createElement('div');
+      aviso.id='coloc-vazio-msg';
+      aviso.style.cssText='color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--border);border-radius:10px;margin-bottom:10px';
+      aviso.innerHTML='Nenhum inquilino cadastrado ainda além do "Locatário" do cadastro do contrato.'
+        +(c.locatario?'<br><button type="button" class="loc-btn" style="margin-top:8px;padding:5px 12px;font-size:12px" onclick="this.parentElement.remove();colocAdicionarLinha({Nome:\''+E(c.locatario).replace(/'/g,"\\'")+'\',CPF_CNPJ:\''+E(c.cpfLocatario||'').replace(/'/g,"\\'")+'\'})">usar "'+E(c.locatario)+'" (o locatário do contrato) como primeiro inquilino</button>':'');
+      lista.appendChild(aviso);
+    }
+    document.getElementById('coloc-msg').textContent='';
+    document.getElementById('modalColoc').classList.add('open');
+  };
+  window.colocFechar=function(){document.getElementById('modalColoc').classList.remove('open');};
+  var colocSeq=0;
+  window.colocAdicionarLinha=function(dados){
+    dados=dados||{};
+    var vazio=document.getElementById('coloc-vazio-msg'); if(vazio)vazio.remove();
+    var uid='cl'+(colocSeq++);
+    var lista=document.getElementById('coloc-lista');
+    var div=document.createElement('div');
+    div.className='coloc-linha';
+    div.id=uid;
+    div.style.cssText='border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px';
+    div.innerHTML=
+      '<input type="hidden" class="cl-id" value="'+E(dados.ID||'')+'">'
+      +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+      +'<div class="loc-cfield half"><label>Nome do inquilino</label><input class="loc-cinput cl-nome" value="'+E(dados.Nome||'')+'"></div>'
+      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cl-cpf" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
+      +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput cl-telefone" value="'+E(dados.Telefone||'')+'"></div>'
+      +'<div class="loc-cfield full"><label>E-mail</label><input class="loc-cinput cl-email" value="'+E(dados.Email||'')+'"></div>'
+      +'<div class="loc-cfield full"><label>Observações</label><input class="loc-cinput cl-obs" value="'+E(dados.Observacoes||'')+'"></div>'
+      +'</div>'
+      +'<button type="button" class="loc-btn" style="margin-top:8px;color:var(--red);border-color:var(--red);padding:5px 12px;font-size:12px" onclick="colocRemoverLinha(\''+uid+'\')">🗑️ remover este inquilino</button>';
+    lista.appendChild(div);
+  };
+  window.colocRemoverLinha=function(uid){
+    var div=document.getElementById(uid);
+    if(!div)return;
+    var idEl=div.querySelector('.cl-id');
+    if(idEl&&idEl.value)colocRemovidos.push(idEl.value);
+    div.remove();
+  };
+  window.colocSalvarTodos=async function(){
+    var contrato=document.getElementById('coloc-contrato').value;
+    var msgEl=document.getElementById('coloc-msg');
+    var btn=document.querySelector('#modalColoc .loc-btn.primary');
+    if(!live){msgEl.textContent='Configure a planilha (Config) para salvar.';msgEl.style.color='var(--red)';return;}
+    var linhas=Array.from(document.querySelectorAll('#coloc-lista .coloc-linha'));
+    var pendentes=linhas.length+colocRemovidos.length;
+    if(pendentes===0){msgEl.textContent='Nada para salvar.';return;}
+    if(btn)btn.disabled=true;
+    var erro=null;
+    // Salva UM DE CADA VEZ (mesmo cuidado do coprop) — evita gravações concorrentes na mesma aba.
+    for(var i=0;i<linhas.length;i++){
+      var div=linhas[i];
+      msgEl.textContent='⏳ salvando '+(i+1)+' de '+linhas.length+'...'; msgEl.style.color='var(--muted)';
+      var idEl=div.querySelector('.cl-id');
+      var campos={
+        'Contrato':contrato,'Nome':div.querySelector('.cl-nome').value.trim(),'CPF_CNPJ':div.querySelector('.cl-cpf').value.trim(),
+        'Telefone':div.querySelector('.cl-telefone').value.trim(),'Email':div.querySelector('.cl-email').value.trim(),
+        'Observacoes':div.querySelector('.cl-obs').value.trim()
+      };
+      var acao=idEl.value?'atualizar_coloc':'lancar_coloc';
+      var body={acao:acao,campos:campos}; if(idEl.value)body.id=idEl.value;
+      try{
+        var r=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
+        var d=await r.json();
+        if(!d.ok){erro=d.error||'recusado pelo Apps Script';break;}
+        if(!idEl.value&&d.id)idEl.value=d.id;
+      }catch(e){
+        try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});}
+        catch(e2){erro=e2.message;break;}
+      }
+    }
+    if(!erro){
+      for(var j=0;j<colocRemovidos.length;j++){
+        msgEl.textContent='⏳ removendo...';
+        try{
+          var r2=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_coloc',id:colocRemovidos[j]})});
+          await r2.json();
+        }catch(e3){
+          try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_coloc',id:colocRemovidos[j]})});}catch(e4){}
+        }
+      }
+    }
+    if(btn)btn.disabled=false;
+    if(erro){msgEl.innerHTML='<span style="color:var(--red)">❌ '+erro+'</span>';return;}
+    msgEl.innerHTML='<span style="color:var(--green)">✓ Salvo!</span>';
+    setTimeout(function(){carregarAlugueis();colocFechar();},1200);
   };
 
   // ---------- LISTA / OVERRIDES ----------
@@ -11868,6 +12042,14 @@ window.cpRenderFixas=cpRenderFixas;
     }
 
     document.getElementById('reciboLocTitulo').textContent=titulo;
+    // Múltiplos inquilinos (cadastrados em "👥 inquilinos"): lista cada um com CPF/CNPJ no recibo.
+    // Sem inquilinos cadastrados, cai no comportamento antigo (locatário/CPF único do contrato).
+    var tenants=(window.locColoc||[]).filter(function(o){return o.Contrato===contrato;});
+    var tenantsBoxHtml=tenants.length
+      ? tenants.map(function(t){return E(t.Nome)+' — CPF/CNPJ: '+E(t.CPF_CNPJ||'—');}).join('<br>')
+      : E(c.locatario||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocatario||'—');
+    var tenantsLabel='Locatário'+(tenants.length>1?'s (responsáveis solidários)':'');
+
     document.getElementById('reciboLocCard').innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">'+titulo+'</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
@@ -11876,7 +12058,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
       +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
-      +'<div class="parc-section"><div class="parc-section-label">Locatário</div><div class="parc-box">'+E(c.locatario||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocatario||'—')+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
       +'<div class="parc-section" id="reciboLocValoresSecao"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
       +'<div class="parc-section" id="reciboLocTotalSecao"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
       +vencSection
@@ -12068,7 +12250,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
-        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
+        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
