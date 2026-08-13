@@ -9720,7 +9720,7 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-chip.pago b{color:var(--green)} .loc-chip.pend b{color:var(--yellow)} .loc-chip.atras b{color:var(--red)} .loc-chip.ativos b{color:var(--blue)}
   .loc-chips-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
   .loc-chips-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-right:2px}
-  .loc-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .loc-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;position:sticky;top:77px;z-index:9;background:var(--bg);padding:12px 0 8px;margin-top:-8px}
   .loc-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
   .loc-btn:hover{border-color:var(--accent);color:var(--accent)}
   .loc-btn.primary{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent)}
@@ -9822,7 +9822,7 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
       </div>
       <button class="loc-btn" onclick="locLocAbrir()">💼 Despesas/Créditos do Locador</button>
-      <button class="loc-btn" onclick="avisoAbrir()">✉️ Avisos</button>
+      <button class="loc-btn" onclick="avisoAbrir()">✉️ Correspondências</button>
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
@@ -9833,11 +9833,12 @@ window.cpRenderFixas=cpRenderFixas;
           <th>Contrato</th><th>Locatário</th><th>Locador</th><th>Endereço</th>
           <th style="text-align:center">Venc.</th>
           <th>Status Aluguel</th>
+          <th style="text-align:center">Data Pagamento</th>
           <th style="text-align:center">Dia Repasse</th>
           <th style="text-align:right">Encargos (R$)</th>
           <th style="text-align:right">Repasse (R$)</th>
           <th style="text-align:center">Atraso repasse</th>
-          <th>Status Repasse</th><th>Data pgto/repasse</th><th>Banco</th>
+          <th>Status Repasse</th><th style="text-align:center">Data Repasse</th><th>Banco</th>
           <th style="text-align:center">Ações</th>
         </tr></thead>
         <tbody id="locTbody"></tbody>
@@ -10396,7 +10397,7 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="modal-repasse-overlay" id="modalAvisoLoc">
   <div class="repasse-wrap" style="max-width:720px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">✉️ Avisos ao Locatário/Locador</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">✉️ Correspondências ao Locatário/Locador</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalAvisoLoc').classList.remove('open')">✕</button>
     </div>
     <div style="padding:20px" class="entr-no-print">
@@ -11153,12 +11154,13 @@ window.cpRenderFixas=cpRenderFixas;
              aguaPriv:aguaPriv,gasPriv:gasPriv,aguaComum:aguaComum,gasPiscina:gasPiscina,energiaComum:energiaComum,taxaLeitura:taxaLeitura,
              fundoFerias:fundoFerias,decimoTerceiro:decimoTerceiro,desconto:desconto,
              outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,
-             statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',banco:l.banco||''};
+             statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||''};
       if(o){
         if(o.aluguel!=null)r.aluguel=num(o.aluguel);
         if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
         if(o.statusRep)r.statusRep=o.statusRep;
         if(o.dataPag!=null)r.dataPag=o.dataPag;
+        if(o.dataRep!=null)r.dataRep=o.dataRep;
         if(o.banco!=null)r.banco=o.banco;
         if(o.condominio!=null)r.condominio=num(o.condominio);
         if(o.iptu!=null)r.iptu=num(o.iptu);
@@ -11299,6 +11301,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
         '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
         '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td class="loc-money" style="cursor:pointer" title="Condomínio, IPTU, multa/juros, outras — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(encargosOf(l))+' <span class="loc-num">✎</span></td>'+
         '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel + Multa + Juros − Taxa + Encargos). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
@@ -11307,11 +11310,11 @@ window.cpRenderFixas=cpRenderFixas;
           '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
           :'<select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
         )+'</td>'+
-        '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
+        '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
         '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button> <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\')">💬</button></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
+    }).join('')||'<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
     if(showRepasse)renderRepasse(lstTodos);
     if(showResumoLocadores)renderResumoLocadores();
     locAtualizarAlertaVigencia();
@@ -11373,7 +11376,7 @@ window.cpRenderFixas=cpRenderFixas;
     // direto no campo da tabela). Quando é calculado automaticamente (a partir de aluguel,
     // taxa e encargos), a célula fica vazia — assim, na próxima leitura, o sistema sabe que
     // deve continuar calculando sozinho, em vez de "travar" nesse valor pra sempre.
-    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':w.repManual?rep:'','Data Repasse':w.statusRep==='Repassado'?(w.dataPag||''):'',
+    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':w.repManual?rep:'','Data Repasse':w.dataRep||'',
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
@@ -12070,6 +12073,10 @@ window.cpRenderFixas=cpRenderFixas;
     // Só entra no relatório o que já foi efetivamente recebido do inquilino — não faz sentido
     // "repassar" um aluguel que ainda está pendente ou atrasado, isso inflaria o total errado.
     if(w.statusAluguel!=='Recebido')return null;
+    // E só entra o que ainda está APTO a ser repassado (Status Repasse ainda não é "Repassado")
+    // — esse relatório serve como informe de repasse consolidado, então o que já foi repassado
+    // não precisa mais aparecer aqui.
+    if(w.statusRep==='Repassado')return null;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
@@ -12082,16 +12089,21 @@ window.cpRenderFixas=cpRenderFixas;
     if(!nome||!mes){card.innerHTML='';return;}
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
-    // Conta quantos imóveis desse locador têm lançamento neste mês mas o aluguel ainda não foi
-    // recebido — pra avisar que eles ficaram de fora do relatório (em vez de simplesmente sumir
-    // sem explicação nenhuma).
-    var naoRecebidos=imoveis.filter(function(im){
+    // Conta quantos imóveis ficaram de fora e por qual motivo — pra avisar em vez de simplesmente
+    // sumir sem explicação nenhuma.
+    var naoRecebidos=0,jaRepassados=0;
+    imoveis.forEach(function(im){
       var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
-      return w&&w.statusAluguel!=='Recebido';
-    }).length;
+      if(!w)return;
+      if(w.statusAluguel!=='Recebido')naoRecebidos++;
+      else if(w.statusRep==='Repassado')jaRepassados++;
+    });
     var avulsos=locLocPendentes(nome,mes);
     if(!linhas.length&&!avulsos.length){
-      card.innerHTML='<div class="loc-note">'+(naoRecebidos?'Nenhum aluguel recebido ainda neste mês para este locador ('+naoRecebidos+' imóvel(is) com aluguel pendente/atrasado, ainda não entram no relatório).':'Nenhum lançamento encontrado para este locador neste mês.')+'</div>';
+      var motivos=[];
+      if(naoRecebidos)motivos.push(naoRecebidos+' com aluguel pendente/atrasado');
+      if(jaRepassados)motivos.push(jaRepassados+' já repassado(s)');
+      card.innerHTML='<div class="loc-note">'+(motivos.length?'Nenhum imóvel apto a repassar neste mês para este locador ('+motivos.join(', ')+').':'Nenhum lançamento encontrado para este locador neste mês.')+'</div>';
       return;
     }
     var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
@@ -12131,7 +12143,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div><div class="parc-header-title">Aluguéis Recebidos a serem Repassados</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
       +'</div>'
       +'<div class="parc-body">'
-      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is) recebido(s)'+(naoRecebidos?' <span style="color:var(--yellow)">— '+naoRecebidos+' com aluguel pendente/atrasado, não incluído(s)</span>':'')+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is) apto(s) a repassar'+((naoRecebidos||jaRepassados)?' <span style="color:var(--yellow)">— '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)</span>':'')+'</div></div>'
       +blocos
       +subtotalHtml
       +avulsosHtml
@@ -12147,10 +12159,13 @@ window.cpRenderFixas=cpRenderFixas;
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
     var avulsos=locLocPendentes(nome,mes);
-    var naoRecebidos=imoveis.filter(function(im){
+    var naoRecebidos=0,jaRepassados=0;
+    imoveis.forEach(function(im){
       var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
-      return w&&w.statusAluguel!=='Recebido';
-    }).length;
+      if(!w)return;
+      if(w.statusAluguel!=='Recebido')naoRecebidos++;
+      else if(w.statusRep==='Repassado')jaRepassados++;
+    });
     if(!linhas.length&&!avulsos.length)return '';
     var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
     var totalGeral=subtotalImoveis+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
@@ -12159,7 +12174,7 @@ window.cpRenderFixas=cpRenderFixas;
     txt+='Referente a '+mesExtenso(mes)+'\n';
     txt+='═══════════════════\n\n';
     txt+='*Locador:* '+nome+'\n';
-    txt+=linhas.length+' imóvel(is) recebido(s)'+(naoRecebidos?' — '+naoRecebidos+' com aluguel pendente/atrasado, não incluído(s)':'')+'\n\n';
+    txt+=linhas.length+' imóvel(is) apto(s) a repassar'+((naoRecebidos||jaRepassados)?' — '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)':'')+'\n\n';
     linhas.forEach(function(l,idx){
       txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.statusRep==='Repassado'?'✅':'⏳')+'\n';
       txt+='Contrato nº '+l.contrato+'\n';
@@ -12600,7 +12615,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.locSetStatusRepasse=function(contrato,val){
     var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
     if(atual&&atual.statusAluguel!=='Recebido'){locRender();return;}
-    var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();
+    var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataRep||(lancDoMes(contrato)||{}).dataRep;if(!jaTem)patch.dataRep=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
   window.locSetData=function(contrato,iso){
     var dataBR=isoToBr(iso);
@@ -12609,6 +12624,16 @@ window.cpRenderFixas=cpRenderFixas;
     // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava Recebido) → volta pra Pendente.
     if(dataBR)patch.statusAluguel='Recebido';
     else if(atual.statusAluguel==='Recebido')patch.statusAluguel='Pendente';
+    setOverride(contrato,patch);gravarSheet(contrato);locRender();
+  };
+  window.locSetDataRepasse=function(contrato,iso){
+    var dataBR=isoToBr(iso);
+    var patch={dataRep:dataBR};
+    var atual=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]||{};
+    // Mesma automação: preencheu a data → já marca Status Repasse como Repassado sozinho.
+    // Apagou a data (e estava Repassado) → volta pra Pendente.
+    if(dataBR)patch.statusRep='Repassado';
+    else if(atual.statusRep==='Repassado')patch.statusRep='Pendente';
     setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
@@ -13373,6 +13398,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (6)', itens: [
+      'Locações: cabeçalho e barra de ferramentas agora ficam fixos no topo ao rolar a tela — os botões continuam acessíveis sem precisar voltar pro topo.',
+      'Corrigido "Aluguéis Recebidos a serem Repassados": agora só aparecem os aluguéis aptos a repassar de fato — recebidos do inquilino E ainda não repassados ao locador. O que já foi repassado não aparece mais (esse relatório serve como informe de repasse consolidado, então itens já resolvidos não precisam mais constar).',
+      'Corrigido bug real: "Data Repasse" estava reaproveitando por engano a "Data Pagamento" do aluguel — agora tem seu próprio campo, independente. Coluna "Data Pgto/Repasse" foi desmembrada em duas: "Data Pagamento" (ao lado de Status Aluguel, preenche sozinha quando marca Recebido) e "Data Repasse" (ao lado de Status Repasse, preenche sozinha quando marca Repassado) — cada uma editável e com a mesma automação de cor já usada no resto do sistema.',
+      'Botão "Avisos" renomeado para "Correspondências".'
+    ]},
     { data: '13/ago/2026 (5)', itens: [
       'Relatório "Aluguéis Recebidos a serem Repassados" agora mostra os dados bancários do locador (banco, agência, conta, Pix) no final — busca do contrato quando ele é o locador principal, ou do cadastro de coproprietário (conta própria) quando é só coproprietário. Testado e confirmado.'
     ]},
@@ -13749,21 +13780,23 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Informe de repasse</div>'
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
 
-    locacoes: MH+'Busca rápida</div>'
-      +MP+'Campo de busca no topo da lista de lançamentos — digite locador, locatário, endereço ou número do contrato pra filtrar na hora. Atalho de teclado: tecla "/".</div>'
-      +MH+'Cadastro de contrato</div>'
+    locacoes: MH+'Cadastro de contrato</div>'
       +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários e condomínio/IPTU padrão.</div>'
       +MH+'Coproprietários</div>'
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
       +MH+'Encargos do mês</div>'
       +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado). Cada item também tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe.</div>'
+      +MH+'Busca rápida e cabeçalho fixo</div>'
+      +MP+'Campo de busca no topo da lista de lançamentos — digite locador, locatário, endereço ou número do contrato pra filtrar na hora (atalho de teclado: tecla "/"). O cabeçalho e a barra de ferramentas ficam fixos no topo ao rolar a tela, então os botões continuam sempre acessíveis.</div>'
       +MH+'Filtros clicáveis</div>'
       +MP+'Os cards e chips no topo (Em caixa aguardando repasse, Já repassado, Recebidos, Atrasados...) são clicáveis e filtram a lista na hora.</div>'
+      +MH+'Data Pagamento e Data Repasse</div>'
+      +MP+'Duas colunas independentes na tabela: "Data Pagamento" (ao lado de Status Aluguel) preenche sozinha o status como Recebido quando você marca a data; "Data Repasse" (ao lado de Status Repasse) preenche sozinha o status como Repassado do mesmo jeito. Apagar a data volta o status pro estado anterior. As duas são registros independentes — uma não sobrescreve a outra.</div>'
       +MH+'Relatórios (menu agrupado)</div>'
-      +MP+'Botão único "📊 Relatórios" na barra de ferramentas, com duas opções: <strong>"Imóveis do Locador"</strong> reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono. <strong>"Aluguéis Recebidos a serem Repassados"</strong> mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, o subtotal só dos imóveis, e o total geral do mês (já com despesas/créditos avulsos, se houver). Só entram os aluguéis <strong>efetivamente recebidos</strong> do inquilino — se algum imóvel ainda está com o aluguel pendente ou atrasado, fica de fora do cálculo (não dá pra repassar o que ainda não foi recebido), e aparece um aviso dizendo quantos imóveis foram excluídos por esse motivo.</div>'
+      +MP+'Botão único "📊 Relatórios" na barra de ferramentas, com duas opções: <strong>"Imóveis do Locador"</strong> reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono. <strong>"Aluguéis Recebidos a serem Repassados"</strong> serve como informe de repasse consolidado — mostra, pra um mês específico, cada imóvel desse locador que já teve o aluguel <strong>recebido do inquilino mas ainda não foi repassado</strong> a ele (o que já foi repassado não aparece mais, já que não precisa mais constar), com taxa e encargos descontados/somados, o subtotal só dos imóveis, o total geral do mês (já com despesas/créditos avulsos, se houver), e os dados bancários do locador pro repasse. Se algum imóvel ficou de fora (aluguel ainda pendente, ou já repassado), aparece um aviso dizendo o motivo.</div>'
       +MH+'Despesas/Créditos do Locador</div>'
       +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, a data e o valor — pode ser à vista (um valor só) ou parcelado, com cada parcela podendo ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) e uma competência mensal própria. Enquanto estiver "Pendente", o valor aparece automaticamente no relatório "Aluguéis Recebidos a serem Repassados" daquele locador (cada parcela no seu mês certo), já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
-      +MH+'Avisos ao locatário/locador</div>'
+      +MH+'Correspondências ao locatário/locador</div>'
       +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
       +MH+'Alertas de vigência</div>'
       +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
