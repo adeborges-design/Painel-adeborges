@@ -12053,7 +12053,7 @@ window.cpRenderFixas=cpRenderFixas;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep};
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -12091,6 +12091,8 @@ window.cpRenderFixas=cpRenderFixas;
         +(l.multa?'<div>(+) Multa: <strong>'+BRL(l.multa)+'</strong></div>':'')
         +(l.juros?'<div>(+) Juros: <strong>'+BRL(l.juros)+'</strong></div>':'')
         +itensHtml
+        +(l.iptu?'<div>(+) IPTU: <strong>'+BRL(l.iptu)+'</strong></div>':'')
+        +(l.desconto?'<div>(−) Desconto: <strong>-'+BRL(l.desconto)+'</strong></div>':'')
         +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
         +'</div></div>';
     }).join('');
@@ -12141,6 +12143,8 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Aluguel: '+BRL(l.aluguel)+'\n';
       if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
       l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
+      if(l.iptu)txt+='(+) IPTU: '+BRL(l.iptu)+'\n';
+      if(l.desconto)txt+='(−) Desconto: -'+BRL(l.desconto)+'\n';
       txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
@@ -13335,6 +13339,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (4)', itens: [
+      'Corrigido "Aluguéis Recebidos a serem Repassados": o IPTU e o Desconto entravam corretamente na soma do total, mas não apareciam como linha na lista (por serem tratados separado dos outros encargos no código). Agora aparecem certinho, junto com os demais itens. Testado com R$450 de IPTU lançado — a linha aparece e o total bate (R$1.500 − R$90 + R$450 = R$1.860,00).'
+    ]},
     { data: '13/ago/2026 (3)', itens: [
       'Locações: novo campo de busca na lista de lançamentos (mesmo padrão de Processos) — digite pra filtrar por locador, locatário, endereço ou número do contrato, evitando ficar procurando na lista inteira. Atalho de teclado "/" agora é sensível ao contexto: foca o campo de busca do painel que estiver aberto (Locações ou Processos), em vez de sempre ir pro de Processos.'
     ]},
