@@ -9813,8 +9813,13 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
-      <button class="loc-btn" onclick="relLocadorAbrir()">📄 Relatório do Locador</button>
-      <button class="loc-btn" onclick="relMensalAbrir()">📅 Relatório Mensal de Repasses</button>
+      <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
+        <button class="loc-btn" onclick="locToggleMenuRelatorios(event)">📊 Relatórios ▾</button>
+        <div id="locMenuRelatorios" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:260px;overflow:hidden">
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuRelatorios').style.display='none';relLocadorAbrir()">📄 Imóveis do Locador</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relMensalAbrir()">💰 Aluguéis Recebidos a serem Repassados</button>
+        </div>
+      </div>
       <button class="loc-btn" onclick="locLocAbrir()">💼 Despesas/Créditos do Locador</button>
       <button class="loc-btn" onclick="avisoAbrir()">✉️ Avisos</button>
     </div>
@@ -10455,7 +10460,7 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="modal-repasse-overlay" id="modalRelMensal">
   <div class="repasse-wrap" style="max-width:720px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">📅 Relatório Mensal de Repasses</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">💰 Aluguéis Recebidos a serem Repassados</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalRelMensal').classList.remove('open')">✕</button>
     </div>
     <div style="padding:20px" class="entr-no-print">
@@ -10479,7 +10484,7 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="modal-repasse-overlay" id="modalRelLocador">
   <div class="repasse-wrap" style="max-width:720px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">📄 Relatório do Locador</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📄 Imóveis do Locador</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalRelLocador').classList.remove('open')">✕</button>
     </div>
     <div style="padding:20px" class="entr-no-print">
@@ -11711,6 +11716,15 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('reciboLocContaSecao').innerHTML='<div class="parc-section-label">Dados bancários do proprietário (repasse)</div><div class="parc-box">'+d.contaHtml+'</div>';
   };
   // ---------- RELATÓRIO DO LOCADOR (consolidado, vários imóveis) ----------
+  window.locToggleMenuRelatorios=function(ev){
+    ev.stopPropagation();
+    var m=document.getElementById('locMenuRelatorios');
+    m.style.display=m.style.display==='none'?'block':'none';
+  };
+  document.addEventListener('click',function(ev){
+    var m=document.getElementById('locMenuRelatorios');
+    if(m&&m.style.display==='block'&&!m.contains(ev.target))m.style.display='none';
+  });
   window.relLocadorAbrir=function(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
@@ -12026,6 +12040,9 @@ window.cpRenderFixas=cpRenderFixas;
     var c=imovelInfo.contrato,pct=imovelInfo.pct;
     var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
     if(!w)return null;
+    // Só entra no relatório o que já foi efetivamente recebido do inquilino — não faz sentido
+    // "repassar" um aluguel que ainda está pendente ou atrasado, isso inflaria o total errado.
+    if(w.statusAluguel!=='Recebido')return null;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
@@ -12038,8 +12055,18 @@ window.cpRenderFixas=cpRenderFixas;
     if(!nome||!mes){card.innerHTML='';return;}
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
+    // Conta quantos imóveis desse locador têm lançamento neste mês mas o aluguel ainda não foi
+    // recebido — pra avisar que eles ficaram de fora do relatório (em vez de simplesmente sumir
+    // sem explicação nenhuma).
+    var naoRecebidos=imoveis.filter(function(im){
+      var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
+      return w&&w.statusAluguel!=='Recebido';
+    }).length;
     var avulsos=locLocPendentes(nome,mes);
-    if(!linhas.length&&!avulsos.length){card.innerHTML='<div class="loc-note">Nenhum lançamento encontrado para este locador neste mês.</div>';return;}
+    if(!linhas.length&&!avulsos.length){
+      card.innerHTML='<div class="loc-note">'+(naoRecebidos?'Nenhum aluguel recebido ainda neste mês para este locador ('+naoRecebidos+' imóvel(is) com aluguel pendente/atrasado, ainda não entram no relatório).':'Nenhum lançamento encontrado para este locador neste mês.')+'</div>';
+      return;
+    }
     var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
     var totalAvulsos=avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var totalGeral=subtotalImoveis+totalAvulsos;
@@ -12070,10 +12097,10 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
     card.innerHTML=
       '<div class="parc-header">'
-      +'<div><div class="parc-header-title">Relatório Mensal de Repasses</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+      +'<div><div class="parc-header-title">Aluguéis Recebidos a serem Repassados</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
       +'</div>'
       +'<div class="parc-body">'
-      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is)</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is) recebido(s)'+(naoRecebidos?' <span style="color:var(--yellow)">— '+naoRecebidos+' com aluguel pendente/atrasado, não incluído(s)</span>':'')+'</div></div>'
       +blocos
       +subtotalHtml
       +avulsosHtml
@@ -12088,15 +12115,19 @@ window.cpRenderFixas=cpRenderFixas;
     var imoveis=relLocadorImoveis(nome);
     var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
     var avulsos=locLocPendentes(nome,mes);
+    var naoRecebidos=imoveis.filter(function(im){
+      var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
+      return w&&w.statusAluguel!=='Recebido';
+    }).length;
     if(!linhas.length&&!avulsos.length)return '';
     var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
     var totalGeral=subtotalImoveis+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
-    var txt='*RELATÓRIO MENSAL DE REPASSES*\n';
+    var txt='*ALUGUÉIS RECEBIDOS A SEREM REPASSADOS*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
     txt+='Referente a '+mesExtenso(mes)+'\n';
     txt+='═══════════════════\n\n';
     txt+='*Locador:* '+nome+'\n';
-    txt+=linhas.length+' imóvel(is)\n\n';
+    txt+=linhas.length+' imóvel(is) recebido(s)'+(naoRecebidos?' — '+naoRecebidos+' com aluguel pendente/atrasado, não incluído(s)':'')+'\n\n';
     linhas.forEach(function(l,idx){
       txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.statusRep==='Repassado'?'✅':'⏳')+'\n';
       txt+='Contrato nº '+l.contrato+'\n';
@@ -12133,7 +12164,7 @@ window.cpRenderFixas=cpRenderFixas;
     var mes=document.getElementById('relMensalMesSelect').value;
     var texto=relMensalMontarTexto();
     if(!texto){alert('Selecione o locador e o mês primeiro.');return;}
-    abrirEmailFlex('Relatório Mensal de Repasses — '+nome+' — '+mesExtenso(mes),texto);
+    abrirEmailFlex('Aluguéis Recebidos a serem Repassados — '+nome+' — '+mesExtenso(mes),texto);
   };
   window.relMensalImprimir=function(){
     document.body.classList.add('printing-rel-mensal');
@@ -13297,6 +13328,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (2)', itens: [
+      'Locações: os dois botões de relatório foram agrupados num só ("📊 Relatórios ▾"), economizando espaço na barra de ferramentas — clique pra abrir o menu com as duas opções.',
+      'Renomeado: "Relatório do Locador" → "Imóveis do Locador". "Relatório Mensal de Repasses" → "Aluguéis Recebidos a serem Repassados".',
+      'Corrigido bug no "Aluguéis Recebidos a serem Repassados": antes somava qualquer lançamento do mês, mesmo com o aluguel ainda pendente ou atrasado — inflando o valor do repasse. Agora só entram os aluguéis efetivamente recebidos; se algum imóvel do locador ainda não recebeu, ele fica de fora e aparece uma nota avisando quantos foram excluídos por esse motivo (em vez de simplesmente sumir sem explicação).'
+    ]},
     { data: '13/ago/2026', itens: [
       'Novo módulo: "🗂️ Tarefas & Rascunhos" — antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação antes de virar algo oficial no sistema. Campos: Título, Tipo (Atendimento Jurídico / Negociação de Locação / Outro), Nome (ou Locador+Locatário separados, pra cobrir tanto negociação completa quanto locatário ainda procurando imóvel), Telefone, E-mail, Endereço, Valor estimado, Notas (texto livre, aceita colar transcrição de ligação), Data de follow-up.',
       'Conversão com 1 clique: "Converter em Processo" abre o cadastro de processo já preenchido; "Converter em Contrato de Locação" abre o novo contrato já com Locador/Locatário/Endereço/Notas preenchidos (telefone e e-mail vão pro campo certo quando só um dos lados está preenchido). O rascunho muda sozinho pra "Convertido" (verde).',
@@ -13667,12 +13703,10 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado). Cada item também tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe.</div>'
       +MH+'Filtros clicáveis</div>'
       +MP+'Os cards e chips no topo (Em caixa aguardando repasse, Já repassado, Recebidos, Atrasados...) são clicáveis e filtram a lista na hora.</div>'
-      +MH+'Relatório do Locador</div>'
-      +MP+'Reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono.</div>'
-      +MH+'Relatório Mensal de Repasses</div>'
-      +MP+'Diferente do anterior: mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, o subtotal só dos imóveis, e o total geral do mês (já com despesas/créditos avulsos, se houver).</div>'
+      +MH+'Relatórios (menu agrupado)</div>'
+      +MP+'Botão único "📊 Relatórios" na barra de ferramentas, com duas opções: <strong>"Imóveis do Locador"</strong> reúne todos os imóveis de um mesmo locador (inclusive onde ele é só coproprietário) num relatório só, com vigência, valores e status — ideal para quem administra vários imóveis do mesmo dono. <strong>"Aluguéis Recebidos a serem Repassados"</strong> mostra o extrato financeiro de um mês específico — quanto de cada imóvel desse locador está sendo repassado naquele mês (já com taxa e encargos descontados/somados, respeitando o percentual se for coproprietário), status de cada repasse, o subtotal só dos imóveis, e o total geral do mês (já com despesas/créditos avulsos, se houver). Só entram os aluguéis <strong>efetivamente recebidos</strong> do inquilino — se algum imóvel ainda está com o aluguel pendente ou atrasado, fica de fora do cálculo (não dá pra repassar o que ainda não foi recebido), e aparece um aviso dizendo quantos imóveis foram excluídos por esse motivo.</div>'
       +MH+'Despesas/Créditos do Locador</div>'
-      +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, a data e o valor — pode ser à vista (um valor só) ou parcelado, com cada parcela podendo ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) e uma competência mensal própria. Enquanto estiver "Pendente", o valor aparece automaticamente no Relatório Mensal de Repasses daquele locador (cada parcela no seu mês certo), já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
+      +MP+'Para cobranças que não são de um imóvel específico — ex.: honorários de uma ação judicial que o locador te pediu pra fazer, a ser descontado do próximo repasse. Cadastre o locador, a descrição, a data e o valor — pode ser à vista (um valor só) ou parcelado, com cada parcela podendo ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) e uma competência mensal própria. Enquanto estiver "Pendente", o valor aparece automaticamente no relatório "Aluguéis Recebidos a serem Repassados" daquele locador (cada parcela no seu mês certo), já somado/descontado no total. Marque como "Quitado" quando resolvido.</div>'
       +MH+'Avisos ao locatário/locador</div>'
       +MP+'9 modelos prontos: aluguel em atraso, contrato vencido (com ou sem reajuste), troca de titularidade de contas de consumo (SABESP/ENEL/COMGÁS), denúncia vazia, reajuste anual (calcula o novo valor sozinho) e aviso ao locador sobre atraso. Todos com o texto editável antes de enviar.</div>'
       +MH+'Alertas de vigência</div>'
