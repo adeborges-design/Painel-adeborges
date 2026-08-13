@@ -11742,6 +11742,26 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('relLocadorCard').innerHTML='';
     document.getElementById('modalRelLocador').classList.add('open');
   };
+  // Busca os dados bancários certos do locador — direto do contrato quando ele é o locador
+  // principal, ou do cadastro de coproprietário (que tem conta própria) quando é só coproprietário.
+  // Usa o primeiro imóvel com conta cadastrada; se nenhum tiver, devolve em branco.
+  function relLocadorDadosBancarios(nome,imoveis){
+    for(var i=0;i<imoveis.length;i++){
+      var im=imoveis[i];
+      if(im.viaCoprop){
+        var cop=(window.locCoprop||[]).find(function(o){return o.Nome&&o.Nome.trim()===nome&&o.Contrato===im.contrato.contrato;});
+        if(cop&&(cop.Banco||cop.Agencia||cop.Conta||cop.Pix)){
+          return {titular:nome,banco:cop.Banco||'',agencia:cop.Agencia||'',conta:cop.Conta||'',pix:cop.Pix||''};
+        }
+      }else{
+        var c=im.contrato;
+        if(c.bancoLocador||c.agenciaLocador||c.contaLocador||c.pixLocador){
+          return {titular:c.locador||nome,banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''};
+        }
+      }
+    }
+    return {titular:nome,banco:'',agencia:'',conta:'',pix:''};
+  }
   function relLocadorImoveis(nome){
     var imoveis=[];
     DATA.contratos.forEach(function(c){
@@ -12104,6 +12124,8 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div></div>' : '';
     var subtotalHtml=(linhas.length&&avulsos.length)?
       '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
+    var contaLocadorHtml=linhas.length?
+      '<div class="parc-section"><div class="parc-section-label">Dados Bancários do Locador (Repasse)</div><div class="parc-box">'+reciboLocContaHtml(relLocadorDadosBancarios(nome,imoveis))+'</div></div>' : '';
     card.innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">Aluguéis Recebidos a serem Repassados</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
@@ -12114,6 +12136,7 @@ window.cpRenderFixas=cpRenderFixas;
       +subtotalHtml
       +avulsosHtml
       +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos avulsos':'')+'</div></div></div>'
+      +contaLocadorHtml
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
   };
@@ -12155,6 +12178,17 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='\n';
     }
     txt+='*TOTAL GERAL DO MÊS:* '+BRL(totalGeral)+'\n\n';
+    if(linhas.length){
+      var contaTxtLoc=relLocadorDadosBancarios(nome,imoveis);
+      txt+='*DADOS BANCÁRIOS DO LOCADOR (REPASSE):*\n';
+      txt+='Titular: '+(contaTxtLoc.titular||'')+'\n';
+      if(contaTxtLoc.banco)txt+='Banco: '+contaTxtLoc.banco+'\n';
+      if(contaTxtLoc.agencia)txt+='Agência: '+contaTxtLoc.agencia+'\n';
+      if(contaTxtLoc.conta)txt+='Conta: '+contaTxtLoc.conta+'\n';
+      if(contaTxtLoc.pix)txt+='Chave Pix: '+contaTxtLoc.pix+'\n';
+      if(!contaTxtLoc.banco&&!contaTxtLoc.agencia&&!contaTxtLoc.conta&&!contaTxtLoc.pix)txt+='Conta não cadastrada.\n';
+      txt+='\n';
+    }
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
@@ -13339,6 +13373,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (5)', itens: [
+      'Relatório "Aluguéis Recebidos a serem Repassados" agora mostra os dados bancários do locador (banco, agência, conta, Pix) no final — busca do contrato quando ele é o locador principal, ou do cadastro de coproprietário (conta própria) quando é só coproprietário. Testado e confirmado.'
+    ]},
     { data: '13/ago/2026 (4)', itens: [
       'Corrigido "Aluguéis Recebidos a serem Repassados": o IPTU e o Desconto entravam corretamente na soma do total, mas não apareciam como linha na lista (por serem tratados separado dos outros encargos no código). Agora aparecem certinho, junto com os demais itens. Testado com R$450 de IPTU lançado — a linha aparece e o total bate (R$1.500 − R$90 + R$450 = R$1.860,00).'
     ]},
