@@ -3810,6 +3810,223 @@ function atualizarBadgeNotas(){
     if(pendentes>0){b.textContent=pendentes;b.style.display='inline-flex';}else{b.style.display='none';}
   });
 }
+
+// ---------- TAREFAS & RASCUNHOS (antessala antes de virar Processo ou Contrato) ----------
+window.rascunhosCache = [];
+window.carregarRascunhos = async function(){
+  try{
+    var cfg = getConfig();
+    if(!cfg||!cfg.apiKey||!cfg.sheetId){window.rascunhosCache=[];return;}
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('TAREFAS_RASCUNHOS!A1:O500')+'?key='+cfg.apiKey);
+    if(!r.ok){window.rascunhosCache=[];return;}
+    var d = await r.json();
+    var rows = d.values || [];
+    if(rows.length<2){window.rascunhosCache=[];return;}
+    var hd = rows[0];
+    window.rascunhosCache = rows.slice(1).filter(function(x){return x[0];}).map(function(row){
+      var o={}; hd.forEach(function(h,i){o[h]=row[i]!==undefined?row[i]:'';}); return o;
+    });
+  }catch(e){window.rascunhosCache=[];}
+  atualizarBadgeRascunhos();
+};
+function rascParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+function rascHojeMs(){return new Date().setHours(0,0,0,0);}
+// Diz se um rascunho está com o follow-up atrasado (data marcada já passou e ainda está "Em andamento")
+function rascFollowUpAtrasado(r){
+  if(r['Status']!=='Em andamento')return false;
+  var ms=rascParseDataBR(r['Data Follow-up']);
+  return ms!=null&&ms<rascHojeMs();
+}
+function atualizarBadgeRascunhos(){
+  var lista=window.rascunhosCache||[];
+  var andamento=lista.filter(function(r){return r['Status']==='Em andamento';});
+  var atrasados=andamento.filter(rascFollowUpAtrasado);
+  document.querySelectorAll('.rascunhos-badge').forEach(function(b){
+    if(andamento.length>0){b.textContent=andamento.length;b.style.display='inline-flex';}else{b.style.display='none';}
+  });
+  var elA=document.getElementById('hc-rasc-andamento'); if(elA)elA.textContent=andamento.length;
+  var elB=document.getElementById('hc-rasc-atrasado'); if(elB)elB.textContent=atrasados.length;
+  var alertHost=document.getElementById('homeAlertRascunhos');
+  if(alertHost){
+    if(!atrasados.length){alertHost.innerHTML='';}
+    else{
+      alertHost.innerHTML='<div class="ha-head" onclick="toggleAlertBox(\'homeAlertRascunhos\')"><span class="ha-summary" style="color:var(--red)">🗂️ '+atrasados.length+' follow-up(s) atrasado(s)</span><span class="ha-chevron">▸</span></div>'
+        +'<div class="ha-body">'+atrasados.map(function(r){return '<div class="ha-item"><b>'+escHtml(r['Titulo']||'-')+'</b> — follow-up era '+escHtml(r['Data Follow-up']||'-')+'</div>';}).join('')
+        +'<div class="ha-cta" onclick="rascunhosAbrir()">→ abrir Tarefas & Rascunhos</div></div>';
+    }
+  }
+}
+window.rascunhosAbrir=function(){
+  document.getElementById('rascunhoFormWrap').style.display='none';
+  rascunhosRender();
+  document.getElementById('modalRascunhos').classList.add('open');
+};
+window.rascunhoAbrirForm=function(id){
+  var r=id?(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);}):null;
+  var wrap=document.getElementById('rascunhoFormWrap');
+  wrap.style.display='block';
+  wrap.innerHTML=
+    '<div style="padding:14px;border:1px solid var(--border2);border-radius:10px;background:var(--surface2)">'
+    +'<input type="hidden" id="rasc-id" value="'+(r?escHtml(r['ID']):'')+'">'
+    +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+    +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(r?escHtml(r['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
+    +'<div class="loc-cfield"><label>Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
+    +['Atendimento Jurídico','Negociação de Locação','Outro'].map(function(t){return '<option'+(r&&r['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
+    +'</select></div>'
+    +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="rasc-status">'
+    +['Em andamento','Convertido','Descartado'].map(function(s){return '<option'+(r&&r['Status']===s?' selected':(!r&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
+    +'</select></div>'
+    +'<div class="loc-cfield full" id="rasc-campo-nome"><label>Nome</label><input class="loc-cinput" id="rasc-nome" value="'+(r?escHtml(r['Nome']):'')+'" placeholder="Nome do cliente/contato"></div>'
+    +'<div class="loc-cfield" id="rasc-campo-locador"><label>Locador (se já tiver)</label><input class="loc-cinput" id="rasc-locador" value="'+(r?escHtml(r['Locador']):'')+'" placeholder="Dono do imóvel"></div>'
+    +'<div class="loc-cfield" id="rasc-campo-locatario"><label>Locatário (se já tiver)</label><input class="loc-cinput" id="rasc-locatario" value="'+(r?escHtml(r['Locatario']):'')+'" placeholder="Quem vai alugar"></div>'
+    +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="rasc-telefone" value="'+(r?escHtml(r['Telefone']):'')+'"></div>'
+    +'<div class="loc-cfield"><label>E-mail</label><input class="loc-cinput" id="rasc-email" value="'+(r?escHtml(r['Email']):'')+'"></div>'
+    +'<div class="loc-cfield full"><label>Endereço</label><input class="loc-cinput" id="rasc-endereco" value="'+(r?escHtml(r['Endereco']):'')+'"></div>'
+    +'<div class="loc-cfield"><label>Valor estimado (R$)</label><input class="loc-cinput" id="rasc-valor" type="text" inputmode="decimal" value="'+(r&&r['Valor']?accNum(r['Valor']):'')+'"></div>'
+    +'<div class="loc-cfield"><label>Follow-up em</label><input class="loc-cinput" id="rasc-followup" type="date" value="'+(r?accIsoFromBR(r['Data Follow-up']):'')+'"></div>'
+    +'<div class="loc-cfield full"><label>Notas — rascunho livre, cole o que precisar (transcrição de ligação, condições combinadas...)</label><textarea class="loc-cinput" id="rasc-notas" rows="6" style="resize:vertical">'+(r?escHtml(r['Notas']):'')+'</textarea></div>'
+    +'<div class="loc-cfield full" style="display:flex;gap:8px">'
+    +'<button type="button" class="loc-btn primary" onclick="rascunhoSalvar()" style="flex:1">'+(r?'Salvar alterações':'Criar rascunho')+'</button>'
+    +'<button type="button" class="loc-btn" onclick="document.getElementById(\'rascunhoFormWrap\').style.display=\'none\'">Cancelar</button>'
+    +'</div>'
+    +'</div></div>';
+  rascToggleCampos();
+};
+window.rascToggleCampos=function(){
+  var tipo=document.getElementById('rasc-tipo').value;
+  var ehLocacao=tipo==='Negociação de Locação';
+  document.getElementById('rasc-campo-nome').style.display=ehLocacao?'none':'';
+  document.getElementById('rasc-campo-locador').style.display=ehLocacao?'':'none';
+  document.getElementById('rasc-campo-locatario').style.display=ehLocacao?'':'none';
+};
+window.rascunhoSalvar=async function(){
+  var id=document.getElementById('rasc-id').value;
+  var titulo=document.getElementById('rasc-titulo').value.trim();
+  if(!titulo){alert('Preencha o título.');return;}
+  var agora=new Date().toLocaleDateString('pt-BR');
+  var campos={
+    'Tipo':document.getElementById('rasc-tipo').value,
+    'Titulo':titulo,
+    'Nome':document.getElementById('rasc-nome').value.trim(),
+    'Locador':document.getElementById('rasc-locador').value.trim(),
+    'Locatario':document.getElementById('rasc-locatario').value.trim(),
+    'Telefone':document.getElementById('rasc-telefone').value.trim(),
+    'Email':document.getElementById('rasc-email').value.trim(),
+    'Endereco':document.getElementById('rasc-endereco').value.trim(),
+    'Valor':accNum(document.getElementById('rasc-valor').value),
+    'Notas':document.getElementById('rasc-notas').value,
+    'Status':document.getElementById('rasc-status').value,
+    'Data Follow-up':accDtBRfromInput(document.getElementById('rasc-followup').value),
+    'Data Atualizacao':agora
+  };
+  if(id){
+    var existente=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+    if(existente)Object.assign(existente,campos);
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:campos})}).catch(function(){});
+  }else{
+    campos['Data Criacao']=agora;
+    var temp=Object.assign({ID:'tmp'+Date.now()},campos);
+    window.rascunhosCache.unshift(temp);
+    fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_rascunhos',campos:campos})})
+      .then(function(r){return r.json();}).then(function(d){if(d&&d.id)temp.ID=String(d.id);}).catch(function(){});
+  }
+  document.getElementById('rascunhoFormWrap').style.display='none';
+  rascunhosRender();
+  atualizarBadgeRascunhos();
+};
+window.rascunhoExcluir=function(id){
+  if(!confirm('Excluir este rascunho?'))return;
+  window.rascunhosCache=(window.rascunhosCache||[]).filter(function(x){return String(x['ID'])!==String(id);});
+  rascunhosRender();
+  atualizarBadgeRascunhos();
+  fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_rascunhos',id:id})}).catch(function(){});
+};
+window.rascunhoMudarStatus=function(id,status){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(r)r['Status']=status;
+  rascunhosRender();
+  atualizarBadgeRascunhos();
+  fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:{'Status':status}})}).catch(function(){});
+};
+function rascunhosRender(){
+  var host=document.getElementById('rascunhosLista');
+  var lista=(window.rascunhosCache||[]).slice().sort(function(a,b){
+    // Em andamento primeiro (atrasados no topo), depois convertidos/descartados, mais recentes primeiro em cada grupo
+    var pa=a['Status']==='Em andamento'?0:1, pb=b['Status']==='Em andamento'?0:1;
+    if(pa!==pb)return pa-pb;
+    var atA=rascFollowUpAtrasado(a)?0:1, atB=rascFollowUpAtrasado(b)?0:1;
+    if(atA!==atB)return atA-atB;
+    return String(b['ID']).localeCompare(String(a['ID']));
+  });
+  if(!lista.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Nenhum rascunho ainda.</div>';return;}
+  host.innerHTML=lista.map(function(r){
+    var atrasado=rascFollowUpAtrasado(r);
+    var status=r['Status'];
+    var classe=status==='Convertido'?'st-pago':status==='Descartado'?'':atrasado?'st-atras':'st-pend';
+    var corBorda=status==='Convertido'?'var(--green)':status==='Descartado'?'var(--muted)':atrasado?'var(--red)':'var(--orange)';
+    var quemNesse=r['Tipo']==='Negociação de Locação'?[r['Locador']?'Locador: '+r['Locador']:'',r['Locatario']?'Locatário: '+r['Locatario']:''].filter(Boolean).join(' · '):(r['Nome']||'');
+    var podeConverter=status!=='Convertido'&&(r['Tipo']==='Atendimento Jurídico'||r['Tipo']==='Negociação de Locação');
+    return '<div style="border-left:3px solid '+corBorda+';background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
+      +'<div style="font-weight:700;font-size:13.5px">'+escHtml(r['Titulo']||'-')+'</div>'
+      +'<span class="loc-status-badge '+classe+'" style="font-size:10px">'+status+(atrasado?' ⚠️':'')+'</span>'
+      +'</div>'
+      +(quemNesse?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+escHtml(quemNesse)+'</div>':'')
+      +(r['Telefone']||r['Email']?'<div style="font-size:11.5px;color:var(--muted)">'+[escHtml(r['Telefone']||''),escHtml(r['Email']||'')].filter(Boolean).join(' · ')+'</div>':'')
+      +(r['Data Follow-up']?'<div style="font-size:11.5px;color:'+(atrasado?'var(--red)':'var(--muted)')+';margin-top:2px">Follow-up: '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</div>':'')
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
+      +'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="rascunhoAbrirForm(\''+escHtml(r['ID'])+'\')">✎ Editar</button>'
+      +(r['Tipo']==='Atendimento Jurídico'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')">→ Converter em Processo</button>':'')
+      +(r['Tipo']==='Negociação de Locação'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterLocacao(\''+escHtml(r['ID'])+'\')">→ Converter em Contrato</button>':'')
+      +(status==='Em andamento'?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Descartado\')">Descartar</button>':'')
+      +'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--red);border-color:var(--red);margin-left:auto" onclick="rascunhoExcluir(\''+escHtml(r['ID'])+'\')">🗑️</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+window.rascunhoConverterProcesso=function(id){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(!r)return;
+  abrirCadastro();
+  setTimeout(function(){
+    if(r['Nome'])document.getElementById('cad-nome').value=r['Nome'];
+    if(r['Telefone'])document.getElementById('cad-telefone').value=r['Telefone'];
+    if(r['Email'])document.getElementById('cad-email').value=r['Email'];
+    if(r['Endereco'])document.getElementById('cad-endereco').value=r['Endereco'];
+    if(r['Notas']){
+      alert('Rascunho carregado! Suas anotações não couberam em nenhum campo automático — copie o trecho relevante das notas abaixo pro campo que fizer sentido (objeto da ação, observações etc.):\n\n'+r['Notas']);
+    }
+  },200);
+  rascunhoMudarStatus(id,'Convertido');
+};
+window.rascunhoConverterLocacao=function(id){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(!r)return;
+  window.openAlugueisHome();
+  setTimeout(function(){
+    window.locNovoContrato();
+    setTimeout(function(){
+      if(r['Locador'])document.getElementById('lc-locador').value=r['Locador'];
+      if(r['Locatario'])document.getElementById('lc-locatario').value=r['Locatario'];
+      if(r['Endereco'])document.getElementById('lc-end').value=r['Endereco'];
+      if(r['Notas'])document.getElementById('lc-obs').value=r['Notas'];
+      // Telefone/e-mail só têm um campo no rascunho — se der pra saber de qual parte é
+      // (só um dos dois lados preenchido), preenche o contato certo; se tiver os dois lados,
+      // deixa em branco pra você distribuir manualmente (não dá pra saber de quem é).
+      var soLocador=r['Locador']&&!r['Locatario'];
+      var soLocatario=r['Locatario']&&!r['Locador'];
+      if(soLocador){
+        if(r['Telefone']&&document.getElementById('lc-tel-locador-1'))document.getElementById('lc-tel-locador-1').value=r['Telefone'];
+        if(r['Email']&&document.getElementById('lc-email-locador-1'))document.getElementById('lc-email-locador-1').value=r['Email'];
+      }else if(soLocatario){
+        if(r['Telefone']&&document.getElementById('lc-tel-locatario-1'))document.getElementById('lc-tel-locatario-1').value=r['Telefone'];
+        if(r['Email']&&document.getElementById('lc-email-locatario-1'))document.getElementById('lc-email-locatario-1').value=r['Email'];
+      }
+    },200);
+  },200);
+  rascunhoMudarStatus(id,'Convertido');
+};
+
 window.notasAbrir=function(){
   document.getElementById('modalNotas').classList.add('open');
   document.getElementById('notaTexto').value='';
@@ -3897,6 +4114,7 @@ function saveConfig() {
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
   try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
+  try{if(typeof carregarRascunhos==='function')carregarRascunhos();}catch(e){}
   try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
@@ -8277,6 +8495,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
     try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
+    try{if(typeof carregarRascunhos==='function')carregarRascunhos();}catch(e){}
     try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
   }
 });
@@ -10109,6 +10328,22 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL TAREFAS & RASCUNHOS (antessala antes de virar Processo ou Contrato de Locação) -->
+<div class="modal-repasse-overlay" id="modalRascunhos">
+  <div class="repasse-wrap" style="max-width:640px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">🗂️ Tarefas & Rascunhos</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRascunhos').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:16px 20px 0">
+      <div class="loc-note" style="margin-bottom:12px">Anote aqui um atendimento em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — quando fechar, converta direto em Processo ou Contrato, sem digitar tudo de novo.</div>
+      <button class="loc-btn primary" onclick="rascunhoAbrirForm()" style="width:100%;margin-bottom:14px">+ Novo Rascunho</button>
+      <div id="rascunhoFormWrap" style="display:none;margin-bottom:16px"></div>
+    </div>
+    <div id="rascunhosLista" style="padding:0 20px 20px;max-height:50vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- MODAL NOTAS RÁPIDAS (estilo Keep Note, para anotar lembretes antes de lançar no sistema) -->
 <div class="modal-repasse-overlay" id="modalNotas">
   <div class="repasse-wrap" style="max-width:520px">
@@ -10144,6 +10379,7 @@ window.cpRenderFixas=cpRenderFixas;
         <option value="entregas">📦 Entregas</option>
         <option value="acordos">🤝 Acordos com a Parte Contrária</option>
         <option value="locacoes">🏘️ Locações</option>
+        <option value="rascunhos">🗂️ Tarefas &amp; Rascunhos</option>
       </select>
     </div>
     <div id="manualConteudo" style="padding:16px 20px 24px;max-height:65vh;overflow-y:auto"></div>
@@ -12788,6 +13024,10 @@ window.cpRenderFixas=cpRenderFixas;
           Novo processo
         </button>
         <div class="home-user-divider"></div>
+        <button class="home-user-item" onclick="rascunhosAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
+          🗂️ &nbsp;Tarefas &amp; Rascunhos
+          <span class="rascunhos-badge" style="display:none;margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span>
+        </button>
         <button class="home-user-item" onclick="notasAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
           📝 &nbsp;Notas Rápidas
           <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span>
@@ -12886,6 +13126,19 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="home-alertas" id="homeAlertas"></div>
         <div class="home-alertas" id="homeAlertCartoes"></div>
+      </div>
+      <div class="home-module">
+        <div class="home-card" onclick="rascunhosAbrir()">
+          <div class="arrow">→</div>
+          <div class="ic">🗂️</div>
+          <div class="ctitle">Tarefas & Rascunhos</div>
+          <div class="cdesc">Atendimentos e negociações em andamento</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();rascunhosAbrir()" title="Rascunhos em andamento"><div class="v" id="hc-rasc-andamento" style="color:var(--orange)">—</div><div class="l">em andamento</div><span class="cnum-spark-wrap" id="spark-rasc-andamento"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();rascunhosAbrir()" title="Follow-ups atrasados"><div class="v" id="hc-rasc-atrasado" style="color:var(--red)">—</div><div class="l">follow-up atrasado</div><span class="cnum-spark-wrap" id="spark-rasc-atrasado"></span></div>
+          </div>
+        </div>
+        <div class="home-alertas" id="homeAlertRascunhos"></div>
       </div>
     </div>
     <div class="home-config" id="homeConfigMsg"></div>
@@ -13025,6 +13278,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
         '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="rascunhosAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">🗂️ &nbsp;Tarefas &amp; Rascunhos <span class="rascunhos-badge" style="display:none;margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<button class="home-user-item" onclick="notasAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">📝 &nbsp;Notas Rápidas <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<button class="home-user-item" onclick="abrirManual();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual do Sistema</button>'+
         '<button class="home-user-item" onclick="document.getElementById(\'modalConfig\').classList.add(\'open\');this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Configurações</button>'+
@@ -13043,6 +13297,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026', itens: [
+      'Novo módulo: "🗂️ Tarefas & Rascunhos" — antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação antes de virar algo oficial no sistema. Campos: Título, Tipo (Atendimento Jurídico / Negociação de Locação / Outro), Nome (ou Locador+Locatário separados, pra cobrir tanto negociação completa quanto locatário ainda procurando imóvel), Telefone, E-mail, Endereço, Valor estimado, Notas (texto livre, aceita colar transcrição de ligação), Data de follow-up.',
+      'Conversão com 1 clique: "Converter em Processo" abre o cadastro de processo já preenchido; "Converter em Contrato de Locação" abre o novo contrato já com Locador/Locatário/Endereço/Notas preenchidos (telefone e e-mail vão pro campo certo quando só um dos lados está preenchido). O rascunho muda sozinho pra "Convertido" (verde).',
+      'Follow-up automático: quando a data marcada passa e o rascunho ainda está "Em andamento", vira "Atrasado" sozinho (vermelho), sem precisar de ação manual — mesma regra de automação já usada no resto do sistema.',
+      'Acesso pelo menu do usuário e por um card novo na tela inicial, com alerta de follow-ups atrasados (recolhido por padrão, clicável).',
+      'Testado: criação, follow-up atrasado detectado automaticamente, conversão pra Processo (todos os campos certos), conversão pra Locação com os dois lados preenchidos, e conversão pra Locação só com locatário (telefone/e-mail foram pro campo certo, sem ir pro locador por engano).'
+    ]},
     { data: '09/ago/2026 (13)', itens: [
       'Acordos: implantada a mesma automação de status que já existia em Locações. Status Recebimento vira "Atrasado" sozinho quando a data prevista passa e ainda está Pendente (sem precisar de ação manual). Status Repasse acompanha o Status Recebimento automaticamente (Pendente/Atrasado) enquanto não for Recebido — fica travado (🔒) até lá. Depois de Recebido, Status Repasse fica editável e também detecta "Atrasado" sozinho quando passa do prazo configurado no contrato sem ter sido repassado. Valor Recebido e Repasse Cliente agora ficam coloridos conforme o status (verde/laranja/vermelho), igual à cor do status.',
       'Regra permanente registrada: cores (verde=recebido/pago/repassado, laranja=pendente, vermelho=atrasado) e detecção automática de atraso por data (sem precisar de ação manual) devem seguir esse mesmo padrão em todos os módulos, sempre priorizando a automação.',
@@ -13349,7 +13610,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Notas Rápidas</div>'
       +MP+'Um bloco de notas simples (estilo Keep Note) pra anotar lembretes do que ainda precisa ser lançado no sistema — não faz nenhum lançamento sozinho, é só uma lista de tarefas. Acessível pelo menu do usuário, com um contador vermelho mostrando quantas anotações ainda estão pendentes. Marque como feito (risca o texto) ou exclua quando não precisar mais.</div>'
       +MH+'Menu do usuário</div>'
-      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, anotar uma Nota Rápida, acessar este Manual ou as Configurações.</div>',
+      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, abrir Tarefas & Rascunhos, anotar uma Nota Rápida, acessar este Manual ou as Configurações.</div>',
 
     processos: MH+'Cadastro e edição</div>'
       +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
@@ -13417,7 +13678,16 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Alertas de vigência</div>'
       +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
       +MH+'Tabela de IR</div>'
-      +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>'
+      +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>',
+
+    rascunhos: MH+'Para que serve</div>'
+      +MP+'Uma antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — assim você rascunha, junta os dados aos poucos, e quando fecha converte direto em Processo ou Contrato de Locação, sem digitar tudo de novo.</div>'
+      +MH+'Tipos de rascunho</div>'
+      +MP+'<strong>Atendimento Jurídico</strong> (campo Nome do cliente) — converte em Processo. <strong>Negociação de Locação</strong> (campos Locador e Locatário separados, ambos opcionais — preenche o que já tiver) — converte em Contrato de Locação. Cobre tanto uma negociação completa (já tem os dois lados) quanto um locatário ainda procurando imóvel (só preenche o Locatário). <strong>Outro</strong> — fica só como tarefa solta, sem conversão automática.</div>'
+      +MH+'Conversão</div>'
+      +MP+'O botão "Converter" abre o formulário de destino já preenchido com os dados do rascunho (nome/locador/locatário, telefone, e-mail, endereço). Quando é locação e só um dos lados (locador ou locatário) está preenchido, o telefone e e-mail vão pro campo certo daquela parte automaticamente; se os dois lados estiverem preenchidos, esses dois campos ficam em branco pra você distribuir manualmente (o sistema não tem como saber de qual parte é o contato). As Notas vão direto pro campo Observações do contrato; num Processo, aparecem numa mensagem pra você copiar pro campo que fizer mais sentido. O rascunho muda sozinho pra "Convertido" (verde).</div>'
+      +MH+'Follow-up automático</div>'
+      +MP+'Marque uma data de follow-up (quando precisa voltar a olhar aquilo) — se a data passar e o rascunho ainda estiver "Em andamento", vira "Atrasado" sozinho (vermelho), sem precisar de nenhuma ação manual. Aparece um alerta na tela inicial, no card "Tarefas & Rascunhos".</div>'
   };
   window.abrirManual=function(){
     document.getElementById('modalManual').classList.add('open');
