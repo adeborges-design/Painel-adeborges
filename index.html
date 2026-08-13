@@ -9640,6 +9640,14 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locatário</label><input class="loc-cinput" id="lc-cpf-locatario" placeholder="000.000.000-00"></div>
+        <div class="loc-cfield"><label>Telefone do locador (1)</label><input class="loc-cinput" id="lc-tel-locador-1" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield"><label>Telefone do locador (2)</label><input class="loc-cinput" id="lc-tel-locador-2" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield"><label>E-mail do locador (1)</label><input class="loc-cinput" id="lc-email-locador-1" placeholder="email@exemplo.com"></div>
+        <div class="loc-cfield"><label>E-mail do locador (2)</label><input class="loc-cinput" id="lc-email-locador-2" placeholder="email@exemplo.com"></div>
+        <div class="loc-cfield"><label>Telefone do locatário (1)</label><input class="loc-cinput" id="lc-tel-locatario-1" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield"><label>Telefone do locatário (2)</label><input class="loc-cinput" id="lc-tel-locatario-2" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield"><label>E-mail do locatário (1)</label><input class="loc-cinput" id="lc-email-locatario-1" placeholder="email@exemplo.com"></div>
+        <div class="loc-cfield"><label>E-mail do locatário (2)</label><input class="loc-cinput" id="lc-email-locatario-2" placeholder="email@exemplo.com"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários para pagamento e repasse</div>
         <div class="loc-cfield full"><label>O locatário paga o aluguel em qual conta?</label>
           <select class="loc-cinput" id="lc-conta-recebimento">
@@ -9651,6 +9659,59 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Agência do locador</label><input class="loc-cinput" id="lc-agencia-locador" placeholder="0000"></div>
         <div class="loc-cfield half"><label>Conta do locador</label><input class="loc-cinput" id="lc-conta-locador" placeholder="00000-0"></div>
         <div class="loc-cfield half"><label>Chave Pix do locador</label><input class="loc-cinput" id="lc-pix-locador" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
+
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Garantia locatícia</div>
+        <div class="loc-cfield full"><label>Tipo de garantia</label>
+          <select class="loc-cinput" id="lc-tipo-garantia" onchange="locToggleGarantia()">
+            <option value="">Não definida</option>
+            <option value="Seguro Fiança">Seguro Fiança</option>
+            <option value="Título de Capitalização">Título de Capitalização</option>
+            <option value="Caução em Dinheiro">Caução em Dinheiro</option>
+            <option value="Caução em Imóvel">Caução em Imóvel</option>
+            <option value="Carta Fiança Bancária">Carta Fiança Bancária</option>
+            <option value="Fiadores">Fiadores</option>
+          </select>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-SeguroFianca" style="display:none;padding:0;border:none">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield half"><label>Seguradora</label><input class="loc-cinput" id="lc-gar-seguradora" placeholder="Nome da seguradora"></div>
+            <div class="loc-cfield half"><label>Nº da apólice</label><input class="loc-cinput" id="lc-gar-apolice"></div>
+          </div>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield half"><label>Empresa emissora do título</label><input class="loc-cinput" id="lc-gar-empresa-titulo"></div>
+            <div class="loc-cfield half"><label>Nº da proposta</label><input class="loc-cinput" id="lc-gar-nr-proposta"></div>
+          </div>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-CaucaoDinheiro" style="display:none;padding:0;border:none">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield half"><label>Valor da caução (R$)</label><input class="loc-cinput" id="lc-gar-valor-caucao" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Valor fica com</label><select class="loc-cinput" id="lc-gar-caucao-responsavel"><option value="">Selecionar</option><option value="Locador">Locador</option><option value="Administradora">Administradora (escritório)</option></select></div>
+          </div>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-CaucaoImovel" style="display:none;padding:0;border:none">
+          <div class="loc-cfield full"><label>Descrição do imóvel dado em garantia (endereço/matrícula)</label><input class="loc-cinput" id="lc-gar-imovel-descricao"></div>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-CartaFiancaBancaria" style="display:none;padding:0;border:none">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="lc-gar-banco" placeholder="Ex.: Itaú"></div>
+            <div class="loc-cfield half"><label>Nº da carta fiança</label><input class="loc-cinput" id="lc-gar-nr-carta"></div>
+          </div>
+        </div>
+        <div class="loc-cfield full" id="lc-garantia-Fiadores" style="display:none;padding:0;border:none">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Fiador 1</div>
+            <div class="loc-cfield"><label>Nome</label><input class="loc-cinput" id="lc-fiador1-nome"></div>
+            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador1-telefone"></div>
+            <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-fiador1-email"></div>
+            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Fiador 2 (se houver)</div>
+            <div class="loc-cfield"><label>Nome</label><input class="loc-cinput" id="lc-fiador2-nome"></div>
+            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador2-telefone"></div>
+            <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-fiador2-email"></div>
+          </div>
+        </div>
+
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
         <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date"></div>
         <div class="loc-cfield"><label>Vigência — fim</label><input class="loc-cinput" id="lc-vig-fim" type="date"></div>
@@ -10441,7 +10502,12 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste')};
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+          telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
+          telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
+          tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
+          fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email')
+        };
       });
       var ml=hidx(rl[0]);
       var lancamentos=rl.slice(1).filter(function(x){return x[0];}).map(function(row){
@@ -11435,6 +11501,35 @@ window.cpRenderFixas=cpRenderFixas;
     });
     return imoveis;
   }
+  // Monta uma linha-resumo da garantia locatícia do contrato, com os campos específicos
+  // de cada tipo (seguro fiança, título de capitalização, caução, carta fiança, fiadores).
+  // Usada tanto no Relatório de Imóveis quanto no recibo/informe, por exigência do usuário
+  // de que "as informações das garantias locatícias devem fazer parte de relatórios sobre os imóveis".
+  function garantiaResumo(c){
+    var t=c.tipoGarantia;
+    if(!t)return '';
+    var partes=[];
+    if(t==='Seguro Fiança'){
+      if(c.garSeguradora)partes.push('Seguradora: '+c.garSeguradora);
+      if(c.garApolice)partes.push('Apólice nº '+c.garApolice);
+    }else if(t==='Título de Capitalização'){
+      if(c.garEmpresaTitulo)partes.push('Empresa: '+c.garEmpresaTitulo);
+      if(c.garNrProposta)partes.push('Proposta nº '+c.garNrProposta);
+    }else if(t==='Caução em Dinheiro'){
+      if(c.garValorCaucao)partes.push('Valor: '+BRL(c.garValorCaucao));
+      if(c.garCaucaoResponsavel)partes.push('Fica com: '+c.garCaucaoResponsavel);
+    }else if(t==='Caução em Imóvel'){
+      if(c.garImovelDescricao)partes.push(c.garImovelDescricao);
+    }else if(t==='Carta Fiança Bancária'){
+      if(c.garBanco)partes.push('Banco: '+c.garBanco);
+      if(c.garNrCarta)partes.push('Carta nº '+c.garNrCarta);
+    }else if(t==='Fiadores'){
+      if(c.fiador1Nome)partes.push('Fiador 1: '+c.fiador1Nome+(c.fiador1Telefone?' — '+c.fiador1Telefone:'')+(c.fiador1Email?' — '+c.fiador1Email:''));
+      if(c.fiador2Nome)partes.push('Fiador 2: '+c.fiador2Nome+(c.fiador2Telefone?' — '+c.fiador2Telefone:'')+(c.fiador2Email?' — '+c.fiador2Email:''));
+    }
+    return t+(partes.length?' ('+partes.join('; ')+')':'');
+  }
+  window.garantiaResumo=garantiaResumo;
   window.relLocadorGerar=function(){
     var nome=document.getElementById('relLocadorSelect').value;
     var card=document.getElementById('relLocadorCard');
@@ -11456,6 +11551,7 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div>Locatário: <strong>'+E(c.locatario||'—')+'</strong></div>'
         +'<div>Vigência: <strong>'+vig+'</strong></div>'
         +'<div>Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': <strong>'+BRL((c.aluguel||0)*i.pct/100)+'</strong></div>'
+        +(garantiaResumo(c)?'<div>Garantia locatícia: <strong>'+E(garantiaResumo(c))+'</strong></div>':'')
         +'</div></div>';
     }).join('');
     card.innerHTML=
@@ -11488,6 +11584,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Locatário: '+(c.locatario||'—')+'\n';
       txt+='Vigência: '+vig+'\n';
       txt+='Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': '+BRL(c.aluguel*i.pct/100)+'\n';
+      if(garantiaResumo(c))txt+='Garantia locatícia: '+garantiaResumo(c)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
     txt+='\n*TOTAL (imóveis ativos):* '+BRL(somaAluguel)+'\n\n';
@@ -12059,6 +12156,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
       +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
       +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
+      +(garantiaResumo(c)?'<div class="parc-section"><div class="parc-section-label">Garantia locatícia</div><div class="parc-box">'+E(garantiaResumo(c))+'</div></div>':'')
       +'<div class="parc-section" id="reciboLocValoresSecao"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
       +'<div class="parc-section" id="reciboLocTotalSecao"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
       +vencSection
@@ -12118,7 +12216,9 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
       txt+='*LOCATÁRIO:* '+(c.locatario||'')+' — CPF/CNPJ '+(c.cpfLocatario||'—')+'\n';
-      txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n\n';
+      txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n';
+      if(garantiaResumo(c))txt+='*GARANTIA LOCATÍCIA:* '+garantiaResumo(c)+'\n';
+      txt+='\n';
       if(w.aluguel)txt+='Aluguel: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='Juros: '+fmt(w.juros)+'\n';
@@ -12139,7 +12239,9 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
-      txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n\n';
+      txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n';
+      if(garantiaResumo(c))txt+='*GARANTIA LOCATÍCIA:* '+garantiaResumo(c)+'\n';
+      txt+='\n';
       if(w.aluguel)txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
@@ -12264,10 +12366,32 @@ window.cpRenderFixas=cpRenderFixas;
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs'].forEach(function(id){document.getElementById(id).value='';});
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+     'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
+     'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
+     'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
+    ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
+    try{locToggleGarantia();}catch(e){}
     locRenderContratos();document.getElementById('lc-contrato').focus();
+  };
+  // Mostra só o bloco de campos da garantia locatícia escolhida (mesmo mecanismo de
+  // togglePessoaJuridica no módulo Processos: display none/'' por id, sem CSS extra).
+  window.locToggleGarantia=function(){
+    var tipo=document.getElementById('lc-tipo-garantia').value;
+    var mapa={
+      'Seguro Fiança':'lc-garantia-SeguroFianca',
+      'Título de Capitalização':'lc-garantia-TituloCapitalizacao',
+      'Caução em Dinheiro':'lc-garantia-CaucaoDinheiro',
+      'Caução em Imóvel':'lc-garantia-CaucaoImovel',
+      'Carta Fiança Bancária':'lc-garantia-CartaFiancaBancaria',
+      'Fiadores':'lc-garantia-Fiadores'
+    };
+    Object.keys(mapa).forEach(function(k){
+      var el=document.getElementById(mapa[k]);
+      if(el)el.style.display=(k===tipo)?'':'none';
+    });
   };
   window.locEditarContrato=function(contrato){
     var c=contratosById[contrato];if(!c)return;
@@ -12296,6 +12420,31 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-multa-atraso-pct').value=num(c.multaAtrasoPct)||'';
     document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
     document.getElementById('lc-obs').value=c.obs||'';
+    document.getElementById('lc-tel-locador-1').value=c.telLocador1||'';
+    document.getElementById('lc-tel-locador-2').value=c.telLocador2||'';
+    document.getElementById('lc-email-locador-1').value=c.emailLocador1||'';
+    document.getElementById('lc-email-locador-2').value=c.emailLocador2||'';
+    document.getElementById('lc-tel-locatario-1').value=c.telLocatario1||'';
+    document.getElementById('lc-tel-locatario-2').value=c.telLocatario2||'';
+    document.getElementById('lc-email-locatario-1').value=c.emailLocatario1||'';
+    document.getElementById('lc-email-locatario-2').value=c.emailLocatario2||'';
+    document.getElementById('lc-tipo-garantia').value=c.tipoGarantia||'';
+    document.getElementById('lc-gar-seguradora').value=c.garSeguradora||'';
+    document.getElementById('lc-gar-apolice').value=c.garApolice||'';
+    document.getElementById('lc-gar-empresa-titulo').value=c.garEmpresaTitulo||'';
+    document.getElementById('lc-gar-nr-proposta').value=c.garNrProposta||'';
+    document.getElementById('lc-gar-valor-caucao').value=num(c.garValorCaucao)||'';
+    document.getElementById('lc-gar-caucao-responsavel').value=c.garCaucaoResponsavel||'';
+    document.getElementById('lc-gar-imovel-descricao').value=c.garImovelDescricao||'';
+    document.getElementById('lc-gar-banco').value=c.garBanco||'';
+    document.getElementById('lc-gar-nr-carta').value=c.garNrCarta||'';
+    document.getElementById('lc-fiador1-nome').value=c.fiador1Nome||'';
+    document.getElementById('lc-fiador1-telefone').value=c.fiador1Telefone||'';
+    document.getElementById('lc-fiador1-email').value=c.fiador1Email||'';
+    document.getElementById('lc-fiador2-nome').value=c.fiador2Nome||'';
+    document.getElementById('lc-fiador2-telefone').value=c.fiador2Telefone||'';
+    document.getElementById('lc-fiador2-email').value=c.fiador2Email||'';
+    try{locToggleGarantia();}catch(e){}
     document.getElementById('lc-msg').textContent='';
     try{document.getElementById('locContratosSection').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
   };
@@ -12324,11 +12473,40 @@ window.cpRenderFixas=cpRenderFixas;
       'Observacoes':document.getElementById('lc-obs').value.trim(),
       'Condominio Padrao':num(document.getElementById('lc-condominio').value),
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
-      'Multa Atraso Perc':num(document.getElementById('lc-multa-atraso-pct').value)
+      'Multa Atraso Perc':num(document.getElementById('lc-multa-atraso-pct').value),
+      'Telefone Locador 1':document.getElementById('lc-tel-locador-1').value.trim(),
+      'Telefone Locador 2':document.getElementById('lc-tel-locador-2').value.trim(),
+      'Email Locador 1':document.getElementById('lc-email-locador-1').value.trim(),
+      'Email Locador 2':document.getElementById('lc-email-locador-2').value.trim(),
+      'Telefone Locatario 1':document.getElementById('lc-tel-locatario-1').value.trim(),
+      'Telefone Locatario 2':document.getElementById('lc-tel-locatario-2').value.trim(),
+      'Email Locatario 1':document.getElementById('lc-email-locatario-1').value.trim(),
+      'Email Locatario 2':document.getElementById('lc-email-locatario-2').value.trim(),
+      'Tipo Garantia':document.getElementById('lc-tipo-garantia').value,
+      'Garantia Seguradora':document.getElementById('lc-gar-seguradora').value.trim(),
+      'Garantia Nr Apolice':document.getElementById('lc-gar-apolice').value.trim(),
+      'Garantia Empresa Titulo':document.getElementById('lc-gar-empresa-titulo').value.trim(),
+      'Garantia Nr Proposta':document.getElementById('lc-gar-nr-proposta').value.trim(),
+      'Garantia Valor Caucao':num(document.getElementById('lc-gar-valor-caucao').value),
+      'Garantia Caucao Responsavel':document.getElementById('lc-gar-caucao-responsavel').value,
+      'Garantia Imovel Descricao':document.getElementById('lc-gar-imovel-descricao').value.trim(),
+      'Garantia Banco':document.getElementById('lc-gar-banco').value.trim(),
+      'Garantia Nr Carta Fianca':document.getElementById('lc-gar-nr-carta').value.trim(),
+      'Fiador1 Nome':document.getElementById('lc-fiador1-nome').value.trim(),
+      'Fiador1 Telefone':document.getElementById('lc-fiador1-telefone').value.trim(),
+      'Fiador1 Email':document.getElementById('lc-fiador1-email').value.trim(),
+      'Fiador2 Nome':document.getElementById('lc-fiador2-nome').value.trim(),
+      'Fiador2 Telefone':document.getElementById('lc-fiador2-telefone').value.trim(),
+      'Fiador2 Email':document.getElementById('lc-fiador2-email').value.trim()
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador']};
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+      telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
+      telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
+      tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
+      fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email']
+    };
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
