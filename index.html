@@ -9799,6 +9799,7 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="loc-body">
     <div class="loc-stats" id="locStats"></div>
     <div class="loc-chips" id="locChips"></div>
+    <div style="margin:10px 0"><input type="text" class="search-input" id="locSearchInput" placeholder="Buscar por locador, locatário, endereço ou contrato... (atalho: /)" oninput="locRender()" style="width:100%"></div>
     <div id="locAlertaVigencia" style="margin:10px 0"></div>
     <div class="loc-toolbar">
       <div class="loc-mes-wrap">
@@ -11267,6 +11268,12 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito,'rep_feito')+chip('pend','Pendentes',cRepPend,'rep_pendente')+chip('atras','Atrasados',cRepAtras,'rep_atrasado')+'</div>'+
       (locFiltroAtivo!=='all'?'<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="locFiltrar(\''+locFiltroAtivo+'\')">✕ Limpar filtro</button></div>':'');
     var lst=lstTodos.filter(function(l){
+      var termoBusca=(document.getElementById('locSearchInput')||{}).value||'';
+      if(termoBusca.trim()){
+        var ct=contratosById[l.contrato]||{};
+        var alvo=[ct.locador,ct.locatario,ct.end,l.contrato].filter(Boolean).join(' ').toLowerCase();
+        if(alvo.indexOf(termoBusca.trim().toLowerCase())<0)return false;
+      }
       if(locFiltroAtivo==='all')return true;
       var recebeu=(l.statusAluguel==='Recebido'),repassou=(l.statusRep==='Repassado');
       if(locFiltroAtivo==='al_recebido')return l.statusAluguel==='Recebido';
@@ -13328,6 +13335,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (3)', itens: [
+      'Locações: novo campo de busca na lista de lançamentos (mesmo padrão de Processos) — digite pra filtrar por locador, locatário, endereço ou número do contrato, evitando ficar procurando na lista inteira. Atalho de teclado "/" agora é sensível ao contexto: foca o campo de busca do painel que estiver aberto (Locações ou Processos), em vez de sempre ir pro de Processos.'
+    ]},
     { data: '13/ago/2026 (2)', itens: [
       'Locações: os dois botões de relatório foram agrupados num só ("📊 Relatórios ▾"), economizando espaço na barra de ferramentas — clique pra abrir o menu com as duas opções.',
       'Renomeado: "Relatório do Locador" → "Imóveis do Locador". "Relatório Mensal de Repasses" → "Aluguéis Recebidos a serem Repassados".',
@@ -13695,7 +13705,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Informe de repasse</div>'
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
 
-    locacoes: MH+'Cadastro de contrato</div>'
+    locacoes: MH+'Busca rápida</div>'
+      +MP+'Campo de busca no topo da lista de lançamentos — digite locador, locatário, endereço ou número do contrato pra filtrar na hora. Atalho de teclado: tecla "/".</div>'
+      +MH+'Cadastro de contrato</div>'
       +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários e condomínio/IPTU padrão.</div>'
       +MH+'Coproprietários</div>'
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
@@ -13749,7 +13761,11 @@ window.cpRenderFixas=cpRenderFixas;
     var tag=(ativo&&ativo.tagName)||'';
     var editando=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(ativo&&ativo.isContentEditable);
     if(editando)return;
-    var el=document.getElementById('searchInput');
+    // Foca o campo de busca do painel que estiver aberto no momento — Locações tem prioridade
+    // sobre Processos quando os dois, por algum motivo, estiverem abertos ao mesmo tempo.
+    var locOv=document.getElementById('locOverlay');
+    var elId=(locOv&&locOv.classList.contains('open'))?'locSearchInput':'searchInput';
+    var el=document.getElementById(elId);
     if(el){e.preventDefault();el.focus();el.select();}
   });
   window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}try{if(typeof renderFluxoCaixa==='function')renderFluxoCaixa();}catch(e){}};
