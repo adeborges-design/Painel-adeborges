@@ -11889,8 +11889,10 @@ window.cpRenderFixas=cpRenderFixas;
   }
   // Monta uma linha-resumo da garantia locatícia do contrato, com os campos específicos
   // de cada tipo (seguro fiança, título de capitalização, caução, carta fiança, fiadores).
-  // Usada tanto no Relatório de Imóveis quanto no recibo/informe, por exigência do usuário
-  // de que "as informações das garantias locatícias devem fazer parte de relatórios sobre os imóveis".
+  // Usada só no informe de repasse (endereçado ao LOCADOR — ele tem interesse em saber o que
+  // garante o contrato). NÃO aparece no Relatório de Imóveis do Locador nem no recibo enviado
+  // ao locatário (que já sabe qual garantia ele mesmo prestou) — removida desses dois por
+  // pedido do usuário.
   function garantiaResumo(c){
     var t=c.tipoGarantia;
     if(!t)return '';
@@ -11937,7 +11939,6 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div>Locatário: <strong>'+E(c.locatario||'—')+'</strong></div>'
         +'<div>Vigência: <strong>'+vig+'</strong></div>'
         +'<div>Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': <strong>'+BRL((c.aluguel||0)*i.pct/100)+'</strong></div>'
-        +(garantiaResumo(c)?'<div>Garantia locatícia: <strong>'+E(garantiaResumo(c))+'</strong></div>':'')
         +'</div></div>';
     }).join('');
     card.innerHTML=
@@ -11970,7 +11971,6 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Locatário: '+(c.locatario||'—')+'\n';
       txt+='Vigência: '+vig+'\n';
       txt+='Aluguel'+(i.pct<100?' (fatia de '+i.pct+'%)':'')+': '+BRL(c.aluguel*i.pct/100)+'\n';
-      if(garantiaResumo(c))txt+='Garantia locatícia: '+garantiaResumo(c)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
     txt+='\n*TOTAL (imóveis ativos):* '+BRL(somaAluguel)+'\n\n';
@@ -12514,8 +12514,11 @@ window.cpRenderFixas=cpRenderFixas;
       var vencData=reciboLocVencimentoStr(w,c);
       var pctMulta=num(c.multaAtrasoPct);
       totalRodape='';
+      // O aviso "se não pagar, incide multa" só faz sentido quando a multa AINDA NÃO foi
+      // lançada neste recibo — se w.multa já tem valor, a multa deste atraso já está sendo
+      // cobrada acima (em "Valores"), e repetir o aviso soaria como cobrança em dobro.
       var vencCorpo=(vencData?'<div>Vencimento: <strong>'+E(vencData)+'</strong></div>':'')
-        +'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>';
+        +(!w.multa?'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>':'');
       vencSection='<div class="parc-section"><div class="parc-section-label">Vencimento</div><div class="parc-box" style="border-color:rgba(224,124,58,0.4)">'+vencCorpo+'</div></div>';
       contaTitulo='Dados bancários para pagamento';
       contaHtml=reciboLocContaHtml(reciboLocContaDestino(c));
@@ -12577,7 +12580,10 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
       +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
       +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
-      +(garantiaResumo(c)?'<div class="parc-section"><div class="parc-section-label">Garantia locatícia</div><div class="parc-box">'+E(garantiaResumo(c))+'</div></div>':'')
+      // Garantia locatícia só faz sentido no informe de repasse (o locador tem interesse em saber
+      // o que garante o contrato); no recibo enviado ao locatário é informação óbvia pra quem já
+      // prestou a garantia, então não aparece — tipo!=='aluguel' cobre repasse normal e por proprietário.
+      +(tipo!=='aluguel'&&garantiaResumo(c)?'<div class="parc-section"><div class="parc-section-label">Garantia locatícia</div><div class="parc-box">'+E(garantiaResumo(c))+'</div></div>':'')
       +'<div class="parc-section" id="reciboLocValoresSecao"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
       +'<div class="parc-section" id="reciboLocTotalSecao"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
       +vencSection
@@ -12638,7 +12644,8 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
       txt+='*LOCATÁRIO:* '+(c.locatario||'')+' — CPF/CNPJ '+(c.cpfLocatario||'—')+'\n';
       txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n';
-      if(garantiaResumo(c))txt+='*GARANTIA LOCATÍCIA:* '+garantiaResumo(c)+'\n';
+      // Sem garantia locatícia aqui — recibo é pro locatário, que já sabe qual garantia prestou
+      // (essa informação só aparece no informe de repasse, endereçado ao locador).
       txt+='\n';
       if(w.aluguel)txt+='Aluguel: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
@@ -12650,8 +12657,10 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='\n*TOTAL A SER PAGO:* '+fmt(totalPago)+'\n';
       var vencData=reciboLocVencimentoStr(w,c); var pctMulta=num(c.multaAtrasoPct);
       if(vencData)txt+='Vencimento: '+vencData+'\n';
-      txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n\n';
-      txt+='*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
+      // Mesma regra da versão em tela: só avisa que "vai incidir multa" quando a multa deste
+      // atraso ainda não foi lançada no recibo — senão fica parecendo cobrança em dobro.
+      if(!w.multa)txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n';
+      txt+='\n*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
       txt+=contaTxt(reciboLocContaDestino(c));
       txt+='\nEste recibo/demonstrativo tem validade como comprovante de pagamento apenas após a efetiva quitação do valor acima.\n';
     } else {
