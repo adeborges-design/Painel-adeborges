@@ -9752,8 +9752,10 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-row-date{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 6px;border-radius:6px;font-size:11px;outline:none;font-family:'DM Mono',monospace}
   .loc-row-money{width:112px;background:#fff;border:1.5px solid var(--border2);color:var(--accent2);padding:5px 6px;border-radius:6px;font-size:12px;outline:none;font-family:'DM Mono',monospace;text-align:right;font-weight:700;cursor:text}
   .loc-row-money:hover{border-color:var(--accent)}
-  .loc-row-money.manual{border-color:var(--accent);background:rgba(47,111,179,0.06)}
   .loc-row-money:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,111,179,0.15)}
+  /* Repasse: campo fixo (não editável) — mesma "cara" do input de dinheiro, mas com fundo
+     neutro (var(--surface2)) e cursor default, pra ficar claro que não dá pra clicar e digitar. */
+  .loc-row-money-fixo{display:inline-block;background:var(--surface2);color:var(--accent2);cursor:default;user-select:text}
   .loc-row-select.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d;font-weight:700}
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
@@ -9841,7 +9843,7 @@ window.cpRenderFixas=cpRenderFixas;
           <th>Status Aluguel</th>
           <th style="text-align:center">Data Pagamento</th>
           <th style="text-align:center">Dia Repasse</th>
-          <th style="text-align:right">Encargos (R$)</th>
+          <th style="text-align:right">Valor Cobrado (R$)</th>
           <th style="text-align:right">Repasse (R$)</th>
           <th style="text-align:center">Atraso repasse</th>
           <th>Status Repasse</th><th style="text-align:center">Data Repasse</th><th>Banco</th>
@@ -10705,6 +10707,31 @@ window.cpRenderFixas=cpRenderFixas;
   function encargosOf(l){
     return (l.iptu||0)+(l.condominio||0)+(l.aguaPriv||0)+(l.gasPriv||0)+(l.aguaComum||0)+(l.gasPiscina||0)+(l.energiaComum||0)+(l.taxaLeitura||0)+(l.fundoFerias||0)+(l.decimoTerceiro||0)+somaOutrasCobrancas(l)-(l.desconto||0);
   }
+  // Valor efetivamente cobrado do inquilino no mês: aluguel + multa + juros + os encargos que
+  // são cobrados dele (mesma regra do recibo — reciboLocItensCondo com modo 'inquilino', que
+  // trata "outras cobranças" com destino 'escritorio' de forma diferente de condomínio/IPTU) +
+  // IPTU − desconto − IRRF retido na fonte por coproprietário PJ, quando houver. Fica isolado
+  // aqui pra ser a MESMA conta usada na coluna "Valor Cobrado" da tabela e no recibo enviado ao
+  // locatário — evita os dois mostrarem números diferentes. (reciboLocItensCondo e
+  // locCalcularIR são definidos mais abaixo no arquivo, mas por serem "function" isso não é
+  // problema — o JS resolve a referência na hora de EXECUTAR, não na hora de declarar.)
+  function calcularValorCobradoInquilino_(w,contrato){
+    var itensCondo=reciboLocItensCondo(w,'inquilino');
+    var itensCondoInquilino=itensCondo.filter(function(it){return it[1];});
+    var condoTotalInquilino=itensCondoInquilino.reduce(function(s,it){return s+(it[1]||0);},0);
+    var coprietariosIR=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato&&String(o.RetemIR||'').toLowerCase()==='sim';});
+    var totalIRCoprop=0,nomesIR=[];
+    coprietariosIR.forEach(function(o){
+      var pctO=num(o.Percentual);
+      var baseO=Math.round((w.aluguel||0)*pctO/100*100)/100;
+      var irO=locCalcularIR(baseO);
+      if(irO){totalIRCoprop+=irO;nomesIR.push(o.Nome+' (BC: '+BRL(baseO)+')');}
+    });
+    totalIRCoprop=Math.round(totalIRCoprop*100)/100;
+    var total=(w.aluguel||0)+(w.multa||0)+(w.juros||0)+condoTotalInquilino+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
+    return {total:total,itensCondoInquilino:itensCondoInquilino,condoTotalInquilino:condoTotalInquilino,totalIRCoprop:totalIRCoprop,nomesIR:nomesIR};
+  }
+  function valorCobradoOf(l){return calcularValorCobradoInquilino_(l,l.contrato).total;}
   // Base sobre a qual a taxa de administração incide — por padrão é só aluguel+multa+juros.
   // "Taxa incide sobre" (do contrato) soma os DEMAIS encargos do mês (condomínio, IPTU,
   // outras cobranças) na base, se marcado. O desconto tem controle PRÓPRIO e independente
@@ -10721,7 +10748,11 @@ window.cpRenderFixas=cpRenderFixas;
   function calcularTaxa(l,ct){
     return Math.round(baseTaxa(l,ct)*(num(ct&&ct.taxaPct)/100)*100)/100;
   }
-  function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l));}
+  // Repasse SEMPRE calculado pela fórmula — não existe mais valor manual/travado aqui de
+  // propósito: por segurança, o que aparece na coluna Repasse tem que coincidir sempre com o
+  // informe de repasse ao locador (que também usa effRep). Um "Valor Repasse" antigo gravado na
+  // planilha (de uma versão anterior do sistema) é ignorado, nunca mais sobrepõe este cálculo.
+  function effRep(l){return (l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l);}
 
   function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
@@ -11325,7 +11356,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
     document.getElementById('locTbody').innerHTML=(lst.length?lst:[]).map(function(l){
-      var c=contratosById[l.contrato]||{};var rep=effRep(l);var manual=l.repManual;
+      var c=contratosById[l.contrato]||{};var rep=effRep(l);
       var repassou=(l.statusRep==='Repassado');
       var repDate=diaMes(c.rep,selMes);
       var atrasoRepasse=diasAtrasoFrom(repDate,repassou);
@@ -11339,8 +11370,8 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
-        '<td class="loc-money" style="cursor:pointer" title="Condomínio, IPTU, multa/juros, outras — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(encargosOf(l))+' <span class="loc-num">✎</span></td>'+
-        '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel + Multa + Juros − Taxa + Encargos). Clique para confirmar ou edite para lançar outro valor.')+'" onfocus="this.select()" onblur="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
+        '<td class="loc-money" style="cursor:pointer" title="Aluguel + multa/juros + encargos cobrados do inquilino + IPTU − desconto — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(valorCobradoOf(l))+' <span class="loc-num">✎</span></td>'+
+        '<td><span class="loc-row-money loc-row-money-fixo" title="Valor final do repasse (Aluguel + Multa + Juros − Taxa + Encargos) — não é editável aqui: por segurança, sempre coincide com o informe de repasse enviado ao locador.">🔒 '+BRL(rep)+'</span></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td>'+(l.statusAluguel!=='Recebido'?
           '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
@@ -11355,7 +11386,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(showResumoLocadores)renderResumoLocadores();
     locAtualizarAlertaVigencia();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
-    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Encargos</b> (clique para editar) reúne condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), IPTU (parcela do mês), outras cobranças e desconto — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> é editável: o painel sugere Aluguel + Multa + Juros − Taxa + Encargos, mas você lança o valor real apenas quando recebe. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
+    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Valor Cobrado</b> (clique para editar) é o total que o locatário deve pagar no mês: Aluguel + Multa + Juros + condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), outras cobranças e IPTU, menos desconto (e menos o IRRF retido na fonte, quando o locatário for pessoa jurídica retentora) — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> não é editável: mostra sempre o valor final calculado (Aluguel + Multa + Juros − Taxa + Encargos), por segurança, pra sempre coincidir com o informe de repasse enviado ao locador. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
   function chip(cls,l,n,filtro){
@@ -11407,12 +11438,10 @@ window.cpRenderFixas=cpRenderFixas;
     if(!live)return; var c=cfg(); if(!c)return;
     var l=lancDoMes(contrato); if(!l||!l.id)return;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
-    var rep=effRep(w);
-    // "Valor Repasse" só é gravado com um número quando é de fato manual (usuário digitou
-    // direto no campo da tabela). Quando é calculado automaticamente (a partir de aluguel,
-    // taxa e encargos), a célula fica vazia — assim, na próxima leitura, o sistema sabe que
-    // deve continuar calculando sozinho, em vez de "travar" nesse valor pra sempre.
-    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':w.repManual?rep:'','Data Repasse':w.dataRep||'',
+    // "Valor Repasse" sempre é gravado vazio na planilha — a coluna Repasse não aceita mais
+    // valor manual (ver effRep), então não há mais nada "travado" pra persistir aqui; o valor
+    // exibido é sempre recalculado a partir de aluguel/taxa/encargos.
+    var campos={'Aluguel':w.aluguel||0,'Status':w.statusAluguel,'Status Repasse':w.statusRep,'Data Pagamento':w.dataPag||'','Origem Pgto':w.banco||'','Valor Repasse':'','Data Repasse':w.dataRep||'',
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
@@ -11487,6 +11516,16 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('modalCobrancas').classList.add('open');
   };
   window.fecharModalCobrancas=function(){document.getElementById('modalCobrancas').classList.remove('open');};
+  // Botão "🧾 lançamentos" da lista de Contratos: mesmo modal de encargos/cobranças que já
+  // abria clicando na coluna "Valor Cobrado" da tabela de Lançamentos — só que acessível
+  // direto da lista de contratos, sem precisar achar a linha certa na tabela do mês. Usa o
+  // mês atualmente selecionado (seletor no topo da tela de Lançamentos); se o contrato ainda
+  // não tem lançamento gerado nesse mês, avisa em vez de simplesmente não abrir nada.
+  window.locAbrirLancamentoContrato=function(contrato){
+    var l=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+    if(!l){alert('Não há lançamento do contrato '+contrato+' no mês selecionado ('+(selMes||'—')+').\n\nTroque o mês no topo da tela de Lançamentos, ou gere o mês para este contrato antes.');return;}
+    abrirModalCobrancas(contrato);
+  };
   window.cobrAtualizarPreview=function(){
     var tot=num(document.getElementById('cobr-aluguel-mes').value);
     COBR_CAMPOS_NUM.forEach(function(p){
@@ -12446,9 +12485,6 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contrato]||{};
     _reciboLocContrato=contrato; _reciboLocTipo=tipo; _reciboLocImgCache=null;
 
-    var itensCondo=reciboLocItensCondo(w,'inquilino');
-    var condoTotal=itensCondo.reduce(function(s,it){return s+(it[1]||0);},0);
-
     var titulo,badgeHtml,valoresHtml,totalLabel,totalValor,totalRodape,contaTitulo,contaHtml,disclaimer,vencSection;
     var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel acima, mês de referência indicado.</div>';
     vencSection='';
@@ -12459,21 +12495,12 @@ window.cpRenderFixas=cpRenderFixas;
       // Quando o locatário é pessoa jurídica, é ele quem retém e recolhe o IRRF devido pelo(s)
       // proprietário(s) pessoa física — por isso o valor que ele efetivamente paga já sai
       // líquido desse imposto (a diferença fica retida por ele, não pelo escritório).
-      var coprietariosIR=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato&&String(o.RetemIR||'').toLowerCase()==='sim';});
-      var totalIRCoprop=0,nomesIR=[];
-      coprietariosIR.forEach(function(o){
-        var pctO=num(o.Percentual);
-        var baseO=Math.round((w.aluguel||0)*pctO/100*100)/100;
-        var irO=locCalcularIR(baseO);
-        if(irO){totalIRCoprop+=irO;nomesIR.push(o.Nome+' (BC: '+BRL(baseO)+')');}
-      });
-      totalIRCoprop=Math.round(totalIRCoprop*100)/100;
-      // itensCondo já veio filtrado certo pro inquilino (função reciboLocItensCondo com modo
-      // 'inquilino') — aqui só tira os itens com valor zero, sem mais filtrar por sinal (um
-      // desconto de aluguel combinado com o locador é negativo e deve aparecer pro inquilino).
-      var itensCondoInquilino=itensCondo.filter(function(it){return it[1];});
-      var condoTotalInquilino=itensCondoInquilino.reduce(function(s,it){return s+(it[1]||0);},0);
-      totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotalInquilino+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
+      // Mesma conta da coluna "Valor Cobrado" da tabela (calcularValorCobradoInquilino_) — não
+      // duplica o cálculo aqui, pra nunca correr o risco do recibo mostrar um total diferente
+      // do que aparece na tela.
+      var vc=calcularValorCobradoInquilino_(w,contrato);
+      var itensCondoInquilino=vc.itensCondoInquilino,totalIRCoprop=vc.totalIRCoprop,nomesIR=vc.nomesIR;
+      totalValor=vc.total;
       totalLabel='Total a ser pago';
       var linhasCondo=itensCondoInquilino.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
@@ -12704,13 +12731,8 @@ window.cpRenderFixas=cpRenderFixas;
     setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
-  window.locSetRepasse=function(contrato,val){
-    var v=String(val==null?'':val).trim();
-    // Campo deixado em branco (ex.: apagado sem digitar o novo valor antes de sair do campo):
-    // não grava 0 nem volta ao valor sugerido — apenas restaura o que já estava lançado.
-    if(!v){locRender();return;}
-    setOverride(contrato,{valorRepasse:num(v)});gravarSheet(contrato);locRender();
-  };
+  // locSetRepasse foi removida: a coluna Repasse não é mais editável (sempre mostra o valor
+  // calculado por effRep — ver comentário na definição de effRep, mais acima no arquivo).
 
   function fmtHoje(){var d=new Date();return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
   function brToIso(s){if(!s)return '';var p=String(s).split('/');if(p.length!==3)return '';return p[2]+'-'+('0'+p[1]).slice(-2)+'-'+('0'+p[0]).slice(-2);}
@@ -12760,7 +12782,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
-        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
+        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
