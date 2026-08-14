@@ -9732,6 +9732,9 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
   table.loc-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1280px}
   .loc-table thead th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600}
+  #locContratosSection .loc-table thead th{position:sticky;top:175px;z-index:5;background:var(--surface)}
+  #locContratosSection .loc-table-wrap{overflow-x:visible}
+  #locContratosSection table.loc-table{border-collapse:separate;border-spacing:0}
   .loc-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
   .loc-table tbody tr:last-child td{border-bottom:none}
   .loc-table tbody tr:hover{background:var(--surface2)}
@@ -9862,6 +9865,10 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>Nº do Contrato *</label><input class="loc-cinput" id="lc-contrato" placeholder="Ex.: 42.150.1"></div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo"><option>Sim</option><option>Não</option></select></div>
         <div class="loc-cfield"><label>Taxa Adm (%) *</label><input class="loc-cinput" id="lc-taxa" type="text" inputmode="decimal" placeholder="Ex.: 6"></div>
+        <div class="loc-cfield"><label>Taxa incide sobre</label><select class="loc-cinput" id="lc-taxa-incide-encargos">
+          <option value="Nao">Só o aluguel (padrão)</option>
+          <option value="Sim">Aluguel + encargos e descontos</option>
+        </select></div>
         <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" placeholder="Nome do dono do imóvel"></div>
         <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00"></div>
@@ -10691,6 +10698,17 @@ window.cpRenderFixas=cpRenderFixas;
   function encargosOf(l){
     return (l.iptu||0)+(l.condominio||0)+(l.aguaPriv||0)+(l.gasPriv||0)+(l.aguaComum||0)+(l.gasPiscina||0)+(l.energiaComum||0)+(l.taxaLeitura||0)+(l.fundoFerias||0)+(l.decimoTerceiro||0)+somaOutrasCobrancas(l)-(l.desconto||0);
   }
+  // Base sobre a qual a taxa de administração incide — por padrão é só aluguel+multa+juros, mas
+  // o contrato pode ter a opção "Taxa incide sobre" marcada pra incluir também encargos e
+  // descontos do mês (condomínio, IPTU, outras cobranças...) na base de cálculo.
+  function baseTaxa(l,ct){
+    var base=(l.aluguel||0)+(l.multa||0)+(l.juros||0);
+    if(ct&&ct.taxaIncideEncargos)base+=encargosOf(l);
+    return base;
+  }
+  function calcularTaxa(l,ct){
+    return Math.round(baseTaxa(l,ct)*(num(ct&&ct.taxaPct)/100)*100)/100;
+  }
   function effRep(l){return l.repManual?(l.valorRepasse||0):((l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l));}
 
   function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
@@ -10734,8 +10752,8 @@ window.cpRenderFixas=cpRenderFixas;
     try{
       var base='https://sheets.googleapis.com/v4/spreadsheets/'+c.sheetId+'/values/';
       var k='?key='+c.apiKey;
-      var r1=await fetch(base+encodeURIComponent('LOC_CONTRATOS!A1:Z500')+k);
-      var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:Z3000')+k);
+      var r1=await fetch(base+encodeURIComponent('LOC_CONTRATOS!A1:CZ500')+k);
+      var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:AZ3000')+k);
       var r3=await fetch(base+encodeURIComponent('LOC_COPROPRIETARIOS!A1:J500')+k).catch(function(){return null;});
       var r4=await fetch(base+encodeURIComponent('LOC_COLOCATARIOS!A1:J500')+k).catch(function(){return null;});
       if(!r1.ok||!r2.ok) throw new Error('HTTP '+r1.status+'/'+r2.status);
@@ -10745,7 +10763,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
@@ -11141,7 +11159,7 @@ window.cpRenderFixas=cpRenderFixas;
       var aluguel=(l.aluguel!=null&&l.aluguel!=='')?num(l.aluguel):num(ct.aluguel);
       var multa=num(l.multa);
       var juros=num(l.juros);
-      var taxa=(l.taxa&&l.taxa>0)?l.taxa:Math.round((aluguel+multa+juros)*(num(ct.taxaPct)/100)*100)/100;
+      var taxa=num(l.taxa); // provisório — recalculado de verdade no fim, depois que os encargos (com overrides) estiverem resolvidos
       // Condomínio e IPTU: se o lançamento do mês já tem valor próprio, usa-o; senão, puxa o padrão do contrato.
       var condominio=(l.condominio!=null&&l.condominio!=='')?num(l.condominio):num(ct.condominioPadrao);
       var iptu=(l.iptu!=null&&l.iptu!=='')?num(l.iptu):num(ct.iptuParcela);
@@ -11173,13 +11191,18 @@ window.cpRenderFixas=cpRenderFixas;
         if(o.fundoFerias!=null)r.fundoFerias=num(o.fundoFerias);
         if(o.decimoTerceiro!=null)r.decimoTerceiro=num(o.decimoTerceiro);
         if(o.desconto!=null)r.desconto=num(o.desconto);
-        if(o.multa!=null){r.multa=num(o.multa);r.taxa=Math.round((r.aluguel+r.multa+r.juros)*(num(ct.taxaPct)/100)*100)/100;}
-        if(o.juros!=null){r.juros=num(o.juros);r.taxa=Math.round((r.aluguel+r.multa+r.juros)*(num(ct.taxaPct)/100)*100)/100;}
+        if(o.multa!=null){r.multa=num(o.multa);}
+        if(o.juros!=null){r.juros=num(o.juros);}
         if(o.outrasDesc!=null)r.outrasDesc=o.outrasDesc;
         if(o.outrasValor!=null)r.outrasValor=num(o.outrasValor);
         if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}
         else if(Object.prototype.hasOwnProperty.call(o,'valorRepasse')){r.repManual=false;} // sinal explícito de "limpar o manual"
       }
+      // Taxa de administração recalculada agora, com aluguel/multa/juros/encargos/desconto já
+      // totalmente resolvidos (incluindo qualquer override) — assim, quando o contrato tem a
+      // opção "Taxa incide sobre encargos" marcada, o valor sai correto mesmo depois de editar
+      // os encargos na tela de Encargos.
+      r.taxa=calcularTaxa(r,ct);
       // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar:
       // só faz sentido repassar depois de receber. O valor real (quando Recebido) fica preservado acima.
       if(r.statusAluguel!=='Recebido')r.statusRep=r.statusAluguel;
@@ -11304,7 +11327,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td class="loc-money" style="cursor:pointer" title="Condomínio, IPTU, multa/juros, outras — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(encargosOf(l))+' <span class="loc-num">✎</span></td>'+
-        '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel + Multa + Juros − Taxa + Encargos). Edite para lançar o valor real.')+'" onfocus="this.select()" onchange="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
+        '<td><input class="loc-row-money'+(manual?' manual':'')+'" type="text" inputmode="decimal" value="'+rep.toFixed(2)+'" title="'+(manual?'Repasse lançado manualmente':'Sugerido (Aluguel + Multa + Juros − Taxa + Encargos). Clique para confirmar ou edite para lançar outro valor.')+'" onfocus="this.select()" onblur="locSetRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td>'+(l.statusAluguel!=='Recebido'?
           '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
@@ -11479,6 +11502,14 @@ window.cpRenderFixas=cpRenderFixas;
     patch.valorRepasse=null;
     setOverride(contrato,patch);
     gravarSheet(contrato);
+    // O aluguel também é sincronizado de volta pro cadastro do contrato (não só pro lançamento
+    // deste mês) — senão relatórios como "Imóveis do Locador", que puxam do contrato, continuam
+    // mostrando o valor antigo mesmo depois de editar o valor do mês aqui.
+    var ctr=contratosById[contrato];
+    if(ctr&&patch.aluguel&&ctr.aluguel!==patch.aluguel){
+      ctr.aluguel=patch.aluguel;
+      fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locc',id:ctr.id,campos:{'Aluguel':patch.aluguel}})}).catch(function(){});
+    }
     fecharModalCobrancas();
     locRender();
   };
@@ -11632,9 +11663,17 @@ window.cpRenderFixas=cpRenderFixas;
     return it.tipo==='parcelado'&&it.parcelaTotal?it.desc+' ('+it.parcelaAtual+'/'+it.parcelaTotal+')':it.desc;
   }
 
-  function reciboLocItensCondo(w,paraLocador){
+  function reciboLocItensCondo(w,modo){
     var outras=parseOutrasCobrancas(w);
-    if(paraLocador)outras=outras.filter(function(it){return it.destino!=='escritorio';});
+    if(modo===true){
+      // Visão do locador: exclui itens que são assunto só entre escritório e locatário.
+      outras=outras.filter(function(it){return it.destino!=='escritorio';});
+    }else if(modo==='inquilino'){
+      // Visão do inquilino: mostra os itens normais de repasse (mesmo quando negativos — ex.:
+      // um desconto de aluguel combinado com o locador, que reduz o que ele paga) e os itens
+      // "só escritório" apenas quando são cobrança dele (positivo) — ex.: seguro fiança.
+      outras=outras.filter(function(it){return it.destino!=='escritorio'||it.valor>0;});
+    }
     return [
       ['Cota de condomínio',w.condominio],
       ['Água (área privativa)',w.aguaPriv],
@@ -12379,7 +12418,7 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contrato]||{};
     _reciboLocContrato=contrato; _reciboLocTipo=tipo; _reciboLocImgCache=null;
 
-    var itensCondo=reciboLocItensCondo(w);
+    var itensCondo=reciboLocItensCondo(w,'inquilino');
     var condoTotal=itensCondo.reduce(function(s,it){return s+(it[1]||0);},0);
 
     var titulo,badgeHtml,valoresHtml,totalLabel,totalValor,totalRodape,contaTitulo,contaHtml,disclaimer,vencSection;
@@ -12401,10 +12440,10 @@ window.cpRenderFixas=cpRenderFixas;
         if(irO){totalIRCoprop+=irO;nomesIR.push(o.Nome+' (BC: '+BRL(baseO)+')');}
       });
       totalIRCoprop=Math.round(totalIRCoprop*100)/100;
-      // Itens NEGATIVOS de "outras cobranças" (IPTU, contas de água/luz que você paga e desconta
-      // do locador) são assunto só entre escritório e locador — não aparecem pro inquilino, que só
-      // vê o que efetivamente é cobrado dele (aluguel + itens positivos, como reparo cobrado dele).
-      var itensCondoInquilino=itensCondo.filter(function(it){return (it[1]||0)>0;});
+      // itensCondo já veio filtrado certo pro inquilino (função reciboLocItensCondo com modo
+      // 'inquilino') — aqui só tira os itens com valor zero, sem mais filtrar por sinal (um
+      // desconto de aluguel combinado com o locador é negativo e deve aparecer pro inquilino).
+      var itensCondoInquilino=itensCondo.filter(function(it){return it[1];});
       var condoTotalInquilino=itensCondoInquilino.reduce(function(s,it){return s+(it[1]||0);},0);
       totalValor=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotalInquilino+(w.iptu||0)-(w.desconto||0)-totalIRCoprop;
       totalLabel='Total a ser pago';
@@ -12513,7 +12552,7 @@ window.cpRenderFixas=cpRenderFixas;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return '';
     var c=contratosById[contrato]||{};
     var fmt=function(v){return BRL(v||0);};
-    var itensCondo=reciboLocItensCondo(w);
+    var itensCondo=reciboLocItensCondo(w,'inquilino');
     var condoTotal=itensCondo.reduce(function(s,it){return s+(it[1]||0);},0);
     var txt='';
     function contaTxt(conta){
@@ -12535,7 +12574,7 @@ window.cpRenderFixas=cpRenderFixas;
         if(irO){totalIRCoprop2+=irO;nomesIR2.push(o.Nome);}
       });
       totalIRCoprop2=Math.round(totalIRCoprop2*100)/100;
-      var itensCondoInquilino2=itensCondo.filter(function(it){return (it[1]||0)>0;});
+      var itensCondoInquilino2=itensCondo.filter(function(it){return it[1];});
       var condoTotalInquilino2=itensCondoInquilino2.reduce(function(s,it){return s+(it[1]||0);},0);
       var totalPago=w.aluguel+(w.multa||0)+(w.juros||0)+condoTotalInquilino2+(w.iptu||0)-(w.desconto||0)-totalIRCoprop2;
       txt+='*DEMONSTRATIVO / RECIBO DE ALUGUEL*\n';
@@ -12660,7 +12699,11 @@ window.cpRenderFixas=cpRenderFixas;
       alert('Solicitada a geração de '+novo+' na planilha. Aguarde alguns segundos e clique em 🔄 Atualizar.');
       setTimeout(carregarAlugueis,2800);
     }else{
-      var s=state();ativos.forEach(function(ct){var taxa=Math.round(ct.aluguel*(ct.taxaPct/100)*100)/100;s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,multa:0,juros:0,outrasDesc:'',outrasValor:0});});saveState(s);selMes=novo;locRefreshMeses();locRender();
+      var s=state();ativos.forEach(function(ct){
+        var lTemp={aluguel:ct.aluguel,multa:0,juros:0,condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,outrasDesc:'',outrasValor:0};
+        var taxa=calcularTaxa(lTemp,ct);
+        s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,multa:0,juros:0,outrasDesc:'',outrasValor:0});
+      });saveState(s);selMes=novo;locRefreshMeses();locRender();
     }
   };
   window.locReset=function(){if(!confirm('Isto apaga as alterações locais (baixas ainda não sincronizadas e meses gerados localmente). Os dados da planilha não são afetados. Continuar?'))return;localStorage.removeItem(LS_KEY);selMes=null;carregarAlugueis();};
@@ -12709,7 +12752,7 @@ window.cpRenderFixas=cpRenderFixas;
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
     ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
-    document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-msg').textContent='';
+    document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-taxa-incide-encargos').value='Nao';document.getElementById('lc-msg').textContent='';
     try{locToggleGarantia();}catch(e){}
     locRenderContratos();document.getElementById('lc-contrato').focus();
   };
@@ -12750,6 +12793,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-indice-reajuste').value=c.indiceReajuste||'';
     document.getElementById('lc-aluguel').value=num(c.aluguel)||'';
     document.getElementById('lc-taxa').value=num(c.taxaPct)||'';
+    document.getElementById('lc-taxa-incide-encargos').value=c.taxaIncideEncargos?'Sim':'Nao';
     document.getElementById('lc-venc').value=c.venc||'';
     document.getElementById('lc-rep').value=c.rep||'';
     document.getElementById('lc-condominio').value=num(c.condominioPadrao)||'';
@@ -12804,6 +12848,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Indice Reajuste':document.getElementById('lc-indice-reajuste').value,
       'Aluguel':num(document.getElementById('lc-aluguel').value),
       'Taxa Perc':num(document.getElementById('lc-taxa').value),
+      'Taxa Incide Encargos':document.getElementById('lc-taxa-incide-encargos').value,
       'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
       'Dia Repasse':document.getElementById('lc-rep').value.trim(),
       'Ativo':document.getElementById('lc-ativo').value,
@@ -12838,7 +12883,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
@@ -13398,6 +13443,14 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '13/ago/2026 (7)', itens: [
+      'Corrigido bug crítico: o intervalo de busca da planilha de Contratos (LOC_CONTRATOS) cortava tudo a partir da 26ª coluna — mas o cadastro tem 49 colunas. Isso fazia praticamente TODAS as garantias locatícias (Tipo Garantia, caução, seguro fiança, título de capitalização, carta fiança, fiadores) sumirem ao reabrir o contrato, mesmo tendo sido gravadas corretamente. Corrigido o intervalo. Mesmo bug encontrado e corrigido em LOC_LANCAMENTOS (cortava Taxa de Leitura, Fundo de Férias, 13º, Desconto, Multa e Juros) — explica boa parte dos valores errados relatados.',
+      'Corrigido: um desconto combinado com o locatário (ex.: parcelas de desconto no aluguel) agora aparece corretamente no recibo dele — antes, qualquer item negativo de "Outras Cobranças" era escondido do inquilino por padrão, mesmo quando deveria aparecer (um desconto reduz o que ele paga, ele precisa ver isso). Continua aparecendo certinho pro locador também.',
+      'Novo: contrato de locação ganhou a opção "Taxa incide sobre" — "Só o aluguel" (padrão) ou "Aluguel + encargos e descontos". Quando marcada, a taxa de administração passa a ser calculada sobre o total (aluguel + condomínio + IPTU + outras cobranças − desconto), não só sobre o aluguel. Testado: aluguel R$1.500 + condomínio R$500 com taxa 10% = R$200,00 de taxa (10% de R$2.000), confirmado certo.',
+      'Editar o aluguel na tela de Encargos agora sincroniza automaticamente com o cadastro do contrato — antes o relatório "Imóveis do Locador" continuava mostrando o valor antigo, já que puxa do contrato, não do lançamento do mês.',
+      'Corrigido o campo "Repasse (R$)": antes precisava apagar e digitar de novo pra confirmar um valor já sugerido corretamente (o campo só salvava quando o valor mudava). Agora salva sempre que você sai do campo, mudando ou não.',
+      'Cabeçalho fixo na tabela de Contratos (dentro de Locações) ao rolar a tela — precisou de 3 correções em cascata (posição, overflow bloqueando o sticky, e principalmente "border-collapse: collapse", um bloqueador conhecido do recurso sticky em cabeçalhos de tabela).'
+    ]},
     { data: '13/ago/2026 (6)', itens: [
       'Locações: cabeçalho e barra de ferramentas agora ficam fixos no topo ao rolar a tela — os botões continuam acessíveis sem precisar voltar pro topo.',
       'Corrigido "Aluguéis Recebidos a serem Repassados": agora só aparecem os aluguéis aptos a repassar de fato — recebidos do inquilino E ainda não repassados ao locador. O que já foi repassado não aparece mais (esse relatório serve como informe de repasse consolidado, então itens já resolvidos não precisam mais constar).',
@@ -13781,7 +13834,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
 
     locacoes: MH+'Cadastro de contrato</div>'
-      +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários e condomínio/IPTU padrão.</div>'
+      +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários, condomínio/IPTU padrão e garantia locatícia (caução, seguro fiança, título de capitalização, carta fiança ou fiador). "Taxa incide sobre": escolha se a taxa de administração é calculada só sobre o aluguel (padrão) ou também sobre encargos e descontos do mês.</div>'
       +MH+'Coproprietários</div>'
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
       +MH+'Encargos do mês</div>'
