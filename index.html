@@ -9735,6 +9735,9 @@ window.cpRenderFixas=cpRenderFixas;
   #locContratosSection .loc-table thead th{position:sticky;top:175px;z-index:5;background:var(--surface)}
   #locContratosSection .loc-table-wrap{overflow-x:visible}
   #locContratosSection table.loc-table{border-collapse:separate;border-spacing:0}
+  #locLancamentosWrap .loc-table thead th{position:sticky;top:175px;z-index:5;background:var(--surface)}
+  #locLancamentosWrap.loc-table-wrap{overflow-x:visible}
+  #locLancamentosWrap table.loc-table{border-collapse:separate;border-spacing:0}
   .loc-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
   .loc-table tbody tr:last-child td{border-bottom:none}
   .loc-table tbody tr:hover{background:var(--surface2)}
@@ -9830,7 +9833,7 @@ window.cpRenderFixas=cpRenderFixas;
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
     <div class="loc-section-title">Lançamentos do mês, cobranças e repasses</div>
-    <div class="loc-table-wrap">
+    <div class="loc-table-wrap" id="locLancamentosWrap">
       <table class="loc-table">
         <thead><tr>
           <th>Contrato</th><th>Locatário</th><th>Locador</th><th>Endereço</th>
@@ -10032,6 +10035,10 @@ window.cpRenderFixas=cpRenderFixas;
         <div id="cobr-outras-lista"></div>
         <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
         <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Desconto incide na taxa de administração?</label><select class="loc-cinput" id="cobr-desconto-incide-taxa">
+          <option value="Nao">Não (taxa sobre o aluguel cheio)</option>
+          <option value="Sim">Sim (taxa sobre o aluguel já líquido do desconto)</option>
+        </select></div>
 
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div></div>
       </div>
@@ -10698,12 +10705,16 @@ window.cpRenderFixas=cpRenderFixas;
   function encargosOf(l){
     return (l.iptu||0)+(l.condominio||0)+(l.aguaPriv||0)+(l.gasPriv||0)+(l.aguaComum||0)+(l.gasPiscina||0)+(l.energiaComum||0)+(l.taxaLeitura||0)+(l.fundoFerias||0)+(l.decimoTerceiro||0)+somaOutrasCobrancas(l)-(l.desconto||0);
   }
-  // Base sobre a qual a taxa de administração incide — por padrão é só aluguel+multa+juros, mas
-  // o contrato pode ter a opção "Taxa incide sobre" marcada pra incluir também encargos e
-  // descontos do mês (condomínio, IPTU, outras cobranças...) na base de cálculo.
+  // Base sobre a qual a taxa de administração incide — por padrão é só aluguel+multa+juros.
+  // "Taxa incide sobre" (do contrato) soma os DEMAIS encargos do mês (condomínio, IPTU,
+  // outras cobranças) na base, se marcado. O desconto tem controle PRÓPRIO e independente
+  // ("Desconto incide na taxa?", marcado junto com o valor do desconto em Encargos) — assim dá
+  // pra ter, por exemplo, taxa calculada só sobre o aluguel líquido (aluguel − desconto), sem
+  // precisar somar os outros encargos junto.
   function baseTaxa(l,ct){
     var base=(l.aluguel||0)+(l.multa||0)+(l.juros||0);
-    if(ct&&ct.taxaIncideEncargos)base+=encargosOf(l);
+    if(ct&&ct.taxaIncideEncargos)base+=encargosOf(l)+(l.desconto||0); // soma os encargos SEM o desconto (devolve o que encargosOf já subtraiu, pra não descontar 2x)
+    if(l.descontoIncideTaxa)base-=(l.desconto||0);
     return base;
   }
   function calcularTaxa(l,ct){
@@ -10778,7 +10789,7 @@ window.cpRenderFixas=cpRenderFixas;
           aguaPriv:cell(row,ml,'Agua Privativa'),gasPriv:cell(row,ml,'Gas Privativa'),aguaComum:cell(row,ml,'Agua Comum'),gasPiscina:cell(row,ml,'Gas Piscina'),
           energiaComum:cell(row,ml,'Energia Comum'),taxaLeitura:cell(row,ml,'Taxa Leitura'),fundoFerias:cell(row,ml,'Fundo Ferias'),decimoTerceiro:cell(row,ml,'Decimo Terceiro'),
           desconto:cell(row,ml,'Desconto'),multa:cell(row,ml,'Multa'),juros:cell(row,ml,'Juros'),
-          outrasDesc:cell(row,ml,'Outras Cobrancas Desc')||'',outrasValor:num(cell(row,ml,'Outras Cobrancas Valor')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||''};
+          outrasDesc:cell(row,ml,'Outras Cobrancas Desc')||'',outrasValor:num(cell(row,ml,'Outras Cobrancas Valor')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||'',descontoIncideTaxa:String(cell(row,ml,'Desconto Incide Taxa')).toLowerCase()==='sim'};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -11170,7 +11181,7 @@ window.cpRenderFixas=cpRenderFixas;
       var outrasValor=num(l.outrasValor);
       var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,multa:multa,juros:juros,taxa:taxa,condominio:condominio,iptu:iptu,
              aguaPriv:aguaPriv,gasPriv:gasPriv,aguaComum:aguaComum,gasPiscina:gasPiscina,energiaComum:energiaComum,taxaLeitura:taxaLeitura,
-             fundoFerias:fundoFerias,decimoTerceiro:decimoTerceiro,desconto:desconto,
+             fundoFerias:fundoFerias,decimoTerceiro:decimoTerceiro,desconto:desconto,descontoIncideTaxa:!!l.descontoIncideTaxa,
              outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,
              statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||''};
       if(o){
@@ -11191,6 +11202,7 @@ window.cpRenderFixas=cpRenderFixas;
         if(o.fundoFerias!=null)r.fundoFerias=num(o.fundoFerias);
         if(o.decimoTerceiro!=null)r.decimoTerceiro=num(o.decimoTerceiro);
         if(o.desconto!=null)r.desconto=num(o.desconto);
+        if(o.descontoIncideTaxa!=null)r.descontoIncideTaxa=!!o.descontoIncideTaxa;
         if(o.multa!=null){r.multa=num(o.multa);}
         if(o.juros!=null){r.juros=num(o.juros);}
         if(o.outrasDesc!=null)r.outrasDesc=o.outrasDesc;
@@ -11403,7 +11415,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
-      'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0};
+      'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0,'Desconto Incide Taxa':w.descontoIncideTaxa?'Sim':'Nao'};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
 
@@ -11462,6 +11474,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
+    document.getElementById('cobr-desconto-incide-taxa').value=l.descontoIncideTaxa?'Sim':'Nao';
     document.getElementById('cobr-outras-lista').innerHTML='';
     parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino);});
     cobrAtualizarPreview();
@@ -11494,6 +11507,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
+    patch.descontoIncideTaxa=document.getElementById('cobr-desconto-incide-taxa').value==='Sim';
     // Sempre que os componentes (aluguel, condomínio, IPTU, desconto...) são editados por aqui,
     // o repasse volta a ser calculado automaticamente a partir deles — em vez de continuar preso
     // num valor antigo gravado na coluna "Valor Repasse" de uma edição anterior (isso causava o
@@ -13443,6 +13457,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '14/ago/2026', itens: [
+      'Corrigido de vez o cabeçalho fixo em Locações: a correção anterior só tinha sido aplicada na tabela de "Contratos" (dentro do botão de mesmo nome) — a tabela PRINCIPAL de lançamentos (a que sempre aparece, "Contrato" → "Ações") não tinha recebido a mesma correção e continuava sumindo ao rolar. Aplicado o mesmo tratamento (posição + border-collapse) e testado com scroll até o fim — confirmado funcionando.',
+      'Novo: opção "Desconto incide na taxa de administração?" (Sim/Não) na tela de Encargos, junto do campo de Desconto — diferente da opção geral "Taxa incide sobre encargos" do contrato (que soma condomínio/IPTU/outras cobranças na base), esta é específica do desconto: quando marcada "Sim", a taxa passa a ser calculada sobre o aluguel já líquido do desconto (ex.: aluguel R$1.600 − desconto R$200 = base de R$1.400 pra taxa), sem precisar mexer nos outros encargos. Testado nos dois estados — confirmado matematicamente correto.'
+    ]},
     { data: '13/ago/2026 (7)', itens: [
       'Corrigido bug crítico: o intervalo de busca da planilha de Contratos (LOC_CONTRATOS) cortava tudo a partir da 26ª coluna — mas o cadastro tem 49 colunas. Isso fazia praticamente TODAS as garantias locatícias (Tipo Garantia, caução, seguro fiança, título de capitalização, carta fiança, fiadores) sumirem ao reabrir o contrato, mesmo tendo sido gravadas corretamente. Corrigido o intervalo. Mesmo bug encontrado e corrigido em LOC_LANCAMENTOS (cortava Taxa de Leitura, Fundo de Férias, 13º, Desconto, Multa e Juros) — explica boa parte dos valores errados relatados.',
       'Corrigido: um desconto combinado com o locatário (ex.: parcelas de desconto no aluguel) agora aparece corretamente no recibo dele — antes, qualquer item negativo de "Outras Cobranças" era escondido do inquilino por padrão, mesmo quando deveria aparecer (um desconto reduz o que ele paga, ele precisa ver isso). Continua aparecendo certinho pro locador também.',
@@ -13838,7 +13856,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Coproprietários</div>'
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
       +MH+'Encargos do mês</div>'
-      +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado). Cada item também tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe.</div>'
+      +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 avançando sozinho a cada mês gerado). Cada item também tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe. Um desconto negativo combinado com o locatário (ex.: parcelas de desconto no aluguel) aparece certinho tanto pro locador quanto pro inquilino. O campo Desconto tem a opção "Desconto incide na taxa de administração?" — quando "Sim", a taxa é calculada sobre o aluguel já líquido do desconto (ex.: aluguel R$1.600 − desconto R$200 = taxa sobre R$1.400).</div>'
       +MH+'Busca rápida e cabeçalho fixo</div>'
       +MP+'Campo de busca no topo da lista de lançamentos — digite locador, locatário, endereço ou número do contrato pra filtrar na hora (atalho de teclado: tecla "/"). O cabeçalho e a barra de ferramentas ficam fixos no topo ao rolar a tela, então os botões continuam sempre acessíveis.</div>'
       +MH+'Filtros clicáveis</div>'
