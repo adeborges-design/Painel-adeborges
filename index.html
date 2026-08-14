@@ -10042,6 +10042,11 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="Sim">Sim (taxa sobre o aluguel já líquido do desconto)</option>
         </select></div>
 
+        <div class="cobr-secao full">Observações deste mês</div>
+        <div class="loc-note" style="margin-bottom:8px">Textos opcionais, só para este mês/contrato — cada um aparece apenas no documento correspondente (tela e versão texto/WhatsApp).</div>
+        <div class="loc-cfield full"><label>Observação para o locatário <span style="font-weight:400;color:var(--muted)">— aparece no recibo de aluguel enviado a ele</span></label><textarea class="loc-cinput" id="cobr-obs-locatario" rows="2" placeholder="Ex.: próximo mês o aluguel será reajustado pelo índice contratual."></textarea></div>
+        <div class="loc-cfield full"><label>Observação para o locador <span style="font-weight:400;color:var(--muted)">— aparece no informe de repasse enviado a ele</span></label><textarea class="loc-cinput" id="cobr-obs-locador" rows="2" placeholder="Ex.: este mês foi descontada a taxa do seguro fiança repassada ao locatário."></textarea></div>
+
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div></div>
       </div>
       <div class="loc-cform-actions" style="padding:0 18px 18px;flex-wrap:wrap">
@@ -10821,7 +10826,12 @@ window.cpRenderFixas=cpRenderFixas;
           aguaPriv:cell(row,ml,'Agua Privativa'),gasPriv:cell(row,ml,'Gas Privativa'),aguaComum:cell(row,ml,'Agua Comum'),gasPiscina:cell(row,ml,'Gas Piscina'),
           energiaComum:cell(row,ml,'Energia Comum'),taxaLeitura:cell(row,ml,'Taxa Leitura'),fundoFerias:cell(row,ml,'Fundo Ferias'),decimoTerceiro:cell(row,ml,'Decimo Terceiro'),
           desconto:cell(row,ml,'Desconto'),multa:cell(row,ml,'Multa'),juros:cell(row,ml,'Juros'),
-          outrasDesc:cell(row,ml,'Outras Cobrancas Desc')||'',outrasValor:num(cell(row,ml,'Outras Cobrancas Valor')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||'',descontoIncideTaxa:String(cell(row,ml,'Desconto Incide Taxa')).toLowerCase()==='sim'};
+          outrasDesc:cell(row,ml,'Outras Cobrancas Desc')||'',outrasValor:num(cell(row,ml,'Outras Cobrancas Valor')),valorRepasse:num(valorRepasseRaw),temRepasse:String(valorRepasseRaw).trim()!=='',statusAluguel:cell(row,ml,'Status')||'Pendente',statusRep:cell(row,ml,'Status Repasse')||'Pendente',dataPag:cell(row,ml,'Data Pagamento')||'',banco:cell(row,ml,'Origem Pgto')||'',dataRep:cell(row,ml,'Data Repasse')||'',descontoIncideTaxa:String(cell(row,ml,'Desconto Incide Taxa')).toLowerCase()==='sim',
+          // "Observacoes" (coluna já existente, agora reaproveitada) = observação pro locador
+          // (informe de repasse); "Observacoes Locatario" (coluna nova) = observação pro
+          // recibo do inquilino. cell() devolve '' sozinho se a coluna ainda não existir na
+          // planilha (caso de quem nunca salvou nenhuma observação ainda).
+          observacoesLocador:cell(row,ml,'Observacoes')||'',observacoesLocatario:cell(row,ml,'Observacoes Locatario')||''};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -11215,7 +11225,9 @@ window.cpRenderFixas=cpRenderFixas;
              aguaPriv:aguaPriv,gasPriv:gasPriv,aguaComum:aguaComum,gasPiscina:gasPiscina,energiaComum:energiaComum,taxaLeitura:taxaLeitura,
              fundoFerias:fundoFerias,decimoTerceiro:decimoTerceiro,desconto:desconto,descontoIncideTaxa:!!l.descontoIncideTaxa,
              outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,
-             statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||''};
+             statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||'',
+             // Observações do mês, cada uma só aparece no documento correspondente (recibo x informe).
+             observacoesLocatario:l.observacoesLocatario||'',observacoesLocador:l.observacoesLocador||''};
       if(o){
         if(o.aluguel!=null)r.aluguel=num(o.aluguel);
         if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
@@ -11241,6 +11253,8 @@ window.cpRenderFixas=cpRenderFixas;
         if(o.outrasValor!=null)r.outrasValor=num(o.outrasValor);
         if(o.valorRepasse!=null){r.valorRepasse=o.valorRepasse;r.repManual=true;}
         else if(Object.prototype.hasOwnProperty.call(o,'valorRepasse')){r.repManual=false;} // sinal explícito de "limpar o manual"
+        if(o.observacoesLocatario!=null)r.observacoesLocatario=o.observacoesLocatario;
+        if(o.observacoesLocador!=null)r.observacoesLocador=o.observacoesLocador;
       }
       // Taxa de administração recalculada agora, com aluguel/multa/juros/encargos/desconto já
       // totalmente resolvidos (incluindo qualquer override) — assim, quando o contrato tem a
@@ -11445,7 +11459,8 @@ window.cpRenderFixas=cpRenderFixas;
       'Condominio':w.condominio||0,'IPTU':w.iptu||0,'Outras Cobrancas Desc':w.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(w),
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
-      'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0,'Desconto Incide Taxa':w.descontoIncideTaxa?'Sim':'Nao'};
+      'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0,'Desconto Incide Taxa':w.descontoIncideTaxa?'Sim':'Nao',
+      'Observacoes':w.observacoesLocador||'','Observacoes Locatario':w.observacoesLocatario||''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
 
@@ -11510,6 +11525,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
     document.getElementById('cobr-desconto-incide-taxa').value=l.descontoIncideTaxa?'Sim':'Nao';
+    document.getElementById('cobr-obs-locatario').value=l.observacoesLocatario||'';
+    document.getElementById('cobr-obs-locador').value=l.observacoesLocador||'';
     document.getElementById('cobr-outras-lista').innerHTML='';
     parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino,it.incideTaxa);});
     cobrAtualizarPreview();
@@ -11554,6 +11571,8 @@ window.cpRenderFixas=cpRenderFixas;
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
     patch.descontoIncideTaxa=document.getElementById('cobr-desconto-incide-taxa').value==='Sim';
+    patch.observacoesLocatario=document.getElementById('cobr-obs-locatario').value.trim();
+    patch.observacoesLocador=document.getElementById('cobr-obs-locador').value.trim();
     // Sempre que os componentes (aluguel, condomínio, IPTU, desconto...) são editados por aqui,
     // o repasse volta a ser calculado automaticamente a partir deles — em vez de continuar preso
     // num valor antigo gravado na coluna "Valor Repasse" de uma edição anterior (isso causava o
@@ -11889,10 +11908,9 @@ window.cpRenderFixas=cpRenderFixas;
   }
   // Monta uma linha-resumo da garantia locatícia do contrato, com os campos específicos
   // de cada tipo (seguro fiança, título de capitalização, caução, carta fiança, fiadores).
-  // Usada só no informe de repasse (endereçado ao LOCADOR — ele tem interesse em saber o que
-  // garante o contrato). NÃO aparece no Relatório de Imóveis do Locador nem no recibo enviado
-  // ao locatário (que já sabe qual garantia ele mesmo prestou) — removida desses dois por
-  // pedido do usuário.
+  // Não é mais usada em nenhum documento gerado (recibo, informe de repasse ou Relatório de
+  // Imóveis do Locador) — removida de todos por pedido do usuário. Mantida aqui (e exportada em
+  // window.garantiaResumo) só porque outra tela pode voltar a precisar dela no futuro.
   function garantiaResumo(c){
     var t=c.tipoGarantia;
     if(!t)return '';
@@ -12544,6 +12562,13 @@ window.cpRenderFixas=cpRenderFixas;
       disclaimer='';
     }
 
+    // Observação do mês: cada documento mostra só a sua (recibo → observação pro locatário;
+    // informe, inclusive dividido por coproprietário → observação pro locador). Fica de fora
+    // do valoresHtml de propósito, pra sobreviver à troca de proprietário no seletor abaixo
+    // (que substitui valoresHtml inteiro, mas não devia apagar a observação).
+    var observacaoTxt=(tipo==='aluguel'?w.observacoesLocatario:w.observacoesLocador)||'';
+    var observacaoSection=observacaoTxt?'<div class="parc-section"><div class="parc-section-label">Observação</div><div class="parc-box">'+E(observacaoTxt).replace(/\n/g,'<br>')+'</div></div>':'';
+
     // Se o imóvel tem coproprietários cadastrados, o informe de repasse (não o recibo do
     // inquilino) é dividido: cada proprietário recebe o seu percentual, com IR calculado
     // quando marcado. Guarda os dados p/ o seletor poder trocar de proprietário sem reabrir.
@@ -12580,13 +12605,12 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
       +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
       +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
-      // Garantia locatícia só faz sentido no informe de repasse (o locador tem interesse em saber
-      // o que garante o contrato); no recibo enviado ao locatário é informação óbvia pra quem já
-      // prestou a garantia, então não aparece — tipo!=='aluguel' cobre repasse normal e por proprietário.
-      +(tipo!=='aluguel'&&garantiaResumo(c)?'<div class="parc-section"><div class="parc-section-label">Garantia locatícia</div><div class="parc-box">'+E(garantiaResumo(c))+'</div></div>':'')
+      // Garantia locatícia removida por pedido do usuário — não aparece mais em nenhum dos dois
+      // documentos (nem recibo ao locatário, nem informe ao locador).
       +'<div class="parc-section" id="reciboLocValoresSecao"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
       +'<div class="parc-section" id="reciboLocTotalSecao"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
       +vencSection
+      +observacaoSection
       +'<div class="parc-section" id="reciboLocContaSecao"><div class="parc-section-label">'+contaTitulo+'</div><div class="parc-box">'+contaHtml+'</div></div>'
       +(disclaimer?'<div class="parc-section" style="margin-bottom:0"><div style="font-size:11px;color:#a8c4e8">'+disclaimer+'</div></div>':'')
       +'</div>'
@@ -12660,6 +12684,7 @@ window.cpRenderFixas=cpRenderFixas;
       // Mesma regra da versão em tela: só avisa que "vai incidir multa" quando a multa deste
       // atraso ainda não foi lançada no recibo — senão fica parecendo cobrança em dobro.
       if(!w.multa)txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n';
+      if(w.observacoesLocatario)txt+='\n*OBSERVAÇÃO:* '+w.observacoesLocatario+'\n';
       txt+='\n*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
       txt+=contaTxt(reciboLocContaDestino(c));
       txt+='\nEste recibo/demonstrativo tem validade como comprovante de pagamento apenas após a efetiva quitação do valor acima.\n';
@@ -12670,7 +12695,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='*IMÓVEL:* '+(c.end||'')+'\n';
       txt+='Contrato nº '+contrato+' — Ref. '+w.mes+'\n\n';
       txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n';
-      if(garantiaResumo(c))txt+='*GARANTIA LOCATÍCIA:* '+garantiaResumo(c)+'\n';
+      // Sem garantia locatícia aqui também — removida dos dois documentos.
       txt+='\n';
       if(w.aluguel)txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
@@ -12680,8 +12705,9 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.iptu)txt+='(+) IPTU: '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
-      txt+='Referente ao aluguel vencido em '+mesExtenso(w.mes)+'\n\n';
-      txt+='*DADOS BANCÁRIOS DO LOCADOR (REPASSE)*\n';
+      txt+='Referente ao aluguel vencido em '+mesExtenso(w.mes)+'\n';
+      if(w.observacoesLocador)txt+='\n*OBSERVAÇÃO:* '+w.observacoesLocador+'\n';
+      txt+='\n*DADOS BANCÁRIOS DO LOCADOR (REPASSE)*\n';
       txt+=contaTxt({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
     }
     txt+='\nDr. Adenilson Borges — (11) 99931-3712';
