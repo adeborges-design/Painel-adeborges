@@ -10065,11 +10065,36 @@ window.cpRenderFixas=cpRenderFixas;
 
     <!-- 2) CONTRATOS -->
     <div id="locContratosSection" class="loc-hidden">
+      <div id="locCFormWrap" class="loc-hidden">
       <div class="loc-section-title" id="locCFormTitle">Novo contrato</div>
       <div class="loc-cform">
         <input type="hidden" id="lc-id">
-        <div class="loc-cfield half"><label>Nº do Contrato *</label><input class="loc-cinput" id="lc-contrato" placeholder="Ex.: 42.150.1"></div>
+        <div class="loc-cfield half">
+          <label>Nº do Contrato *</label>
+          <div style="display:flex;gap:6px">
+            <input class="loc-cinput" id="lc-contrato" placeholder="Ex.: R26.001" style="flex:1">
+            <button type="button" class="loc-btn" style="padding:0 10px;white-space:nowrap" title="Sugerir número automaticamente com base no tipo de locação e no ano de início de vigência" onclick="locSugerirNumeroContrato()">🔢 Sugerir</button>
+          </div>
+        </div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Tipo de locação</label><select class="loc-cinput" id="lc-tipo-locacao" onchange="locAutoSugerirSeVazio()">
+          <option value="">Selecionar</option>
+          <option value="Residencial">Residencial</option>
+          <option value="Comercial">Comercial</option>
+        </select></div>
+        <div class="loc-cfield"><label>Tipo de imóvel</label><select class="loc-cinput" id="lc-tipo-imovel">
+          <option value="">Selecionar</option>
+          <option>Apartamento</option>
+          <option>Casa</option>
+          <option>Sobrado</option>
+          <option>Kitnet/Studio</option>
+          <option>Prédio Comercial</option>
+          <option>Sala Comercial</option>
+          <option>Loja</option>
+          <option>Galpão</option>
+          <option>Terreno</option>
+          <option>Outro</option>
+        </select></div>
         <div class="loc-cfield"><label>Taxa Adm (%) *</label><input class="loc-cinput" id="lc-taxa" type="text" inputmode="decimal" placeholder="Ex.: 6"></div>
         <div class="loc-cfield"><label>Taxa incide sobre</label><select class="loc-cinput" id="lc-taxa-incide-encargos">
           <option value="Nao">Só o aluguel (padrão)</option>
@@ -10152,7 +10177,8 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
 
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
-        <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date"></div>
+        <div class="loc-cfield"><label>CEP</label><input class="loc-cinput" id="lc-cep" placeholder="00000-000" maxlength="9"></div>
+        <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date" onchange="locAutoSugerirSeVazio()"></div>
         <div class="loc-cfield"><label>Vigência — fim</label><input class="loc-cinput" id="lc-vig-fim" type="date"></div>
         <div class="loc-cfield"><label>Índice de reajuste do aluguel</label><select class="loc-cinput" id="lc-indice-reajuste">
           <option value="">Não definido</option>
@@ -10174,7 +10200,9 @@ window.cpRenderFixas=cpRenderFixas;
           <span class="msg" id="lc-msg"></span>
           <button class="loc-btn" onclick="locNovoContrato()">Limpar</button>
           <button class="loc-btn primary" onclick="locSalvarContrato()">💾 Salvar contrato</button>
+          <button class="loc-btn" title="Oculta o formulário sem fechar a tela de Locações nem a lista de contratos" onclick="document.getElementById('locCFormWrap').classList.add('loc-hidden')">🔽 Ocultar formulário</button>
         </div>
+      </div>
       </div>
       <div class="loc-table-wrap">
         <table class="loc-table"><thead><tr><th>Contrato</th><th>Locador</th><th>Locatário</th><th>Endereço</th><th style="text-align:right">Aluguel</th><th style="text-align:center">Taxa Adm. (% / R$)</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
@@ -10971,6 +10999,11 @@ window.cpRenderFixas=cpRenderFixas;
   }
   var DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
   var live=false, lastSync='', selMes=null, showRepasse=false, showResumoLocadores=false;
+  // Controla se a lista de "contratos vigorando por prazo indeterminado" (vencidos) fica
+  // aberta ou fechada dentro do <details>; começa fechada a cada abertura de Locações, e o
+  // estado é preservado entre os vários locRender()/locAtualizarAlertaVigencia() que rodam
+  // enquanto a tela está aberta (senão o <details> fecharia sozinho a cada interação).
+  var alertaVencidosOpen=false;
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
   function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
@@ -11217,7 +11250,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
@@ -11682,7 +11715,7 @@ window.cpRenderFixas=cpRenderFixas;
     sel.innerHTML=meses.map(function(m){return '<option value="'+m+'"'+(m===selMes?' selected':'')+'>'+m+'</option>';}).join('');
   }
 
-  window.abrirAlugueis=function(){document.getElementById('locOverlay').classList.add('open');carregarAlugueis();};
+  window.abrirAlugueis=function(){document.getElementById('locOverlay').classList.add('open');alertaVencidosOpen=false;carregarAlugueis();};
 
   window.locFiltroAtivo = 'all';
   window.locFiltrar = function (tipo) { locFiltroAtivo = (locFiltroAtivo === tipo) ? 'all' : tipo; locRender(); };
@@ -11722,14 +11755,18 @@ window.cpRenderFixas=cpRenderFixas;
         +'</div>';
     }
     if(vencidos.length){
-      html+='<div style="background:rgba(91,141,238,0.08);border:1px solid rgba(91,141,238,0.3);border-radius:10px;padding:10px 14px">'
-        +'<div style="font-weight:700;color:var(--accent2);margin-bottom:4px">📄 '+vencidos.length+' contrato(s) vigorando por prazo indeterminado</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Prazo original venceu e o inquilino continua no imóvel — por força da Lei do Inquilinato (art. 46, §1º), passou a vigorar por prazo indeterminado.</div>'
+      html+='<details id="locAlertaVencidosDetails" style="background:rgba(91,141,238,0.08);border:1px solid rgba(91,141,238,0.3);border-radius:10px;padding:10px 14px"'+(alertaVencidosOpen?' open':'')+' ontoggle="window.locSetAlertaVencidosOpen(this.open)">'
+        +'<summary style="font-weight:700;color:var(--accent2);cursor:pointer;list-style:revert">📄 '+vencidos.length+' contrato(s) vigorando por prazo indeterminado</summary>'
+        +'<div style="font-size:11px;color:var(--muted);margin:6px 0 4px">Prazo original venceu e o inquilino continua no imóvel — por força da Lei do Inquilinato (art. 46, §1º), passou a vigorar por prazo indeterminado.</div>'
         +vencidos.map(function(a){return '<div style="font-size:12.5px;color:var(--text);margin:2px 0">'+E(a.c.end||a.c.contrato)+' ('+E(a.c.locatario||'')+') — venceu há <strong>'+a.dias+' dia(s)</strong></div>';}).join('')
-        +'</div>';
+        +'</details>';
     }
     host.innerHTML=html;
   }
+  // Guarda o estado aberto/fechado do <details> de "vencidos" entre re-renders (locRender()
+  // roda a cada interação da tela e recria o innerHTML, o que fecharia o <details> de novo
+  // se o estado não fosse preservado numa variável fora do innerHTML).
+  window.locSetAlertaVencidosOpen=function(open){alertaVencidosOpen=!!open;};
   window.locRender=function(){
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
     var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
@@ -13221,7 +13258,9 @@ window.cpRenderFixas=cpRenderFixas;
   function n2(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
   // ---------- CONTRATOS (cadastro / edição) ----------
-  window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);document.getElementById('btnLocContratos').classList.toggle('active',!hide);if(!hide)locRenderContratos();};
+  // Este botão só mostra/esconde a LISTA de contratos — o formulário de novo/editar
+  // (locCFormWrap) fica sempre fechado aqui dentro; ele só abre via locNovoContrato()/locEditarContrato().
+  window.locToggleContratos=function(){var s=document.getElementById('locContratosSection');var hide=!s.classList.contains('loc-hidden');s.classList.toggle('loc-hidden',hide);document.getElementById('btnLocContratos').classList.toggle('active',!hide);document.getElementById('locCFormWrap').classList.add('loc-hidden');if(!hide)locRenderContratos();};
   function locRenderContratos(){
     var tb=document.getElementById('locContratosTbody');
     var listaOrdenada=DATA.contratos.slice().sort(function(a,b){return String(a.locador||'').localeCompare(String(b.locador||''),'pt-BR',{sensitivity:'base'});});
@@ -13255,16 +13294,46 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
+    document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
     ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
+    document.getElementById('lc-tipo-locacao').value='';document.getElementById('lc-tipo-imovel').value='';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-taxa-incide-encargos').value='Nao';document.getElementById('lc-msg').textContent='';
     try{locToggleGarantia();}catch(e){}
     locRenderContratos();document.getElementById('lc-contrato').focus();
+    try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
+  };
+  // Sugestão automática de nº de contrato: {R|C}{AA}.{SEQ} — tipo de locação (Residencial/
+  // Comercial) + ano de início de vigência (2 dígitos) + sequencial de 3 dígitos, único dentro
+  // do mesmo tipo+ano. Ex.: R26.001, R26.002, C26.001. Nunca sobrescreve um número já digitado
+  // manualmente (só preenche se o campo estiver vazio ou via clique explícito no botão).
+  window.locSugerirNumeroContrato=function(){
+    var tipo=document.getElementById('lc-tipo-locacao').value;
+    var pref=(tipo==='Comercial')?'C':'R';
+    var vig=document.getElementById('lc-vig-inicio').value;
+    var ano=vig?parseInt(vig.slice(0,4),10):(new Date()).getFullYear();
+    var aa=('0'+(ano%100)).slice(-2);
+    var max=0;
+    (DATA.contratos||[]).forEach(function(c){
+      var m=/^([RC])(\d{2})\.(\d{3})$/.exec(String(c.contrato||'').trim());
+      if(m&&m[1]===pref&&m[2]===aa){var n=parseInt(m[3],10);if(n>max)max=n;}
+    });
+    var sugestao=pref+aa+'.'+('00'+(max+1)).slice(-3);
+    var campo=document.getElementById('lc-contrato');
+    campo.value=sugestao;
+    campo.focus();
+    if(!tipo){var msg=document.getElementById('lc-msg');msg.style.color='var(--yellow)';msg.textContent='Sugestão gerada como Residencial (padrão) — selecione o Tipo de locação e clique em Sugerir de novo se for Comercial.';}
+  };
+  // Auto-preenche o número sugerido quando o Tipo de locação ou a Vigência-início mudam,
+  // mas só se o campo Contrato ainda estiver vazio (nunca sobrescreve o que o usuário digitou).
+  window.locAutoSugerirSeVazio=function(){
+    var campo=document.getElementById('lc-contrato');
+    if(campo&&!campo.value.trim())locSugerirNumeroContrato();
   };
   // Mostra só o bloco de campos da garantia locatícia escolhida (mesmo mecanismo de
   // togglePessoaJuridica no módulo Processos: display none/'' por id, sem CSS extra).
@@ -13285,6 +13354,8 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.locEditarContrato=function(contrato){
     var c=contratosById[contrato];if(!c)return;
+    document.getElementById('locContratosSection').classList.remove('loc-hidden');
+    document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Editar contrato '+contrato;
     document.getElementById('lc-id').value=c.id||'';
     document.getElementById('lc-contrato').value=c.contrato||'';
@@ -13297,6 +13368,9 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-agencia-locador').value=c.agenciaLocador||'';
     document.getElementById('lc-conta-locador').value=c.contaLocador||'';
     document.getElementById('lc-pix-locador').value=c.pixLocador||'';
+    document.getElementById('lc-tipo-locacao').value=c.tipoLocacao||'';
+    document.getElementById('lc-tipo-imovel').value=c.tipoImovel||'';
+    document.getElementById('lc-cep').value=c.cep||'';
     document.getElementById('lc-end').value=c.end||'';
     document.getElementById('lc-vig-inicio').value=locIsoFromBR(c.vigInicio);
     document.getElementById('lc-vig-fim').value=locIsoFromBR(c.vigFim);
@@ -13337,7 +13411,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-fiador2-email').value=c.fiador2Email||'';
     try{locToggleGarantia();}catch(e){}
     document.getElementById('lc-msg').textContent='';
-    try{document.getElementById('locContratosSection').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
+    try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
   };
   window.locSalvarContrato=function(){
     var msg=document.getElementById('lc-msg');
@@ -13352,6 +13426,9 @@ window.cpRenderFixas=cpRenderFixas;
       'Agencia Locador':document.getElementById('lc-agencia-locador').value.trim(),
       'Conta Locador':document.getElementById('lc-conta-locador').value.trim(),
       'Pix Locador':document.getElementById('lc-pix-locador').value.trim(),
+      'Tipo Locacao':document.getElementById('lc-tipo-locacao').value,
+      'Tipo Imovel':document.getElementById('lc-tipo-imovel').value,
+      'CEP':document.getElementById('lc-cep').value.trim(),
       'Endereco':document.getElementById('lc-end').value.trim(),
       'Data Inicio Contrato':locDtBRfromInput(document.getElementById('lc-vig-inicio').value),
       'Data Fim Contrato':locDtBRfromInput(document.getElementById('lc-vig-fim').value),
@@ -13393,7 +13470,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
