@@ -2251,23 +2251,92 @@
 (function(){
   var HASH = '4a330ac133adc3335296a11b39d8d5f7d5eb03ab27bb6ba933a2e76cc3d01c5b';
   var AUTH_KEY = 'lexflow_auth_ok';
+  // ---------- Reforço de segurança do acesso ----------
+  // O que isso resolve: alguém pegar o celular/computador DESTRAVADO (com o app já aberto e
+  // logado) e conseguir ver processos/valores sem digitar senha nenhuma — o risco real do
+  // dia a dia, ainda mais agora que o LexFlow é um app instalado, sempre "à mão" no celular.
+  // O que isso NÃO resolve (limite honesto): como o site é público e a checagem roda toda no
+  // navegador, alguém com conhecimento técnico (abrir o código-fonte / DevTools) sempre
+  // consegue contornar a trava ou tentar quebrar o hash da senha offline — isso só seria
+  // realmente impossível com um login de verdade no servidor, o que este projeto (site
+  // estático + Apps Script) não tem hoje. O que dá pra fazer bem: travar sozinho depois de um
+  // tempo parado/em segundo plano, e dificultar tentativa de senha por chute repetido.
+  var LAST_ACTIVE_KEY = 'lexflow_last_active';
+  var LOCK_TIMEOUT_MIN = 15; // trava sozinho após 15min sem nenhuma interação
+  var FAIL_KEY = 'lexflow_fail_count';
+  var FAIL_UNTIL_KEY = 'lexflow_fail_until';
   var gate = document.getElementById('lexflowGate');
-  function unlock(){ gate.style.display = 'none'; }
-  if (localStorage.getItem(AUTH_KEY) === '1') { unlock(); }
+  var pwField = document.getElementById('lexflowGatePw');
+  var errField = document.getElementById('lexflowGateErr');
+
+  function agora(){ return Date.now(); }
+  function marcarAtividade(){ try{ localStorage.setItem(LAST_ACTIVE_KEY, String(agora())); }catch(e){} }
+  function passouDoTempo(){
+    var ultima = parseInt(localStorage.getItem(LAST_ACTIVE_KEY) || '0', 10);
+    if (!ultima) return false;
+    return (agora() - ultima) > LOCK_TIMEOUT_MIN * 60 * 1000;
+  }
+  function unlock(){ gate.style.display = 'none'; marcarAtividade(); }
+  function travar(motivo){
+    try{ localStorage.removeItem(AUTH_KEY); }catch(e){}
+    gate.style.display = 'flex';
+    if (pwField) pwField.value = '';
+    if (errField) errField.style.display = 'none';
+  }
+
+  if (localStorage.getItem(AUTH_KEY) === '1' && !passouDoTempo()) { unlock(); }
+  else { try{ localStorage.removeItem(AUTH_KEY); }catch(e){} }
+
+  // Qualquer interação do usuário reseta o relógio de inatividade.
+  ['click','keydown','touchstart','scroll'].forEach(function(ev){
+    document.addEventListener(ev, function(){ if(gate.style.display==='none') marcarAtividade(); }, { passive: true });
+  });
+  // Ao voltar pro app (trocar de aba/app e voltar) — checa na hora, não só no timer.
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') {
+      if (gate.style.display === 'none' && passouDoTempo()) travar();
+    }
+  });
+  // Checagem periódica — cobre o caso da aba/app ficar aberto e parado, sem trocar de tela.
+  setInterval(function(){
+    if (gate.style.display === 'none' && passouDoTempo()) travar();
+  }, 30000);
+  // Trava manual (botão "Bloquear agora" no menu) — pra quando o próprio usuário vai
+  // entregar o aparelho pra alguém e quer travar na hora, sem esperar o tempo passar.
+  window.lexflowBloquearAgora = function(){ travar(); };
+
   async function sha256Hex(msg){
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
   }
+  function tentativasBloqueadasAte(){ return parseInt(localStorage.getItem(FAIL_UNTIL_KEY) || '0', 10); }
   document.getElementById('lexflowGateForm').addEventListener('submit', async function(e){
     e.preventDefault();
-    var pw = document.getElementById('lexflowGatePw').value;
+    var bloqueadoAte = tentativasBloqueadasAte();
+    if (agora() < bloqueadoAte) {
+      var restam = Math.ceil((bloqueadoAte - agora()) / 1000);
+      errField.textContent = 'Muitas tentativas erradas. Aguarde ' + restam + 's e tente de novo.';
+      errField.style.display = 'block';
+      return;
+    }
+    var pw = pwField.value;
     var h = await sha256Hex(pw);
     if (h === HASH) {
       localStorage.setItem(AUTH_KEY, '1');
-      document.getElementById('lexflowGateErr').style.display = 'none';
+      try{ localStorage.removeItem(FAIL_KEY); localStorage.removeItem(FAIL_UNTIL_KEY); }catch(eClr){}
+      errField.style.display = 'none';
       unlock();
     } else {
-      document.getElementById('lexflowGateErr').style.display = 'block';
+      var falhas = (parseInt(localStorage.getItem(FAIL_KEY) || '0', 10)) + 1;
+      try{ localStorage.setItem(FAIL_KEY, String(falhas)); }catch(eSet){}
+      if (falhas >= 5) {
+        var esperaSeg = Math.min(30 * Math.pow(2, falhas - 5), 300); // 30s,60s,120s,240s,300s(máx 5min)
+        try{ localStorage.setItem(FAIL_UNTIL_KEY, String(agora() + esperaSeg * 1000)); }catch(eSet2){}
+        errField.textContent = 'Senha incorreta. Muitas tentativas — aguarde ' + esperaSeg + 's.';
+      } else {
+        errField.textContent = 'Senha incorreta.';
+      }
+      errField.style.display = 'block';
     }
   });
 })();
@@ -3668,6 +3737,20 @@
       <div id="lembretesStatus" style="margin-top:8px;font-size:12px"></div>
     </div>
 
+    <div class="form-group">
+      <label class="form-label">BACKUP AUTOMÁTICO DA PLANILHA</label>
+      <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">
+        Toda madrugada (3h), salva uma cópia completa da planilha numa pasta separada do Drive
+        ("LexFlow - Backups"), pra caso algo seja editado ou apagado sem querer. Guarda os
+        últimos 30 backups e apaga os mais antigos sozinho. Precisa ativar uma vez só.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" type="button" onclick="ativarBackupDiario()">💾 Ativar backup diário</button>
+        <button class="btn-secondary" type="button" onclick="testarBackupDiario()">🧪 Fazer um backup agora</button>
+      </div>
+      <div id="backupStatus" style="margin-top:8px;font-size:12px"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
       <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
@@ -4174,6 +4257,28 @@ window.testarLembretesDiarios=function(){
     if(!el)return;
     if(d&&d.ok&&d.enviado){el.style.color='var(--green)';el.textContent='✔ E-mail de teste enviado — '+d.total+' item(ns) (processos: '+d.processos+', contas: '+d.contas+', honorários: '+d.honorarios+', locações: '+(d.locacoes||0)+', acordos: '+(d.acordos||0)+').';}
     else if(d&&d.ok){el.style.color='var(--yellow)';el.textContent='Nenhum prazo/recibo nos próximos dias — nada a enviar agora.';}
+    else{el.style.color='var(--red)';el.textContent='Erro: '+((d&&(d.error||d.erro))||'desconhecido');}
+  }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
+};
+
+// Backup automático da planilha (cópia diária de segurança pro Drive, ver Código.gs
+// lfBackupDiario_/lfConfigurarTriggerBackup_). Mesmo padrão dos lembretes diários: ativa o
+// gatilho uma vez (roda mesmo com o navegador fechado) e tem um botão de teste imediato.
+window.ativarBackupDiario=function(){
+  var el=document.getElementById('backupStatus');
+  if(el){el.style.color='var(--muted)';el.textContent='Ativando...';}
+  fetch(URL_AS+'?acao=configurarBackup').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    if(d&&d.ok){el.style.color='var(--green)';el.textContent='✔ '+(d.mensagem||'Backup diário ativado.');}
+    else{el.style.color='var(--red)';el.textContent='Erro ao ativar: '+((d&&(d.error||d.erro))||'desconhecido');}
+  }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
+};
+window.testarBackupDiario=function(){
+  var el=document.getElementById('backupStatus');
+  if(el){el.style.color='var(--muted)';el.textContent='Fazendo backup agora (pode levar alguns segundos)...';}
+  fetch(URL_AS+'?acao=testarBackup').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    if(d&&d.ok){el.style.color='var(--green)';el.textContent='✔ Backup criado: "'+d.arquivo+'" ('+d.totalBackups+' backup(s) guardado(s)'+(d.apagados?', '+d.apagados+' antigo(s) removido(s)':'')+').';}
     else{el.style.color='var(--red)';el.textContent='Erro: '+((d&&(d.error||d.erro))||'desconhecido');}
   }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
 };
@@ -6711,6 +6816,9 @@ window.accSalvarContrato = function () {
   if (!cliente || !parteContraria) { msgEl.textContent = 'Preencha cliente e parte contrária.'; msgEl.style.color = 'var(--red)'; return; }
   if (!valorTotal || !numParcelas) { msgEl.textContent = 'Informe valor total e número de parcelas.'; msgEl.style.color = 'var(--red)'; return; }
   if (!accLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  try {
+    if (typeof window.radarConfirmarOuAbortar_ === 'function' && !window.radarConfirmarOuAbortar_(cliente, parteContraria, { excluirAcordoId: id || null })) return;
+  } catch (eRadarAcc) {}
 
   var campos = {
     'Nr Processo': p ? (p.processo || '') : '',
@@ -8017,6 +8125,12 @@ function inputParaData(str) {
 async function salvarEdicao() {
   if (!_edicaoLinha) return;
 
+  try {
+    var nomeEd = document.getElementById('ed-nome').value.trim();
+    var outraParteEd = document.getElementById('ed-outra').value.trim();
+    if (typeof window.radarConfirmarOuAbortar_ === 'function' && !window.radarConfirmarOuAbortar_(nomeEd, outraParteEd, { excluirProcessoRow: _edicaoLinha - 1 })) return;
+  } catch (eRadarEd) {}
+
   const btn = document.getElementById('btnSalvarEdicao');
   const statusEl = document.getElementById('edicaoStatus');
   btn.disabled = true;
@@ -8455,6 +8569,11 @@ async function salvarCadastro() {
     document.getElementById('cadastroStatus').textContent = 'Nome do cliente é obrigatório.';
     return;
   }
+
+  try {
+    var outraParteCad = document.getElementById('cad-outra').value.trim();
+    if (typeof window.radarConfirmarOuAbortar_ === 'function' && !window.radarConfirmarOuAbortar_(nome, outraParteCad)) return;
+  } catch (eRadar) {}
 
   const btn = document.getElementById('btnSalvarCadastro');
   const statusEl = document.getElementById('cadastroStatus');
@@ -10792,11 +10911,13 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="entr-no-print" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
         <div>
           <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Mês de referência</label>
-          <input type="month" id="fechMesInput" class="search-input" onchange="fechamentoRender()">
+          <input type="month" id="fechMesInput" class="search-input" onchange="fechamentoRender();if(!document.getElementById('fechamentoEvolucaoBox').classList.contains('loc-hidden'))fechamentoRenderEvolucao();">
         </div>
         <button class="loc-btn" onclick="fechamentoImprimir()">🖨️ Imprimir / PDF</button>
         <button class="loc-btn" onclick="fechamentoExportCSV()">⬇️ Exportar CSV</button>
+        <button class="loc-btn" onclick="fechamentoToggleEvolucao()">📈 Ver evolução (12 meses)</button>
       </div>
+      <div id="fechamentoEvolucaoBox" class="loc-hidden entr-no-print" style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px"></div>
       <div id="fechamentoCorpo" style="max-height:65vh;overflow-y:auto"></div>
     </div>
   </div>
@@ -13618,6 +13739,10 @@ window.cpRenderFixas=cpRenderFixas;
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
           Configurações
         </button>
+        <div class="home-user-divider"></div>
+        <button class="home-user-item" onclick="if(typeof window.lexflowBloquearAgora==='function')window.lexflowBloquearAgora();document.getElementById('homeUserMenu').classList.remove('open')" style="color:var(--red)">
+          🔒 &nbsp;Bloquear agora
+        </button>
       </div>
     </div>
     </div>
@@ -13863,6 +13988,8 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="notasAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">📝 &nbsp;Notas Rápidas <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<button class="home-user-item" onclick="abrirManual();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual do Sistema</button>'+
         '<button class="home-user-item" onclick="document.getElementById(\'modalConfig\').classList.add(\'open\');this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Configurações</button>'+
+        '<div class="home-user-divider"></div>'+
+        '<button class="home-user-item" onclick="if(typeof window.lexflowBloquearAgora===\'function\')window.lexflowBloquearAgora();this.closest(\'.home-user\').classList.remove(\'open\')" style="color:var(--red)">🔒 &nbsp;Bloquear agora</button>'+
       '</div>'+
     '</div>';
   window.injectUserMenus=function(){
@@ -15004,6 +15131,59 @@ window.cpRenderFixas=cpRenderFixas;
   };
   // ============ FIM BUSCA ÚNICA ENTRE MÓDULOS ============
 
+  // ============ RADAR DE CONFLITO DE INTERESSES ============
+  // Aviso (nunca bloqueia) ao cadastrar/editar um Processo ou Acordo: checa se o nome da nova
+  // parte contrária já aparece como CLIENTE em outro caso (Processos/Acordos/Honorários), ou
+  // se o novo cliente já apareceu como parte contrária em outro caso — sinal de possível
+  // conflito de interesse que merece um olhar antes de aceitar a causa. Comparação por nome
+  // normalizado (sem acento/maiúscula) EXATO — de propósito não usa "contém", pra não gerar
+  // aviso toda hora por causa de sobrenome comum (Silva, Souza etc.).
+  function radarNormalizar_(s){
+    return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');
+  }
+  window.radarConflito_=function(nomeCliente,nomeParteContraria,opts){
+    opts=opts||{};
+    var achados=[];
+    var clienteN=radarNormalizar_(nomeCliente);
+    var contrariaN=radarNormalizar_(nomeParteContraria);
+    if(!clienteN&&!contrariaN)return achados;
+
+    var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
+    ap.forEach(function(p){
+      if(opts.excluirProcessoRow!=null&&p._row===opts.excluirProcessoRow)return;
+      var pn=radarNormalizar_(p.nome), po=radarNormalizar_(p.outra);
+      if(contrariaN&&pn&&pn===contrariaN) achados.push('"'+nomeParteContraria+'" já é seu CLIENTE no processo de '+(p.nome||'-')+' ('+(p.processo||'sem nº')+').');
+      if(clienteN&&po&&po===clienteN) achados.push('"'+nomeCliente+'" já foi PARTE CONTRÁRIA no processo de '+(p.nome||'-')+' ('+(p.processo||'sem nº')+').');
+    });
+
+    var acc=window.accContratos||[];
+    acc.forEach(function(c){
+      if(opts.excluirAcordoId!=null&&String(c['ID'])===String(opts.excluirAcordoId))return;
+      var cn=radarNormalizar_(c['Cliente']), co=radarNormalizar_(c['Parte Contraria']);
+      if(contrariaN&&cn&&cn===contrariaN) achados.push('"'+nomeParteContraria+'" já é seu CLIENTE no acordo com '+(c['Parte Contraria']||'-')+'.');
+      if(clienteN&&co&&co===clienteN) achados.push('"'+nomeCliente+'" já foi PARTE CONTRÁRIA no acordo do cliente '+(c['Cliente']||'-')+'.');
+    });
+
+    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+    var vistoHon={};
+    ah.forEach(function(h){
+      var hn=radarNormalizar_(h['Cliente']);
+      if(contrariaN&&hn&&hn===contrariaN&&!vistoHon[hn]){vistoHon[hn]=true;achados.push('"'+nomeParteContraria+'" já é seu CLIENTE em Honorários.');}
+    });
+
+    var vistos={};
+    return achados.filter(function(a){if(vistos[a])return false;vistos[a]=true;return true;});
+  };
+  // Monta o texto do confirm() e retorna true se pode continuar (sem conflito, ou usuário
+  // confirmou mesmo assim), false se deve abortar o salvamento.
+  window.radarConfirmarOuAbortar_=function(nomeCliente,nomeParteContraria,opts){
+    var achados=window.radarConflito_(nomeCliente,nomeParteContraria,opts);
+    if(!achados.length)return true;
+    var msg='⚠️ Possível conflito de interesses:\n\n'+achados.map(function(a){return '• '+a;}).join('\n')+'\n\nDeseja continuar mesmo assim?';
+    return confirm(msg);
+  };
+  // ============ FIM RADAR DE CONFLITO DE INTERESSES ============
+
   // ============ FECHAMENTO MENSAL CONSOLIDADO ============
   // Extrato de escritório: junta, pra um mês escolhido, tudo que já entrou (taxa de
   // administração de Locações + Honorários recebidos + honorários de Acordos) e tudo que já
@@ -15138,6 +15318,63 @@ window.cpRenderFixas=cpRenderFixas;
     lines.push(['','','','Saldo do mes',fechN2_(d.saldo)].join(';'));
     var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fechamento_'+d.mes.replace('/','-')+'.csv';a.click();
+  };
+  // Evolução mensal — reaproveita fechamentoColetar_ mês a mês (nenhuma regra nova), só pra
+  // dar visão de tendência (a receita própria está subindo ou caindo nos últimos meses?).
+  window.fechamentoEvolucao_=function(nMeses){
+    nMeses=nMeses||12;
+    var mesInput=(document.getElementById('fechMesInput')||{}).value;
+    var mi=fechMesParaBR_(mesInput);
+    if(!mi)return [];
+    var base=new Date(mi.ano,mi.mesNum-1,1);
+    var out=[];
+    for(var i=nMeses-1;i>=0;i--){
+      var d=new Date(base.getFullYear(),base.getMonth()-i,1);
+      var chave=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);
+      var dados=window.fechamentoColetar_(chave);
+      if(dados) out.push({mes:dados.mes,receitaPropria:dados.receitaPropria,saidas:dados.saidas,saldo:dados.saldo});
+    }
+    return out;
+  };
+  function fechGraficoSvg_(dados){
+    if(!dados.length)return '<div style="text-align:center;color:var(--muted);padding:12px">Sem dados.</div>';
+    var h=170,padBottom=26,padTop=10,groupW=64,barW=20;
+    var w=Math.max(dados.length*groupW,groupW);
+    var maxVal=Math.max.apply(null,dados.map(function(d){return Math.max(d.receitaPropria,d.saidas,1);}));
+    var areaH=h-padBottom-padTop;
+    var bars='';
+    dados.forEach(function(d,i){
+      var cx=i*groupW+groupW/2;
+      var hReceita=(d.receitaPropria/maxVal)*areaH;
+      var hSaidas=(d.saidas/maxVal)*areaH;
+      var yBase=h-padBottom;
+      bars+='<rect x="'+(cx-barW-2)+'" y="'+(yBase-hReceita).toFixed(1)+'" width="'+barW+'" height="'+hReceita.toFixed(1)+'" rx="2" fill="var(--green)"><title>'+E(d.mes)+' — receita própria: '+BRLf(d.receitaPropria)+'</title></rect>';
+      bars+='<rect x="'+(cx+2)+'" y="'+(yBase-hSaidas).toFixed(1)+'" width="'+barW+'" height="'+hSaidas.toFixed(1)+'" rx="2" fill="var(--red)"><title>'+E(d.mes)+' — saídas: '+BRLf(d.saidas)+'</title></rect>';
+      var partesMes=d.mes.split('/');
+      bars+='<text x="'+cx+'" y="'+(h-8)+'" text-anchor="middle" font-size="10" fill="var(--muted)">'+(partesMes[0]||'')+'/'+((partesMes[1]||'').slice(2))+'</text>';
+    });
+    return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:'+h+'px;display:block" preserveAspectRatio="xMinYMin meet">'+bars+'</svg>';
+  }
+  window.fechamentoRenderEvolucao=function(){
+    var box=document.getElementById('fechamentoEvolucaoBox');
+    if(!box)return;
+    var dados=window.fechamentoEvolucao_(12);
+    var totalReceita=dados.reduce(function(a,d){return a+d.receitaPropria;},0);
+    var totalSaidas=dados.reduce(function(a,d){return a+d.saidas;},0);
+    var media=dados.length?totalReceita/dados.length:0;
+    var legenda='<div style="display:flex;gap:16px;align-items:center;margin-bottom:8px;font-size:11px;color:var(--muted)">'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Receita própria</span>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px;margin-right:4px"></span>Saídas</span>'
+      +'<span style="margin-left:auto">Média mensal: <strong style="color:var(--text)">'+BRLf(media)+'</strong></span>'
+      +'</div>';
+    box.innerHTML=legenda+'<div style="overflow-x:auto">'+fechGraficoSvg_(dados)+'</div>';
+  };
+  window.fechamentoToggleEvolucao=function(){
+    var box=document.getElementById('fechamentoEvolucaoBox');
+    if(!box)return;
+    var abrir=box.classList.contains('loc-hidden');
+    box.classList.toggle('loc-hidden',!abrir);
+    if(abrir)window.fechamentoRenderEvolucao();
   };
   // ============ FIM FECHAMENTO MENSAL CONSOLIDADO ============
 
