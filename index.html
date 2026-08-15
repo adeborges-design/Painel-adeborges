@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Processual — Adenilson Borges da Silva</title>
+<!-- PWA: instalar como app no celular/computador (ver manifest.json e sw.js, mesma pasta do index.html) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1f35">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LexFlow">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3648,8 +3657,8 @@
     <div class="form-group">
       <label class="form-label">LEMBRETES DIÁRIOS POR E-MAIL</label>
       <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">
-        Um e-mail automático toda manhã (7h) com prazos processuais, contas a pagar, honorários e — agora
-        também — recibos de aluguel e informes de repasse que estão vencendo nos próximos 3 dias.
+        Um e-mail automático toda manhã (7h) com prazos processuais, contas a pagar, honorários, recibos de
+        aluguel/informes de repasse vencendo nos próximos 3 dias e parcelas/repasses de Acordos pendentes.
         Precisa ativar uma vez só; fica valendo mesmo com o navegador fechado.
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4163,7 +4172,7 @@ window.testarLembretesDiarios=function(){
   if(el){el.style.color='var(--muted)';el.textContent='Enviando teste...';}
   fetch(URL_AS+'?acao=testarAlertas').then(function(r){return r.json();}).then(function(d){
     if(!el)return;
-    if(d&&d.ok&&d.enviado){el.style.color='var(--green)';el.textContent='✔ E-mail de teste enviado — '+d.total+' item(ns) (processos: '+d.processos+', contas: '+d.contas+', honorários: '+d.honorarios+', locações: '+(d.locacoes||0)+').';}
+    if(d&&d.ok&&d.enviado){el.style.color='var(--green)';el.textContent='✔ E-mail de teste enviado — '+d.total+' item(ns) (processos: '+d.processos+', contas: '+d.contas+', honorários: '+d.honorarios+', locações: '+(d.locacoes||0)+', acordos: '+(d.acordos||0)+').';}
     else if(d&&d.ok){el.style.color='var(--yellow)';el.textContent='Nenhum prazo/recibo nos próximos dias — nada a enviar agora.';}
     else{el.style.color='var(--red)';el.textContent='Erro: '+((d&&(d.error||d.erro))||'desconhecido');}
   }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
@@ -6744,12 +6753,14 @@ window.accSalvarContrato = function () {
     } else {
       msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
     }
+    try{if(typeof window.locLogAuditoria_==='function')window.locLogAuditoria_(id?'Acordo atualizado':'Acordo criado',cliente,parteContraria+' — '+numParcelas+'x de '+(valorTotal/numParcelas).toFixed(2).replace('.',','));}catch(e){}
     setTimeout(function () { carregarAcordos(); }, 1200);
   })();
 };
 
 window.accExcluirContrato = function (id) {
   if (!confirm('Excluir este acordo? As parcelas já lançadas não são apagadas automaticamente.')) return;
+  var ctExcluir=(window.accContratos||[]).find(function(c){return String(c['ID'])===String(id);})||{};
   (async function () {
     try {
       var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) });
@@ -6759,6 +6770,7 @@ window.accExcluirContrato = function (id) {
       try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_acc', id: id }) }); }
       catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
     }
+    try{if(typeof window.locLogAuditoria_==='function')window.locLogAuditoria_('Acordo excluído',ctExcluir['Cliente']||id,'Parte contrária: '+(ctExcluir['Parte Contraria']||'-'));}catch(e){}
     setTimeout(function () { carregarAcordos(); }, 1000);
   })();
 };
@@ -6986,6 +6998,13 @@ function accAtualizarLancamento(id, campos) {
   var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
   if (l) Object.keys(campos).forEach(function (k) { l[k] = campos[k]; });
   accRender();
+  try{
+    if(typeof window.locLogAuditoria_==='function'){
+      var ctLog=l?(window.accContratos||[]).find(function(c){return String(c['ID'])===String(l['Contrato']);}):null;
+      var camposTxt=Object.keys(campos).map(function(k){return k+': '+campos[k];}).join(', ');
+      window.locLogAuditoria_('Lançamento de acordo atualizado',(ctLog&&ctLog['Cliente'])||('ID '+id),camposTxt);
+    }
+  }catch(e){}
   (async function () {
     try {
       var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_acl', id: id, campos: campos }) });
@@ -10304,6 +10323,21 @@ window.cpRenderFixas=cpRenderFixas;
   }
   body.printing-recibo-acordo .reciboloc-toolbar,
   body.printing-recibo-acordo .reciboloc-actions { display:none !important; }
+  body.printing-fechamento * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-fechamento html, body.printing-fechamento body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-fechamento > * { display:none !important; }
+  body.printing-fechamento #modalFechamento {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-fechamento #modalFechamento .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-fechamento .parceiro-toolbar,
+  body.printing-fechamento .entr-no-print { display:none !important; }
+  body.printing-fechamento .fech-secao { page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-recibo-acordo #modalReciboAcordo .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
     background:transparent !important; box-shadow:none !important; border:none !important;
@@ -10718,14 +10752,52 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
     <div class="reciboloc-inner" style="padding:20px">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        Registro leve de mudanças em contratos e lançamentos de Locação — criação, edição, exclusão e trocas de status.
-        Guardado só neste navegador (não sincroniza entre aparelhos). Mostra os últimos 300 eventos.
+        Registro leve de mudanças em contratos/lançamentos de Locação e de Acordos — criação, edição, exclusão e trocas de status.
+        Guardado neste navegador e, com a planilha configurada, também sincronizado entre celular e computador. Mostra os últimos 300 eventos deste navegador (a planilha guarda o histórico completo).
       </div>
       <div style="margin-bottom:12px"><input type="text" class="search-input" id="auditoriaBusca" placeholder="Filtrar por contrato ou texto..." oninput="locAuditoriaRender()" style="width:100%"></div>
       <div id="auditoriaLista" style="max-height:60vh;overflow-y:auto"></div>
       <div style="margin-top:14px">
         <button class="loc-btn" style="color:var(--red);border-color:var(--red)" onclick="locAuditoriaLimpar()">🗑️ Limpar histórico</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BUSCA ÚNICA ENTRE MÓDULOS -->
+<div class="modal-repasse-overlay" id="modalBuscaGlobal">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">🔎 Busca em tudo</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalBuscaGlobal').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Procura por nome, número de processo, endereço ou parte contrária em Processos, Honorários, Locações e Acordos ao mesmo tempo. Clique num resultado pra abrir o módulo já filtrado.
+      </div>
+      <div style="margin-bottom:12px"><input type="text" class="search-input" id="buscaGlobalInput" placeholder="Digite ao menos 2 letras..." oninput="buscaGlobalExecutar()" style="width:100%"></div>
+      <div id="buscaGlobalResultados" style="max-height:60vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FECHAMENTO MENSAL CONSOLIDADO -->
+<div class="modal-repasse-overlay" id="modalFechamento">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📊 Fechamento mensal</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalFechamento').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div class="entr-no-print" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Mês de referência</label>
+          <input type="month" id="fechMesInput" class="search-input" onchange="fechamentoRender()">
+        </div>
+        <button class="loc-btn" onclick="fechamentoImprimir()">🖨️ Imprimir / PDF</button>
+        <button class="loc-btn" onclick="fechamentoExportCSV()">⬇️ Exportar CSV</button>
+      </div>
+      <div id="fechamentoCorpo" style="max-height:65vh;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -10786,25 +10858,73 @@ window.cpRenderFixas=cpRenderFixas;
   function keyOf(l){return l.mes+'|'+l.contrato;}
 
   // ---------- HISTÓRICO DE ALTERAÇÕES (auditoria leve) ----------
-  // Guardado só neste navegador (localStorage) — não sincroniza entre celular e computador,
-  // mas não precisa de nenhuma mudança no Código.gs/planilha nem redeploy do Apps Script.
-  // Serve pra rastrear "o que mudou e quando" em contratos e lançamentos de Locação, útil
-  // pra investigar casos como o do contrato que sumiu sem explicação aparente.
+  // Guardado neste navegador (localStorage) E, quando a planilha estiver configurada
+  // (Config > Sheet ID + API Key), também sincronizado numa aba própria (LEXFLOW_AUDITORIA)
+  // pra ficar visível entre celular e computador — antes só ficava no aparelho que gerou o
+  // evento. O envio pra planilha é "dispara e esquece" (no-cors, não bloqueia a ação que
+  // gerou o log); a leitura combina local + planilha e remove duplicatas na hora de exibir.
+  // Serve pra rastrear "o que mudou e quando" em contratos/lançamentos de Locação e Acordos,
+  // útil pra investigar casos como o do contrato que sumiu sem explicação aparente. Exportada
+  // como window.locLogAuditoria_ pra poder ser chamada de qualquer outro módulo do sistema
+  // (ex.: Acordos, que vive num escopo/closure diferente deste).
   var LOC_AUDIT_KEY='lexflow_loc_auditoria';
   var LOC_AUDIT_MAX=300;
+  var auditoriaRemotaCache_=null; // null = ainda não buscou nesta abertura do modal; [] = buscou e veio vazio
   function logAuditoria_(tipo, contrato, detalhe){
+    var ts=new Date().toISOString();
     try{
       var lista=JSON.parse(localStorage.getItem(LOC_AUDIT_KEY)||'[]');
-      lista.unshift({ts:new Date().toISOString(), tipo:tipo, contrato:contrato||'', detalhe:detalhe||''});
+      lista.unshift({ts:ts, tipo:tipo, contrato:contrato||'', detalhe:detalhe||''});
       if(lista.length>LOC_AUDIT_MAX) lista=lista.slice(0,LOC_AUDIT_MAX);
       localStorage.setItem(LOC_AUDIT_KEY, JSON.stringify(lista));
     }catch(e){}
+    try{
+      var c=cfg();
+      if(c&&c.apiKey&&c.sheetId){
+        fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_audit',campos:{'Timestamp':ts,'Tipo':tipo,'Contrato':contrato||'','Detalhe':detalhe||''}})}).catch(function(){});
+      }
+    }catch(e){}
   }
+  window.locLogAuditoria_=logAuditoria_;
   window.locAuditoriaLista=function(){
     try{return JSON.parse(localStorage.getItem(LOC_AUDIT_KEY)||'[]');}catch(e){return [];}
   };
+  // Busca a aba LEXFLOW_AUDITORIA direto via API do Sheets (leitura simples, mesmo padrão já
+  // usado pra LOC_CONTRATOS etc.) — só funciona com a planilha configurada (apiKey+sheetId).
+  window.locAuditoriaListaRemota_=async function(){
+    var c=cfg();
+    if(!c||!c.apiKey||!c.sheetId) return [];
+    try{
+      var url='https://sheets.googleapis.com/v4/spreadsheets/'+c.sheetId+'/values/'+encodeURIComponent('LEXFLOW_AUDITORIA!A1:E2000')+'?key='+c.apiKey;
+      var r=await fetch(url);
+      if(!r.ok) return [];
+      var d=await r.json();
+      var rows=d.values||[];
+      if(rows.length<2) return [];
+      var m=hidx(rows[0]);
+      return rows.slice(1).filter(function(x){return x[0];}).map(function(row){
+        return {ts:String(cell(row,m,'Timestamp')||''), tipo:String(cell(row,m,'Tipo')||''), contrato:String(cell(row,m,'Contrato')||''), detalhe:String(cell(row,m,'Detalhe')||'')};
+      });
+    }catch(e){return [];}
+  };
+  // Combina local + planilha, removendo duplicatas (mesmo evento pode estar nos dois lugares
+  // quando gerado neste navegador). Chave = timestamp+tipo+contrato+detalhe (o ts é o mesmo
+  // valor usado no envio pros dois lugares, então bate certinho quando é o mesmo evento).
+  function auditoriaCombinada_(){
+    var local=window.locAuditoriaLista();
+    var remota=auditoriaRemotaCache_||[];
+    var vistos={}, combinada=[];
+    local.concat(remota).forEach(function(it){
+      var k=(it.ts||'')+'|'+(it.tipo||'')+'|'+(it.contrato||'')+'|'+(it.detalhe||'');
+      if(vistos[k])return;
+      vistos[k]=true;
+      combinada.push(it);
+    });
+    combinada.sort(function(a,b){return new Date(b.ts)-new Date(a.ts);});
+    return combinada;
+  }
   window.locAuditoriaLimpar=function(){
-    if(!confirm('Apagar todo o histórico de alterações deste navegador? Não afeta os dados da planilha.'))return;
+    if(!confirm('Apagar o histórico de alterações deste navegador? Os eventos já sincronizados com a planilha continuam lá (não é possível apagá-los por aqui).'))return;
     try{localStorage.removeItem(LOC_AUDIT_KEY);}catch(e){}
     locAuditoriaRender();
   };
@@ -10814,13 +10934,13 @@ window.cpRenderFixas=cpRenderFixas;
       return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     }catch(e){return iso;}
   }
-  var AUDITORIA_COR={'Contrato criado':'var(--green)','Contrato atualizado':'var(--accent)','Contrato excluído':'var(--red)','Lançamento atualizado':'var(--accent)','Status aluguel':'var(--accent2)','Status repasse':'var(--accent2)'};
+  var AUDITORIA_COR={'Contrato criado':'var(--green)','Contrato atualizado':'var(--accent)','Contrato excluído':'var(--red)','Lançamento atualizado':'var(--accent)','Status aluguel':'var(--accent2)','Status repasse':'var(--accent2)','Acordo criado':'var(--green)','Acordo atualizado':'var(--accent)','Acordo excluído':'var(--red)','Lançamento de acordo atualizado':'var(--accent)'};
   window.locAuditoriaRender=function(){
     var el=document.getElementById('auditoriaLista');
     if(!el)return;
     var termo=(document.getElementById('auditoriaBusca')||{}).value||'';
     termo=termo.toLowerCase();
-    var lista=window.locAuditoriaLista();
+    var lista=auditoriaCombinada_();
     if(termo){
       lista=lista.filter(function(it){
         return (it.contrato||'').toLowerCase().indexOf(termo)>=0 || (it.detalhe||'').toLowerCase().indexOf(termo)>=0 || (it.tipo||'').toLowerCase().indexOf(termo)>=0;
@@ -10838,10 +10958,15 @@ window.cpRenderFixas=cpRenderFixas;
         +'</div>';
     }).join('');
   };
-  window.locAuditoriaAbrir=function(){
+  window.locAuditoriaAbrir=async function(){
     document.getElementById('modalAuditoria').classList.add('open');
     var busca=document.getElementById('auditoriaBusca');if(busca)busca.value='';
-    locAuditoriaRender();
+    locAuditoriaRender(); // mostra local (+ cache remoto anterior, se houver) na hora
+    var c=cfg();
+    if(c&&c.apiKey&&c.sheetId){
+      auditoriaRemotaCache_=await window.locAuditoriaListaRemota_();
+      locAuditoriaRender(); // re-renderiza já combinado com a planilha assim que chegar
+    }
   };
   function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   // Converte "DD/MM/AAAA" (ou o formato que o Sheets às vezes devolve sozinho quando a célula
@@ -13221,6 +13346,32 @@ window.cpRenderFixas=cpRenderFixas;
     return {mes:m,itens:out};
   };
 
+  // Lista de contratos (Locações) pra quem precisa ler de fora deste módulo — ex.: a busca
+  // única entre módulos. DATA é privada deste closure, então isso serve de "getter" seguro.
+  window.locContratosLista=function(){return (DATA&&DATA.contratos)?DATA.contratos:[];};
+
+  // Fechamento mensal (visão de escritório): igual ao locFluxoMensal, mas pra um mês só e com
+  // o detalhe por contrato — usado pelo fechamento mensal consolidado (Locações+Honorários+
+  // Acordos+Contas a Pagar). Só olha o que já está "Recebido"/"Repassado" no mês, mesma regra
+  // do locResumo/locFluxoMensal.
+  window.locFechamentoMes=function(mes){
+    var lst=workingList().filter(function(l){return l.mes===mes;});
+    var itensAluguel=[],itensRepasse=[],totalAluguel=0,totalTaxa=0,totalRepasse=0;
+    lst.forEach(function(l){
+      var c=contratosById[l.contrato]||{};
+      if(l.statusAluguel==='Recebido'){
+        totalAluguel+=l.aluguel; totalTaxa+=l.taxa;
+        itensAluguel.push({contrato:l.contrato,nome:c.locatario||l.contrato,valor:l.aluguel,taxa:l.taxa,ref:l.dataPag||''});
+      }
+      if(l.statusRep==='Repassado'){
+        var liq=effRep(l);
+        totalRepasse+=liq;
+        itensRepasse.push({contrato:l.contrato,nome:c.locador||l.contrato,valor:liq,ref:l.dataRep||''});
+      }
+    });
+    return {mes:mes,totalAluguel:totalAluguel,totalTaxa:totalTaxa,totalRepasse:totalRepasse,itensAluguel:itensAluguel,itensRepasse:itensRepasse};
+  };
+
   // botão no header (desativado: navegação agora fica no menu do usuário)
   function injectBtn(){}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',injectBtn);else injectBtn();
@@ -13433,6 +13584,13 @@ window.cpRenderFixas=cpRenderFixas;
         </button>
         <button class="home-user-item" onclick="painelInadimplenciaAbrir();document.getElementById('homeUserMenu').classList.remove('open')">
           💰 &nbsp;Inadimplência (tudo junto)
+        </button>
+        <button class="home-user-item" onclick="buscaGlobalAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
+          🔎 &nbsp;Busca em tudo
+          <span style="margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:1px 5px">Ctrl+K</span>
+        </button>
+        <button class="home-user-item" onclick="fechamentoAbrir();document.getElementById('homeUserMenu').classList.remove('open')">
+          📊 &nbsp;Fechamento mensal
         </button>
         <div class="home-user-divider"></div>
         <button class="home-user-item" onclick="loadFromSheets();document.getElementById('homeUserMenu').classList.remove('open')">
@@ -13695,6 +13853,8 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
         '<button class="home-user-item" onclick="abrirAcordos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
         '<button class="home-user-item" onclick="painelInadimplenciaAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">💰 &nbsp;Inadimplência (tudo junto)</button>'+
+        '<button class="home-user-item" onclick="buscaGlobalAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">🔎 &nbsp;Busca em tudo<span style="margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:1px 5px">Ctrl+K</span></button>'+
+        '<button class="home-user-item" onclick="fechamentoAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">📊 &nbsp;Fechamento mensal</button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
@@ -14179,6 +14339,14 @@ window.cpRenderFixas=cpRenderFixas;
     var elId=(locOv&&locOv.classList.contains('open'))?'locSearchInput':'searchInput';
     var el=document.getElementById(elId);
     if(el){e.preventDefault();el.focus();el.select();}
+  });
+
+  // ---------- ATALHO DE TECLADO CTRL/CMD+K PARA BUSCA ÚNICA ENTRE MÓDULOS ----------
+  document.addEventListener('keydown',function(e){
+    if(!(e.key==='k'||e.key==='K'))return;
+    if(!(e.ctrlKey||e.metaKey))return;
+    e.preventDefault();
+    if(typeof window.buscaGlobalAbrir==='function')window.buscaGlobalAbrir();
   });
   window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}try{if(typeof renderFluxoCaixa==='function')renderFluxoCaixa();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
@@ -14739,6 +14907,240 @@ window.cpRenderFixas=cpRenderFixas;
   };
   // ============ FIM PAINEL ÚNICO DE INADIMPLÊNCIA ============
 
+  // ============ BUSCA ÚNICA ENTRE MÓDULOS ============
+  // Varre Processos, Honorários, Locações e Acordos ao mesmo tempo (dados já carregados na
+  // memória — não faz nenhuma requisição nova) e devolve uma lista combinada de resultados.
+  // Não reimplementa nenhuma regra de negócio: só lê os mesmos arrays que cada módulo já usa
+  // pra se renderizar, do mesmo jeito que o painel de inadimplência faz.
+  window.buscaGlobalColetar_=function(termo){
+    termo=String(termo||'').toLowerCase().trim();
+    if(!termo||termo.length<2)return [];
+    var out=[];
+
+    var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
+    ap.forEach(function(p){
+      var hay=[p.nome,p.processo,p.tipo,p.outra,p.ramo].join(' ').toLowerCase();
+      if(hay.indexOf(termo)>=0){
+        out.push({modulo:'Processos',icone:'⚖️',titulo:p.nome||'(sem nome)',sub:[p.processo,p.tipo].filter(Boolean).join(' — ')});
+      }
+    });
+
+    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+    ah.forEach(function(h){
+      var hay=[h['Cliente'],h['Nr Processo'],h['Parceiro'],h['Responsavel Pagamento']].join(' ').toLowerCase();
+      if(hay.indexOf(termo)>=0){
+        out.push({modulo:'Honorários',icone:'💵',titulo:h['Cliente']||'(sem nome)',sub:[h['Nr Processo'],h['Forma Pagamento']].filter(Boolean).join(' — ')});
+      }
+    });
+
+    var contratosLoc=(typeof window.locContratosLista==='function')?window.locContratosLista():[];
+    contratosLoc.forEach(function(c){
+      var hay=[c.locador,c.locatario,c.end,c.contrato].join(' ').toLowerCase();
+      if(hay.indexOf(termo)>=0){
+        out.push({modulo:'Locações',icone:'🏠',titulo:c.locatario||c.locador||'(sem nome)',sub:['Contrato '+(c.contrato||''),c.end].filter(Boolean).join(' — ')});
+      }
+    });
+
+    var acc=window.accContratos||[];
+    acc.forEach(function(c){
+      var hay=[c['Cliente'],c['Parte Contraria'],c['Nr Processo']].join(' ').toLowerCase();
+      if(hay.indexOf(termo)>=0){
+        out.push({modulo:'Acordos',icone:'🤝',titulo:c['Cliente']||'(sem nome)',sub:[c['Parte Contraria']?'Réu: '+c['Parte Contraria']:'',c['Nr Processo']].filter(Boolean).join(' — ')});
+      }
+    });
+
+    return out;
+  };
+  window.__buscaGlobalTermo='';
+  window.buscaGlobalExecutar=function(){
+    var el=document.getElementById('buscaGlobalResultados');
+    if(!el)return;
+    var termo=(document.getElementById('buscaGlobalInput')||{}).value||'';
+    termo=termo.trim();
+    window.__buscaGlobalTermo=termo;
+    if(termo.length<2){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Digite ao menos 2 letras…</div>';return;}
+    var res=window.buscaGlobalColetar_(termo);
+    if(!res.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Nada encontrado para "'+E(termo)+'".</div>';return;}
+    var COR_MOD={'Processos':'var(--purple)','Honorários':'var(--orange)','Locações':'var(--accent)','Acordos':'var(--accent2)'};
+    el.innerHTML=res.map(function(r,i){
+      var cor=COR_MOD[r.modulo]||'var(--accent)';
+      return '<div class="busca-global-item" onclick="buscaGlobalIrPara('+i+')" style="padding:10px 6px;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;gap:10px;align-items:flex-start">'
+        +'<span style="font-size:20px;flex:none">'+r.icone+'</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:11px;color:'+cor+';text-transform:uppercase;letter-spacing:.03em;font-weight:700">'+E(r.modulo)+'</div>'
+        +'<div style="font-weight:600">'+E(r.titulo)+'</div>'
+        +(r.sub?'<div style="font-size:12px;color:var(--muted)">'+E(r.sub)+'</div>':'')
+        +'</div></div>';
+    }).join('');
+    window.__buscaGlobalResultados=res;
+  };
+  window.buscaGlobalIrPara=function(i){
+    var r=(window.__buscaGlobalResultados||[])[i];
+    if(!r)return;
+    var termo=window.__buscaGlobalTermo||'';
+    var modal=document.getElementById('modalBuscaGlobal');
+    if(modal)modal.classList.remove('open');
+    if(r.modulo==='Processos'){
+      openProcessos();
+      setTimeout(function(){var el=document.getElementById('searchInput');if(el){el.value=termo;renderProcessos();}},50);
+    } else if(r.modulo==='Honorários'){
+      openHonorariosHome();
+      setTimeout(function(){var el=document.getElementById('honBusca');if(el){el.value=termo;renderHonorarios();}},50);
+    } else if(r.modulo==='Locações'){
+      openAlugueisHome();
+      setTimeout(function(){var el=document.getElementById('locSearchInput');if(el){el.value=termo;if(typeof locRender==='function')locRender();}},50);
+    } else if(r.modulo==='Acordos'){
+      if(typeof window.abrirAcordos==='function')window.abrirAcordos();
+    }
+  };
+  window.buscaGlobalAbrir=function(){
+    var modal=document.getElementById('modalBuscaGlobal');
+    if(!modal)return;
+    modal.classList.add('open');
+    var el=document.getElementById('buscaGlobalInput');
+    if(el){el.value='';el.focus();}
+    var res=document.getElementById('buscaGlobalResultados');
+    if(res)res.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Digite ao menos 2 letras…</div>';
+  };
+  // ============ FIM BUSCA ÚNICA ENTRE MÓDULOS ============
+
+  // ============ FECHAMENTO MENSAL CONSOLIDADO ============
+  // Extrato de escritório: junta, pra um mês escolhido, tudo que já entrou (taxa de
+  // administração de Locações + Honorários recebidos + honorários de Acordos) e tudo que já
+  // saiu (Contas a Pagar pagas), além dos repasses feitos (que não são receita/despesa do
+  // escritório, só passam pela mão dele, mas ficam registrados pra conferência). Não
+  // reimplementa regra nenhuma nova: só filtra os mesmos arrays que cada módulo já usa,
+  // pelo mês (Data Pagamento/Data Recebimento/Data Repasse conforme o caso).
+  function fechMesParaBR_(mesInput){
+    var p=String(mesInput||'').split('-');
+    var ano=parseInt(p[0],10), mesNum=parseInt(p[1],10);
+    if(!ano||!mesNum) return null;
+    return {ano:ano,mesNum:mesNum,mesBR:('0'+mesNum).slice(-2)+'/'+ano};
+  }
+  window.fechamentoColetar_=function(mesInput){
+    var mi=fechMesParaBR_(mesInput);
+    if(!mi) return null;
+    var ano=mi.ano, mesNum=mi.mesNum;
+    var PD=(typeof window.parseDate==='function')?window.parseDate:dbr;
+    function noMes(dataStr){
+      var d=PD(dataStr);
+      return !!(d && d.getFullYear()===ano && (d.getMonth()+1)===mesNum);
+    }
+
+    var out={mes:mi.mesBR};
+
+    // Locações — taxa de administração é a receita própria; aluguel/repasse só passam pela mão
+    out.loc=(typeof window.locFechamentoMes==='function')?window.locFechamentoMes(mi.mesBR):{totalAluguel:0,totalTaxa:0,totalRepasse:0,itensAluguel:[],itensRepasse:[]};
+
+    // Honorários
+    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+    var honRecebidos=ah.filter(function(h){return noMes(h['Data Pagamento']);});
+    var honRepasses=ah.filter(function(h){return String(h['Status Repasse'])==='Pago'&&noMes(h['Data Repasse']);});
+    out.hon={
+      total:honRecebidos.reduce(function(a,h){return a+nbr(h['Valor Recebido']||h['Valor da Parcela']);},0),
+      itens:honRecebidos.map(function(h){return {nome:h['Cliente']||'-',valor:nbr(h['Valor Recebido']||h['Valor da Parcela']),ref:(h['Parcela Referencia']||'')+(h['Nr Processo']?' — '+h['Nr Processo']:'')};}),
+      totalRepasse:honRepasses.reduce(function(a,h){return a+nbr(h['Valor Repasse Parceiro']);},0),
+      itensRepasse:honRepasses.map(function(h){return {nome:h['Cliente']||'-',valor:nbr(h['Valor Repasse Parceiro']),ref:h['Parceiro']?('→ '+h['Parceiro']):''};})
+    };
+
+    // Acordos — "Valor Honorarios" é a receita própria; "Valor Recebido" é o bruto (a maior
+    // parte é repassada ao cliente); "Valor Repasse" é o que efetivamente saiu pro cliente.
+    var accL=window.accLancamentos||[];
+    var accCT=window.accContratos||[];
+    function accCliente(id){var c=accCT.find(function(x){return String(x['ID'])===String(id);});return c?(c['Cliente']||'-'):'-';}
+    var accRecebidos=accL.filter(function(l){return String(l['Status Recebimento'])==='Recebido'&&noMes(l['Data Recebimento']);});
+    var accRepasses=accL.filter(function(l){return String(l['Status Repasse'])==='Repassado'&&noMes(l['Data Repasse']);});
+    out.acc={
+      totalRecebido:accRecebidos.reduce(function(a,l){return a+nbr(l['Valor Recebido']);},0),
+      totalHonorarios:accRecebidos.reduce(function(a,l){return a+nbr(l['Valor Honorarios']);},0),
+      itens:accRecebidos.map(function(l){return {nome:accCliente(l['Contrato']),valor:nbr(l['Valor Recebido']),honorarios:nbr(l['Valor Honorarios']),ref:l['Mes']||''};}),
+      totalRepasse:accRepasses.reduce(function(a,l){return a+nbr(l['Valor Repasse']);},0),
+      itensRepasse:accRepasses.map(function(l){return {nome:accCliente(l['Contrato']),valor:nbr(l['Valor Repasse']),ref:l['Mes']||''};})
+    };
+
+    // Contas a Pagar — saídas do escritório
+    var ac=window.allContas||[];
+    var contasPagas=ac.filter(function(c){return String(c['Status']).toLowerCase()==='paga'&&noMes(c['Data Pagamento']);});
+    out.contas={
+      total:contasPagas.reduce(function(a,c){return a+nbr(c['Valor']);},0),
+      itens:contasPagas.map(function(c){return {nome:c['Descricao']||c['Fornecedor']||'-',valor:nbr(c['Valor']),ref:c['Categoria']||''};})
+    };
+
+    out.receitaPropria=out.loc.totalTaxa+out.hon.total+out.acc.totalHonorarios;
+    out.saidas=out.contas.total;
+    out.saldo=out.receitaPropria-out.saidas;
+    return out;
+  };
+
+  function fechSecao_(titulo,cor,itens,mostrarSubcoluna){
+    if(!itens.length)return '';
+    var total=itens.reduce(function(a,i){return a+(i.valor||0);},0);
+    var linhas=itens.map(function(i){
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2);font-size:13px">'
+        +'<span>'+E(i.nome)+(i.ref?' <span style="color:var(--muted);font-size:11px">— '+E(i.ref)+'</span>':'')+'</span>'
+        +'<span style="font-weight:600;white-space:nowrap">'+BRLf(i.valor)+(mostrarSubcoluna&&i.honorarios!==undefined?' <span style="color:var(--muted);font-size:11px">(honor. '+BRLf(i.honorarios)+')</span>':'')+'</span>'
+        +'</div>';
+    }).join('');
+    return '<div class="fech-secao" style="margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<div style="font-weight:700;color:'+cor+'">'+E(titulo)+'</div>'
+      +'<div style="font-weight:700;color:'+cor+'">'+BRLf(total)+'</div>'
+      +'</div>'+linhas+'</div>';
+  }
+  window.fechamentoRender=function(){
+    var el=document.getElementById('fechamentoCorpo');
+    if(!el)return;
+    var mesInput=(document.getElementById('fechMesInput')||{}).value;
+    var d=window.fechamentoColetar_(mesInput);
+    if(!d){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Escolha um mês.</div>';return;}
+    var topo='<div style="background:var(--surface2);border-radius:10px;padding:14px 18px;margin-bottom:18px;text-align:center">'
+      +'<div style="font-size:12px;color:var(--muted)">Fechamento de '+E(d.mes)+' — receita própria do escritório</div>'
+      +'<div style="font-size:26px;font-weight:700;color:var(--green)">'+BRLf(d.receitaPropria)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:4px">Saídas (contas pagas): '+BRLf(d.saidas)+' &nbsp;·&nbsp; Saldo do mês: <strong style="color:'+(d.saldo>=0?'var(--green)':'var(--red)')+'">'+BRLf(d.saldo)+'</strong></div>'
+      +'</div>';
+    var corpo=
+      '<div class="fech-secao" style="margin-bottom:16px"><div style="font-weight:700;color:var(--accent);margin-bottom:4px">🏠 Locações — taxa de administração recebida</div><div style="text-align:right;font-weight:700;color:var(--accent)">'+BRLf(d.loc.totalTaxa)+'</div><div style="font-size:11px;color:var(--muted)">Aluguéis recebidos (bruto, repassado aos locadores): '+BRLf(d.loc.totalAluguel)+' · Repasses já pagos aos locadores: '+BRLf(d.loc.totalRepasse)+'</div></div>'
+      +fechSecao_('💵 Honorários recebidos','var(--orange)',d.hon.itens,false)
+      +fechSecao_('🤝 Repasses a parceiros pagos','var(--purple)',d.hon.itensRepasse,false)
+      +fechSecao_('⚖️ Acordos — honorários recebidos','var(--accent2)',d.acc.itens,true)
+      +fechSecao_('👤 Acordos — repasses ao cliente pagos','var(--purple)',d.acc.itensRepasse,false)
+      +fechSecao_('📤 Contas a Pagar quitadas','var(--red)',d.contas.itens,false);
+    el.innerHTML=topo+corpo;
+  };
+  window.fechamentoAbrir=function(){
+    var modal=document.getElementById('modalFechamento');
+    if(!modal)return;
+    modal.classList.add('open');
+    var el=document.getElementById('fechMesInput');
+    if(el&&!el.value){var h=new Date();el.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}
+    fechamentoRender();
+  };
+  window.fechamentoImprimir=function(){
+    if(typeof imprimirComClasse_==='function')imprimirComClasse_('printing-fechamento',200);
+  };
+  function fechCsv_(s){s=String(s==null?'':s);return s.indexOf(';')>=0?'"'+s.replace(/"/g,'""')+'"':s;}
+  function fechN2_(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  window.fechamentoExportCSV=function(){
+    var mesInput=(document.getElementById('fechMesInput')||{}).value;
+    var d=window.fechamentoColetar_(mesInput);
+    if(!d){alert('Escolha um mês primeiro.');return;}
+    var lines=[['Mes','Origem','Descricao','Referencia','Valor (R$)'].join(';')];
+    function add(origem,itens){itens.forEach(function(i){lines.push([d.mes,origem,fechCsv_(i.nome),fechCsv_(i.ref||''),fechN2_(i.valor)].join(';'));});}
+    add('Locacoes - Aluguel recebido',d.loc.itensAluguel.map(function(i){return {nome:i.nome,ref:i.ref,valor:i.taxa};}));
+    add('Honorarios recebidos',d.hon.itens);
+    add('Honorarios - repasse parceiro',d.hon.itensRepasse);
+    add('Acordos - honorarios recebidos',d.acc.itens.map(function(i){return {nome:i.nome,ref:i.ref,valor:i.honorarios};}));
+    add('Acordos - repasse cliente',d.acc.itensRepasse);
+    add('Contas a Pagar quitadas',d.contas.itens);
+    lines.push('');
+    lines.push(['','','','Receita propria do mes',fechN2_(d.receitaPropria)].join(';'));
+    lines.push(['','','','Saidas (contas pagas)',fechN2_(d.saidas)].join(';'));
+    lines.push(['','','','Saldo do mes',fechN2_(d.saldo)].join(';'));
+    var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fechamento_'+d.mes.replace('/','-')+'.csv';a.click();
+  };
+  // ============ FIM FECHAMENTO MENSAL CONSOLIDADO ============
+
   function fmtData(){try{var d=new Date();var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];var mes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];document.getElementById('homeDate').textContent=dias[d.getDay()]+', '+d.getDate()+' de '+mes[d.getMonth()]+' de '+d.getFullYear();}catch(e){}}
 
   // ---- Agenda (Google Calendar via Apps Script: compromissos + tarefas de hoje e do próximo dia útil) ----
@@ -15054,6 +15456,19 @@ window.cpRenderFixas=cpRenderFixas;
   .voice-mic-inline:hover{background:var(--accent);color:#fff}
   .voice-mic-inline.listening{background:var(--red);border-color:var(--red);color:#fff;animation:voicePulse 1.1s infinite}
 </style>
+
+<script>
+  // ============ PWA: registro do Service Worker ============
+  // Só habilita "Instalar aplicativo" (Android/Chrome/desktop) e a casca offline básica.
+  // Se o navegador não suportar (ex.: alguns cenários no iOS Safari mais antigos) ou o
+  // arquivo sw.js ainda não tiver sido publicado no GitHub Pages, falha em silêncio — o
+  // sistema continua funcionando normalmente, só sem o botão de instalar.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* silencioso */ });
+    });
+  }
+</script>
 
 </body>
 </html>
