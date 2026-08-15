@@ -5637,14 +5637,35 @@ function limparRecibo() {
   calcTotal();
 }
 
+// Corrige um problema real em celular (Android/iOS): window.print() ali abre a tela de
+// impressão/"Salvar como PDF" de forma ASSÍNCRONA — o script não espera o usuário terminar,
+// como acontece no computador. Se a classe que zera o fundo escuro do modal pro branco puro
+// fosse removida logo na linha seguinte (como era antes em todos os "imprimir" do sistema),
+// o PDF podia acabar sendo gerado DEPOIS que a classe já tinha saído, com o fundo escuro do
+// modal aparecendo atrás do documento — foi isso que causou o fundo preto na procuração.
+// Por isso a limpeza agora espera o evento 'afterprint' (dispara ao fechar a caixa de
+// impressão/PDF), com um tempo limite de segurança caso esse evento não dispare.
+function imprimirComClasse_(classe, delay) {
+  document.body.classList.add(classe);
+  setTimeout(function () {
+    window.print();
+    var jaLimpou = false;
+    function limpar() {
+      if (jaLimpou) return;
+      jaLimpou = true;
+      document.body.classList.remove(classe);
+      window.removeEventListener('afterprint', limpar);
+    }
+    window.addEventListener('afterprint', limpar);
+    setTimeout(limpar, 15000);
+  }, delay || 300);
+}
+window.imprimirComClasse_ = imprimirComClasse_;
+
 function imprimirDoc() {
   const overlay = document.getElementById('modalDoc');
   overlay.classList.add('open');
-  document.body.classList.add('printing-doc');
-  setTimeout(() => {
-    window.print();
-    document.body.classList.remove('printing-doc');
-  }, 300);
+  imprimirComClasse_('printing-doc', 300);
 }
 
 function imprimirRecibo() {
@@ -5657,12 +5678,7 @@ function imprimirRecibo() {
   document.getElementById('modalRecibo').classList.add('open');
 
   // Adicionar classe ao body para o @media print saber o que mostrar
-  document.body.classList.add('printing-recibo');
-
-  setTimeout(() => {
-    window.print();
-    document.body.classList.remove('printing-recibo');
-  }, 300);
+  imprimirComClasse_('printing-recibo', 300);
 }
 
 // Fechar recibo clicando fora
@@ -6223,8 +6239,7 @@ window.entrAtualizarPreview = function () {
 };
 
 window.entrImprimir = function () {
-  document.body.classList.add('printing-recibo-entrega');
-  setTimeout(function () { window.print(); document.body.classList.remove('printing-recibo-entrega'); }, 200);
+  imprimirComClasse_('printing-recibo-entrega', 200);
 };
 
 window.entrSalvar = async function (uid) {
@@ -7113,8 +7128,7 @@ window.accAbrirRecibo = function (lancamentoId) {
   document.getElementById('modalReciboAcordo').classList.add('open');
 };
 window.accReciboImprimir = function () {
-  document.body.classList.add('printing-recibo-acordo');
-  setTimeout(function () { window.print(); document.body.classList.remove('printing-recibo-acordo'); }, 200);
+  imprimirComClasse_('printing-recibo-acordo', 200);
 };
 window.accReciboEnviarWhats = function () {
   var texto = document.getElementById('reciboAcordoCard').innerText;
@@ -12041,8 +12055,7 @@ window.cpRenderFixas=cpRenderFixas;
     return txt;
   }
   window.relLocadorImprimir=function(){
-    document.body.classList.add('printing-rel-locador');
-    setTimeout(function(){window.print();document.body.classList.remove('printing-rel-locador');},200);
+    imprimirComClasse_('printing-rel-locador', 200);
   };
   window.relLocadorCopiarTexto=function(){
     var nome=document.getElementById('relLocadorSelect').value;
@@ -12396,8 +12409,7 @@ window.cpRenderFixas=cpRenderFixas;
     abrirEmailFlex('Aluguéis Recebidos a serem Repassados — '+nome+' — '+mesExtenso(mes),texto);
   };
   window.relMensalImprimir=function(){
-    document.body.classList.add('printing-rel-mensal');
-    setTimeout(function(){window.print();document.body.classList.remove('printing-rel-mensal');},200);
+    imprimirComClasse_('printing-rel-mensal', 200);
   };
 
   // ---------- AVISOS AO LOCATÁRIO/LOCADOR ----------
@@ -12538,8 +12550,7 @@ window.cpRenderFixas=cpRenderFixas;
     abrirEmailFlex((def?def.label:'Aviso')+' — '+contratoNum,texto);
   };
   window.avisoImprimir=function(){
-    document.body.classList.add('printing-aviso-loc');
-    setTimeout(function(){window.print();document.body.classList.remove('printing-aviso-loc');},200);
+    imprimirComClasse_('printing-aviso-loc', 200);
   };
 
   window.abrirReciboLoc=function(contrato,tipo){
@@ -12792,8 +12803,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.imprimirReciboLoc=function(){
     document.getElementById('modalReciboLoc').classList.add('open');
-    document.body.classList.add('printing-recibo-loc');
-    setTimeout(function(){window.print();document.body.classList.remove('printing-recibo-loc');},300);
+    imprimirComClasse_('printing-recibo-loc', 300);
   };
   document.addEventListener('DOMContentLoaded',function(){
     var mrl=document.getElementById('modalReciboLoc');
