@@ -3641,6 +3641,20 @@
       <input type="text" class="form-input" id="inputAdvEmail" placeholder="E-mail">
     </div>
 
+    <div class="form-group">
+      <label class="form-label">LEMBRETES DIÁRIOS POR E-MAIL</label>
+      <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">
+        Um e-mail automático toda manhã (7h) com prazos processuais, contas a pagar, honorários e — agora
+        também — recibos de aluguel e informes de repasse que estão vencendo nos próximos 3 dias.
+        Precisa ativar uma vez só; fica valendo mesmo com o navegador fechado.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" type="button" onclick="ativarLembretesDiarios()">🔔 Ativar lembretes diários</button>
+        <button class="btn-secondary" type="button" onclick="testarLembretesDiarios()">🧪 Enviar um teste agora</button>
+      </div>
+      <div id="lembretesStatus" style="margin-top:8px;font-size:12px"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
       <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
@@ -3692,7 +3706,13 @@ async function carregarPartesProcesso() {
     if (!cfg.apiKey || !cfg.sheetId) { window.processoPartes = []; return; }
     const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId
       + '/values/' + encodeURIComponent('PROCESSO_PARTES!A1:Z500') + '?key=' + cfg.apiKey;
-    const r = await fetch(url).catch(function () { return null; });
+    // A API do Sheets às vezes devolve um 400 passageiro (nada a ver com a aba estar
+    // errada) — tenta de novo 1x antes de desistir, em vez de já ficar sem os dados.
+    let r = await fetch(url).catch(function () { return null; });
+    if (!r || !r.ok) {
+      await new Promise(function (res) { setTimeout(res, 800); });
+      r = await fetch(url).catch(function () { return null; });
+    }
     if (!r || !r.ok) { window.processoPartes = []; return; }
     const d = await r.json();
     const rows = d.values || [];
@@ -4120,6 +4140,30 @@ function saveConfig() {
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
   try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
 }
+
+// Lembretes diários por e-mail (prazos, contas, honorários e agora recibos/informes de
+// Locações vencendo). O gatilho (7h) roda no Apps Script mesmo com o navegador fechado —
+// só precisa ser ativado uma vez. Chamado sem 'no-cors' porque aqui a resposta é lida de
+// verdade (diferente das gravações via POST, que são "dispara e esquece").
+window.ativarLembretesDiarios=function(){
+  var el=document.getElementById('lembretesStatus');
+  if(el){el.style.color='var(--muted)';el.textContent='Ativando...';}
+  fetch(URL_AS+'?acao=configurarAlertas').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    if(d&&d.ok){el.style.color='var(--green)';el.textContent='✔ '+(d.mensagem||'Lembretes diários ativados.');}
+    else{el.style.color='var(--red)';el.textContent='Erro ao ativar: '+((d&&d.error)||'desconhecido');}
+  }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
+};
+window.testarLembretesDiarios=function(){
+  var el=document.getElementById('lembretesStatus');
+  if(el){el.style.color='var(--muted)';el.textContent='Enviando teste...';}
+  fetch(URL_AS+'?acao=testarAlertas').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    if(d&&d.ok&&d.enviado){el.style.color='var(--green)';el.textContent='✔ E-mail de teste enviado — '+d.total+' item(ns) (processos: '+d.processos+', contas: '+d.contas+', honorários: '+d.honorarios+', locações: '+(d.locacoes||0)+').';}
+    else if(d&&d.ok){el.style.color='var(--yellow)';el.textContent='Nenhum prazo/recibo nos próximos dias — nada a enviar agora.';}
+    else{el.style.color='var(--red)';el.textContent='Erro: '+((d&&(d.error||d.erro))||'desconhecido');}
+  }).catch(function(e){if(el){el.style.color='var(--red)';el.textContent='Falha ao contatar o Apps Script: '+e.message;}});
+};
 
 // --- CARGA DO SHEETS ------------------------------------------
 async function loadFromSheets() {
@@ -10624,6 +10668,7 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="btn-parc-email" onclick="enviarReciboLocEmail()">✉️ E-mail</button>
         <button class="btn-parc-img" onclick="enviarReciboLocImagem()">📸 Foto</button>
         <button class="btn-recibo-print" style="flex:none" onclick="imprimirReciboLoc()">🖨 Imprimir/PDF</button>
+        <button id="reciboLocOuvirBtn" class="btn-recibo-print" style="flex:none" title="Ouvir o texto do recibo/informe antes de enviar" onclick="ouvirReciboLoc()">🔊 Ouvir</button>
       </div>
     </div>
   </div>
@@ -12716,6 +12761,20 @@ window.cpRenderFixas=cpRenderFixas;
   window.enviarReciboLocWpp=function(){
     window.open('https://wa.me/?text='+encodeURIComponent(_reciboLocTexto()),'_blank');
   };
+  // Leitura em voz alta do recibo/informe antes de enviar — conferência rápida por voz.
+  window.ouvirReciboLoc=function(){
+    var btn=document.getElementById('reciboLocOuvirBtn');
+    if(!('speechSynthesis' in window)){ alert('Seu navegador não suporta leitura em voz alta.'); return; }
+    if(window.speechSynthesis.speaking){ window.speechSynthesis.cancel(); if(btn)btn.textContent='🔊 Ouvir'; return; }
+    var texto=_reciboLocTexto().replace(/\*/g,'').replace(/\n+/g,'. ');
+    var utt=new SpeechSynthesisUtterance(texto);
+    utt.lang='pt-BR';
+    utt.onend=function(){ if(btn)btn.textContent='🔊 Ouvir'; };
+    utt.onerror=function(){ if(btn)btn.textContent='🔊 Ouvir'; };
+    if(btn)btn.textContent='⏸ Parar';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+  };
   window.enviarReciboLocEmail=function(){
     var assunto=(_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');
     abrirEmailFlex(assunto,_reciboLocTexto().replace(/\*/g,''));
@@ -12822,7 +12881,14 @@ window.cpRenderFixas=cpRenderFixas;
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
   window.locExcluirContrato=function(id,contrato){
-    if(!confirm('Excluir definitivamente o contrato '+contrato+'?\n\nOs lançamentos mensais já gerados para este contrato NÃO serão apagados automaticamente (ficam na planilha como histórico). Esta ação não pode ser desfeita.'))return;
+    var qtdLanc=0;
+    try{ qtdLanc=workingList().filter(function(l){return l.contrato===contrato;}).length; }catch(e){}
+    var aviso='Excluir definitivamente o contrato '+contrato+'?\n\nOs lançamentos mensais já gerados para este contrato NÃO serão apagados automaticamente (ficam na planilha como histórico). Esta ação não pode ser desfeita.';
+    if(qtdLanc>0){
+      aviso='ATENÇÃO: este contrato tem '+qtdLanc+' lançamento(s) de aluguel registrado(s).\n\n'+aviso+'\n\nSe o contrato sumiu da tela sem motivo aparente (nome/endereço em branco), é mais provável que seja um problema de sincronização do que um cadastro "corrompido" — antes de excluir, tente clicar em 🔄 Atualizar. Excluir um contrato com lançamentos ativos pode fazer os lançamentos pararem de aparecer em Locações.';
+    }
+    if(!confirm(aviso))return;
+    if(qtdLanc>0&&!confirm('Confirmação final: excluir o contrato '+contrato+' MESMO TENDO '+qtdLanc+' lançamento(s) vinculado(s)?'))return;
     if(!live){alert('Só é possível excluir contratos com a planilha conectada (modo ao vivo).');return;}
     fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locc',id:id})}).then(function(){
       setTimeout(function(){carregarAlugueis();},1000);
@@ -12966,7 +13032,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Fiador2 Telefone':document.getElementById('lc-fiador2-telefone').value.trim(),
       'Fiador2 Email':document.getElementById('lc-fiador2-email').value.trim()
     };
-    if(!campos.Contrato||!campos.Locador||!campos.Locatario||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
+    if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
     var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
@@ -14693,6 +14759,27 @@ window.cpRenderFixas=cpRenderFixas;
   });
   // ============ FIM COMANDO DE VOZ ============
 
+  // ============ ATALHOS DE TECLADO (Alt+número) ============
+  // Complemento "silencioso" do comando de voz: navega entre telas sem mouse nem
+  // microfone. Reaproveita os mesmos alvos de VOICE_COMMANDS (por label), pra não
+  // duplicar a lógica de qual botão abre o quê.
+  var VOICE_KEY_MAP={
+    '1':'Processos','2':'Locações','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
+    '6':'Notas Rápidas','7':'Tarefas & Rascunhos','8':'Início','9':'Busca'
+  };
+  document.addEventListener('keydown',function(e){
+    if(!e.altKey||e.ctrlKey||e.metaKey)return;
+    var label=VOICE_KEY_MAP[e.key];
+    if(!label)return;
+    var cmd=null;
+    for(var i=0;i<VOICE_COMMANDS.length;i++){ if(VOICE_COMMANDS[i].label===label){cmd=VOICE_COMMANDS[i];break;} }
+    if(!cmd)return;
+    e.preventDefault();
+    try{cmd.run();}catch(err){}
+    voiceStatus('⌨ '+label,'ok');
+  });
+  // ============ FIM ATALHOS DE TECLADO ============
+
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
@@ -14710,7 +14797,7 @@ window.cpRenderFixas=cpRenderFixas;
 </script>
 
 <div id="voiceStatusBubble" class="voice-status-bubble"></div>
-<button type="button" id="voiceGlobalBtn" class="voice-mic-btn" title="Comando de voz — diga um comando (ex: &quot;abrir locações&quot;) ou dite um texto no campo em foco">🎤</button>
+<button type="button" id="voiceGlobalBtn" class="voice-mic-btn" title="Comando de voz — diga um comando (ex: &quot;abrir locações&quot;) ou dite um texto no campo em foco. Atalhos de teclado: Alt+1 a Alt+9.">🎤</button>
 <style>
   /* ============ COMANDO DE VOZ (CSS) ============ */
   .voice-mic-btn{position:fixed;right:20px;bottom:20px;z-index:9500;width:56px;height:56px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:24px;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s}
