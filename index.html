@@ -9884,6 +9884,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
+      <button class="loc-btn" onclick="locAuditoriaAbrir()" title="Histórico de alterações em contratos e lançamentos (guardado neste navegador)">📜 Histórico</button>
       <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
         <button class="loc-btn" onclick="locToggleMenuRelatorios(event)">📊 Relatórios ▾</button>
         <div id="locMenuRelatorios" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:260px;overflow:hidden">
@@ -10692,6 +10693,43 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL PAINEL ÚNICO DE INADIMPLÊNCIA -->
+<div class="modal-repasse-overlay" id="modalPainelInadimplencia">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">💰 Inadimplência — Locações + Honorários + Acordos</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalPainelInadimplencia').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="loc-btn" onclick="painelInadimplenciaRender()">🔄 Recalcular</button>
+      </div>
+      <div id="painelInadimplenciaCorpo" style="max-height:65vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HISTÓRICO DE ALTERAÇÕES (Locações) -->
+<div class="modal-repasse-overlay" id="modalAuditoria">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📜 Histórico de alterações</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalAuditoria').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Registro leve de mudanças em contratos e lançamentos de Locação — criação, edição, exclusão e trocas de status.
+        Guardado só neste navegador (não sincroniza entre aparelhos). Mostra os últimos 300 eventos.
+      </div>
+      <div style="margin-bottom:12px"><input type="text" class="search-input" id="auditoriaBusca" placeholder="Filtrar por contrato ou texto..." oninput="locAuditoriaRender()" style="width:100%"></div>
+      <div id="auditoriaLista" style="max-height:60vh;overflow-y:auto"></div>
+      <div style="margin-top:14px">
+        <button class="loc-btn" style="color:var(--red);border-color:var(--red)" onclick="locAuditoriaLimpar()">🗑️ Limpar histórico</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
   body.printing-recibo-loc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-recibo-loc html, body.printing-recibo-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
@@ -10746,6 +10784,65 @@ window.cpRenderFixas=cpRenderFixas;
   function saveState(s){try{localStorage.setItem(LS_KEY,JSON.stringify(s));}catch(e){}}
   function state(){var s=loadState();s.overrides=s.overrides||{};s.extra=s.extra||[];return s;}
   function keyOf(l){return l.mes+'|'+l.contrato;}
+
+  // ---------- HISTÓRICO DE ALTERAÇÕES (auditoria leve) ----------
+  // Guardado só neste navegador (localStorage) — não sincroniza entre celular e computador,
+  // mas não precisa de nenhuma mudança no Código.gs/planilha nem redeploy do Apps Script.
+  // Serve pra rastrear "o que mudou e quando" em contratos e lançamentos de Locação, útil
+  // pra investigar casos como o do contrato que sumiu sem explicação aparente.
+  var LOC_AUDIT_KEY='lexflow_loc_auditoria';
+  var LOC_AUDIT_MAX=300;
+  function logAuditoria_(tipo, contrato, detalhe){
+    try{
+      var lista=JSON.parse(localStorage.getItem(LOC_AUDIT_KEY)||'[]');
+      lista.unshift({ts:new Date().toISOString(), tipo:tipo, contrato:contrato||'', detalhe:detalhe||''});
+      if(lista.length>LOC_AUDIT_MAX) lista=lista.slice(0,LOC_AUDIT_MAX);
+      localStorage.setItem(LOC_AUDIT_KEY, JSON.stringify(lista));
+    }catch(e){}
+  }
+  window.locAuditoriaLista=function(){
+    try{return JSON.parse(localStorage.getItem(LOC_AUDIT_KEY)||'[]');}catch(e){return [];}
+  };
+  window.locAuditoriaLimpar=function(){
+    if(!confirm('Apagar todo o histórico de alterações deste navegador? Não afeta os dados da planilha.'))return;
+    try{localStorage.removeItem(LOC_AUDIT_KEY);}catch(e){}
+    locAuditoriaRender();
+  };
+  function auditoriaFmtData_(iso){
+    try{
+      var d=new Date(iso);
+      return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    }catch(e){return iso;}
+  }
+  var AUDITORIA_COR={'Contrato criado':'var(--green)','Contrato atualizado':'var(--accent)','Contrato excluído':'var(--red)','Lançamento atualizado':'var(--accent)','Status aluguel':'var(--accent2)','Status repasse':'var(--accent2)'};
+  window.locAuditoriaRender=function(){
+    var el=document.getElementById('auditoriaLista');
+    if(!el)return;
+    var termo=(document.getElementById('auditoriaBusca')||{}).value||'';
+    termo=termo.toLowerCase();
+    var lista=window.locAuditoriaLista();
+    if(termo){
+      lista=lista.filter(function(it){
+        return (it.contrato||'').toLowerCase().indexOf(termo)>=0 || (it.detalhe||'').toLowerCase().indexOf(termo)>=0 || (it.tipo||'').toLowerCase().indexOf(termo)>=0;
+      });
+    }
+    if(!lista.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Nenhum evento registrado ainda.</div>';return;}
+    el.innerHTML=lista.map(function(it){
+      var cor=AUDITORIA_COR[it.tipo]||'var(--accent)';
+      return '<div style="padding:10px 0;border-bottom:1px solid var(--border2)">'
+        +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        +'<span style="font-weight:600;color:'+cor+'">'+E(it.tipo)+(it.contrato?' — '+E(it.contrato):'')+'</span>'
+        +'<span style="font-size:11px;color:var(--muted)">'+auditoriaFmtData_(it.ts)+'</span>'
+        +'</div>'
+        +(it.detalhe?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+E(it.detalhe)+'</div>':'')
+        +'</div>';
+    }).join('');
+  };
+  window.locAuditoriaAbrir=function(){
+    document.getElementById('modalAuditoria').classList.add('open');
+    var busca=document.getElementById('auditoriaBusca');if(busca)busca.value='';
+    locAuditoriaRender();
+  };
   function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   // Converte "DD/MM/AAAA" (ou o formato que o Sheets às vezes devolve sozinho quando a célula
   // vira tipo Data) pra "AAAA-MM-DD", que é o que <input type="date"> espera.
@@ -11644,6 +11741,7 @@ window.cpRenderFixas=cpRenderFixas;
     patch.valorRepasse=null;
     setOverride(contrato,patch);
     gravarSheet(contrato);
+    logAuditoria_('Lançamento atualizado', contrato, 'Mês '+(selMes||'—')+' — aluguel '+BRL(patch.aluguel||0)+(patch.observacoesLocatario?' · obs. locatário':'')+(patch.observacoesLocador?' · obs. locador':''));
     // O aluguel também é sincronizado de volta pro cadastro do contrato (não só pro lançamento
     // deste mês) — senão relatórios como "Imóveis do Locador", que puxam do contrato, continuam
     // mostrando o valor antigo mesmo depois de editar o valor do mês aqui.
@@ -12813,11 +12911,11 @@ window.cpRenderFixas=cpRenderFixas;
     var mrl=document.getElementById('modalReciboLoc');
     if(mrl)mrl.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   });
-  window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();};
+  window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();};
   window.locSetStatusRepasse=function(contrato,val){
     var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
     if(atual&&atual.statusAluguel!=='Recebido'){locRender();return;}
-    var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataRep||(lancDoMes(contrato)||{}).dataRep;if(!jaTem)patch.dataRep=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);locRender();
+    var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataRep||(lancDoMes(contrato)||{}).dataRep;if(!jaTem)patch.dataRep=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status repasse',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();
   };
   window.locSetData=function(contrato,iso){
     var dataBR=isoToBr(iso);
@@ -12904,6 +13002,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(!confirm(aviso))return;
     if(qtdLanc>0&&!confirm('Confirmação final: excluir o contrato '+contrato+' MESMO TENDO '+qtdLanc+' lançamento(s) vinculado(s)?'))return;
     if(!live){alert('Só é possível excluir contratos com a planilha conectada (modo ao vivo).');return;}
+    logAuditoria_('Contrato excluído', contrato, qtdLanc+' lançamento(s) vinculado(s) no momento da exclusão');
     fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locc',id:id})}).then(function(){
       setTimeout(function(){carregarAlugueis();},1000);
     });
@@ -13056,8 +13155,15 @@ window.cpRenderFixas=cpRenderFixas;
     };
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
+    var antigo=i>=0?DATA.contratos[i]:null;
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
     indexContratos();
+    if(antigo){
+      var camposMudaram=['locador','locatario','end','aluguel','venc','rep','ativo'].filter(function(k){return String(antigo[k])!==String(novo[k]);});
+      logAuditoria_('Contrato atualizado', campos.Contrato, camposMudaram.length?('Campos alterados: '+camposMudaram.join(', ')):'Sem mudança nos campos principais');
+    }else{
+      logAuditoria_('Contrato criado', campos.Contrato, campos.Locador+' / '+campos.Locatario+' — '+campos.Endereco);
+    }
     if(live){
       var c=cfg();
       var acao=id?'atualizar_locc':'lancar_locc';
@@ -13325,6 +13431,9 @@ window.cpRenderFixas=cpRenderFixas;
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Locações
         </button>
+        <button class="home-user-item" onclick="painelInadimplenciaAbrir();document.getElementById('homeUserMenu').classList.remove('open')">
+          💰 &nbsp;Inadimplência (tudo junto)
+        </button>
         <div class="home-user-divider"></div>
         <button class="home-user-item" onclick="loadFromSheets();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -13585,6 +13694,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
         '<button class="home-user-item" onclick="abrirAcordos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
+        '<button class="home-user-item" onclick="painelInadimplenciaAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">💰 &nbsp;Inadimplência (tudo junto)</button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
         '<button class="home-user-item" onclick="abrirCadastro();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo processo</button>'+
@@ -14511,6 +14621,123 @@ window.cpRenderFixas=cpRenderFixas;
     else{m.innerHTML='';}
   }
   window.homeRefresh=homeRefresh;
+
+  // ============ PAINEL ÚNICO DE INADIMPLÊNCIA (Locações + Honorários + Acordos) ============
+  // Reaproveita exatamente os mesmos cálculos que já alimentam os avisos separados da tela
+  // inicial (homeAlertLoc/homeAlertHon/homeAlertAcc) — só que juntos, num painel só, com um
+  // total geral. Não inventa nenhuma regra nova de "o que é atraso": segue o que o resto do
+  // sistema já considera atrasado/pendente em cada módulo.
+  function painelInadimplenciaColetar_(){
+    var out={locacoes:[],honorarios:[],honorariosRepasse:[],acordos:[],acordosRepasse:[]};
+
+    // Locações — reaproveita window.locAvisos() (mesma fonte do card da tela inicial)
+    try{
+      if(typeof window.locAvisos==='function'){
+        var la=window.locAvisos();
+        out.locacoes=la.itens.map(function(i){return {contrato:i.contrato,nome:i.locatario,valor:i.aluguel,ref:'venc. dia '+i.venc,status:i.status,mes:la.mes};});
+      }
+    }catch(e){}
+
+    // Honorários — mesma reconstrução de parcelamento usada em homeRefresh
+    try{
+      var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
+      var PD2=(typeof window.parseDate==='function')?window.parseDate:dbr;
+      var h0=new Date();h0.setHours(0,0,0,0);
+      var grupos={};
+      ah.forEach(function(h){var k=String(h['Nr Processo']||h['Cliente']||'').trim();if(!k)return;(grupos[k]=grupos[k]||[]).push(h);});
+      Object.keys(grupos).forEach(function(k){
+        var rows=grupos[k];
+        var ref=rows.filter(function(r){return /entrada/i.test(String(r['Parcela Referencia']));})[0]||rows[0];
+        var total=parseInt(ref['Número de Parcelas'])||0; if(!total||total>120)return;
+        var pagas=rows.filter(function(r){return /^\d/.test(String(r['Parcela Referencia']||'').trim());}).length;
+        if(pagas>=total)return;
+        var diaVenc=parseInt(ref['Dia Vencimento'])||10;
+        var valorParc=nbr(ref['Valor da Parcela']);
+        var datas=rows.map(function(r){return PD2(r['Data Pagamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
+        if(!datas.length)return;
+        var ult=datas[datas.length-1];
+        var prox=new Date(ult.getFullYear(),ult.getMonth()+1,1);
+        var ultimoDia=new Date(prox.getFullYear(),prox.getMonth()+1,0).getDate();
+        prox.setDate(Math.min(diaVenc,ultimoDia));
+        var diff=Math.round((prox-h0)/86400000);
+        if(diff<=30) out.honorarios.push({nome:ref['Cliente']||k,valor:valorParc,ref:'parcela '+(pagas+1)+'/'+total,status:diff<0?'atrasado':'a vencer',dias:diff});
+      });
+      var pend=ah.filter(function(h){return String(h['Quem Recebeu'])==='Parceiro'&&String(h['Status Repasse'])==='Pendente';});
+      out.honorariosRepasse=pend.map(function(x){return {nome:x['Cliente']||'-',valor:nbr(x['Valor Repasse Parceiro']),ref:x['Parceiro']?('→ '+x['Parceiro']):''};});
+    }catch(e){}
+
+    // Acordos — mesma lógica de homeRefresh (parcelas atrasadas + repasses ao cliente atrasados)
+    try{
+      var hojeMs=new Date().setHours(0,0,0,0);
+      function accParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+      var accAtrasadas=(window.accLancamentos||[]).filter(function(l){
+        if(l['Status Recebimento']==='Recebido')return false;
+        if(l['Status Recebimento']==='Atrasado')return true;
+        var dataPrev=accParseDataBR(l['Data Prevista']);
+        return dataPrev&&dataPrev<hojeMs;
+      });
+      out.acordos=accAtrasadas.map(function(l){
+        var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+        return {nome:ct['Cliente']||'-',valor:parseFloat(l['Valor Previsto'])||0,ref:'ref. '+(l['Mes']||'-')+' · parte contrária: '+(ct['Parte Contraria']||'-')};
+      });
+      var repasseAtrasados=(window.accLancamentos||[]).filter(function(l){
+        if(l['Status Recebimento']!=='Recebido'||l['Status Repasse']==='Repassado')return false;
+        var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+        var prazoDias=parseInt(ct['Dia Repasse'])||0;
+        if(!prazoDias)return false;
+        var dataReceb=accParseDataBR(l['Data Recebimento']);
+        if(!dataReceb)return false;
+        return (hojeMs-dataReceb)/86400000>prazoDias;
+      });
+      out.acordosRepasse=repasseAtrasados.map(function(l){
+        var ct=(window.accContratos||[]).find(function(c){return c['ID']===l['Contrato'];})||{};
+        return {nome:ct['Cliente']||'-',valor:parseFloat(l['Valor Repasse'])||0,ref:'recebido em '+(l['Data Recebimento']||'-')};
+      });
+    }catch(e){}
+
+    return out;
+  }
+  window.painelInadimplenciaColetar_=painelInadimplenciaColetar_;
+
+  function painelInadimplenciaSecao_(titulo, cor, itens, acaoLabel, acaoFn){
+    if(!itens.length)return '';
+    var total=itens.reduce(function(a,i){return a+(i.valor||0);},0);
+    var linhas=itens.map(function(i){
+      return '<div class="ha-item"><b>'+E(i.nome)+'</b> — '+BRLf(i.valor||0)+(i.ref?' ('+E(i.ref)+')':'')+'</div>';
+    }).join('');
+    return '<div style="margin-bottom:18px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
+      +'<div class="ha-tit venc" style="color:'+cor+'">'+E(titulo)+' — '+itens.length+' item(ns), '+BRLf(total)+'</div>'
+      +'<button class="loc-btn" style="padding:4px 10px;font-size:11px" onclick="'+acaoFn+'">'+E(acaoLabel)+' ↗</button>'
+      +'</div>'
+      +linhas
+      +'</div>';
+  }
+  window.painelInadimplenciaRender=function(){
+    var el=document.getElementById('painelInadimplenciaCorpo');
+    if(!el)return;
+    var d=painelInadimplenciaColetar_();
+    var totalGeral=[].concat(d.locacoes,d.honorarios,d.honorariosRepasse,d.acordos,d.acordosRepasse).reduce(function(a,i){return a+(i.valor||0);},0);
+    var qtdGeral=d.locacoes.length+d.honorarios.length+d.honorariosRepasse.length+d.acordos.length+d.acordosRepasse.length;
+    var topo='<div style="background:var(--surface2);border-radius:10px;padding:14px 18px;margin-bottom:18px;text-align:center">'
+      +'<div style="font-size:12px;color:var(--muted)">Total em aberto (aluguéis, honorários e acordos em atraso/pendentes)</div>'
+      +'<div style="font-size:26px;font-weight:700;color:var(--red)">'+BRLf(totalGeral)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+qtdGeral+' item(ns) no total</div>'
+      +'</div>';
+    var corpo=
+      painelInadimplenciaSecao_('🏠 Aluguéis em atraso/vencidos','var(--red)',d.locacoes,'abrir Locações','openAlugueisHome()')
+      +painelInadimplenciaSecao_('💵 Honorários a vencer/atrasados','var(--orange)',d.honorarios,'abrir Honorários','openHonorariosHome()')
+      +painelInadimplenciaSecao_('🤝 Repasses a parceiro pendentes','var(--purple)',d.honorariosRepasse,'abrir Honorários','openHonorariosHome()')
+      +painelInadimplenciaSecao_('⚖️ Parcelas de acordo atrasadas','var(--red)',d.acordos,'abrir Acordos','abrirAcordos()')
+      +painelInadimplenciaSecao_('👤 Repasses ao cliente (acordos) atrasados','var(--purple)',d.acordosRepasse,'abrir Acordos','abrirAcordos()');
+    if(!qtdGeral) corpo='<div style="text-align:center;color:var(--muted);padding:24px">Nada em atraso ou pendente no momento. 🎉</div>';
+    el.innerHTML=topo+corpo;
+  };
+  window.painelInadimplenciaAbrir=function(){
+    document.getElementById('modalPainelInadimplencia').classList.add('open');
+    painelInadimplenciaRender();
+  };
+  // ============ FIM PAINEL ÚNICO DE INADIMPLÊNCIA ============
 
   function fmtData(){try{var d=new Date();var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];var mes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];document.getElementById('homeDate').textContent=dias[d.getDay()]+', '+d.getDate()+' de '+mes[d.getMonth()]+' de '+d.getFullYear();}catch(e){}}
 
