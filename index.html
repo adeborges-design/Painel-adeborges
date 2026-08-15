@@ -1942,6 +1942,10 @@
     @page {
       size: A4;
       margin: 2.5cm;
+      /* Sem isto, a área de margem da página (onde fica o "Página X de Y") não herda
+         de forma confiável o fundo branco definido em html/body no Chrome — é o que
+         causava a borda preta ao redor do documento no PDF gerado/impresso. */
+      background: #ffffff;
       @bottom-center {
         content: "Página " counter(page) " de " counter(pages);
         font-family: 'DM Sans', sans-serif;
