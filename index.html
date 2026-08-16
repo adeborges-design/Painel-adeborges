@@ -1226,6 +1226,19 @@
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
 
+    /* Tema escuro NUNCA vai pro papel: as cores do modo escuro são pastéis feitas pra
+       contraste em fundo escuro de tela — em cima do papel branco ficam claras demais,
+       difíceis de ler, e pesadas pra impressora. Redefine as variáveis pra paleta clara
+       sempre que a impressão acontecer, mesmo com html.dark-mode ativo. Isso cobre
+       automaticamente qualquer documento (atual ou futuro) que use var(--cor) em vez de
+       cor fixa — inclusive os elementos gerados via innerHTML dos módulos de locação. */
+    html.dark-mode {
+      --bg: #eef3f9; --surface: #ffffff; --surface2: #eef4fb;
+      --border: #dde7f3; --border2: #c7d7ea; --text: #16233a; --muted: #5c6f8a;
+      --accent: #2f6fb3; --accent2: #1b3a5c; --red: #d1454a; --orange: #d9772f;
+      --yellow: #c99a1c; --green: #2f9d68; --blue: #3b7dd8; --purple: #7d5cd6;
+    }
+
     /* Cabeçalho e rodapé dos recibos/informes ficam mais claros no papel — o fundo escuro
        da tela gasta tinta demais e fica pesado impresso. Vale para qualquer recibo que usa
        essas classes (repasse, aluguel, acordo, parceiro, relatório do locador...). */
@@ -1256,6 +1269,12 @@
     .parc-tarefa-box [style*="color:#c8d8f0"] { color: #6b5116 !important; }
     .parc-body [style*="color:#8fadd4"] { color: #4a6585 !important; }
     .parc-body [style*="color:#f2d3b0"] { color: #8a5a1a !important; }
+    /* Classes do módulo de Rescisão (.resc-*) têm cor própria fixa (não usam var()), então
+       precisam de override explícito — a rede de segurança acima só pega estilo inline. */
+    .resc-line .desc { color: #1a2a4a !important; }
+    .resc-badge { background: rgba(58,106,200,0.12) !important; color: #1a3a6a !important; }
+    .resc-sec { color: #1a2a4a !important; border-bottom-color: rgba(58,106,200,0.25) !important; }
+    .resc-subtotal { color: #1a2a4a !important; background: rgba(58,106,200,0.08) !important; }
 
     /* Esconder TUDO por padrão */
     body > * { display: none !important; }
@@ -11150,6 +11169,142 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="resc-res-emitido"></span></div>
       </div>
+
+      <div class="parc-card entr-no-print" id="resc-docs-panel" style="margin-top:16px">
+        <div class="parc-header"><div><div class="parc-header-title">Documentos Complementares</div><div class="parc-header-sub">Distrato, entrega de chaves e vistoria</div></div></div>
+        <div class="parc-body">
+          <div class="loc-cform">
+            <div class="loc-cfield"><label>Data da vistoria de devolução de chaves</label><input class="loc-cinput" id="resc-vist-data" type="date"></div>
+            <div class="loc-cfield"><label>Horário (opcional)</label><input class="loc-cinput" id="resc-vist-hora" type="time"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+            <button class="loc-btn primary" onclick="rescDocAbrir('distrato')">📝 Gerar Distrato</button>
+            <button class="loc-btn primary" onclick="rescDocAbrir('termo')">🔑 Termo de Entrega de Chaves</button>
+            <button class="loc-btn primary" onclick="rescDocAbrir('laudo')">🔍 Laudo de Vistoria</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rescisaoDistratoView" class="loc-hidden reciboloc-inner" style="padding:20px;max-height:75vh;overflow-y:auto">
+      <div id="rescisaoDistratoForm">
+        <div class="entr-no-print" style="margin-bottom:14px"><button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button></div>
+        <div class="loc-section-title">Distrato — Dados do Instrumento</div>
+        <div class="loc-cform">
+          <div class="loc-cfield half"><label>Cidade</label><input class="loc-cinput" id="dist-cidade" placeholder="São Paulo"></div>
+          <div class="loc-cfield half"><label>Data do distrato</label><input class="loc-cinput" id="dist-data" type="date"></div>
+        </div>
+        <div id="dist-pagto-section">
+          <div class="loc-section-title" style="margin-top:16px">Forma de Pagamento do Saldo</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button type="button" class="loc-btn active" id="dist-btn-avista" onclick="distSetForma('avista')" style="flex:1">À vista</button>
+            <button type="button" class="loc-btn" id="dist-btn-parcelado" onclick="distSetForma('parcelado')" style="flex:1">Parcelado</button>
+          </div>
+          <div id="dist-avista-fields" class="loc-cform">
+            <div class="loc-cfield"><label>Data do pagamento</label><input class="loc-cinput" id="dist-av-data" type="date" onchange="distGerarClausula()"></div>
+            <div class="loc-cfield"><label>Forma (PIX, TED, dinheiro...)</label><input class="loc-cinput" id="dist-av-forma" placeholder="Ex.: PIX" oninput="distGerarClausula()"></div>
+          </div>
+          <div id="dist-parc-fields" class="loc-cform loc-hidden">
+            <div class="loc-cfield"><label>Número de parcelas</label><input class="loc-cinput" id="dist-parc-qtd" type="number" min="2" step="1" placeholder="Ex.: 3" oninput="distGerarClausula()"></div>
+            <div class="loc-cfield"><label>Valor de cada parcela</label><input class="loc-cinput" id="dist-parc-valor" value="R$ 0,00" disabled></div>
+            <div class="loc-cfield"><label>Vencimento da 1ª parcela</label><input class="loc-cinput" id="dist-parc-primeira" type="date" onchange="distGerarClausula()"></div>
+            <div class="loc-cfield"><label>Forma (PIX, boleto...)</label><input class="loc-cinput" id="dist-parc-forma" placeholder="Ex.: PIX" oninput="distGerarClausula()"></div>
+          </div>
+          <div class="loc-cform">
+            <div class="loc-cfield full"><label>Cláusula de pagamento (gerada automaticamente — edite se necessário)</label><textarea class="loc-cinput" id="dist-clausula-pagto" rows="4"></textarea></div>
+          </div>
+        </div>
+        <div class="loc-section-title" style="margin-top:16px">Observações / Ressalvas Adicionais</div>
+        <div class="loc-cform">
+          <div class="loc-cfield full"><textarea class="loc-cinput" id="dist-obs" rows="3" placeholder="Cláusulas específicas do caso, se houver"></textarea></div>
+        </div>
+        <button class="loc-btn primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px" onclick="distGerar()">Gerar Distrato →</button>
+      </div>
+      <div id="rescisaoDistratoResult" class="loc-hidden">
+        <div class="entr-no-print" style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="loc-btn primary" onclick="imprimirComClasse_('printing-distrato',300)">🖨️ Imprimir / PDF</button>
+          <button class="loc-btn" onclick="distVoltarForm()">← Editar</button>
+          <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
+        </div>
+        <div class="parc-card" id="dist-pdf-target">
+          <div class="parc-header"><div><div class="parc-header-title">Distrato de Contrato de Locação</div><div class="parc-header-sub" id="dist-res-data"></div></div></div>
+          <div class="parc-body" id="dist-res-body"></div>
+          <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="dist-res-emitido"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rescisaoTermoView" class="loc-hidden reciboloc-inner" style="padding:20px;max-height:75vh;overflow-y:auto">
+      <div id="rescisaoTermoForm">
+        <div class="entr-no-print" style="margin-bottom:14px"><button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button></div>
+        <div class="loc-section-title">Termo de Entrega de Chaves</div>
+        <div class="loc-cform">
+          <div class="loc-cfield half"><label>Cidade</label><input class="loc-cinput" id="termo-cidade" placeholder="São Paulo"></div>
+          <div class="loc-cfield half"><label>Data da entrega</label><input class="loc-cinput" id="termo-data-entrega" type="date"></div>
+          <div class="loc-cfield"><label>Estado geral do imóvel na entrega</label><select class="loc-cinput" id="termo-estado">
+            <option value="bom">Bom estado de conservação</option>
+            <option value="ressalvas">Com ressalvas — conforme laudo de vistoria</option>
+            <option value="apurar">A apurar em vistoria própria</option>
+          </select></div>
+          <div class="loc-cfield"><label>Quem recebeu as chaves</label><input class="loc-cinput" id="termo-recebedor" placeholder="Ex.: o próprio locador / procurador / imobiliária"></div>
+        </div>
+        <div class="loc-cform">
+          <div class="loc-cfield full"><label>Observações</label><textarea class="loc-cinput" id="termo-obs" rows="3" placeholder="Nº de chaves entregues, controles de portão, observações gerais..."></textarea></div>
+        </div>
+        <button class="loc-btn primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px" onclick="termoGerar()">Gerar Termo →</button>
+      </div>
+      <div id="rescisaoTermoResult" class="loc-hidden">
+        <div class="entr-no-print" style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="loc-btn primary" onclick="imprimirComClasse_('printing-termo-chaves',300)">🖨️ Imprimir / PDF</button>
+          <button class="loc-btn" onclick="termoVoltarForm()">← Editar</button>
+          <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
+        </div>
+        <div class="parc-card" id="termo-pdf-target">
+          <div class="parc-header"><div><div class="parc-header-title">Termo de Entrega de Chaves</div><div class="parc-header-sub" id="termo-res-data"></div></div></div>
+          <div class="parc-body" id="termo-res-body"></div>
+          <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="termo-res-emitido"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rescisaoLaudoView" class="loc-hidden reciboloc-inner" style="padding:20px;max-height:75vh;overflow-y:auto">
+      <div id="rescisaoLaudoForm">
+        <div class="entr-no-print" style="margin-bottom:14px"><button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button></div>
+        <div class="loc-section-title">Laudo de Vistoria de Devolução</div>
+        <div class="loc-cform">
+          <div class="loc-cfield half"><label>Cidade</label><input class="loc-cinput" id="laudo-cidade" placeholder="São Paulo"></div>
+          <div class="loc-cfield half"><label>Data da vistoria</label><input class="loc-cinput" id="laudo-data" type="date"></div>
+          <div class="loc-cfield full"><label>Presentes na vistoria</label><input class="loc-cinput" id="laudo-presentes" placeholder="Ex.: locador, locatário e representante da imobiliária"></div>
+        </div>
+        <div class="loc-section-title" style="margin-top:16px">Checklist do Imóvel</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Avalie cada item. Descreva o dano/observação quando o estado for "Regular" ou "Ruim".</div>
+        <div id="laudo-checklist-body"></div>
+        <div class="loc-section-title" style="margin-top:16px">Observações Gerais</div>
+        <div class="loc-cform">
+          <div class="loc-cfield full"><textarea class="loc-cinput" id="laudo-obs-gerais" rows="3" placeholder="Outros itens, pendências, itens não vistoriados..."></textarea></div>
+        </div>
+        <div class="loc-section-title" style="margin-top:16px">Conclusão</div>
+        <div class="loc-cform">
+          <div class="loc-cfield full"><select class="loc-cinput" id="laudo-conclusao">
+            <option value="adequado">Imóvel devolvido em condições adequadas, compatíveis com o uso normal e o desgaste natural</option>
+            <option value="danos">Imóvel devolvido com danos além do desgaste natural, a serem objeto de ressarcimento — discriminados acima</option>
+            <option value="pendente">Vistoria pendente de complementação</option>
+          </select></div>
+        </div>
+        <button class="loc-btn primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px" onclick="laudoGerar()">Gerar Laudo →</button>
+      </div>
+      <div id="rescisaoLaudoResult" class="loc-hidden">
+        <div class="entr-no-print" style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="loc-btn primary" onclick="imprimirComClasse_('printing-laudo-vistoria',300)">🖨️ Imprimir / PDF</button>
+          <button class="loc-btn" onclick="laudoVoltarForm()">← Editar</button>
+          <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
+        </div>
+        <div class="parc-card" id="laudo-pdf-target">
+          <div class="parc-header"><div><div class="parc-header-title">Laudo de Vistoria de Devolução</div><div class="parc-header-sub" id="laudo-res-data"></div></div></div>
+          <div class="parc-body" id="laudo-res-body"></div>
+          <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="laudo-res-emitido"></span></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -11183,9 +11338,27 @@ window.cpRenderFixas=cpRenderFixas;
   .resc-final.cred .vval{color:var(--green)}
   .resc-final.neutro .vval{color:var(--accent)}
   .resc-obs-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;margin:14px 0 0}
+  .resc-vist-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border2);flex-wrap:wrap}
+  .resc-vist-item:last-child{border-bottom:none}
+  .resc-vist-item-nome{flex:1 1 180px;font-size:13px;font-weight:600}
+  .resc-vist-item-opts{display:flex;gap:5px;flex:0 0 auto}
+  .resc-vist-item-opts .loc-btn{padding:5px 11px;font-size:11px}
+  .resc-vist-item-opts .loc-btn.active[data-est="bom"]{background:rgba(76,175,125,.18);border-color:var(--green);color:var(--green)}
+  .resc-vist-item-opts .loc-btn.active[data-est="regular"]{background:rgba(217,119,47,.18);border-color:var(--orange);color:var(--orange)}
+  .resc-vist-item-opts .loc-btn.active[data-est="ruim"]{background:rgba(224,84,84,.18);border-color:var(--red);color:var(--red)}
+  .resc-vist-item input{flex:1 1 220px}
+  .resc-doc-linha{padding:8px 2px;border-bottom:1px solid rgba(91,141,238,0.1);font-size:13px;line-height:1.6}
+  .resc-doc-linha:last-child{border-bottom:none}
+  .resc-doc-clausula-titulo{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin:14px 0 4px}
+  .resc-doc-assin{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px;text-align:center}
+  .resc-doc-assin-linha{border-top:1px solid var(--border2);padding-top:6px;font-size:12px}
+  .resc-doc-assin-linha .nome{font-weight:700;display:block}
+  .resc-doc-assin-linha .papel{color:var(--muted);font-size:11px}
+  .resc-vist-item-est-tag{font-size:10px;font-weight:700;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px}
   @media(max-width:700px){
     .resc-final{grid-template-columns:1fr}
     .resc-final .vval{font-size:26px;text-align:left}
+    .resc-doc-assin{grid-template-columns:1fr;gap:30px}
   }
   body.printing-rescisao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-rescisao html, body.printing-rescisao body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
@@ -11205,6 +11378,44 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rescisao #rescisaoFormView { display:none !important; }
   body.printing-rescisao #rescisaoResultView { display:block !important; }
   body.printing-rescisao .parc-card { margin:0 auto !important; max-width:720px !important; }
+
+  body.printing-distrato *, body.printing-termo-chaves *, body.printing-laudo-vistoria * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-distrato html, body.printing-distrato body,
+  body.printing-termo-chaves html, body.printing-termo-chaves body,
+  body.printing-laudo-vistoria html, body.printing-laudo-vistoria body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-distrato > *, body.printing-termo-chaves > *, body.printing-laudo-vistoria > * { display:none !important; }
+  body.printing-distrato #modalRescisao, body.printing-termo-chaves #modalRescisao, body.printing-laudo-vistoria #modalRescisao {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-distrato .reciboloc-toolbar, body.printing-distrato .entr-no-print,
+  body.printing-termo-chaves .reciboloc-toolbar, body.printing-termo-chaves .entr-no-print,
+  body.printing-laudo-vistoria .reciboloc-toolbar, body.printing-laudo-vistoria .entr-no-print { display:none !important; }
+  body.printing-distrato #modalRescisao .repasse-wrap, body.printing-termo-chaves #modalRescisao .repasse-wrap, body.printing-laudo-vistoria #modalRescisao .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-distrato .reciboloc-inner, body.printing-termo-chaves .reciboloc-inner, body.printing-laudo-vistoria .reciboloc-inner { padding:0 !important; max-height:none !important; overflow:visible !important; }
+  body.printing-distrato .parc-card, body.printing-termo-chaves .parc-card, body.printing-laudo-vistoria .parc-card { margin:0 auto !important; max-width:720px !important; }
+
+  body.printing-distrato #rescisaoFormView, body.printing-distrato #rescisaoResultView,
+  body.printing-distrato #rescisaoTermoView, body.printing-distrato #rescisaoLaudoView { display:none !important; }
+  body.printing-distrato #rescisaoDistratoView { display:block !important; }
+  body.printing-distrato #rescisaoDistratoForm { display:none !important; }
+  body.printing-distrato #rescisaoDistratoResult { display:block !important; }
+
+  body.printing-termo-chaves #rescisaoFormView, body.printing-termo-chaves #rescisaoResultView,
+  body.printing-termo-chaves #rescisaoDistratoView, body.printing-termo-chaves #rescisaoLaudoView { display:none !important; }
+  body.printing-termo-chaves #rescisaoTermoView { display:block !important; }
+  body.printing-termo-chaves #rescisaoTermoForm { display:none !important; }
+  body.printing-termo-chaves #rescisaoTermoResult { display:block !important; }
+
+  body.printing-laudo-vistoria #rescisaoFormView, body.printing-laudo-vistoria #rescisaoResultView,
+  body.printing-laudo-vistoria #rescisaoDistratoView, body.printing-laudo-vistoria #rescisaoTermoView { display:none !important; }
+  body.printing-laudo-vistoria #rescisaoLaudoView { display:block !important; }
+  body.printing-laudo-vistoria #rescisaoLaudoForm { display:none !important; }
+  body.printing-laudo-vistoria #rescisaoLaudoResult { display:block !important; }
 </style>
 
 <style>
@@ -13960,7 +14171,7 @@ window.cpRenderFixas=cpRenderFixas;
   // classes de layout do próprio LexFlow (loc-cform/loc-cfield, .parc-* pro demonstrativo final)
   // e impressão via imprimirComClasse_ (em vez de html2pdf.js). Cálculos e fórmulas mantidos
   // idênticos ao original — inclusive a multa do art. 4º da Lei 8.245/91 e o IPTU proporcional.
-  var rescMultaVal=3, rescIptuMode='av';
+  var rescMultaVal=3, rescIptuMode='av', rescUltimoResultado=null;
   function rescBRL_(v){return BRL(Math.abs(v||0));}
   function rescFmtD_(s){return locDtBRfromInput(s)||'—';}
   function rescDiasEntre_(d1,d2){
@@ -13988,8 +14199,16 @@ window.cpRenderFixas=cpRenderFixas;
     rescMultaVal=3;
     rescisaoSetIptu('av');
     document.getElementById('resc-multa-preview').style.display='none';
+    rescUltimoResultado=null;
+    ['resc-vist-data','resc-vist-hora','dist-cidade','dist-data','dist-av-data','dist-av-forma','dist-parc-qtd','dist-parc-primeira','dist-parc-forma','dist-clausula-pagto','dist-obs',
+     'termo-cidade','termo-data-entrega','termo-recebedor','termo-obs','laudo-cidade','laudo-data','laudo-presentes','laudo-obs-gerais'
+    ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    laudoEstados=LAUDO_ITENS.map(function(){return 'bom';});
     document.getElementById('rescisaoFormView').classList.remove('loc-hidden');
     document.getElementById('rescisaoResultView').classList.add('loc-hidden');
+    document.getElementById('rescisaoDistratoView').classList.add('loc-hidden');
+    document.getElementById('rescisaoTermoView').classList.add('loc-hidden');
+    document.getElementById('rescisaoLaudoView').classList.add('loc-hidden');
     document.getElementById('modalRescisao').classList.add('open');
   };
   // Preenche automaticamente com os dados do contrato escolhido — garantias vêm só como
@@ -14259,8 +14478,245 @@ window.cpRenderFixas=cpRenderFixas;
 
     if(contratoSel)logAuditoria_('Rescisão calculada',contratoSel,fl+': '+rescBRL_(saldo)+(jaFoiPago?' (aluguel já pago)':''));
 
+    // Guarda o resultado pra reaproveitar nos documentos complementares (distrato, termo de
+    // entrega de chaves, laudo de vistoria), sem precisar recalcular tudo de novo.
+    rescUltimoResultado={contratoSel:contratoSel,locador:locador,locatario:locatario,endereco:endereco,
+      dtI:dtI,dtT:dtT,dtC:dtC,diaVenc:diaVenc,quem:quem,qLabel:qL[quem]||'Locatário',
+      totalDeb:totalDeb,totalCred:totalCred,saldo:saldo,fl:fl,fd:fd,fc:fc};
+    var vistEl=document.getElementById('resc-vist-data');
+    if(vistEl&&!vistEl.value&&dtC)vistEl.value=dtC;
+
     document.getElementById('rescisaoFormView').classList.add('loc-hidden');
     document.getElementById('rescisaoResultView').classList.remove('loc-hidden');
+  };
+
+  var LAUDO_ITENS=['Paredes e pintura','Piso e revestimentos','Teto / forro','Portas, janelas e esquadrias',
+    'Instalações elétricas (tomadas, interruptores, quadro de luz)','Instalações hidráulicas (torneiras, registros, vazamentos)',
+    'Louças, metais e sanitários','Armários e bancadas fixas','Área externa / garagem (se houver)'];
+  var laudoEstados=LAUDO_ITENS.map(function(){return 'bom';});
+
+  function rescDocComum_(){
+    var r=rescUltimoResultado;
+    if(!r){
+      r={contratoSel:document.getElementById('resc-contrato-sel').value,
+        locador:document.getElementById('resc-locador').value||'Não informado',
+        locatario:document.getElementById('resc-locatario').value||'Não informado',
+        endereco:document.getElementById('resc-endereco').value||'Não informado',
+        dtI:document.getElementById('resc-dt-inicio').value,dtT:document.getElementById('resc-dt-termino').value,
+        dtC:document.getElementById('resc-dt-chaves').value,diaVenc:document.getElementById('resc-dia-venc').value,
+        quem:document.getElementById('resc-quem').value,totalDeb:0,totalCred:0,saldo:0,fl:'',fd:''};
+    }
+    return r;
+  }
+
+  window.rescDocAbrir=function(tipo){
+    document.getElementById('rescisaoResultView').classList.add('loc-hidden');
+    if(tipo==='distrato'){
+      var r=rescDocComum_();
+      document.getElementById('dist-cidade').value=document.getElementById('dist-cidade').value||'São Paulo';
+      document.getElementById('dist-data').value=document.getElementById('dist-data').value||new Date().toISOString().slice(0,10);
+      document.getElementById('dist-pagto-section').classList.toggle('loc-hidden',Math.abs(r.saldo)<0.01);
+      distGerarClausula();
+      document.getElementById('rescisaoDistratoView').classList.remove('loc-hidden');
+      document.getElementById('rescisaoDistratoForm').classList.remove('loc-hidden');
+      document.getElementById('rescisaoDistratoResult').classList.add('loc-hidden');
+    }else if(tipo==='termo'){
+      var vd=document.getElementById('resc-vist-data').value;
+      document.getElementById('termo-cidade').value=document.getElementById('termo-cidade').value||'São Paulo';
+      document.getElementById('termo-data-entrega').value=document.getElementById('termo-data-entrega').value||vd||rescDocComum_().dtC||'';
+      document.getElementById('rescisaoTermoView').classList.remove('loc-hidden');
+      document.getElementById('rescisaoTermoForm').classList.remove('loc-hidden');
+      document.getElementById('rescisaoTermoResult').classList.add('loc-hidden');
+    }else if(tipo==='laudo'){
+      var vd2=document.getElementById('resc-vist-data').value;
+      document.getElementById('laudo-cidade').value=document.getElementById('laudo-cidade').value||'São Paulo';
+      document.getElementById('laudo-data').value=document.getElementById('laudo-data').value||vd2||rescDocComum_().dtC||'';
+      laudoRenderChecklist_();
+      document.getElementById('rescisaoLaudoView').classList.remove('loc-hidden');
+      document.getElementById('rescisaoLaudoForm').classList.remove('loc-hidden');
+      document.getElementById('rescisaoLaudoResult').classList.add('loc-hidden');
+    }
+  };
+  window.rescDocFechar=function(){
+    document.getElementById('rescisaoDistratoView').classList.add('loc-hidden');
+    document.getElementById('rescisaoTermoView').classList.add('loc-hidden');
+    document.getElementById('rescisaoLaudoView').classList.add('loc-hidden');
+    document.getElementById('rescisaoResultView').classList.remove('loc-hidden');
+  };
+
+  // ---- Distrato ----
+  window.distSetForma=function(f){
+    document.getElementById('dist-btn-avista').classList.toggle('active',f==='avista');
+    document.getElementById('dist-btn-parcelado').classList.toggle('active',f==='parcelado');
+    document.getElementById('dist-avista-fields').classList.toggle('loc-hidden',f!=='avista');
+    document.getElementById('dist-parc-fields').classList.toggle('loc-hidden',f!=='parcelado');
+    distGerarClausula();
+  };
+  window.distGerarClausula=function(){
+    var r=rescDocComum_();
+    if(Math.abs(r.saldo)<0.01)return;
+    var quemPaga=r.saldo>0?r.qLabel:'Locador';
+    var quemRecebe=r.saldo>0?'Locador':r.qLabel;
+    var valor=rescBRL_(r.saldo);
+    var formaAtiva=document.getElementById('dist-btn-parcelado').classList.contains('active')?'parcelado':'avista';
+    var txt='';
+    if(formaAtiva==='avista'){
+      var dtPag=document.getElementById('dist-av-data').value;
+      var formaPag=document.getElementById('dist-av-forma').value||'PIX';
+      txt=quemPaga+' pagará a '+quemRecebe+' o valor de '+valor+', à vista, '+(dtPag?('até o dia '+rescFmtD_(dtPag)):'na data da vistoria de devolução das chaves')+', via '+formaPag+'.';
+    }else{
+      var qtd=parseInt(document.getElementById('dist-parc-qtd').value)||0;
+      var vParc=qtd>0?r.saldo/qtd:0;
+      document.getElementById('dist-parc-valor').value=rescBRL_(vParc);
+      var primeira=document.getElementById('dist-parc-primeira').value;
+      var formaParc=document.getElementById('dist-parc-forma').value||'PIX';
+      txt=quemPaga+' pagará a '+quemRecebe+' o valor total de '+valor+', em '+(qtd||'—')+' parcela(s) '+(qtd>0?('de '+rescBRL_(vParc)+' cada'):'')+', mensais e consecutivas, vencendo a primeira '+(primeira?('em '+rescFmtD_(primeira)):'na data a ser ajustada entre as partes')+', via '+formaParc+'.';
+    }
+    document.getElementById('dist-clausula-pagto').value=txt;
+  };
+  window.distGerar=function(){
+    var r=rescDocComum_();
+    var cidade=document.getElementById('dist-cidade').value||'São Paulo';
+    var dataDist=document.getElementById('dist-data').value;
+    var vistData=document.getElementById('resc-vist-data').value,vistHora=document.getElementById('resc-vist-hora').value;
+    var obs=document.getElementById('dist-obs').value;
+    var quemTxt=r.quem==='locador'?'do locador':r.quem==='mutuo'?'de comum acordo':'do locatário';
+    var html='';
+    html+='<div class="parc-section" style="margin-bottom:10px"><div class="parc-processo-nome">'+E(r.endereco)+'</div>'
+      +'<div class="parc-processo-num">'+(r.contratoSel?('Contrato nº '+E(r.contratoSel)+' — '):'')+'Locador: '+E(r.locador)+' — Locatário: '+E(r.locatario)+'</div></div>';
+    html+='<div class="resc-doc-linha">As partes acima qualificadas, na melhor forma de direito, celebram o presente <strong>DISTRATO DE CONTRATO DE LOCAÇÃO</strong>, referente ao imóvel acima identificado, mediante as cláusulas seguintes.</div>';
+    html+='<div class="resc-doc-clausula-titulo">Cláusula 1ª — Do Objeto</div>';
+    html+='<div class="resc-doc-linha">As partes resolvem, por iniciativa '+quemTxt+', dar por rescindido e distratado o contrato de locação referente ao imóvel acima, celebrado em '+rescFmtD_(r.dtI)+(r.dtT?(', com vigência prevista até '+rescFmtD_(r.dtT)):'')+', com a entrega das chaves em '+rescFmtD_(r.dtC)+'.</div>';
+    html+='<div class="resc-doc-clausula-titulo">Cláusula 2ª — Dos Valores Apurados</div>';
+    html+='<div class="resc-doc-linha">Conforme demonstrativo de rescisão elaborado nesta data: total de débitos '+rescBRL_(r.totalDeb)+'; total de créditos/garantias '+rescBRL_(r.totalCred)+'. Saldo final: <strong>'+E(r.fl)+' — '+rescBRL_(r.saldo)+'</strong>.</div>';
+    if(Math.abs(r.saldo)>=0.01){
+      html+='<div class="resc-doc-clausula-titulo">Cláusula 3ª — Da Forma de Pagamento</div>';
+      html+='<div class="resc-doc-linha">'+E(document.getElementById('dist-clausula-pagto').value)+'</div>';
+    }
+    html+='<div class="resc-doc-clausula-titulo">Cláusula '+(Math.abs(r.saldo)>=0.01?'4ª':'3ª')+' — Da Vistoria</div>';
+    html+='<div class="resc-doc-linha">Fica agendada vistoria de devolução do imóvel para o dia '+(vistData?rescFmtD_(vistData):'a ser combinado entre as partes')+(vistHora?(', às '+vistHora):'')+', oportunidade em que serão lavrados o laudo de vistoria e o termo de entrega de chaves.</div>';
+    html+='<div class="resc-doc-clausula-titulo">Cláusula '+(Math.abs(r.saldo)>=0.01?'5ª':'4ª')+' — Da Quitação</div>';
+    html+='<div class="resc-doc-linha">Cumpridas as obrigações acima e realizada a vistoria sem apontamento de danos além dos já considerados neste instrumento, as partes dão-se mútua, rasa e geral quitação quanto ao contrato de locação ora distratado, nada mais tendo a reclamar uma da outra a esse título.</div>';
+    if(obs)html+='<div class="resc-doc-linha"><strong>Observações/ressalvas adicionais:</strong> '+E(obs).replace(/\n/g,'<br>')+'</div>';
+    html+='<div class="resc-doc-clausula-titulo">Cláusula '+(Math.abs(r.saldo)>=0.01?'6ª':'5ª')+' — Do Foro</div>';
+    html+='<div class="resc-doc-linha">Fica eleito o foro da comarca de '+E(cidade)+' para dirimir quaisquer controvérsias oriundas deste instrumento.</div>';
+    html+='<div class="resc-doc-linha" style="margin-top:10px">'+E(cidade)+', '+rescFmtD_(dataDist||new Date().toISOString().slice(0,10))+'.</div>';
+    html+='<div class="resc-doc-assin">'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locador)+'</span><span class="papel">Locador</span></div>'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locatario)+'</span><span class="papel">Locatário</span></div>'
+      +'<div class="resc-doc-assin-linha"><span class="nome">Testemunha</span><span class="papel">Nome / CPF</span></div>'
+      +'<div class="resc-doc-assin-linha"><span class="nome">Testemunha</span><span class="papel">Nome / CPF</span></div>'
+      +'</div>';
+    document.getElementById('dist-res-body').innerHTML=html;
+    document.getElementById('dist-res-data').textContent=cidade+' — '+rescFmtD_(dataDist||new Date().toISOString().slice(0,10));
+    document.getElementById('dist-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
+    if(r.contratoSel)logAuditoria_('Distrato gerado',r.contratoSel,'Saldo: '+rescBRL_(r.saldo));
+    document.getElementById('rescisaoDistratoForm').classList.add('loc-hidden');
+    document.getElementById('rescisaoDistratoResult').classList.remove('loc-hidden');
+  };
+  window.distVoltarForm=function(){
+    document.getElementById('rescisaoDistratoForm').classList.remove('loc-hidden');
+    document.getElementById('rescisaoDistratoResult').classList.add('loc-hidden');
+  };
+
+  // ---- Termo de Entrega de Chaves ----
+  window.termoGerar=function(){
+    var r=rescDocComum_();
+    var cidade=document.getElementById('termo-cidade').value||'São Paulo';
+    var dtEntrega=document.getElementById('termo-data-entrega').value;
+    var estado=document.getElementById('termo-estado').value;
+    var recebedor=document.getElementById('termo-recebedor').value||'o locador';
+    var obs=document.getElementById('termo-obs').value;
+    var estadoTxt={bom:'em bom estado de conservação, compatível com o uso normal e o desgaste natural',
+      ressalvas:'com ressalvas quanto ao estado de conservação, discriminadas no laudo de vistoria correspondente',
+      apurar:'com o estado de conservação a ser apurado em vistoria própria'}[estado]||'';
+    var html='';
+    html+='<div class="parc-section" style="margin-bottom:10px"><div class="parc-processo-nome">'+E(r.endereco)+'</div>'
+      +'<div class="parc-processo-num">'+(r.contratoSel?('Contrato nº '+E(r.contratoSel)+' — '):'')+'Locador: '+E(r.locador)+' — Locatário: '+E(r.locatario)+'</div></div>';
+    html+='<div class="resc-doc-linha">Pelo presente <strong>TERMO DE ENTREGA DE CHAVES</strong>, o(a) locatário(a) '+E(r.locatario)+' declara, nesta data, a entrega das chaves do imóvel acima identificado a '+E(recebedor)+', encerrando-se a partir de '+rescFmtD_(dtEntrega)+' a ocupação do imóvel para todos os fins e efeitos.</div>';
+    html+='<div class="resc-doc-linha">O imóvel é entregue '+estadoTxt+'.</div>';
+    if(obs)html+='<div class="resc-doc-linha"><strong>Observações:</strong> '+E(obs).replace(/\n/g,'<br>')+'</div>';
+    html+='<div class="resc-doc-linha">As partes reconhecem que a presente entrega não implica, por si só, quitação de eventuais débitos apurados em demonstrativo de rescisão próprio, tampouco dispensa a lavratura de laudo de vistoria quando aplicável.</div>';
+    html+='<div class="resc-doc-linha" style="margin-top:10px">'+E(cidade)+', '+rescFmtD_(dtEntrega||new Date().toISOString().slice(0,10))+'.</div>';
+    html+='<div class="resc-doc-assin">'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locador)+'</span><span class="papel">Locador (recebe as chaves)</span></div>'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locatario)+'</span><span class="papel">Locatário (entrega as chaves)</span></div>'
+      +'</div>';
+    document.getElementById('termo-res-body').innerHTML=html;
+    document.getElementById('termo-res-data').textContent=cidade+' — '+rescFmtD_(dtEntrega||new Date().toISOString().slice(0,10));
+    document.getElementById('termo-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
+    if(r.contratoSel)logAuditoria_('Termo de entrega de chaves gerado',r.contratoSel,'Entrega em '+rescFmtD_(dtEntrega));
+    document.getElementById('rescisaoTermoForm').classList.add('loc-hidden');
+    document.getElementById('rescisaoTermoResult').classList.remove('loc-hidden');
+  };
+  window.termoVoltarForm=function(){
+    document.getElementById('rescisaoTermoForm').classList.remove('loc-hidden');
+    document.getElementById('rescisaoTermoResult').classList.add('loc-hidden');
+  };
+
+  // ---- Laudo de Vistoria ----
+  function laudoRenderChecklist_(){
+    var html=LAUDO_ITENS.map(function(nome,i){
+      var obsVal=document.getElementById('laudo-obs-'+i)?document.getElementById('laudo-obs-'+i).value:'';
+      return '<div class="resc-vist-item" data-idx="'+i+'">'
+        +'<div class="resc-vist-item-nome">'+E(nome)+'</div>'
+        +'<div class="resc-vist-item-opts">'
+        +'<button type="button" class="loc-btn'+(laudoEstados[i]==='bom'?' active':'')+'" data-est="bom" onclick="laudoSetEstado('+i+',\'bom\')">Bom</button>'
+        +'<button type="button" class="loc-btn'+(laudoEstados[i]==='regular'?' active':'')+'" data-est="regular" onclick="laudoSetEstado('+i+',\'regular\')">Regular</button>'
+        +'<button type="button" class="loc-btn'+(laudoEstados[i]==='ruim'?' active':'')+'" data-est="ruim" onclick="laudoSetEstado('+i+',\'ruim\')">Ruim</button>'
+        +'</div>'
+        +'<input class="loc-cinput" id="laudo-obs-'+i+'" placeholder="Observação (opcional)" value="'+E(obsVal)+'">'
+        +'</div>';
+    }).join('');
+    document.getElementById('laudo-checklist-body').innerHTML=html;
+  }
+  window.laudoSetEstado=function(i,v){
+    // preserva as observações já digitadas antes de re-renderizar
+    LAUDO_ITENS.forEach(function(_,idx){var el=document.getElementById('laudo-obs-'+idx);if(el)el.dataset.keep=el.value;});
+    laudoEstados[i]=v;
+    laudoRenderChecklist_();
+    LAUDO_ITENS.forEach(function(_,idx){var el=document.getElementById('laudo-obs-'+idx);if(el&&el.dataset.keep)el.value=el.dataset.keep;});
+  };
+  window.laudoGerar=function(){
+    var r=rescDocComum_();
+    var cidade=document.getElementById('laudo-cidade').value||'São Paulo';
+    var dtVist=document.getElementById('laudo-data').value;
+    var presentes=document.getElementById('laudo-presentes').value;
+    var obsGerais=document.getElementById('laudo-obs-gerais').value;
+    var conclusao=document.getElementById('laudo-conclusao').value;
+    var estLabel={bom:'Bom',regular:'Regular',ruim:'Ruim'};
+    var estCor={bom:'background:rgba(76,175,125,.18);color:#1a7a3a',regular:'background:rgba(217,119,47,.18);color:#a0570e',ruim:'background:rgba(224,84,84,.18);color:#a52a2a'};
+    var conclusaoTxt={adequado:'O imóvel foi devolvido em condições adequadas, compatíveis com o uso normal e o desgaste natural decorrente do tempo de locação.',
+      danos:'O imóvel foi devolvido com danos que extrapolam o desgaste natural de uso, a serem objeto de ressarcimento pelo locatário, conforme discriminado nos itens acima.',
+      pendente:'A presente vistoria encontra-se pendente de complementação, a ser realizada em data a combinar entre as partes.'}[conclusao]||'';
+    var html='';
+    html+='<div class="parc-section" style="margin-bottom:10px"><div class="parc-processo-nome">'+E(r.endereco)+'</div>'
+      +'<div class="parc-processo-num">'+(r.contratoSel?('Contrato nº '+E(r.contratoSel)+' — '):'')+'Locador: '+E(r.locador)+' — Locatário: '+E(r.locatario)+'</div>'
+      +'<div class="parc-processo-meta">Vistoria realizada em '+rescFmtD_(dtVist)+(presentes?(' — Presentes: '+E(presentes)):'')+'</div></div>';
+    html+='<div class="resc-doc-clausula-titulo">Itens Verificados</div>';
+    html+=LAUDO_ITENS.map(function(nome,i){
+      var obsEl=document.getElementById('laudo-obs-'+i);
+      var obsTxt=obsEl?obsEl.value:'';
+      var est=laudoEstados[i];
+      return '<div class="resc-doc-linha"><strong>'+E(nome)+'</strong> <span class="resc-vist-item-est-tag" style="'+estCor[est]+'">'+estLabel[est]+'</span>'+(obsTxt?('<br><span style="font-size:12px;color:var(--muted)">'+E(obsTxt)+'</span>'):'')+'</div>';
+    }).join('');
+    if(obsGerais)html+='<div class="resc-doc-clausula-titulo">Observações Gerais</div><div class="resc-doc-linha">'+E(obsGerais).replace(/\n/g,'<br>')+'</div>';
+    html+='<div class="resc-doc-clausula-titulo">Conclusão</div><div class="resc-doc-linha">'+E(conclusaoTxt)+'</div>';
+    html+='<div class="resc-doc-linha" style="margin-top:10px">'+E(cidade)+', '+rescFmtD_(dtVist||new Date().toISOString().slice(0,10))+'.</div>';
+    html+='<div class="resc-doc-assin">'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locador)+'</span><span class="papel">Locador</span></div>'
+      +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locatario)+'</span><span class="papel">Locatário</span></div>'
+      +'</div>';
+    document.getElementById('laudo-res-body').innerHTML=html;
+    document.getElementById('laudo-res-data').textContent=cidade+' — '+rescFmtD_(dtVist||new Date().toISOString().slice(0,10));
+    document.getElementById('laudo-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
+    if(r.contratoSel)logAuditoria_('Laudo de vistoria gerado',r.contratoSel,'Conclusão: '+(conclusao||'—'));
+    document.getElementById('rescisaoLaudoForm').classList.add('loc-hidden');
+    document.getElementById('rescisaoLaudoResult').classList.remove('loc-hidden');
+  };
+  window.laudoVoltarForm=function(){
+    document.getElementById('rescisaoLaudoForm').classList.remove('loc-hidden');
+    document.getElementById('rescisaoLaudoResult').classList.add('loc-hidden');
   };
 
   // resumo p/ o dashboard inicial
