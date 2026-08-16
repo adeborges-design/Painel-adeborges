@@ -1243,7 +1243,13 @@
        da tela gasta tinta demais e fica pesado impresso. Vale para qualquer recibo que usa
        essas classes (repasse, aluguel, acordo, parceiro, relatório do locador...). */
     .parc-header { background: #e8eef7 !important; border-bottom: 2px solid #5b8dee !important; }
-    .parc-card { background: #fff !important; border: 1px solid #d8dee8 !important; overflow: visible !important; }
+    .parc-card {
+      background: #fff !important; border: 1px solid #d8dee8 !important; overflow: visible !important;
+      /* Reverte, só na impressão, a paleta "clara sobre fundo escuro" que o cartão usa
+         normalmente na tela — aqui o fundo virou branco, então o texto tem que ser escuro. */
+      --text: #16233a !important; --muted: #5c6f8a !important; --accent: #2f6fb3 !important; --accent2: #1b3a5c !important;
+      --red: #d1454a !important; --green: #2f9d68 !important; --orange: #d9772f !important; --border2: #c7d7ea !important; --surface2: #eef4fb !important;
+    }
     .parc-header-title { color: #1a2a4a !important; }
     .parc-header-sub { color: #4a5a7a !important; }
     .parc-footer { background: #f4f6f9 !important; border-top: 1px solid #c8d0dc !important; color: #5a6578 !important; }
@@ -1376,6 +1382,7 @@
   /* CARD VISUAL PARCEIRO */
   .parc-card {
     background: #0d1525;
+    color: var(--text);
     border: 1px solid rgba(91,141,238,0.25);
     border-radius: 12px;
     overflow: hidden;
@@ -1383,6 +1390,14 @@
     font-size: 13px;
     line-height: 1.6;
     margin: 0 20px 16px;
+    /* Este cartão é SEMPRE escuro (fundo #0d1525), independente do tema claro/escuro
+       geral do site — por isso qualquer conteúdo dentro dele que use var(--texto/cor)
+       precisa enxergar sempre a paleta "clara sobre fundo escuro", nunca a paleta ativa
+       do tema do site. Sem isto, com o tema claro do site ativo, textos que herdam
+       var(--text) (escuro, pensado pra fundo claro) ficam escuros sobre este fundo
+       escuro — quase invisíveis. Redefine as variáveis localmente, só dentro do cartão. */
+    --text: #e6ebf3; --muted: #93a1b8; --accent: #6ba3e0; --accent2: #d8bd8a;
+    --red: #e5747a; --green: #4fbb8a; --orange: #e8935a; --border2: #384457; --surface2: #1e2635;
   }
 
   .parc-header {
@@ -11158,11 +11173,12 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="loc-btn primary" onclick="rescisaoImprimir()">🖨️ Imprimir / PDF</button>
         <button class="loc-btn" onclick="rescisaoVoltar()">← Editar dados</button>
       </div>
+      <div class="entr-no-print resc-edit-hint">✏️ Clique no texto do demonstrativo abaixo pra editar antes de imprimir</div>
       <div class="parc-card" id="resc-pdf-target">
         <div class="parc-header">
           <div><div class="parc-header-title">Demonstrativo de Rescisão de Locação</div><div class="parc-header-sub" id="resc-res-data"></div></div>
         </div>
-        <div class="parc-body">
+        <div class="parc-body resc-editable" id="resc-pdf-body">
           <div class="parc-section" id="resc-res-parties"></div>
           <div id="resc-res-body"></div>
           <div id="resc-res-obs"></div>
@@ -11226,9 +11242,10 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn" onclick="distVoltarForm()">← Editar</button>
           <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
         </div>
+        <div class="entr-no-print resc-edit-hint">✏️ Clique no texto do distrato abaixo pra editar antes de imprimir</div>
         <div class="parc-card" id="dist-pdf-target">
           <div class="parc-header"><div><div class="parc-header-title">Distrato de Contrato de Locação</div><div class="parc-header-sub" id="dist-res-data"></div></div></div>
-          <div class="parc-body" id="dist-res-body"></div>
+          <div class="parc-body resc-editable" id="dist-res-body"></div>
           <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="dist-res-emitido"></span></div>
         </div>
       </div>
@@ -11259,9 +11276,10 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn" onclick="termoVoltarForm()">← Editar</button>
           <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
         </div>
+        <div class="entr-no-print resc-edit-hint">✏️ Clique no texto do termo abaixo pra editar antes de imprimir</div>
         <div class="parc-card" id="termo-pdf-target">
           <div class="parc-header"><div><div class="parc-header-title">Termo de Entrega de Chaves</div><div class="parc-header-sub" id="termo-res-data"></div></div></div>
-          <div class="parc-body" id="termo-res-body"></div>
+          <div class="parc-body resc-editable" id="termo-res-body"></div>
           <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="termo-res-emitido"></span></div>
         </div>
       </div>
@@ -11299,9 +11317,10 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn" onclick="laudoVoltarForm()">← Editar</button>
           <button class="loc-btn" onclick="rescDocFechar()">← Voltar ao demonstrativo</button>
         </div>
+        <div class="entr-no-print resc-edit-hint">✏️ Clique no texto do laudo abaixo pra editar antes de imprimir</div>
         <div class="parc-card" id="laudo-pdf-target">
           <div class="parc-header"><div><div class="parc-header-title">Laudo de Vistoria de Devolução</div><div class="parc-header-sub" id="laudo-res-data"></div></div></div>
-          <div class="parc-body" id="laudo-res-body"></div>
+          <div class="parc-body resc-editable" id="laudo-res-body"></div>
           <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="laudo-res-emitido"></span></div>
         </div>
       </div>
@@ -11355,6 +11374,10 @@ window.cpRenderFixas=cpRenderFixas;
   .resc-doc-assin-linha .nome{font-weight:700;display:block}
   .resc-doc-assin-linha .papel{color:var(--muted);font-size:11px}
   .resc-vist-item-est-tag{font-size:10px;font-weight:700;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px}
+  .resc-edit-hint{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent2);background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.25);border-radius:8px;padding:7px 12px;margin-bottom:10px}
+  [contenteditable="true"].resc-editable{cursor:text;border-radius:6px;transition:background .15s}
+  [contenteditable="true"].resc-editable:hover{background:rgba(91,141,238,0.05)}
+  [contenteditable="true"].resc-editable:focus{outline:none;background:rgba(91,141,238,0.08)}
   @media(max-width:700px){
     .resc-final{grid-template-columns:1fr}
     .resc-final .vval{font-size:26px;text-align:left}
@@ -14475,6 +14498,9 @@ window.cpRenderFixas=cpRenderFixas;
 
     document.getElementById('resc-res-body').innerHTML=html;
     document.getElementById('resc-res-obs').innerHTML=obs?('<div class="resc-obs-box"><div style="font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Observações</div><div style="font-size:13px;line-height:1.6">'+E(obs).replace(/\n/g,'<br>')+'</div></div>'):'';
+    // Deixa o demonstrativo editável na hora — o usuário pode ajustar qualquer texto antes
+    // de imprimir, sem precisar voltar pro formulário e refazer o cálculo inteiro.
+    var rescBodyEd=document.getElementById('resc-pdf-body');rescBodyEd.contentEditable='true';rescBodyEd.spellcheck=false;
 
     if(contratoSel)logAuditoria_('Rescisão calculada',contratoSel,fl+': '+rescBRL_(saldo)+(jaFoiPago?' (aluguel já pago)':''));
 
@@ -14608,6 +14634,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="resc-doc-assin-linha"><span class="nome">Testemunha</span><span class="papel">Nome / CPF</span></div>'
       +'</div>';
     document.getElementById('dist-res-body').innerHTML=html;
+    var distBodyEd=document.getElementById('dist-res-body');distBodyEd.contentEditable='true';distBodyEd.spellcheck=false;
     document.getElementById('dist-res-data').textContent=cidade+' — '+rescFmtD_(dataDist||new Date().toISOString().slice(0,10));
     document.getElementById('dist-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
     if(r.contratoSel)logAuditoria_('Distrato gerado',r.contratoSel,'Saldo: '+rescBRL_(r.saldo));
@@ -14643,6 +14670,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locatario)+'</span><span class="papel">Locatário (entrega as chaves)</span></div>'
       +'</div>';
     document.getElementById('termo-res-body').innerHTML=html;
+    var termoBodyEd=document.getElementById('termo-res-body');termoBodyEd.contentEditable='true';termoBodyEd.spellcheck=false;
     document.getElementById('termo-res-data').textContent=cidade+' — '+rescFmtD_(dtEntrega||new Date().toISOString().slice(0,10));
     document.getElementById('termo-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
     if(r.contratoSel)logAuditoria_('Termo de entrega de chaves gerado',r.contratoSel,'Entrega em '+rescFmtD_(dtEntrega));
@@ -14708,6 +14736,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="resc-doc-assin-linha"><span class="nome">'+E(r.locatario)+'</span><span class="papel">Locatário</span></div>'
       +'</div>';
     document.getElementById('laudo-res-body').innerHTML=html;
+    var laudoBodyEd=document.getElementById('laudo-res-body');laudoBodyEd.contentEditable='true';laudoBodyEd.spellcheck=false;
     document.getElementById('laudo-res-data').textContent=cidade+' — '+rescFmtD_(dtVist||new Date().toISOString().slice(0,10));
     document.getElementById('laudo-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
     if(r.contratoSel)logAuditoria_('Laudo de vistoria gerado',r.contratoSel,'Conclusão: '+(conclusao||'—'));
