@@ -10023,6 +10023,8 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
       <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
       <button class="loc-btn" onclick="locAuditoriaAbrir()" title="Histórico de alterações em contratos e lançamentos (guardado neste navegador)">📜 Histórico</button>
+      <button class="loc-btn" onclick="locReajusteAbrir()" title="Contratos com reajuste anual vencido ou próximo, com simulação antes de aplicar">📈 Reajustes</button>
+      <button class="loc-btn" onclick="rescisaoAbrir()" title="Cálculo de rescisão contratual — multa proporcional, aluguel/encargos em aberto, IPTU e garantias">📤 Rescisão</button>
       <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
         <button class="loc-btn" onclick="locToggleMenuRelatorios(event)">📊 Relatórios ▾</button>
         <div id="locMenuRelatorios" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:260px;overflow:hidden">
@@ -10951,6 +10953,260 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL REAJUSTE ANUAL DE ALUGUEL -->
+<div class="modal-repasse-overlay" id="modalReajuste">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📈 Reajustes de aluguel (anual)</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalReajuste').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Lista contratos ativos cujo reajuste anual (12 meses após o início de vigência, ou após o último reajuste aplicado) já venceu ou vence nos próximos 60 dias.
+        Clique em <b>🧮 Simular</b> pra buscar automaticamente o índice acumulado no Banco Central (IGP-M, IPCA, INPC ou IGP-DI — série SGS), conferir o valor calculado e, só então, decidir se aplica em cheio ou ajusta o valor final (ex.: negociação com o locatário) antes de gravar.
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="loc-btn" onclick="locReajusteRenderLista()">🔄 Recalcular lista</button>
+      </div>
+      <div id="reajusteLista" style="max-height:65vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CÁLCULO DE RESCISÃO DE LOCAÇÃO -->
+<div class="modal-repasse-overlay" id="modalRescisao">
+  <div class="repasse-wrap" style="max-width:980px">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📤 Cálculo de Rescisão de Locação</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRescisao').classList.remove('open')">✕</button>
+    </div>
+
+    <div id="rescisaoFormView" class="reciboloc-inner" style="padding:20px;max-height:75vh;overflow-y:auto">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Cálculo proporcional de rescisão contratual — multa do art. 4º da Lei 8.245/91, aluguel e encargos em aberto, acréscimos, IPTU proporcional e abatimento de garantias. Selecione um contrato pra preencher os dados automaticamente; o restante é lançado manualmente conforme o caso concreto.
+      </div>
+
+      <div class="loc-section-title">Contrato</div>
+      <div class="loc-cform">
+        <div class="loc-cfield full"><label>Selecionar contrato (opcional — preenche os campos abaixo)</label><select class="loc-cinput" id="resc-contrato-sel" onchange="rescisaoAutoFill()"><option value="">— Preencher manualmente —</option></select></div>
+      </div>
+
+      <div class="loc-section-title">Partes e Imóvel</div>
+      <div class="loc-cform">
+        <div class="loc-cfield half"><label>Locador (proprietário)</label><input class="loc-cinput" id="resc-locador" placeholder="Nome completo"></div>
+        <div class="loc-cfield half"><label>Locatário (inquilino)</label><input class="loc-cinput" id="resc-locatario" placeholder="Nome completo"></div>
+        <div class="loc-cfield full"><label>Endereço do imóvel</label><input class="loc-cinput" id="resc-endereco" placeholder="Rua, nº, complemento, bairro — Cidade/UF"></div>
+      </div>
+
+      <div class="loc-section-title">Dados do Contrato</div>
+      <div class="loc-cform">
+        <div class="loc-cfield"><label>Início do contrato</label><input class="loc-cinput" id="resc-dt-inicio" type="date" onchange="rescisaoCalcMultaResc()"></div>
+        <div class="loc-cfield"><label>Término previsto</label><input class="loc-cinput" id="resc-dt-termino" type="date" onchange="rescisaoCalcMultaResc()"></div>
+        <div class="loc-cfield"><label>Entrega das chaves</label><input class="loc-cinput" id="resc-dt-chaves" type="date" onchange="rescisaoOnChavesChange()"></div>
+        <div class="loc-cfield"><label>Dia de vencimento do aluguel</label><select class="loc-cinput" id="resc-dia-venc">
+          <option value="">Selecionar</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option>
+        </select></div>
+      </div>
+      <div class="loc-cform" style="margin-top:13px">
+        <div class="loc-cfield"><label>Aluguel mensal (R$)</label><input class="loc-cinput" id="resc-aluguel" type="text" inputmode="decimal" placeholder="0,00" oninput="rescisaoCalcMultaResc()"></div>
+        <div class="loc-cfield"><label>Último aluguel pago — vencimento</label><input class="loc-cinput" id="resc-dt-ult-pago" type="date" onchange="rescisaoOnChavesChange()">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Se o vencimento for igual ou posterior à entrega, não há débito de aluguel e encargos</div>
+        </div>
+        <div class="loc-cfield"><label>Quem rescinde?</label><select class="loc-cinput" id="resc-quem">
+          <option value="locatario">Locatário (inquilino)</option>
+          <option value="locador">Locador (proprietário)</option>
+          <option value="mutuo">Mútuo acordo</option>
+        </select></div>
+      </div>
+      <div id="resc-aluguel-alert" class="loc-hidden" style="background:rgba(76,175,125,0.12);border:1px solid rgba(76,175,125,0.35);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:600;margin:10px 0">✅ Aluguel com vencimento posterior à entrega das chaves já foi pago — sem débito de aluguel e encargos mensais.</div>
+
+      <div class="loc-section-title" style="margin-top:18px">Multa Rescisória <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">— art. 4º da Lei 8.245/91</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Fórmula: (Aluguel × Nº aluguéis) ÷ Dias totais do contrato × Dias restantes</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="resc-multa-opt active" onclick="rescisaoSelMulta(this,3)"><div class="resc-multa-num">3×</div><div class="resc-multa-lbl">aluguéis</div></div>
+        <div class="resc-multa-opt" onclick="rescisaoSelMulta(this,2)"><div class="resc-multa-num">2×</div><div class="resc-multa-lbl">aluguéis</div></div>
+        <div class="resc-multa-opt" onclick="rescisaoSelMulta(this,1)"><div class="resc-multa-num">1×</div><div class="resc-multa-lbl">aluguel</div></div>
+        <div class="resc-multa-opt" onclick="rescisaoSelMulta(this,'custom')"><div class="resc-multa-num">?</div><div class="resc-multa-lbl">outro</div></div>
+        <div class="resc-multa-opt" onclick="rescisaoSelMulta(this,0)"><div class="resc-multa-num">0</div><div class="resc-multa-lbl">sem multa</div></div>
+      </div>
+      <div class="loc-cform" id="resc-multa-custom-wrap" style="display:none;margin-bottom:10px">
+        <div class="loc-cfield"><label>Número de aluguéis de multa</label><input class="loc-cinput" id="resc-multa-custom" type="text" inputmode="decimal" placeholder="Ex.: 2,5" oninput="rescisaoCalcMultaResc()"></div>
+      </div>
+      <div id="resc-multa-preview" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px">Cálculo da multa rescisória</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Dias totais</div><div style="font-size:14px;font-weight:800" id="resc-mp-total">—</div></div>
+          <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Dias cumpridos</div><div style="font-size:14px;font-weight:800" id="resc-mp-cumpridos">—</div></div>
+          <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Dias restantes</div><div style="font-size:14px;font-weight:800" id="resc-mp-restantes">—</div></div>
+          <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Multa proporcional</div><div style="font-size:14px;font-weight:800;color:var(--red)" id="resc-mp-multa">—</div></div>
+        </div>
+      </div>
+
+      <div class="loc-section-title">Aluguel e Encargos em Aberto</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lance os valores devidos manualmente. Se houver mais de um período em aberto, descreva e informe o total consolidado.</div>
+      <div class="loc-cform">
+        <div class="loc-cfield"><label>Valor do aluguel em aberto (R$)</label><input class="loc-cinput" id="resc-alu-venc" type="text" inputmode="decimal" placeholder="0,00" oninput="rescisaoCalcAcrescimos()"></div>
+        <div class="loc-cfield"><label>Descrição</label><input class="loc-cinput" id="resc-alu-desc" placeholder="Ex.: Aluguel mai/2026 proporcional (15 dias)"></div>
+        <div class="loc-cfield"><label>Valor total dos encargos em aberto (R$)</label><input class="loc-cinput" id="resc-enc-total" type="text" inputmode="decimal" placeholder="0,00" oninput="rescisaoCalcAcrescimos()"></div>
+        <div class="loc-cfield"><label>Descrição dos encargos</label><input class="loc-cinput" id="resc-enc-desc" placeholder="Ex.: Condomínio + água + energia"></div>
+      </div>
+      <div style="background:rgba(200,169,110,0.08);border:1.5px solid rgba(200,169,110,0.3);border-radius:10px;padding:14px 16px;margin-top:10px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--accent2);margin-bottom:10px">Acréscimos sobre aluguel + encargos em aberto</div>
+        <div class="loc-cform" style="padding:0;border:none;background:none">
+          <div class="loc-cfield"><label>Base de cálculo</label><input class="loc-cinput" id="resc-base-acrescimos" value="R$ 0,00" disabled></div>
+          <div class="loc-cfield"><label>Multa contratual por atraso (%)</label><input class="loc-cinput" id="resc-pct-multa-atr" type="text" inputmode="decimal" placeholder="Ex.: 10" oninput="rescisaoCalcAcrescimos()"></div>
+          <div class="loc-cfield"><label>Multa por atraso (calculada)</label><input class="loc-cinput" id="resc-val-multa-atr" value="R$ 0,00" disabled></div>
+          <div class="loc-cfield"><label>Juros de mora (R$)</label><input class="loc-cinput" id="resc-juros-atr" type="text" inputmode="decimal" placeholder="0,00">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">Calcule (ex.: 1% a.m. pro rata die) e informe o valor</div>
+          </div>
+          <div class="loc-cfield"><label>Correção monetária (R$)</label><input class="loc-cinput" id="resc-cm-atr" type="text" inputmode="decimal" placeholder="0,00">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">Calcule pelo índice contratual e informe o valor</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="loc-section-title" style="margin-top:18px">IPTU</div>
+      <div style="background:rgba(91,141,238,0.06);border:1.5px solid rgba(91,141,238,0.25);border-radius:10px;padding:16px">
+        <div style="font-size:12px;color:var(--accent2);margin-bottom:10px;font-weight:600">Como o IPTU está sendo pago neste exercício?</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button type="button" class="loc-btn active" id="resc-btn-iptu-av" onclick="rescisaoSetIptu('av')" style="flex:1">À vista (cota única)</button>
+          <button type="button" class="loc-btn" id="resc-btn-iptu-parc" onclick="rescisaoSetIptu('parc')" style="flex:1">Parcelado</button>
+        </div>
+        <div class="loc-cform" style="padding:0;border:none;background:none">
+          <div class="loc-cfield"><label>Valor total IPTU anual (R$)</label><input class="loc-cinput" id="resc-iptu-total" type="text" inputmode="decimal" placeholder="0,00" oninput="rescisaoCalcIptu()"></div>
+          <div class="loc-cfield"><label>Início da obrigação do locatário</label><input class="loc-cinput" id="resc-iptu-obrig" type="date" onchange="rescisaoCalcIptu()">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">01/01 do ano, ou data de início do contrato</div>
+          </div>
+          <div class="loc-cfield"><label>Ano do exercício</label><input class="loc-cinput" id="resc-iptu-ano" type="number" min="2000" max="2099" oninput="rescisaoCalcIptu()"></div>
+        </div>
+        <div id="resc-iptu-av-fields" style="margin-top:10px">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield"><label>IPTU proporcional calculado</label><input class="loc-cinput" id="resc-iptu-av-result" value="R$ 0,00" disabled></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px" id="resc-iptu-av-hint"></div>
+        </div>
+        <div id="resc-iptu-parc-fields" class="loc-hidden" style="margin-top:10px">
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield"><label>Total de parcelas no ano</label><select class="loc-cinput" id="resc-iptu-qtd" onchange="rescisaoCalcIptu()">
+              <option value="10">10 parcelas</option><option value="12">12 parcelas</option><option value="8">8 parcelas</option><option value="6">6 parcelas</option><option value="5">5 parcelas</option>
+            </select></div>
+            <div class="loc-cfield"><label>Mês da 1ª parcela</label><select class="loc-cinput" id="resc-iptu-ini" onchange="rescisaoCalcIptu()">
+              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+            </select></div>
+            <div class="loc-cfield"><label>Parcelas pagas pelo locatário</label><input class="loc-cinput" id="resc-iptu-pagas" type="number" min="0" step="1" placeholder="0" oninput="rescisaoCalcIptu()"></div>
+            <div class="loc-cfield"><label>Valor de cada parcela</label><input class="loc-cinput" id="resc-iptu-vparc" value="R$ 0,00" disabled></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin:10px 0;line-height:1.6"><strong>Lógica:</strong> proporcional = dias de responsabilidade ÷ dias do ano × IPTU anual. Saldo = proporcional − valor pago. Positivo = locatário deve; negativo = locador restitui.</div>
+          <div class="loc-cform" style="padding:0;border:none;background:none">
+            <div class="loc-cfield"><label>Dias de responsabilidade</label><input class="loc-cinput" id="resc-iptu-dias-resp" value="—" disabled></div>
+            <div class="loc-cfield"><label>IPTU proporcional</label><input class="loc-cinput" id="resc-iptu-prop-calc" value="R$ 0,00" disabled></div>
+            <div class="loc-cfield"><label>Valor pago pelo locatário</label><input class="loc-cinput" id="resc-iptu-valor-pago" value="R$ 0,00" disabled></div>
+            <div class="loc-cfield"><label>Saldo IPTU</label><input class="loc-cinput" id="resc-iptu-saldo" value="R$ 0,00" disabled style="font-weight:800"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="loc-section-title" style="margin-top:18px">Garantias Locatícias</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Informe o valor já corrigido a ser devolvido. Será abatido do saldo final.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+        <div style="border:1.5px solid var(--border2);border-radius:10px;overflow:hidden">
+          <div style="background:var(--surface2);padding:10px 14px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="resc-chk-cau" onchange="rescisaoToggleGar('cau')" style="width:15px;height:15px">🏦 Caução em dinheiro</label></div>
+          <div class="loc-cform loc-hidden" id="resc-body-cau" style="padding:14px;border:none;background:none">
+            <div class="loc-cfield full"><label>Valor a devolver — já corrigido pela poupança (R$)</label><input class="loc-cinput" id="resc-cau-val" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield full"><label>Observação</label><input class="loc-cinput" id="resc-cau-obs" placeholder="Ex.: Depósito original R$ 3.000,00 corrigido pela poupança"></div>
+          </div>
+        </div>
+        <div style="border:1.5px solid var(--border2);border-radius:10px;overflow:hidden">
+          <div style="background:var(--surface2);padding:10px 14px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="resc-chk-tit" onchange="rescisaoToggleGar('tit')" style="width:15px;height:15px">📜 Título de capitalização</label></div>
+          <div class="loc-cform loc-hidden" id="resc-body-tit" style="padding:14px;border:none;background:none">
+            <div class="loc-cfield full"><label>Valor atual do título (R$)</label><input class="loc-cinput" id="resc-tit-val" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield full"><label>Observação</label><input class="loc-cinput" id="resc-tit-obs" placeholder="Ex.: Título nº XXXX — valor de resgate atual"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="loc-section-title" style="margin-top:18px">Observações Gerais</div>
+      <div class="loc-cform">
+        <div class="loc-cfield full"><label>Observações / notas adicionais</label><textarea class="loc-cinput" id="resc-obs" rows="3" placeholder="Ex.: reparos a descontar, ressalvas contratuais, pendências…"></textarea></div>
+      </div>
+
+      <button class="loc-btn primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px" onclick="rescisaoCalcular()">Calcular Rescisão →</button>
+    </div>
+
+    <div id="rescisaoResultView" class="loc-hidden reciboloc-inner" style="padding:20px">
+      <div class="entr-no-print" style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="loc-btn primary" onclick="rescisaoImprimir()">🖨️ Imprimir / PDF</button>
+        <button class="loc-btn" onclick="rescisaoVoltar()">← Editar dados</button>
+      </div>
+      <div class="parc-card" id="resc-pdf-target">
+        <div class="parc-header">
+          <div><div class="parc-header-title">Demonstrativo de Rescisão de Locação</div><div class="parc-header-sub" id="resc-res-data"></div></div>
+        </div>
+        <div class="parc-body">
+          <div class="parc-section" id="resc-res-parties"></div>
+          <div id="resc-res-body"></div>
+          <div id="resc-res-obs"></div>
+        </div>
+        <div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — <span id="resc-res-emitido"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .resc-multa-opt{border:2px solid var(--border2);border-radius:10px;padding:9px 16px;cursor:pointer;transition:all .15s;text-align:center;min-width:76px}
+  .resc-multa-opt:hover{border-color:var(--accent)}
+  .resc-multa-opt.active{border-color:var(--accent);background:rgba(91,141,238,0.12)}
+  .resc-multa-num{font-family:'DM Serif Display',serif;font-size:20px;font-weight:700;color:var(--accent);line-height:1}
+  .resc-multa-lbl{font-size:10px;color:var(--muted);margin-top:2px}
+  .resc-line{display:grid;grid-template-columns:1fr auto;padding:7px 2px;border-bottom:1px solid rgba(91,141,238,0.08);font-size:13px;gap:10px;align-items:start}
+  .resc-line:last-child{border-bottom:none}
+  .resc-line .desc{color:#e8f0ff;line-height:1.4}
+  .resc-line .val-deb{font-weight:700;color:var(--red);white-space:nowrap}
+  .resc-line .val-cred{font-weight:700;color:var(--green);white-space:nowrap}
+  .resc-line .sub-desc{font-size:11px;color:var(--muted);margin-top:2px}
+  .resc-badge{font-size:9px;font-weight:700;text-transform:uppercase;background:rgba(91,141,238,0.15);color:#90B8F0;border-radius:4px;padding:1px 5px;margin-left:4px}
+  .resc-sec{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#90B8F0;padding:14px 0 5px;border-bottom:1px solid rgba(91,141,238,0.15);margin-bottom:2px}
+  .resc-subtotal{display:grid;grid-template-columns:1fr auto;padding:9px 12px;background:rgba(91,141,238,0.1);border-radius:8px;margin:5px 0;font-size:14px;font-weight:800;color:#90B8F0}
+  .resc-final{margin:14px 0 0;border-radius:12px;padding:20px 24px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:16px}
+  .resc-final.deb{background:rgba(224,84,84,0.1);border:2px solid rgba(224,84,84,0.35)}
+  .resc-final.cred{background:rgba(76,175,125,0.1);border:2px solid rgba(76,175,125,0.35)}
+  .resc-final.neutro{background:rgba(91,141,238,0.1);border:2px solid rgba(91,141,238,0.35)}
+  .resc-final .vlbl{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .resc-final.deb .vlbl{color:var(--red)}
+  .resc-final.cred .vlbl{color:var(--green)}
+  .resc-final.neutro .vlbl{color:var(--accent)}
+  .resc-final .vdesc{font-size:13px;color:var(--muted);line-height:1.5}
+  .resc-final .vval{font-family:'DM Serif Display',serif;font-size:32px;font-weight:700;white-space:nowrap;text-align:right}
+  .resc-final.deb .vval{color:var(--red)}
+  .resc-final.cred .vval{color:var(--green)}
+  .resc-final.neutro .vval{color:var(--accent)}
+  .resc-obs-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;margin:14px 0 0}
+  @media(max-width:700px){
+    .resc-final{grid-template-columns:1fr}
+    .resc-final .vval{font-size:26px;text-align:left}
+  }
+  body.printing-rescisao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rescisao html, body.printing-rescisao body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-rescisao > * { display:none !important; }
+  body.printing-rescisao #modalRescisao {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-rescisao .reciboloc-toolbar,
+  body.printing-rescisao .entr-no-print { display:none !important; }
+  body.printing-rescisao #modalRescisao .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-rescisao .reciboloc-inner { padding:0 !important; max-height:none !important; overflow:visible !important; }
+  body.printing-rescisao #rescisaoFormView { display:none !important; }
+  body.printing-rescisao #rescisaoResultView { display:block !important; }
+  body.printing-rescisao .parc-card { margin:0 auto !important; max-width:720px !important; }
+</style>
+
 <style>
   body.printing-recibo-loc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-recibo-loc html, body.printing-recibo-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
@@ -11004,6 +11260,12 @@ window.cpRenderFixas=cpRenderFixas;
   // estado é preservado entre os vários locRender()/locAtualizarAlertaVigencia() que rodam
   // enquanto a tela está aberta (senão o <details> fecharia sozinho a cada interação).
   var alertaVencidosOpen=false;
+  // Contexto passado do fluxo de Reajustes pro de Correspondências, quando o aviso "Reajuste
+  // anual" é aberto automaticamente logo depois de um reajuste ser aplicado — carrega o valor
+  // antes/depois REAL que foi gravado (inclusive se foi negociado, diferente do calculado pelo
+  // índice), pra o texto do aviso não recalcular errado em cima do aluguel que já foi atualizado.
+  // Fica nulo no uso normal (aviso aberto manualmente pela barra de Correspondências).
+  var _avisoReajusteContext=null;
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
   function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
@@ -11250,7 +11512,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
@@ -12835,12 +13097,32 @@ window.cpRenderFixas=cpRenderFixas;
     }},
     reajuste_anual:{ label:'Reajuste anual do aluguel', extras:true, corpo:function(c,ex){
       var pct=num(ex&&ex.pct);
-      var novoValor=Math.round((c.aluguel||0)*(1+pct/100)*100)/100;
+      // valorAnterior/valorNovo só vêm preenchidos quando o aviso é aberto automaticamente
+      // depois de um reajuste JÁ APLICADO (ver locReajusteAplicar) — nesse caso usa o valor
+      // real gravado (que pode ser negociado, diferente do calculado pelo índice) em vez de
+      // recalcular em cima de c.aluguel, que a essa altura já é o valor NOVO.
+      var jaAplicado=!!(ex&&ex.jaAplicado);
+      var valorAnterior=(ex&&ex.valorAnterior!=null&&ex.valorAnterior!=='')?num(ex.valorAnterior):(c.aluguel||0);
+      var novoValor=(ex&&ex.valorNovo!=null&&ex.valorNovo!=='')?num(ex.valorNovo):Math.round(valorAnterior*(1+pct/100)*100)/100;
       var indice=(ex&&ex.indice)||c.indiceReajuste||'contratual';
-      return [
+      var pctTxt=pct?(', no percentual de '+pct.toFixed(2).replace('.',',')+'%'):'';
+      // Se o valor final foi negociado (diferente do calculado pelo índice), não afirma um
+      // percentual que não bate com os valores abaixo — menciona o índice só como referência
+      // da revisão, e deixa claro que o valor final veio de acordo entre as partes.
+      var integralOuIndefinido=!(ex&&ex.integral===false);
+      var linha2Aplicado=integralOuIndefinido
+        ?'Em conformidade com o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informamos que o valor do aluguel foi reajustado pelo índice '+indice+pctTxt+'.'
+        :'Em conformidade com o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informamos que o valor do aluguel foi revisado com base no índice '+indice+(pct?' (variação apurada de '+pct.toFixed(2).replace('.',',')+'% no período)':'')+', tendo sido ajustado, por acordo entre locador e locatário, para o valor abaixo.';
+      return jaAplicado?[
         'Prezado(a) '+(c.locatario||'Locatário')+',',
-        'Em conformidade com o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informamos que o valor do aluguel será reajustado pelo índice '+indice+', aplicando-se o percentual de '+String(pct||0).replace('.',',')+'% sobre o valor vigente.',
-        'Valor atual: '+BRL(c.aluguel||0)+'.',
+        linha2Aplicado,
+        'Valor anterior: '+BRL(valorAnterior)+'.',
+        'Novo valor: '+BRL(novoValor)+'.',
+        'O novo valor passa a vigorar a partir do próximo vencimento, dia '+(c.venc||'—')+'.'
+      ]:[
+        'Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Em conformidade com o contrato de locação do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informamos que o valor do aluguel será reajustado pelo índice '+indice+pctTxt+'.',
+        'Valor atual: '+BRL(valorAnterior)+'.',
         'Novo valor: '+BRL(novoValor)+'.',
         'O novo valor passará a vigorar a partir do próximo vencimento, dia '+(c.venc||'—')+'.'
       ];
@@ -12860,10 +13142,16 @@ window.cpRenderFixas=cpRenderFixas;
       'Solicitamos que, após realizada a alteração, nos seja encaminhado o número do protocolo da solicitação junto à '+concessionaria+', para nossos registros.'
     ];
   }
-  window.avisoAbrir=function(){
+  // contratoPre/tipoPre (opcionais): usados pelo fluxo de Reajustes pra abrir a Correspondência
+  // já no contrato e tipo certos, ANTES da 1ª chamada de avisoGerar() — se selecionasse depois
+  // dessa 1ª chamada (contrato errado nela), o guard de _avisoReajusteContext em avisoGerar()
+  // invalidaria o contexto do reajuste por "não bater" com a seleção default do dropdown.
+  window.avisoAbrir=function(contratoPre,tipoPre){
     var sel=document.getElementById('avisoContratoSelect');
     sel.innerHTML=(DATA.contratos||[]).filter(function(c){return c.ativo;}).map(function(c){return '<option value="'+E(c.contrato)+'">'+E(c.contrato)+' — '+E(c.end||c.locatario||'')+'</option>';}).join('');
     document.getElementById('modalAvisoLoc').classList.add('open');
+    if(contratoPre)sel.value=contratoPre;
+    if(tipoPre)document.getElementById('avisoTipoSelect').value=tipoPre;
     avisoGerar();
   };
   window.avisoGerar=function(){
@@ -12872,18 +13160,25 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contratoNum];
     var extrasWrap=document.getElementById('avisoExtrasWrap');
     var def=AVISO_DEFS[tipo];
+    // Contexto de um reajuste recém-aplicado só vale enquanto o aviso continuar aberto pro
+    // MESMO contrato e tipo "reajuste_anual" — qualquer troca de contrato/tipo invalida.
+    if(_avisoReajusteContext&&(tipo!=='reajuste_anual'||contratoNum!==_avisoReajusteContext.contrato))_avisoReajusteContext=null;
     if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';return;}
     if(def.extras){
       if(!extrasWrap.querySelector('.aviso-extras-linha')){
+        var pctInicial=_avisoReajusteContext?String(_avisoReajusteContext.pct||'').replace('.',','):'';
+        var indiceInicial=(_avisoReajusteContext&&_avisoReajusteContext.indice)||c.indiceReajuste||'';
         extrasWrap.innerHTML='<div class="aviso-extras-linha" style="display:flex;gap:10px;flex-wrap:wrap">'
-          +'<div class="loc-cfield"><label>Índice de reajuste</label><input class="loc-cinput" id="aviso-indice" value="'+E(c.indiceReajuste||'')+'" placeholder="Ex.: IGP-M"></div>'
-          +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="aviso-pct" type="text" inputmode="decimal" placeholder="Ex.: 4,5" oninput="avisoGerar()"></div>'
+          +'<div class="loc-cfield"><label>Índice de reajuste</label><input class="loc-cinput" id="aviso-indice" value="'+E(indiceInicial)+'" placeholder="Ex.: IGP-M"></div>'
+          +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="aviso-pct" type="text" inputmode="decimal" value="'+E(pctInicial)+'" placeholder="Ex.: 4,5" oninput="avisoGerar()"></div>'
+          +(_avisoReajusteContext?'<div style="font-size:11px;color:var(--green);flex-basis:100%">✓ Reajuste já aplicado no contrato: '+BRL(_avisoReajusteContext.valorAnterior)+' → '+BRL(_avisoReajusteContext.valorNovo)+'. O texto abaixo já confirma o valor novo.</div>':'')
           +'</div>';
       }
     }else{
       extrasWrap.innerHTML='';
     }
     var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
+    if(_avisoReajusteContext){ex.valorAnterior=_avisoReajusteContext.valorAnterior;ex.valorNovo=_avisoReajusteContext.valorNovo;ex.jaAplicado=true;ex.integral=_avisoReajusteContext.integral;}
     var paragrafos=def.corpo(c,ex);
     var destinatarioLabel=def.paraLocador?'Locador':'Locatário';
     var destinatarioNome=def.paraLocador?(c.locador||'—'):(c.locatario||'—');
@@ -13479,6 +13774,9 @@ window.cpRenderFixas=cpRenderFixas;
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     var antigo=i>=0?DATA.contratos[i]:null;
+    // "Data Ultimo Reajuste" não é campo do formulário (é controlada pelo fluxo de Reajustes) —
+    // preserva o valor do registro anterior pra não perder o histórico ao editar o contrato.
+    novo.dataUltimoReajuste=antigo?antigo.dataUltimoReajuste:'';
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
     indexContratos();
     if(antigo){
@@ -13498,6 +13796,471 @@ window.cpRenderFixas=cpRenderFixas;
       msg.style.color='var(--yellow)';msg.textContent='Salvo apenas nesta sessão (configure a planilha em Config para gravar de forma permanente).';
     }
     locRenderContratos();locRender();
+  };
+
+  // ---------- REAJUSTE ANUAL DE ALUGUEL ----------
+  // Fluxo: 1) lista contratos com reajuste vencido ou vencendo em até 60 dias (12 meses desde
+  // o início de vigência, ou desde o último reajuste aplicado); 2) simula — busca automática do
+  // índice acumulado no Banco Central (SGS) pro período de apuração, com opção de digitar o
+  // percentual manualmente se a busca falhar (sem internet, índice "Outro" etc.); 3) só aplica
+  // (grava o novo aluguel + registra o histórico) depois de decisão explícita — em cheio,
+  // conforme calculado, ou com valor final diferente (negociação com o locatário).
+  // Códigos das séries do Banco Central usados na busca automática (api.bcb.gov.br/dados/serie).
+  var LOC_INDICE_SGS_={'IGP-M':189,'IPCA':433,'INPC':188,'IGP-DI':190};
+  function locParseDataBR_(s){
+    var p=String(s||'').split('/');
+    if(p.length!==3)return null;
+    var d=new Date(+p[2],+p[1]-1,+p[0]);
+    d.setHours(0,0,0,0);
+    return isNaN(d.getTime())?null:d;
+  }
+  function locDataBRfromDate_(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+  function locListaReajustesPendentes_(){
+    var hoje=new Date();hoje.setHours(0,0,0,0);
+    var out=[];
+    (DATA.contratos||[]).forEach(function(c){
+      if(!c.ativo)return;
+      var base=locParseDataBR_(c.dataUltimoReajuste||c.vigInicio);
+      if(!base)return;
+      var prox=new Date(base.getFullYear()+1,base.getMonth(),base.getDate());
+      var dias=Math.round((prox-hoje)/86400000);
+      if(dias<=60)out.push({c:c,proximo:prox,dias:dias});
+    });
+    out.sort(function(a,b){return a.dias-b.dias;});
+    return out;
+  }
+  // Busca a variação acumulada dos 12 meses terminados no mês anterior ao mês de reajuste
+  // (prática usual dos contratos: "reajustado pela variação acumulada do índice nos últimos
+  // 12 meses"). Devolve null em qualquer falha — quem chamou cai pro preenchimento manual.
+  async function locBuscarIndiceAcumulado_(indice,dataReajusteDate){
+    var codigo=LOC_INDICE_SGS_[indice];
+    if(!codigo)return null;
+    var fim=new Date(dataReajusteDate.getFullYear(),dataReajusteDate.getMonth(),0);
+    var ini=new Date(fim.getFullYear(),fim.getMonth()-11,1);
+    function fmt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+    var url='https://api.bcb.gov.br/dados/serie/bcdata.sgs.'+codigo+'/dados?formato=json&dataInicial='+fmt(ini)+'&dataFinal='+fmt(fim);
+    try{
+      var r=await fetch(url);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var dados=await r.json();
+      if(!dados||!dados.length)throw new Error('sem dados');
+      var fator=1;
+      dados.forEach(function(d){fator*=(1+(parseFloat(String(d.valor).replace(',','.'))/100));});
+      return {pct:(fator-1)*100,periodoInicio:fmt(ini),periodoFim:fmt(fim),meses:dados.length};
+    }catch(e){return null;}
+  }
+  window.locReajusteAbrir=function(){
+    var modal=document.getElementById('modalReajuste');
+    if(!modal)return;
+    modal.classList.add('open');
+    locReajusteRenderLista();
+  };
+  window.locReajusteRenderLista=function(){
+    var host=document.getElementById('reajusteLista');
+    if(!host)return;
+    var itens=locListaReajustesPendentes_();
+    if(!itens.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px">Nenhum contrato com reajuste vencido ou próximo (60 dias) no momento.</div>';return;}
+    host.innerHTML=itens.map(function(it){
+      var c=it.c;
+      var situacao=it.dias<0?('<span style="color:var(--red);font-weight:700">atrasado '+(-it.dias)+' dia(s)</span>'):('<span style="color:var(--yellow)">faltam '+it.dias+' dia(s)</span>');
+      return '<div class="reaj-item" style="border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">'
+          +'<div><b>'+E(c.contrato)+'</b> — '+E(c.locatario||'-')+' — '+E(c.end||'-')+'<br>'
+          +'<span style="font-size:12px;color:var(--muted)">Aluguel atual: '+BRL(num(c.aluguel))+' · Índice: '+E(c.indiceReajuste||'não definido')+' · Previsto para '+locDataBRfromDate_(it.proximo)+' — '+situacao+'</span></div>'
+          +'<button class="loc-btn primary" onclick="locReajusteSimular(\''+E(c.contrato)+'\')">🧮 Simular</button>'
+        +'</div>'
+        +'<div id="reaj-sim-'+E(c.contrato)+'" class="loc-hidden" style="margin-top:12px;border-top:1px solid var(--border2);padding-top:12px"></div>'
+      +'</div>';
+    }).join('');
+  };
+  window.locReajusteSimular=async function(contrato){
+    var c=contratosById[contrato];if(!c)return;
+    var box=document.getElementById('reaj-sim-'+contrato);
+    if(!box)return;
+    box.classList.remove('loc-hidden');
+    box.innerHTML='<div style="color:var(--muted);font-size:12.5px">Buscando índice '+E(c.indiceReajuste||'')+' acumulado (Banco Central)…</div>';
+    var itens=locListaReajustesPendentes_();
+    var it=itens.filter(function(x){return x.c.contrato===contrato;})[0];
+    var dataReajuste=it?it.proximo:new Date();
+    var resultado=c.indiceReajuste?await locBuscarIndiceAcumulado_(c.indiceReajuste,dataReajuste):null;
+    var pctSugerido=resultado?resultado.pct:null;
+    var infoPeriodo=resultado
+      ?('Período apurado: '+resultado.periodoInicio+' a '+resultado.periodoFim+' ('+resultado.meses+' meses) — fonte: Banco Central (SGS).')
+      :(c.indiceReajuste?'Não foi possível buscar automaticamente (sem internet, ou a API do Banco Central está fora do ar). Digite o percentual manualmente abaixo.':'Este contrato não tem índice de reajuste definido — edite o contrato pra definir um, ou digite o percentual manualmente abaixo.');
+    box.innerHTML=
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+infoPeriodo+'</div>'
+      +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+        +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="reaj-pct-'+contrato+'" type="text" inputmode="decimal" value="'+(pctSugerido!=null?pctSugerido.toFixed(4):'')+'" oninput="locReajusteRecalcular(\''+contrato+'\')"></div>'
+        +'<div class="loc-cfield"><label>Aluguel atual (R$)</label><input class="loc-cinput" value="'+BRL(num(c.aluguel))+'" disabled></div>'
+        +'<div class="loc-cfield"><label>Novo valor calculado (R$)</label><input class="loc-cinput" id="reaj-calc-'+contrato+'" disabled></div>'
+        +'<div class="loc-cfield full"><label>Aplicar valor diferente (opcional — ex.: negociação com o locatário)</label><input class="loc-cinput" id="reaj-manual-'+contrato+'" type="text" inputmode="decimal" placeholder="Deixe em branco pra usar o valor calculado acima"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+        +'<button class="loc-btn primary" onclick="locReajusteAplicar(\''+contrato+'\')">✅ Aplicar reajuste</button>'
+        +'<button class="loc-btn" onclick="document.getElementById(\'reaj-sim-'+contrato+'\').classList.add(\'loc-hidden\')">Cancelar</button>'
+      +'</div>'
+      +'<span class="msg" id="reaj-msg-'+contrato+'" style="display:block;margin-top:6px"></span>';
+    locReajusteRecalcular(contrato);
+  };
+  window.locReajusteRecalcular=function(contrato){
+    var c=contratosById[contrato];if(!c)return;
+    var pctEl=document.getElementById('reaj-pct-'+contrato);
+    var calcEl=document.getElementById('reaj-calc-'+contrato);
+    if(!pctEl||!calcEl)return;
+    var pct=num(pctEl.value);
+    var novo=num(c.aluguel)*(1+pct/100);
+    calcEl.value=BRL(Math.round(novo*100)/100);
+  };
+  window.locReajusteAplicar=function(contrato){
+    var c=contratosById[contrato];if(!c)return;
+    var itens=locListaReajustesPendentes_();
+    var it=itens.filter(function(x){return x.c.contrato===contrato;})[0];
+    var dataReajuste=it?it.proximo:new Date();
+    var pctEl=document.getElementById('reaj-pct-'+contrato);
+    var manualEl=document.getElementById('reaj-manual-'+contrato);
+    var msg=document.getElementById('reaj-msg-'+contrato);
+    var pct=num(pctEl.value);
+    var manual=manualEl.value.trim();
+    var valorAnterior=num(c.aluguel);
+    var valorCalculado=Math.round(valorAnterior*(1+pct/100)*100)/100;
+    var valorNovo=manual?num(manual):valorCalculado;
+    var integral=!manual;
+    if(!pct&&!manual){msg.style.color='var(--red)';msg.textContent='Informe o percentual do reajuste ou um valor final.';return;}
+    if(!valorNovo||valorNovo<=0){msg.style.color='var(--red)';msg.textContent='Valor final inválido.';return;}
+    if(!confirm('Aplicar reajuste no contrato '+contrato+'?\n\nDe: '+BRL(valorAnterior)+'\nPara: '+BRL(valorNovo)+(integral?' (integral, conforme índice)':' (valor negociado, diferente do calculado)')+'\n\nIsso atualiza o aluguel do contrato imediatamente.'))return;
+    var dataReajusteBR=locDataBRfromDate_(dataReajuste);
+    c.aluguel=valorNovo;
+    c.dataUltimoReajuste=dataReajusteBR;
+    logAuditoria_('Reajuste aplicado',contrato,'De '+BRL(valorAnterior)+' para '+BRL(valorNovo)+' ('+(c.indiceReajuste||'sem índice')+(pct?' '+pct.toFixed(2)+'%':'')+(integral?'':' — valor negociado')+')');
+    if(live){
+      var campos={'Aluguel':valorNovo,'Data Ultimo Reajuste':dataReajusteBR};
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locc',id:c.id,campos:campos})});}catch(e){}
+      var historico={acao:'lancar_locreaj',campos:{
+        'Contrato':contrato,'Data Reajuste':dataReajusteBR,'Indice':c.indiceReajuste||'',
+        'Percentual Indice':pct,'Aluguel Anterior':valorAnterior,'Aluguel Novo':valorNovo,
+        'Aplicado Integralmente':integral?'Sim':'Nao','Observacoes':integral?'':'Valor final negociado, diferente do calculado pelo índice.'
+      }};
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(historico)});}catch(e){}
+      msg.style.color='var(--green)';msg.textContent='Reajuste enviado à planilha.';
+    }else{
+      msg.style.color='var(--yellow)';msg.textContent='Aplicado apenas nesta sessão (configure a planilha em Config para gravar de forma permanente).';
+    }
+    locRenderContratos();locRender();
+    setTimeout(locReajusteRenderLista,600);
+    // Abre a Correspondência de "Reajuste anual" já preenchida com o valor real aplicado
+    // (integral ou negociado), pronta pra revisar e enviar ao locatário — não envia sozinho.
+    _avisoReajusteContext={contrato:contrato,valorAnterior:valorAnterior,valorNovo:valorNovo,indice:c.indiceReajuste||'',pct:pct,integral:integral};
+    document.getElementById('modalReajuste').classList.remove('open');
+    avisoAbrir(contrato,'reajuste_anual');
+  };
+
+  // ---------- CÁLCULO DE RESCISÃO DE LOCAÇÃO ----------
+  // Portado da calculadora standalone (Aluguel Fácil), adaptado às convenções do sistema:
+  // campos monetários em texto + num()/BRL() (em vez de <input type=number> com parseFloat),
+  // classes de layout do próprio LexFlow (loc-cform/loc-cfield, .parc-* pro demonstrativo final)
+  // e impressão via imprimirComClasse_ (em vez de html2pdf.js). Cálculos e fórmulas mantidos
+  // idênticos ao original — inclusive a multa do art. 4º da Lei 8.245/91 e o IPTU proporcional.
+  var rescMultaVal=3, rescIptuMode='av';
+  function rescBRL_(v){return BRL(Math.abs(v||0));}
+  function rescFmtD_(s){return locDtBRfromInput(s)||'—';}
+  function rescDiasEntre_(d1,d2){
+    var a=new Date(d1+'T12:00:00'),b=new Date(d2+'T12:00:00');
+    return Math.max(0,Math.round((b-a)/86400000));
+  }
+  window.rescisaoAbrir=function(){
+    var sel=document.getElementById('resc-contrato-sel');
+    sel.innerHTML='<option value="">— Preencher manualmente —</option>'+(DATA.contratos||[]).filter(function(c){return c.ativo;}).map(function(c){return '<option value="'+E(c.contrato)+'">'+E(c.contrato)+' — '+E(c.end||c.locatario||'')+'</option>';}).join('');
+    sel.value='';
+    ['resc-locador','resc-locatario','resc-endereco','resc-dt-inicio','resc-dt-termino','resc-dt-chaves','resc-aluguel','resc-dt-ult-pago',
+     'resc-multa-custom','resc-alu-venc','resc-alu-desc','resc-enc-total','resc-enc-desc','resc-pct-multa-atr','resc-juros-atr','resc-cm-atr',
+     'resc-iptu-total','resc-iptu-obrig','resc-iptu-pagas','resc-cau-val','resc-cau-obs','resc-tit-val','resc-tit-obs','resc-obs'
+    ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('resc-dia-venc').value='';
+    document.getElementById('resc-quem').value='locatario';
+    document.getElementById('resc-iptu-ano').value=new Date().getFullYear();
+    document.getElementById('resc-iptu-qtd').value='10';
+    document.getElementById('resc-iptu-ini').value='1';
+    document.getElementById('resc-chk-cau').checked=false;document.getElementById('resc-chk-tit').checked=false;
+    document.getElementById('resc-body-cau').classList.add('loc-hidden');document.getElementById('resc-body-tit').classList.add('loc-hidden');
+    document.getElementById('resc-aluguel-alert').classList.add('loc-hidden');
+    document.querySelectorAll('.resc-multa-opt').forEach(function(x,i){x.classList.toggle('active',i===0);});
+    document.getElementById('resc-multa-custom-wrap').style.display='none';
+    rescMultaVal=3;
+    rescisaoSetIptu('av');
+    document.getElementById('resc-multa-preview').style.display='none';
+    document.getElementById('rescisaoFormView').classList.remove('loc-hidden');
+    document.getElementById('rescisaoResultView').classList.add('loc-hidden');
+    document.getElementById('modalRescisao').classList.add('open');
+  };
+  // Preenche automaticamente com os dados do contrato escolhido — garantias vêm só como
+  // ponto de partida (checkbox marcado + observação), porque o VALOR precisa ser conferido/
+  // corrigido na data da entrega das chaves (poupança, resgate do título etc.), não dá pra
+  // simplesmente copiar o valor cadastrado no contrato.
+  window.rescisaoAutoFill=function(){
+    var contrato=document.getElementById('resc-contrato-sel').value;
+    if(!contrato)return;
+    var c=contratosById[contrato];if(!c)return;
+    document.getElementById('resc-locador').value=c.locador||'';
+    document.getElementById('resc-locatario').value=c.locatario||'';
+    document.getElementById('resc-endereco').value=c.end||'';
+    document.getElementById('resc-dt-inicio').value=locIsoFromBR(c.vigInicio);
+    document.getElementById('resc-dt-termino').value=locIsoFromBR(c.vigFim);
+    document.getElementById('resc-dia-venc').value=c.venc||'';
+    document.getElementById('resc-aluguel').value=c.aluguel?String(c.aluguel).replace('.',','):'';
+    document.getElementById('resc-chk-cau').checked=false;document.getElementById('resc-chk-tit').checked=false;
+    document.getElementById('resc-body-cau').classList.add('loc-hidden');document.getElementById('resc-body-tit').classList.add('loc-hidden');
+    document.getElementById('resc-cau-val').value='';document.getElementById('resc-cau-obs').value='';
+    document.getElementById('resc-tit-val').value='';document.getElementById('resc-tit-obs').value='';
+    if(c.tipoGarantia==='Caução em Dinheiro'){
+      document.getElementById('resc-chk-cau').checked=true;
+      document.getElementById('resc-body-cau').classList.remove('loc-hidden');
+      if(c.garValorCaucao)document.getElementById('resc-cau-val').value=String(c.garValorCaucao).replace('.',',');
+      document.getElementById('resc-cau-obs').value='Depósito original conforme contrato — conferir correção pela poupança até a data de entrega das chaves.';
+    }else if(c.tipoGarantia==='Título de Capitalização'){
+      document.getElementById('resc-chk-tit').checked=true;
+      document.getElementById('resc-body-tit').classList.remove('loc-hidden');
+      document.getElementById('resc-tit-obs').value=(c.garEmpresaTitulo?('Título '+c.garEmpresaTitulo+(c.garNrProposta?' — proposta nº '+c.garNrProposta:'')+' — '):'')+'conferir valor de resgate atual junto à emissora.';
+    }
+    rescisaoCalcMultaResc();
+    rescisaoOnChavesChange();
+  };
+  window.rescisaoSelMulta=function(el,v){
+    document.querySelectorAll('.resc-multa-opt').forEach(function(x){x.classList.remove('active');});
+    el.classList.add('active');
+    rescMultaVal=v;
+    document.getElementById('resc-multa-custom-wrap').style.display=(v==='custom')?'':'none';
+    rescisaoCalcMultaResc();
+  };
+  window.rescisaoSetIptu=function(m){
+    rescIptuMode=m;
+    document.getElementById('resc-btn-iptu-av').classList.toggle('active',m==='av');
+    document.getElementById('resc-btn-iptu-parc').classList.toggle('active',m==='parc');
+    document.getElementById('resc-iptu-parc-fields').classList.toggle('loc-hidden',m!=='parc');
+    document.getElementById('resc-iptu-av-fields').classList.toggle('loc-hidden',m!=='av');
+    rescisaoCalcIptu();
+  };
+  window.rescisaoToggleGar=function(t){
+    document.getElementById('resc-body-'+t).classList.toggle('loc-hidden',!document.getElementById('resc-chk-'+t).checked);
+  };
+  function rescAluguelJaPago_(){
+    var dtC=document.getElementById('resc-dt-chaves').value;
+    var dtU=document.getElementById('resc-dt-ult-pago').value;
+    return !!(dtC&&dtU&&dtU>=dtC);
+  }
+  window.rescisaoOnChavesChange=function(){
+    document.getElementById('resc-aluguel-alert').classList.toggle('loc-hidden',!rescAluguelJaPago_());
+    rescisaoCalcIptu();
+    // A prévia da multa rescisória também depende da data de entrega das chaves (dias
+    // cumpridos/restantes) — recalcula aqui também, não só quando início/término mudam.
+    rescisaoCalcMultaResc();
+  };
+  window.rescisaoCalcAcrescimos=function(){
+    var base=num(document.getElementById('resc-alu-venc').value)+num(document.getElementById('resc-enc-total').value);
+    document.getElementById('resc-base-acrescimos').value=rescBRL_(base);
+    var pct=num(document.getElementById('resc-pct-multa-atr').value)/100;
+    document.getElementById('resc-val-multa-atr').value=rescBRL_(base*pct);
+  };
+  window.rescisaoCalcMultaResc=function(){
+    var dtI=document.getElementById('resc-dt-inicio').value;
+    var dtT=document.getElementById('resc-dt-termino').value;
+    var dtC=document.getElementById('resc-dt-chaves').value;
+    var aluguel=num(document.getElementById('resc-aluguel').value);
+    var prev=document.getElementById('resc-multa-preview');
+    if(!dtI||!dtT||!dtC||!aluguel){prev.style.display='none';return;}
+    var numM=rescMultaVal==='custom'?num(document.getElementById('resc-multa-custom').value):parseFloat(rescMultaVal);
+    if(!numM){prev.style.display='none';return;}
+    var dTot=rescDiasEntre_(dtI,dtT);
+    var dCump=rescDiasEntre_(dtI,dtC);
+    var dRest=Math.max(0,rescDiasEntre_(dtC,dtT));
+    var multa=dTot>0?(aluguel*numM)/dTot*dRest:0;
+    prev.style.display='block';
+    document.getElementById('resc-mp-total').textContent=dTot+' dias';
+    document.getElementById('resc-mp-cumpridos').textContent=dCump+' dias';
+    document.getElementById('resc-mp-restantes').textContent=dRest+' dias';
+    document.getElementById('resc-mp-multa').textContent=rescBRL_(multa);
+  };
+  window.rescisaoCalcIptu=function(){
+    var dtC=document.getElementById('resc-dt-chaves').value;
+    var dtO=document.getElementById('resc-iptu-obrig').value;
+    var anoEx=parseInt(document.getElementById('resc-iptu-ano').value);
+    var total=num(document.getElementById('resc-iptu-total').value);
+    var reset=function(){
+      ['resc-iptu-av-result','resc-iptu-prop-calc','resc-iptu-valor-pago','resc-iptu-saldo'].forEach(function(id){
+        var el=document.getElementById(id);if(el)el.value='R$ 0,00';
+      });
+      var h=document.getElementById('resc-iptu-av-hint');if(h)h.textContent='';
+      var dr=document.getElementById('resc-iptu-dias-resp');if(dr)dr.value='—';
+    };
+    if(!dtC||!anoEx||!total||!dtO){reset();return;}
+    var dO=new Date(dtO+'T12:00:00'),dC=new Date(dtC+'T12:00:00');
+    var dIA=new Date(anoEx+'-01-01T12:00:00'),dFA=new Date(anoEx+'-12-31T12:00:00');
+    var dS=dO>dIA?dO:dIA,dE=dC<dFA?dC:dFA;
+    var diasR=Math.max(0,Math.round((dE-dS)/86400000));
+    var diasAno=((anoEx%4===0&&anoEx%100!==0)||(anoEx%400===0))?366:365;
+    var iptuProp=diasR/diasAno*total;
+    if(rescIptuMode==='av'){
+      document.getElementById('resc-iptu-av-result').value=rescBRL_(iptuProp);
+      document.getElementById('resc-iptu-av-hint').textContent=diasR+' dias de responsabilidade / '+diasAno+' dias no ano';
+    }else{
+      var qtd=parseInt(document.getElementById('resc-iptu-qtd').value)||10;
+      var vParc=total/qtd;
+      document.getElementById('resc-iptu-vparc').value=rescBRL_(vParc);
+      var parcPagas=parseInt(document.getElementById('resc-iptu-pagas').value)||0;
+      var valorPago=parcPagas*vParc;
+      var saldo=iptuProp-valorPago;
+      document.getElementById('resc-iptu-dias-resp').value=diasR+' / '+diasAno+' dias';
+      document.getElementById('resc-iptu-prop-calc').value=rescBRL_(iptuProp);
+      document.getElementById('resc-iptu-valor-pago').value=rescBRL_(valorPago);
+      var sEl=document.getElementById('resc-iptu-saldo');
+      sEl.value=(saldo>=0?'A pagar: ':'A devolver: ')+rescBRL_(saldo);
+      sEl.style.color=saldo>=0?'var(--red)':'var(--green)';
+    }
+  };
+  window.rescisaoVoltar=function(){
+    document.getElementById('rescisaoFormView').classList.remove('loc-hidden');
+    document.getElementById('rescisaoResultView').classList.add('loc-hidden');
+  };
+  window.rescisaoImprimir=function(){
+    imprimirComClasse_('printing-rescisao',300);
+  };
+  window.rescisaoCalcular=function(){
+    var contratoSel=document.getElementById('resc-contrato-sel').value;
+    var locador=document.getElementById('resc-locador').value||'Não informado';
+    var locatario=document.getElementById('resc-locatario').value||'Não informado';
+    var endereco=document.getElementById('resc-endereco').value||'Não informado';
+    var dtI=document.getElementById('resc-dt-inicio').value;
+    var dtT=document.getElementById('resc-dt-termino').value;
+    var dtC=document.getElementById('resc-dt-chaves').value;
+    var diaVenc=document.getElementById('resc-dia-venc').value;
+    var dtUlt=document.getElementById('resc-dt-ult-pago').value;
+    var aluguel=num(document.getElementById('resc-aluguel').value);
+    var quem=document.getElementById('resc-quem').value;
+    if(!dtC||!aluguel){alert('Preencha ao menos a data de entrega das chaves e o valor do aluguel.');return;}
+
+    var jaFoiPago=rescAluguelJaPago_();
+
+    // Multa rescisória (art. 4º da Lei 8.245/91)
+    var numM=rescMultaVal==='custom'?num(document.getElementById('resc-multa-custom').value):parseFloat(rescMultaVal);
+    var multaResc=0,multaDesc='';
+    if(quem==='locatario'&&numM>0&&dtI&&dtT){
+      var dTot=rescDiasEntre_(dtI,dtT);
+      var dCump=rescDiasEntre_(dtI,dtC);
+      var dRest=Math.max(0,rescDiasEntre_(dtC,dtT));
+      multaResc=dTot>0?(aluguel*numM)/dTot*dRest:0;
+      multaDesc='Multa '+numM+'× aluguel ÷ '+dTot+' dias totais × '+dRest+' dias restantes';
+    }else if(quem==='locador'&&numM>0){
+      multaResc=aluguel*numM;
+      multaDesc='Multa por retomada — '+numM+'× aluguel (integral)';
+    }
+
+    // Aluguel e encargos
+    var aluVenc=jaFoiPago?0:num(document.getElementById('resc-alu-venc').value);
+    var aluDesc=document.getElementById('resc-alu-desc').value;
+    var encTotal=jaFoiPago?0:num(document.getElementById('resc-enc-total').value);
+    var encDesc=document.getElementById('resc-enc-desc').value;
+    var base=aluVenc+encTotal;
+    var multaAtr=jaFoiPago?0:base*(num(document.getElementById('resc-pct-multa-atr').value)/100);
+    var jurosAtr=jaFoiPago?0:num(document.getElementById('resc-juros-atr').value);
+    var cmAtr=jaFoiPago?0:num(document.getElementById('resc-cm-atr').value);
+
+    // IPTU
+    var iptuFinal=0,iptuDesc='';
+    var anoEx=parseInt(document.getElementById('resc-iptu-ano').value);
+    var dtO=document.getElementById('resc-iptu-obrig').value;
+    var iptuTot=num(document.getElementById('resc-iptu-total').value);
+    if(iptuTot&&anoEx&&dtO&&dtC){
+      var dO=new Date(dtO+'T12:00:00'),dCd=new Date(dtC+'T12:00:00');
+      var dIA=new Date(anoEx+'-01-01T12:00:00'),dFA=new Date(anoEx+'-12-31T12:00:00');
+      var dS=dO>dIA?dO:dIA,dE=dCd<dFA?dCd:dFA;
+      var diasR=Math.max(0,Math.round((dE-dS)/86400000));
+      var diasAno=((anoEx%4===0&&anoEx%100!==0)||(anoEx%400===0))?366:365;
+      var iptuProp=diasR/diasAno*iptuTot;
+      if(rescIptuMode==='av'){
+        iptuFinal=iptuProp;
+        iptuDesc='IPTU à vista — '+diasR+' dias de responsabilidade / '+diasAno+' dias';
+      }else{
+        var qtd=parseInt(document.getElementById('resc-iptu-qtd').value)||10;
+        var vP=iptuTot/qtd;
+        var parcP=parseInt(document.getElementById('resc-iptu-pagas').value)||0;
+        var valPago=parcP*vP;
+        var saldo=iptuProp-valPago;
+        iptuFinal=saldo;
+        iptuDesc='IPTU parcelado — '+diasR+' dias: proporcional '+rescBRL_(iptuProp)+' − pago '+rescBRL_(valPago);
+      }
+    }
+
+    // Garantias
+    var caucV=0,titV=0;
+    var caucObs=document.getElementById('resc-cau-obs').value;
+    var titObs=document.getElementById('resc-tit-obs').value;
+    if(document.getElementById('resc-chk-cau').checked)caucV=num(document.getElementById('resc-cau-val').value);
+    if(document.getElementById('resc-chk-tit').checked)titV=num(document.getElementById('resc-tit-val').value);
+
+    var totalDeb=multaResc+aluVenc+encTotal+multaAtr+jurosAtr+cmAtr+(iptuFinal>0?iptuFinal:0);
+    var totalCred=caucV+titV+(iptuFinal<0?Math.abs(iptuFinal):0);
+    var saldo=totalDeb-totalCred;
+    var obs=document.getElementById('resc-obs').value;
+    var qL={locatario:'Locatário',locador:'Locador',mutuo:'Mútuo acordo'};
+
+    document.getElementById('resc-res-data').textContent='Emitido em '+new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    document.getElementById('resc-res-emitido').textContent=new Date().toLocaleDateString('pt-BR');
+
+    document.getElementById('resc-res-parties').innerHTML=
+      '<div class="parc-processo-nome">'+E(endereco)+'</div>'
+      +'<div class="parc-processo-num">'+(contratoSel?('Contrato nº '+E(contratoSel)+' — '):'')+'Locador: '+E(locador)+' — Locatário: '+E(locatario)+'</div>'
+      +'<div class="parc-processo-meta">Início: '+rescFmtD_(dtI)+' · Término previsto: '+rescFmtD_(dtT)+' · Entrega das chaves: '+rescFmtD_(dtC)+(diaVenc?' (venc. dia '+E(diaVenc)+')':'')+'</div>';
+
+    var L=function(desc,val,badge,sub){
+      if(!val)return '';
+      var b=badge==='i'?'<span class="resc-badge">Integral</span>':badge==='p'?'<span class="resc-badge">Proporcional</span>':'';
+      return '<div class="resc-line"><div><div class="desc">'+E(desc)+b+'</div>'+(sub?'<div class="sub-desc">'+E(sub)+'</div>':'')+'</div><div class="val-deb">'+rescBRL_(val)+'</div></div>';
+    };
+    var Lc=function(desc,val,sub){
+      if(!val)return '';
+      return '<div class="resc-line"><div><div class="desc">'+E(desc)+'</div>'+(sub?'<div class="sub-desc">'+E(sub)+'</div>':'')+'</div><div class="val-cred">'+rescBRL_(val)+'</div></div>';
+    };
+
+    var html='<div class="resc-sec">DÉBITOS</div>';
+    if(multaResc>0)html+='<div class="resc-line"><div><div class="desc">'+E(multaDesc)+'</div></div><div class="val-deb">'+rescBRL_(multaResc)+'</div></div>';
+    if(jaFoiPago){
+      html+='<div class="resc-line"><div><div class="desc">Aluguel e encargos <span style="font-size:10px;color:var(--green);font-weight:700">✅ já pagos (venc. '+rescFmtD_(dtUlt)+')</span></div></div><div class="val-deb" style="color:var(--green)">R$ 0,00</div></div>';
+    }else{
+      if(aluVenc>0)html+=L('Aluguel em aberto',aluVenc,'i',aluDesc);
+      if(encTotal>0)html+=L('Encargos em aberto',encTotal,'i',encDesc);
+      if(multaAtr>0)html+=L('Multa por atraso ('+num(document.getElementById('resc-pct-multa-atr').value).toFixed(1)+'% sobre '+rescBRL_(base)+')',multaAtr,'i');
+      if(jurosAtr>0)html+=L('Juros de mora',jurosAtr,'i');
+      if(cmAtr>0)html+=L('Correção monetária',cmAtr,'i');
+    }
+    if(iptuFinal>0)html+=L(iptuDesc,iptuFinal,'p');
+    html+='<div class="resc-subtotal"><div>Total de Débitos</div><div>'+rescBRL_(totalDeb)+'</div></div>';
+
+    if(totalCred>0){
+      html+='<div class="resc-sec">CRÉDITOS / GARANTIAS</div>';
+      if(caucV>0)html+=Lc('Caução a devolver (corrigida pela poupança)',caucV,caucObs);
+      if(titV>0)html+=Lc('Título de capitalização — valor de resgate',titV,titObs);
+      if(iptuFinal<0)html+=Lc(iptuDesc,Math.abs(iptuFinal));
+      html+='<div class="resc-subtotal" style="background:rgba(76,175,125,0.12)"><div>Total de Créditos</div><div style="color:var(--green)">'+rescBRL_(totalCred)+'</div></div>';
+    }
+
+    var fc,fl,fd;
+    if(Math.abs(saldo)<0.01){
+      fc='neutro';fl='Saldo Zero';fd='Não há crédito nem débito. As contas estão quitadas.';
+    }else if(saldo>0){
+      fc='deb';fl='Débito do '+qL[quem];
+      fd='O '+(qL[quem]||'Locatário').toLowerCase()+' deve pagar ao locador o valor ao lado.'+(totalCred>0?' Após compensação das garantias ('+rescBRL_(totalCred)+').':'');
+    }else{
+      fc='cred';fl='Crédito ao Locatário';
+      fd='As garantias superam os débitos. O locador deve devolver ao locatário o valor ao lado.';
+    }
+    html+='<div class="resc-final '+fc+'"><div><div class="vlbl">'+fl+'</div><div class="vdesc">'+fd+'</div></div><div class="vval">'+rescBRL_(saldo)+'</div></div>';
+
+    document.getElementById('resc-res-body').innerHTML=html;
+    document.getElementById('resc-res-obs').innerHTML=obs?('<div class="resc-obs-box"><div style="font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Observações</div><div style="font-size:13px;line-height:1.6">'+E(obs).replace(/\n/g,'<br>')+'</div></div>'):'';
+
+    if(contratoSel)logAuditoria_('Rescisão calculada',contratoSel,fl+': '+rescBRL_(saldo)+(jaFoiPago?' (aluguel já pago)':''));
+
+    document.getElementById('rescisaoFormView').classList.add('loc-hidden');
+    document.getElementById('rescisaoResultView').classList.remove('loc-hidden');
   };
 
   // resumo p/ o dashboard inicial
