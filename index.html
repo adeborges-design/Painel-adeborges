@@ -10050,24 +10050,34 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" id="btnLocContratos" onclick="locToggleContratos()">📋 Contratos</button>
-      <button class="loc-btn" id="btnLocResumo" onclick="locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
-      <button class="loc-btn" onclick="locGerarProximoMes()">➕ Gerar mês seguinte</button>
-      <button class="loc-btn" id="btnLocRepasse" onclick="locToggleRepasse()">👥 Repasse por locador (mês)</button>
-      <button class="loc-btn" onclick="locExportCSV()">⬇️ Exportar CSV</button>
-      <button class="loc-btn" onclick="locReset()">↺ Limpar alterações locais</button>
-      <button class="loc-btn" onclick="irConfigAbrir()">⚙️ Tabela de IR</button>
-      <button class="loc-btn" onclick="locAuditoriaAbrir()" title="Histórico de alterações em contratos e lançamentos (guardado neste navegador)">📜 Histórico</button>
       <button class="loc-btn" onclick="locReajusteAbrir()" title="Contratos com reajuste anual vencido ou próximo, com simulação antes de aplicar">📈 Reajustes</button>
       <button class="loc-btn" onclick="rescisaoAbrir()" title="Cálculo de rescisão contratual — multa proporcional, aluguel/encargos em aberto, IPTU e garantias">📤 Rescisão</button>
       <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
-        <button class="loc-btn" onclick="locToggleMenuRelatorios(event)">📊 Relatórios ▾</button>
-        <div id="locMenuRelatorios" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:260px;overflow:hidden">
-          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuRelatorios').style.display='none';relLocadorAbrir()">📄 Imóveis do Locador</button>
+        <button class="loc-btn" id="btnLocMenuRelatorios" onclick="locToggleMenu(event,'locMenuRelatorios')">📊 Relatórios ▾</button>
+        <div id="locMenuRelatorios" class="loc-menu-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:270px;overflow:hidden">
+          <button class="loc-btn" id="btnLocResumo" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuRelatorios').style.display='none';locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
+          <button class="loc-btn" id="btnLocRepasse" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locToggleRepasse()">👥 Repasse por locador (mês)</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relLocadorAbrir()">📄 Imóveis do Locador</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relMensalAbrir()">💰 Aluguéis Recebidos a serem Repassados</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locAuditoriaAbrir()">📜 Histórico</button>
         </div>
       </div>
-      <button class="loc-btn" onclick="locLocAbrir()">💼 Despesas/Créditos do Locador</button>
-      <button class="loc-btn" onclick="avisoAbrir()">✉️ Correspondências</button>
+      <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
+        <button class="loc-btn" onclick="locToggleMenu(event,'locMenuFinanceiro')">💼 Financeiro ▾</button>
+        <div id="locMenuFinanceiro" class="loc-menu-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:250px;overflow:hidden">
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuFinanceiro').style.display='none';locLocAbrir()">💼 Despesas/Créditos do Locador</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuFinanceiro').style.display='none';locExportCSV()">⬇️ Exportar CSV</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuFinanceiro').style.display='none';irConfigAbrir()">⚙️ Tabela de IR</button>
+        </div>
+      </div>
+      <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
+        <button class="loc-btn" onclick="locToggleMenu(event,'locMenuMais')">⚙️ Mais ▾</button>
+        <div id="locMenuMais" class="loc-menu-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:230px;overflow:hidden">
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuMais').style.display='none';locGerarProximoMes()">➕ Gerar mês seguinte</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuMais').style.display='none';avisoAbrir()">✉️ Correspondências</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuMais').style.display='none';locReset()">↺ Limpar alterações locais</button>
+        </div>
+      </div>
     </div>
 
     <!-- 1) LANÇAMENTOS / REPASSES DO MÊS -->
@@ -12353,8 +12363,15 @@ window.cpRenderFixas=cpRenderFixas;
     lst.forEach(function(l){var c=contratosById[l.contrato]||{};var nome=c.locador||'—';byLoc[nome]=byLoc[nome]||{pago:0,itens:[]};var rep=effRep(l);if(l.statusRep==='Repassado')byLoc[nome].pago+=rep;byLoc[nome].itens.push({loc:c.locatario||l.contrato,rep:rep,st:l.statusRep});});
     document.getElementById('locRepasseGrid').innerHTML=Object.keys(byLoc).sort().map(function(n){var d=byLoc[n];var linhas=d.itens.map(function(i){return '<div class="linha"><span>'+E(i.loc)+(i.st!=='Repassado'?' <span class="loc-num">('+String(i.st).toLowerCase()+')</span>':'')+'</span><span class="v">'+BRL(i.rep)+'</span></div>';}).join('');return '<div class="loc-rep-card"><div class="nome">'+E(n)+'</div>'+linhas+'<div class="total"><span>Já repassado</span><span class="v">'+BRL(d.pago)+'</span></div></div>';}).join('')||'<div style="color:var(--muted)">Sem dados.</div>';
   }
-  window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);document.getElementById('btnLocRepasse').classList.toggle('active',showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));};
-  window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);document.getElementById('btnLocResumo').classList.toggle('active',showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();};
+  // Acende o botão "Relatórios ▾" quando Resumo dos Locadores ou Repasse por locador (que
+  // agora moraram dentro desse menu) estiver aberto — como o menu fecha depois do clique,
+  // sem isto não haveria nenhum sinal visual de que uma dessas seções ficou expandida.
+  function locSyncRelatoriosBtn(){
+    var b=document.getElementById('btnLocMenuRelatorios');
+    if(b)b.classList.toggle('active',!!(showResumoLocadores||showRepasse));
+  }
+  window.locToggleRepasse=function(){showRepasse=!showRepasse;document.getElementById('locRepasseSection').classList.toggle('loc-hidden',!showRepasse);document.getElementById('btnLocRepasse').classList.toggle('active',showRepasse);if(showRepasse)renderRepasse(workingList().filter(function(l){return l.mes===selMes;}));locSyncRelatoriosBtn();};
+  window.locToggleResumoLocadores=function(){showResumoLocadores=!showResumoLocadores;document.getElementById('locResumoSection').classList.toggle('loc-hidden',!showResumoLocadores);document.getElementById('btnLocResumo').classList.toggle('active',showResumoLocadores);if(showResumoLocadores)renderResumoLocadores();locSyncRelatoriosBtn();};
 
   // ---------- RESUMO DOS LOCADORES (estrutural, por contrato ativo) ----------
   function renderResumoLocadores(){
@@ -12790,16 +12807,23 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('reciboLocTotalSecao').innerHTML='<div class="parc-section-label">'+d.totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(d.totalValor)+'</strong>'+d.totalRodape+'</div>';
     document.getElementById('reciboLocContaSecao').innerHTML='<div class="parc-section-label">Dados bancários do proprietário (repasse)</div><div class="parc-box">'+d.contaHtml+'</div>';
   };
-  // ---------- RELATÓRIO DO LOCADOR (consolidado, vários imóveis) ----------
-  window.locToggleMenuRelatorios=function(ev){
+  // ---------- Menus suspensos da barra de Locações (Relatórios/Financeiro/Mais) ----------
+  // Genérico: fecha qualquer outro menu aberto e alterna o solicitado. Funciona pra
+  // quantos menus existirem, basta terem a classe .loc-menu-dropdown.
+  window.locToggleMenu=function(ev,menuId){
     ev.stopPropagation();
-    var m=document.getElementById('locMenuRelatorios');
-    m.style.display=m.style.display==='none'?'block':'none';
+    document.querySelectorAll('.loc-menu-dropdown').forEach(function(m){
+      if(m.id!==menuId)m.style.display='none';
+    });
+    var m=document.getElementById(menuId);
+    if(m)m.style.display=m.style.display==='none'?'block':'none';
   };
   document.addEventListener('click',function(ev){
-    var m=document.getElementById('locMenuRelatorios');
-    if(m&&m.style.display==='block'&&!m.contains(ev.target))m.style.display='none';
+    document.querySelectorAll('.loc-menu-dropdown').forEach(function(m){
+      if(m.style.display==='block'&&!m.contains(ev.target))m.style.display='none';
+    });
   });
+  // ---------- RELATÓRIO DO LOCADOR (consolidado, vários imóveis) ----------
   window.relLocadorAbrir=function(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
