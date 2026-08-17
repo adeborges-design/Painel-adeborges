@@ -2581,10 +2581,11 @@
       </div>
 
       <!-- FORMULÁRIO NOVO LANÇAMENTO -->
-      <div class="hon-form">
+      <button class="btn-form-save" id="btnHonNovoLancamento" style="grid-column:1/-1;width:100%" onclick="honAbrirForm()">➕ Novo Lançamento</button>
+      <div class="hon-form loc-hidden" id="honFormWrap">
         <div class="hon-form-header">
           <div class="hon-form-title">➕ Novo Lançamento</div>
-          <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px" onclick="toggleHonForm()">▼</button>
+          <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px" onclick="honFecharForm()">✕ Fechar</button>
         </div>
         <div id="honFormBody" class="hon-form-body">
 
@@ -7341,6 +7342,7 @@ let _repasseLanc = null;
 
 function abrirHonorarios() {
   document.getElementById('honOverlay').classList.add('open');
+  honFecharForm();
   // Preencher select de processos
   const sel = document.getElementById('hon-processo');
   sel.innerHTML = '<option value="">Selecionar processo...</option>';
@@ -7409,90 +7411,10 @@ function calcHonStats() {
 }
 
 function renderHonorarios() {
-  const busca = ((document.getElementById('honBusca') ? document.getElementById('honBusca').value : '') || '').toLowerCase();
-  const filtroForma = (document.getElementById('honFiltroForma') ? document.getElementById('honFiltroForma').value : '') || '';
-  const filtroRepasse = (document.getElementById('honFiltroRepasse') ? document.getElementById('honFiltroRepasse').value : '') || '';
-
-  let lista = allHonorarios.filter(h => {
-    if (busca) {
-      const hay = [h['Cliente'], h['Nr Processo'], h['Forma Pagamento'],
-                   h['Parceiro'], h['Responsavel Pagamento'], h['Parcela Referencia']].join(' ').toLowerCase();
-      if (!hay.includes(busca)) return false;
-    }
-    if (filtroForma && h['Forma Pagamento'] !== filtroForma) return false;
-    if (filtroRepasse) {
-      if (filtroRepasse === 'Pendente' && h['Status Repasse'] !== 'Pendente') return false;
-      if (filtroRepasse === 'Pago' && h['Status Repasse'] !== 'Pago') return false;
-      if (filtroRepasse === 'Eu' && h['Quem Recebeu'] !== 'Eu') return false;
-      if (filtroRepasse === 'Parceiro' && h['Quem Recebeu'] !== 'Parceiro') return false;
-    }
-    return true;
-  });
-
-  // Ordenar por data mais recente
-  lista.sort((a, b) => {
-    const da = parseData(a['Data Pagamento']);
-    const db = parseData(b['Data Pagamento']);
-    if (da && db) return db - da;
-    return 0;
-  });
-
-  document.getElementById('honContadorLanc').textContent = lista.length + ' registro(s)';
-
-  if (lista.length === 0) {
-    document.getElementById('honLista').innerHTML = '<div class="hon-empty">📂 Nenhum lançamento encontrado</div>';
-    return;
-  }
-
-  const badgeForma = f => {
-    const m = { 'PIX': 'hon-badge-pix', 'Depósito bancário': 'hon-badge-dep',
-                'Cheque': 'hon-badge-cheq', 'Cartão de crédito': 'hon-badge-card',
-                'Cartão de débito': 'hon-badge-card' };
-    return m[f] || 'hon-badge-dep';
-  };
-
-  document.getElementById('honLista').innerHTML = lista.map(h => {
-    const val = parseFloat(h['Valor Recebido']) || 0;
-    const valFmt = 'R$ ' + val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const viaParceiro = h['Quem Recebeu'] === 'Parceiro';
-    const repassePend = viaParceiro && h['Status Repasse'] === 'Pendente';
-    const valRepasse = parseFloat(h['Valor Repasse Parceiro']) || 0;
-
-    return `
-    <div class="hon-lancamento">
-      <div>
-        <div class="hon-lanc-top">
-          <span class="hon-lanc-cliente">${escHtml(h['Cliente'] || h['Nr Processo'])}</span>
-          <span class="hon-badge ${badgeForma(h['Forma Pagamento'])}">${escHtml(h['Forma Pagamento'])}</span>
-          ${h['Parcela Referencia'] ? `<span class="hon-badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted)">${escHtml(h['Parcela Referencia'])}</span>` : ''}
-          ${viaParceiro ? `<span class="hon-badge hon-badge-parceiro">Via Parceiro</span>` : ''}
-          ${h['Nota Fiscal Nr'] ? `<span class="hon-badge" style="background:rgba(76,175,125,0.1);color:var(--green);border:1px solid rgba(76,175,125,0.2)">NF ${escHtml(h['Nota Fiscal Nr'])}</span>` : ''}
-        </div>
-        <div class="hon-lanc-meta">
-          <span>${escHtml(h['Data Pagamento'] || '-')}</span>
-          ${h['Nr Processo'] ? `<span>${escHtml(h['Nr Processo'])}</span>` : ''}
-          ${h['Responsavel Pagamento'] && h['Responsavel Pagamento'] !== h['Cliente'] ? `<span>Pago por: ${escHtml(h['Responsavel Pagamento'])}</span>` : ''}
-          ${h['Obs'] || h['Observacoes'] ? `<span>${escHtml((h['Obs'] || h['Observacoes']).substring(0,50))}...</span>` : ''}
-        </div>
-        ${repassePend ? `
-        <div class="hon-repasse-alert">
-          ⚠️ Repasse pendente ao parceiro <strong>${escHtml(h['Parceiro'])}</strong>:
-          R$ ${valRepasse.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          <button class="btn-hon-parceiro" style="margin-left:8px" onclick="abrirCardRepasse('${escAttr(h['ID'])}')">Card repasse</button>
-        </div>` : ''}
-        ${viaParceiro && h['Status Repasse'] === 'Pago' ? `
-        <div style="font-size:11px;color:var(--green);margin-top:4px"> Repasse pago em ${escHtml(h['Data Repasse'])}</div>` : ''}
-      </div>
-      <div>
-        <div class="hon-lanc-valor">${valFmt}</div>
-        <div class="hon-acoes" style="margin-top:8px">
-          <button class="btn-hon-edit" onclick="editarHonorario('${escAttr(h['ID'])}')">✏️</button>
-          ${viaParceiro ? `<button class="btn-hon-parceiro" onclick="abrirCardRepasse('${escAttr(h['ID'])}')"></button>` : ''}
-          <button class="btn-hon-del" onclick="excluirHonorario('${escAttr(h['ID'])}')">🗑️</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  // A renderização da lista unificada (pagos + a vencer, agrupados por contrato,
+  // com "cortina" colapsável) é feita por window.renderVencimentos(), encadeada
+  // logo em seguida via monkeypatch (ver módulo "PARCELAS E VENCIMENTOS").
+  // Esta função original só existe por compatibilidade com o encadeamento.
 }
 
 function parseData(str) {
@@ -7529,9 +7451,15 @@ function honToggleParceiro() {
   });
 }
 
-function toggleHonForm() {
-  const body = document.getElementById('honFormBody');
-  body.style.display = body.style.display === 'none' ? '' : 'none';
+function honAbrirForm() {
+  document.getElementById('honFormWrap').classList.remove('loc-hidden');
+  document.getElementById('btnHonNovoLancamento').classList.add('loc-hidden');
+  document.getElementById('honFormWrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+function honFecharForm() {
+  document.getElementById('honFormWrap').classList.add('loc-hidden');
+  document.getElementById('btnHonNovoLancamento').classList.remove('loc-hidden');
 }
 
 function limparHonForm() {
@@ -7555,6 +7483,7 @@ function limparHonForm() {
   document.getElementById('hon-dataPagamento').value = new Date().toISOString().split('T')[0];
   honToggleParceiro();
   document.getElementById('honFormStatus').textContent = '';
+  honFecharForm();
 }
 
 async function salvarHonorario() {
@@ -7678,9 +7607,8 @@ function editarHonorario(id) {
   document.getElementById('hon-obs').value = h['Observacoes'] || '';
   honToggleParceiro();
 
-  // Scroll para o form
-  document.getElementById('honFormBody').style.display = '';
-  document.getElementById('honFormBody').scrollIntoView({ behavior: 'smooth' });
+  // Abre o form (some por padrão até um lançamento novo ou edição ser iniciado)
+  honAbrirForm();
 }
 
 async function excluirHonorario(id) {
@@ -8810,30 +8738,53 @@ document.getElementById('modalDoc').addEventListener('click', function(e) {
 <script>
 /* ===== MODULO PARCELAS E VENCIMENTOS + AUTOFILL FIX (v3) ===== */
 (function(){
-var css='#honVencimentos{margin-top:0}'
-+'#honVencimentos .hv-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}'
-+'#honVencimentos .hv-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}'
-+'#honVencimentos .hv-card .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'
-+'#honVencimentos .hv-card .v{font-size:19px;font-weight:700;margin-top:4px}'
-+'.hv-contrato{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}'
+var css='.hv-sumwrap{margin-bottom:16px}'
++'.hv-sumwrap .hv-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}'
++'.hv-sumwrap .hv-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}'
++'.hv-sumwrap .hv-card .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'
++'.hv-sumwrap .hv-card .v{font-size:19px;font-weight:700;margin-top:4px}'
++'.hv-contrato{display:block;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}'
++'.hv-contrato>summary{list-style:none;cursor:pointer;outline:none}'
++'.hv-contrato>summary::-webkit-details-marker{display:none}'
++'.hv-contrato>summary::before{content:"▸";display:inline-block;margin-right:2px;color:var(--muted);transition:transform .15s ease}'
++'.hv-contrato[open]>summary::before{transform:rotate(90deg)}'
 +'.hv-contr-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}'
++'.hv-contrato:not([open])>.hv-contr-head{border-bottom:none}'
 +'.hv-contr-head .nome{font-size:14px;font-weight:600;color:var(--text);margin-right:auto}'
 +'.hv-parcelas{padding:4px 16px 10px}'
-+'.hv-row{display:flex;align-items:center;gap:14px;font-size:12px;padding:7px 0;border-bottom:1px dashed var(--border)}'
++'.hv-row{display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:12px;padding:7px 0;border-bottom:1px dashed var(--border)}'
 +'.hv-row:last-child{border-bottom:none}'
 +'.hv-row .ref{width:70px;color:var(--text);font-weight:600}'
 +'.hv-row .dt{width:110px;color:var(--muted)}'
 +'.hv-row .vl{width:120px;text-align:right;color:var(--text)}'
 +'.hv-row .st{margin-left:auto}'
++'.hv-row .hon-acoes{margin-left:8px}'
 +'.hv-badge-atraso{background:rgba(224,84,84,.14);color:var(--red);border:1px solid rgba(224,84,84,.3)}'
 +'.hv-badge-hoje{background:rgba(224,124,58,.14);color:var(--orange);border:1px solid rgba(224,124,58,.3)}'
 +'.hv-badge-paga{background:rgba(76,175,125,.12);color:var(--green);border:1px solid rgba(76,175,125,.25)}'
 +'.hv-badge-fut{background:var(--surface2);color:var(--muted);border:1px solid var(--border2)}'
 +'.hv-repasse{padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--orange)}'
-+'#honVencimentos{grid-column:1/-1;margin-top:10px}'
++'.hv-repasse .btn-hon-parceiro{margin-left:6px}'
 +'input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.85;cursor:pointer}'
-+'@media(max-width:900px){#honVencimentos .hv-sum{grid-template-columns:repeat(2,1fr)}}';
++'@media(max-width:900px){.hv-sumwrap .hv-sum{grid-template-columns:repeat(2,1fr)}}';
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+var honOpenState={};
+window.honToggleGroup=function(k,isOpen){honOpenState[String(k)]=!!isOpen;};
+function honMatchesFilters(rows,cliente,proc){
+ var busca=((document.getElementById('honBusca')?document.getElementById('honBusca').value:'')||'').toLowerCase().trim();
+ var filtroForma=(document.getElementById('honFiltroForma')?document.getElementById('honFiltroForma').value:'')||'';
+ var filtroRepasse=(document.getElementById('honFiltroRepasse')?document.getElementById('honFiltroRepasse').value:'')||'';
+ if(busca){
+  var hay=(cliente+' '+proc+' '+rows.map(function(r){return [r['Forma Pagamento'],r['Parceiro'],r['Responsavel Pagamento'],r['Parcela Referencia']].join(' ');}).join(' ')).toLowerCase();
+  if(hay.indexOf(busca)<0)return false;
+ }
+ if(filtroForma&&!rows.some(function(r){return r['Forma Pagamento']===filtroForma;}))return false;
+ if(filtroRepasse==='Pendente'&&!rows.some(function(r){return r['Status Repasse']==='Pendente';}))return false;
+ if(filtroRepasse==='Pago'&&!rows.some(function(r){return r['Status Repasse']==='Pago';}))return false;
+ if(filtroRepasse==='Eu'&&!rows.some(function(r){return r['Quem Recebeu']==='Eu';}))return false;
+ if(filtroRepasse==='Parceiro'&&!rows.some(function(r){return r['Quem Recebeu']==='Parceiro';}))return false;
+ return true;
+}
 function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
 function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
 function fdt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
@@ -8849,10 +8800,7 @@ function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);ret
 // entre "Nr Processo" (gravado no lancamento) e "Numero do Processo" (no cadastro).
 function gkey(proc,nome){return String(proc||'').trim().toLowerCase()+'|'+String(nome||'').trim().toLowerCase();}
 window.renderVencimentos=function(){
- var body=document.querySelector('#honOverlay .hon-body');if(!body)return;
- var main=body.querySelector('.hon-main');
- var host=document.getElementById('honVencimentos');
- if(!host){host=document.createElement('div');host.id='honVencimentos';var resumo=body.querySelector('.hon-resumo');var form=resumo?resumo.querySelector('.hon-form'):null;if(resumo&&form){resumo.insertBefore(host,form);}else{body.insertBefore(host,main);}}
+ var host=document.getElementById('honLista');if(!host)return;
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=gkey(h['Nr Processo'],h['Cliente']);(groups[k]=groups[k]||[]).push(h);});
  // Processos com contrato de honorarios preenchido (valor/parcelas) mas ainda sem
@@ -8867,11 +8815,12 @@ window.renderVencimentos=function(){
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
    'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||''}];
  });
- var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0;
+ var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0,totalGrupos=Object.keys(groups).length;
  Object.keys(groups).forEach(function(k){
   var rows=groups[k],h0=rows[rows.length-1];
   var cliente=h0['Cliente']||h0['Nr Processo']||'(sem nome)';
   var proc=h0['Nr Processo']||'';
+  if(!honMatchesFilters(rows,cliente,proc))return;
   var tipo=String(h0['Tipo Contrato']||'');
   var formaPag=String(h0['Forma de Pagamento']||h0['Forma de pagamento']||'');
   var vTotal=0,vParc=0,vEntr=0,dia=0,nParc=0;
@@ -8901,37 +8850,46 @@ window.renderVencimentos=function(){
   plano.forEach(function(p){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])===p.key;});if(m){p.pago=m;usados.push(m);}});
   plano.forEach(function(p){if(!p.pago){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])==null;});if(m){p.pago=m;usados.push(m);}}});
   var linhas='',atrasoCli=0;
+  var acoesFor=function(id){return '<div class="hon-acoes"><button class="btn-hon-edit" onclick="editarHonorario(\''+escAttr(id)+'\')">✏️</button><button class="btn-hon-del" onclick="excluirHonorario(\''+escAttr(id)+'\')">🗑️</button></div>';};
   plano.forEach(function(p){
-   var stH;
-   if(p.pago){stH='<span class="hon-badge hv-badge-paga">PAGA em '+esc(p.pago['Data Pagamento']||'')+'</span>';}
+   var stH,acoesH='';
+   if(p.pago){stH='<span class="hon-badge hv-badge-paga">PAGA em '+esc(p.pago['Data Pagamento']||'')+'</span>';acoesH=acoesFor(p.pago['ID']);}
    else{var diff=Math.round((p.venc-hoje)/86400000);
     if(diff<0){stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
     else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;}
     else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30)tot30+=p.valor;}}
-   linhas+='<div class="hv-row"><span class="ref">'+esc(p.ref)+'</span><span class="dt">'+fdt(p.venc)+'</span><span class="vl">'+fmr(p.valor)+'</span><span class="st">'+stH+'</span></div>';
+   linhas+='<div class="hv-row"><span class="ref">'+esc(p.ref)+'</span><span class="dt">'+fdt(p.venc)+'</span><span class="vl">'+fmr(p.valor)+'</span><span class="st">'+stH+'</span>'+acoesH+'</div>';
   });
   var extras=pags.filter(function(r){return usados.indexOf(r)<0;});
-  extras.forEach(function(r){linhas+='<div class="hv-row"><span class="ref">'+esc(r['Parcela Referencia']||'-')+'</span><span class="dt">'+esc(r['Data Pagamento']||'')+'</span><span class="vl">'+fmr(nbr(r['Valor Recebido']))+'</span><span class="st"><span class="hon-badge hv-badge-paga">PAGA</span></span></div>';});
+  extras.forEach(function(r){linhas+='<div class="hv-row"><span class="ref">'+esc(r['Parcela Referencia']||'-')+'</span><span class="dt">'+esc(r['Data Pagamento']||'')+'</span><span class="vl">'+fmr(nbr(r['Valor Recebido']))+'</span><span class="st"><span class="hon-badge hv-badge-paga">PAGA</span></span>'+acoesFor(r['ID'])+'</div>';});
   if(!plano.length&&!extras.length)linhas='<div class="hv-row"><span style="color:var(--muted)">Sem dados do contrato - edite o lancamento e preencha valor total, numero de parcelas, valor da parcela e dia de vencimento.</span></div>';
+  var repRows=rows.filter(function(r){return r['Quem Recebeu']==='Parceiro'&&String(r['Status Repasse']||'').toLowerCase().indexOf('pend')===0;});
   var repH='';
-  if(repPend>0){var nl=Object.keys(repNomes).map(function(n){return esc(n)+': '+fmr(repNomes[n]);}).join(' | ');repH='<div class="hv-repasse">A repassar - '+nl+'</div>';}
+  if(repRows.length){repH='<div class="hv-repasse">'+repRows.map(function(r){return '⚠️ A repassar a <b>'+esc(r['Parceiro']||'parceiro')+'</b>: '+fmr(nbr(r['Valor Repasse Parceiro']))+' <button class="btn-hon-parceiro" onclick="abrirCardRepasse(\''+escAttr(r['ID'])+'\')">Card repasse</button>';}).join('<br>')+'</div>';}
   var badgeTop=atrasoCli>0?'<span class="hon-badge hv-badge-atraso">EM ATRASO '+fmr(atrasoCli)+'</span>':(vTotal>0&&saldo<=0?'<span class="hon-badge hv-badge-paga">QUITADO</span>':'');
-  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<div class="hv-contrato"><div class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop
+  var aberto=atrasoCli>0?true:(honOpenState[k]===true);
+  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop
    +(tipo?'<span class="hon-badge hv-badge-fut">'+esc(tipo)+'</span>':'')
    +(proc?'<span style="font-size:11px;color:var(--muted)">'+esc(proc)+'</span>':'')
-   +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b>'+(formaPag?' | Forma: <b style="color:var(--text)">'+esc(formaPag)+'</b>':'')+'</span></div>'
-   +'<div class="hv-parcelas">'+linhas+'</div>'+repH+'</div>'});
+   +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b>'+(formaPag?' | Forma: <b style="color:var(--text)">'+esc(formaPag)+'</b>':'')+'</span></summary>'
+   +'<div class="hv-parcelas">'+linhas+'</div>'+repH+'</details>'});
  });
  cards.sort(function(a,b){return a.ordem-b.ordem;});
- host.innerHTML='<div class="hon-section-title">&#128197; Parcelas &amp; Vencimentos</div>'
+ var contadorEl=document.getElementById('honContadorLanc');
+ if(contadorEl)contadorEl.textContent=cards.length+' contrato(s)'+(cards.length!==totalGrupos?' (de '+totalGrupos+')':'');
+ if(!cards.length){
+  host.innerHTML=totalGrupos?'<div class="hon-empty">🔍 Nenhum contrato encontrado para esse filtro.</div>':'<div class="hon-empty">📂 Nenhum lançamento encontrado. Clique em "➕ Novo Lançamento" para começar.</div>';
+  return;
+ }
+ host.innerHTML='<div class="hv-sumwrap"><div class="hon-section-title">&#128197; Parcelas &amp; Vencimentos</div>'
  +'<div class="hv-sum">'
  +'<div class="hv-card"><div class="l">Em atraso</div><div class="v" style="color:var(--red)">'+fmr(totAtraso)+'</div></div>'
  +'<div class="hv-card"><div class="l">A vencer (30 dias)</div><div class="v" style="color:var(--orange)">'+fmr(tot30)+'</div></div>'
  +'<div class="hv-card"><div class="l">Saldo a receber</div><div class="v" style="color:var(--accent2)">'+fmr(totSaldo)+'</div></div>'
  +'<div class="hv-card"><div class="l">A repassar</div><div class="v" style="color:var(--purple)">'+fmr(totRepasse)+'</div></div>'
- +'</div>'
- +(cards.length?cards.map(function(c){return c.html;}).join(''):'<div class="hon-empty">Nenhum contrato lancado ainda. Para cadastrar um contrato sem pagamento, faca um lancamento com Valor Recebido 0 e Parcela Referencia "Contrato".</div>')
- +'<div style="font-size:10.5px;color:var(--muted);margin:4px 2px 0">Datas estimadas a partir do 1o pagamento e do dia de vencimento informados no contrato.</div>';
+ +'</div></div>'
+ +cards.map(function(c){return c.html;}).join('')
+ +'<div style="font-size:10.5px;color:var(--muted);margin:4px 2px 0">Datas estimadas a partir do 1o pagamento e do dia de vencimento informados no contrato. Clique no cabeçalho de um contrato para expandir/recolher as parcelas.</div>';
 };
 if(typeof renderHonorarios==='function'){var _o=renderHonorarios;window.renderHonorarios=function(){_o();try{renderVencimentos();}catch(e){console.error('venc',e);}};}
 if(typeof honPreencherContrato==='function'){
