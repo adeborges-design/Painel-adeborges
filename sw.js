@@ -1,4 +1,4 @@
-// LexFlow — Service Worker mínimo, só pra habilitar "Instalar aplicativo" no Android/Chrome e
+// Eixo — Service Worker mínimo, só pra habilitar "Instalar aplicativo" no Android/Chrome e
 // dar uma casca offline básica (abre o app mesmo sem internet, mesmo que sem dado atualizado).
 //
 // Importante: NUNCA intercepta nem armazena em cache chamadas pro Google Sheets/Apps Script
@@ -7,7 +7,7 @@
 // buscar a versão mais nova na rede primeiro (network-first), só usando a cópia salva quando
 // está mesmo sem internet. Isso evita o problema clássico de PWA de ficar preso numa versão
 // antiga do site depois de uma atualização.
-const CACHE_NAME = 'lexflow-shell-v1';
+const CACHE_NAME = 'eixo-shell-v1';
 const APP_SHELL = [
   './',
   './index.html',
