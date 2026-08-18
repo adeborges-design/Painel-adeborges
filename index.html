@@ -265,6 +265,17 @@
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+  /* Feedback visual quando o usuário clica fora de um formulário de cadastro — em vez de
+     fechar e perder o que foi digitado, a caixa "treme" avisando que precisa usar o X/Cancelar. */
+  @keyframes formShake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .form-shake { animation: formShake .35s; }
+
   /* Alerta pulsante — pendências (aluguéis/repasses) de meses anteriores ao mês selecionado */
   @keyframes mesAlertaPing {
     0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.55); }
@@ -8866,12 +8877,17 @@ async function salvarCadastro() {
   }
 }
 
-// Fechar modais de formulario clicando fora
+// Formulários de cadastro/edição NÃO fecham mais com clique fora (fora = no fundo escuro
+// ao redor da caixa) — isso já causou perda de cadastro em andamento sem querer. Agora um
+// clique fora só dá um feedback visual (a caixa "treme"), avisando que é preciso usar o
+// botão ✕/Cancelar pra realmente fechar. Fechar só por ação explícita do usuário.
 document.addEventListener('DOMContentLoaded', () => {
   ['modalEdicao','modalCadastro','modalParceiro'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', function(e) {
-      if (e.target === this) this.classList.remove('open');
+      if (e.target !== this) return;
+      const wrap = this.querySelector('.form-modal-wrap, .parceiro-wrap');
+      if (wrap) { wrap.classList.remove('form-shake'); void wrap.offsetWidth; wrap.classList.add('form-shake'); }
     });
   });
 });
@@ -12906,7 +12922,13 @@ window.cpRenderFixas=cpRenderFixas;
   };
   document.addEventListener('DOMContentLoaded',function(){
     var ma=document.getElementById('modalAnotacoes');
-    if(ma)ma.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+    // Não fecha mais com clique fora (evita perder mensagem digitada sem querer) — só "treme"
+    // avisando que precisa usar o ✕ pra fechar de verdade.
+    if(ma)ma.addEventListener('click',function(e){
+      if(e.target!==this)return;
+      var wrap=this.querySelector('.cobr-wrap');
+      if(wrap){wrap.classList.remove('form-shake');void wrap.offsetWidth;wrap.classList.add('form-shake');}
+    });
   });
 
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
