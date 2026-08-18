@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LexFlow">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-title" content="Eixo">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -33,6 +33,8 @@
     --green: #2f9d68;
     --blue: #3b7dd8;
     --purple: #7d5cd6;
+    --eixo-gold: #9c8455;
+    --eixo-icon2: #0d1f35;
   }
 
   html.dark-mode {
@@ -51,6 +53,8 @@
     --green: #4fbb8a;
     --blue: #6ba3e0;
     --purple: #a58ce8;
+    --eixo-gold: #c8a96e;
+    --eixo-icon2: #ffffff;
   }
   html.dark-mode { color-scheme: dark; }
 
@@ -187,16 +191,48 @@
   }
 
   .lf-brand-mini {
-    font-family: 'DM Serif Display', serif;
-    font-size: 17px;
-    color: var(--accent);
-    letter-spacing: -0.2px;
+    display: flex;
+    align-items: center;
     cursor: pointer;
     margin-right: 6px;
     white-space: nowrap;
   }
   .lf-brand-mini em { font-style: normal; }
   .lf-brand-mini:hover { opacity: .8; }
+
+  /* Marca Eixo — wordmark + ícone (módulos sobrepostos com X vazado) + nome do módulo */
+  .eixo-word {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text);
+    letter-spacing: -0.2px;
+    line-height: 1;
+  }
+  .eixo-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 -1px;
+  }
+  .eixo-icon svg { display: block; }
+  .eixo-r2 { fill: var(--eixo-icon2); }
+  .eixo-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border2, var(--border));
+    margin: 0 10px 0 4px;
+    flex: none;
+  }
+  .eixo-mod {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--eixo-gold);
+    white-space: nowrap;
+  }
 
   .header-right {
     display: flex;
@@ -2274,7 +2310,7 @@
 <!-- LEXFLOW GATE (senha de acesso) -->
 <div id="lexflowGate" style="position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',Arial,sans-serif;">
   <form id="lexflowGateForm" style="background:#fff;border-radius:14px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
-    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#0d1f35;margin-bottom:4px;">Lex<em>Flow</em></div>
+    <div style="display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:700;font-size:26px;color:#0d1f35;margin-bottom:4px;">EI<span style="display:inline-flex;margin:0 -1px"><svg viewBox="0 0 54 54" width="30" height="30" aria-hidden="true"><defs><mask id="eixoMaskGate"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" fill="#0d1f35" mask="url(#eixoMaskGate)"/></svg></span>O</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Acesso restrito</div>
     <input id="lexflowGatePw" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;">
     <div id="lexflowGateErr" style="display:none;color:#dc2626;font-size:12px;margin-bottom:10px;">Senha incorreta.</div>
@@ -2288,7 +2324,7 @@
   // ---------- Reforço de segurança do acesso ----------
   // O que isso resolve: alguém pegar o celular/computador DESTRAVADO (com o app já aberto e
   // logado) e conseguir ver processos/valores sem digitar senha nenhuma — o risco real do
-  // dia a dia, ainda mais agora que o LexFlow é um app instalado, sempre "à mão" no celular.
+  // dia a dia, ainda mais agora que o Eixo é um app instalado, sempre "à mão" no celular.
   // O que isso NÃO resolve (limite honesto): como o site é público e a checagem roda toda no
   // navegador, alguém com conhecimento técnico (abrir o código-fonte / DevTools) sempre
   // consegue contornar a trava ou tentar quebrar o hash da senha offline — isso só seria
@@ -2379,9 +2415,10 @@
 <!-- HEADER -->
 <header class="header">
   <div class="header-left">
-    <div class="logo-wrap lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
-      <div class="logo">Lex<em>Flow</em></div>
-      <div class="logo-sub">Processos</div>
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskProc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskProc)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Processos</span>
     </div>
     <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
   </div>
@@ -2539,7 +2576,11 @@
 <!-- MÓDULO HONORÁRIOS -->
 <div class="hon-overlay" id="honOverlay">
   <div class="hon-header">
-    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskHon"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskHon)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Honorários</span>
+    </div>
     <div class="hon-title">💰 Controle de Honorários</div>
     <button class="btn-sync" onclick="carregarHonorarios()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -3776,7 +3817,7 @@
       <label class="form-label">BACKUP AUTOMÁTICO DA PLANILHA</label>
       <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">
         Toda madrugada (3h), salva uma cópia completa da planilha numa pasta separada do Drive
-        ("LexFlow - Backups"), pra caso algo seja editado ou apagado sem querer. Guarda os
+        ("Eixo - Backups"), pra caso algo seja editado ou apagado sem querer. Guarda os
         últimos 30 backups e apaga os mais antigos sozinho. Precisa ativar uma vez só.
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7212,7 +7253,15 @@ window.accRender = function () {
   var accAutoAtrasoJaAplicado = window.accAutoAtrasoJaAplicado || (window.accAutoAtrasoJaAplicado = {});
   function accParseDataBRms(s) { var p = String(s || '').split('/'); if (p.length !== 3) return null; return new Date(+p[2], +p[1] - 1, +p[0]).getTime(); }
     var tb = document.getElementById('accTbody');
-  tb.innerHTML = lista.map(function (l) {
+  // Busca rápida: só filtra as linhas mostradas na tabela — os cards de total/chips acima
+  // continuam refletindo o mês inteiro (mesmo comportamento já usado em Locações).
+  var accTermoBusca = ((document.getElementById('accBusca') || {}).value || '').trim().toLowerCase();
+  var listaFiltrada = !accTermoBusca ? lista : lista.filter(function (l) {
+    var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+    var alvo = [c['Nr Processo'], c['Cliente'], c['Parte Contraria']].filter(Boolean).join(' ').toLowerCase();
+    return alvo.indexOf(accTermoBusca) >= 0;
+  });
+  tb.innerHTML = listaFiltrada.map(function (l) {
     var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
     var statusRecBruto = l['Status Recebimento'] || 'Pendente';
     // Regra padrão do sistema: se ainda está Pendente e a data prevista já passou, vira Atrasado
@@ -7261,7 +7310,9 @@ window.accRender = function () {
       + (c['Advogado Parceiro'] ? ' <button class="loc-send-btn" title="Ver/imprimir informe ao advogado parceiro" onclick="accAbrirReciboParceiro(\'' + accE(l['ID']) + '\')">👤</button>' : '')
       + '</td>'
       + '</tr>';
-  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>';
+  }).join('') || (accTermoBusca
+    ? '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela encontrada para "' + accE(accTermoBusca) + '" neste mês.</td></tr>'
+    : '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>');
 };
 
 function accAtualizarLancamento(id, campos) {
@@ -9350,7 +9401,9 @@ function renderContas(){
   +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
   +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
-  +'</div><div id="cpLista"></div>';
+  +'</div>'
+  +'<div style="margin:16px 0 6px"><input type="text" class="search-input" id="cpBusca" placeholder="Buscar por descrição, categoria, fornecedor ou observações... (atalho: /)" oninput="renderContas()" style="width:100%"></div>'
+  +'<div id="cpLista"></div>';
  }
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var tot={pessoal:{vencidas:0,avencer:0,pagasMes:0,aberto:0},escritorio:{vencidas:0,avencer:0,pagasMes:0,aberto:0},locacao:{vencidas:0,avencer:0,pagasMes:0,aberto:0}};
@@ -9363,6 +9416,14 @@ function renderContas(){
  var abertas=allContas.filter(function(c){return String(c['Status']).toLowerCase()!=='paga';});
  var pagas=allContas.filter(function(c){return String(c['Status']).toLowerCase()==='paga';});
  abertas.sort(function(a,b){return (dbr(a['Data Vencimento'])||hoje)-(dbr(b['Data Vencimento'])||hoje);});
+ // Busca rápida: só esconde linhas da lista — os totais dos cards acima continuam somando tudo,
+ // mesmo comportamento já usado em Locações e Acordos.
+ var cpTermoBusca=((document.getElementById('cpBusca')||{}).value||'').trim().toLowerCase();
+ function cpBateBusca(c){
+  if(!cpTermoBusca)return true;
+  var alvo=[c['Descricao'],c['Categoria'],c['Fornecedor'],c['Observacoes']].filter(Boolean).join(' ').toLowerCase();
+  return alvo.indexOf(cpTermoBusca)>=0;
+ }
  abertas.concat(pagas).forEach(function(c){
   var v=nbr(c['Valor']);var dv=dbr(c['Data Vencimento']);var paga=String(c['Status']).toLowerCase()==='paga';
   var tk=tot[cpTipoNorm(c['Tipo de Conta'])];
@@ -9439,12 +9500,13 @@ function renderContas(){
    +'<td class="loc-money" style="white-space:nowrap;color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
    +'<td style="text-align:center;white-space:nowrap">'+acoesH+'</td>'
    +'</tr>';
+  if(!cpBateBusca(c))return;
   if(paga){htmlPagas+=linhaTr;qtdPagas++;}else{html+=linhaTr;}
  });
  var theadCp='<tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Tipo</th><th>Forma / Banco</th><th>Recorrência</th><th>Status</th><th>Valor</th><th>Ações</th></tr>';
  var abertoHtmlCp=html
   ?('<div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+html+'</tbody></table></div>')
-  :'<div class="hon-empty">Nenhuma conta em aberto</div>';
+  :('<div class="hon-empty">'+(cpTermoBusca?'Nenhuma conta encontrada para "'+esc(cpTermoBusca)+'".':'Nenhuma conta em aberto')+'</div>');
  var pagasHtmlCp=qtdPagas
   ?('<div class="cp-cartoes" style="margin-top:14px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpPagasWrap\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">✓ Contas já pagas ('+qtdPagas+') <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div>'
     +'<div id="cpPagasWrap" style="display:none;margin-top:10px"><div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+htmlPagas+'</tbody></table></div></div></div>')
@@ -9467,6 +9529,9 @@ function renderContas(){
   el.innerHTML=h2;
  }
 }
+// Exposta em window pq o campo de busca rápida (oninput="renderContas()") roda no escopo
+// global, fora da IIFE onde essa função é declarada.
+window.renderContas=renderContas;
 function dtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 // Compara o valor de uma fatura consolidada de cartão (c) com a soma dos lançamentos individuais
 // feitos nesse mesmo cartão, com vencimento no mesmo mês/ano — para o usuário conferir se lançou tudo.
@@ -10002,7 +10067,7 @@ window.cpRenderFixas=cpRenderFixas;
 </script>
 
 <!-- ============================================================= -->
-<!-- MÓDULO CONTROLE DE ALUGUÉIS (LexFlow) — sincronizado c/ Sheets -->
+<!-- MÓDULO CONTROLE DE ALUGUÉIS (Eixo) — sincronizado c/ Sheets -->
 <!-- Lê as abas LOC_CONTRATOS e LOC_LANCAMENTOS ao vivo.            -->
 <!-- ============================================================= -->
 <style>
@@ -10115,7 +10180,11 @@ window.cpRenderFixas=cpRenderFixas;
 
 <div class="loc-overlay" id="locOverlay">
   <div class="loc-header">
-    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskLoc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskLoc)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Locações</span>
+    </div>
     <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     <div class="loc-title">🏠 Controle de Aluguéis</div>
     <div class="loc-sync"><span class="dot" id="locSyncDot"></span><span id="locSyncTxt">—</span></div>
@@ -10420,7 +10489,11 @@ window.cpRenderFixas=cpRenderFixas;
 <!-- PAINEL DE ACORDOS COM A PARTE CONTRÁRIA -->
 <div class="loc-overlay" id="acordosOverlay">
   <div class="loc-header">
-    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskAcc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskAcc)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Acordos</span>
+    </div>
     <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     <div class="loc-title">💰 Acordos com a Parte Contrária</div>
     <div class="loc-sync"><span class="dot" id="accSyncDot"></span><span id="accSyncTxt">—</span></div>
@@ -10431,6 +10504,7 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="loc-body">
     <div class="loc-stats" id="accStats"></div>
     <div class="loc-chips" id="accChips"></div>
+    <div style="margin:10px 0"><input type="text" class="search-input" id="accBusca" placeholder="Buscar por cliente, parte contrária ou processo... (atalho: /)" oninput="accRender()" style="width:100%"></div>
     <div class="loc-toolbar">
       <div class="loc-mes-wrap">
         <label>Mês</label>
@@ -14304,7 +14378,7 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- CÁLCULO DE RESCISÃO DE LOCAÇÃO ----------
   // Portado da calculadora standalone (Aluguel Fácil), adaptado às convenções do sistema:
   // campos monetários em texto + num()/BRL() (em vez de <input type=number> com parseFloat),
-  // classes de layout do próprio LexFlow (loc-cform/loc-cfield, .parc-* pro demonstrativo final)
+  // classes de layout do próprio Eixo (loc-cform/loc-cfield, .parc-* pro demonstrativo final)
   // e impressão via imprimirComClasse_ (em vez de html2pdf.js). Cálculos e fórmulas mantidos
   // idênticos ao original — inclusive a multa do art. 4º da Lei 8.245/91 e o IPTU proporcional.
   var rescMultaVal=3, rescIptuMode='av', rescUltimoResultado=null;
@@ -14947,8 +15021,9 @@ window.cpRenderFixas=cpRenderFixas;
   .home-overlay.open{display:block}
   .home-header{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--border);background:var(--surface)}
   .home-brand{display:flex;flex-direction:column}
-  .home-logo{font-family:'DM Serif Display',serif;font-size:24px;color:var(--accent);line-height:1}
+  .home-logo{display:flex;align-items:center;font-family:'DM Sans',sans-serif;font-weight:700;font-size:24px;color:var(--text);letter-spacing:-0.3px;line-height:1}
   .home-logo em{font-style:italic}
+  .home-logo .eixo-icon svg{width:30px;height:30px}
   .home-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px}
   .home-oab{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right}
   .home-wrap{max-width:1100px;margin:0 auto;padding:40px 32px 60px}
@@ -15097,7 +15172,7 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="home-header">
     <div class="home-brand" style="display:flex;align-items:center;gap:10px">
       <div>
-        <div class="home-logo">Lex<em>Flow</em></div>
+        <div class="home-logo">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="30" height="30" aria-hidden="true"><defs><mask id="eixoMaskHome"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskHome)"/></svg></span>O</div>
         <div class="home-sub">Gestão Jurídica e Imobiliária</div>
       </div>
       <button class="theme-toggle-btn theme-toggle-home" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
@@ -15289,7 +15364,11 @@ window.cpRenderFixas=cpRenderFixas;
 <!-- CONTAS A PAGAR — módulo próprio -->
 <div class="hon-overlay" id="contasOverlay" style="z-index:905">
   <div class="hon-header">
-    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">Lex<em>Flow</em></div>
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskCP"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskCP)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Contas a Pagar</span>
+    </div>
     <div class="hon-title">💸 Contas a Pagar</div>
     <button class="btn-sync" onclick="carregarContas()">🔄 Atualizar</button>
     <span class="user-menu-slot"></span>
@@ -15932,7 +16011,7 @@ window.cpRenderFixas=cpRenderFixas;
         ['Recibo PIX','Recibo de pagamento gerado pelo sistema com QR Code PIX embutido, pronto para envio ao cliente.']
       ];
       var out=MH+'Termos usados no sistema</div>'
-        +MP+'Lista de termos jurídicos e do próprio sistema que aparecem nas telas do LexFlow, para consulta rápida.</div>'
+        +MP+'Lista de termos jurídicos e do próprio sistema que aparecem nas telas do Eixo, para consulta rápida.</div>'
         +'<div style="margin:6px 0 14px">';
       termos.forEach(function(t){
         out+='<div style="margin-bottom:12px;line-height:1.6"><strong style="color:var(--accent2)">'+t[0]+'</strong> — '+t[1]+'</div>';
@@ -15992,7 +16071,7 @@ window.cpRenderFixas=cpRenderFixas;
     pdf.setFontSize(26);
     pdf.text('Manual do Sistema',pageW/2,118,{align:'center'});
     pdf.setFontSize(20);
-    pdf.text('LexFlow',pageW/2,130,{align:'center'});
+    pdf.text('Eixo',pageW/2,130,{align:'center'});
     pdf.setDrawColor(200,169,110);
     pdf.setLineWidth(0.6);
     pdf.line(pageW/2-30,140,pageW/2+30,140);
@@ -16119,7 +16198,7 @@ window.cpRenderFixas=cpRenderFixas;
         pdf.setPage(i);
         pdf.setFontSize(9);
         pdf.setTextColor(140,140,140);
-        pdf.text('Manual do Sistema — LexFlow',margin,pageH-8);
+        pdf.text('Manual do Sistema — Eixo',margin,pageH-8);
         pdf.text('Página '+i+' de '+total,pageW-margin,pageH-8,{align:'right'});
       }
 
@@ -16142,17 +16221,24 @@ window.cpRenderFixas=cpRenderFixas;
   });
 
   // ---------- ATALHO DE TECLADO "/" PARA BUSCA ----------
+  // Descobre o campo de busca do painel que estiver aberto no momento (o primeiro da lista que
+  // bater tem prioridade, caso mais de um overlay esteja aberto por algum motivo).
+  function focoBuscaAtiva_(){
+    var mapa=[['locOverlay','locSearchInput'],['honOverlay','honBusca'],['contasOverlay','cpBusca'],['acordosOverlay','accBusca']];
+    for(var i=0;i<mapa.length;i++){
+      var ov=document.getElementById(mapa[i][0]);
+      if(ov&&ov.classList.contains('open'))return mapa[i][1];
+    }
+    return 'searchInput';
+  }
+  window.focoBuscaAtiva_=focoBuscaAtiva_;
   document.addEventListener('keydown',function(e){
     if(e.key!=='/')return;
     var ativo=document.activeElement;
     var tag=(ativo&&ativo.tagName)||'';
     var editando=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(ativo&&ativo.isContentEditable);
     if(editando)return;
-    // Foca o campo de busca do painel que estiver aberto no momento — Locações tem prioridade
-    // sobre Processos quando os dois, por algum motivo, estiverem abertos ao mesmo tempo.
-    var locOv=document.getElementById('locOverlay');
-    var elId=(locOv&&locOv.classList.contains('open'))?'locSearchInput':'searchInput';
-    var el=document.getElementById(elId);
+    var el=document.getElementById(focoBuscaAtiva_());
     if(el){e.preventDefault();el.focus();el.select();}
   });
 
@@ -16302,7 +16388,7 @@ window.cpRenderFixas=cpRenderFixas;
     var locLinha=d.loc?linhaTab('Locações — taxa de administração recebida','Aluguéis recebidos no mês: '+BRLf(d.loc.alugueis)+' · Repasses pagos: '+BRLf(d.loc.repasse),BRLf(d.loc.taxa),'#2e9e63'):'<div style="font-size:12px;color:#8a93a6;padding:6px 0">Sem lançamentos de locação no período.</div>';
     host.innerHTML=
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a2233;padding-bottom:16px;margin-bottom:20px">'
-        +'<div><div style="font-family:\'DM Serif Display\',serif;font-size:26px;color:#1a2233">LexFlow</div><div style="font-size:11px;color:#8a93a6;margin-top:2px">Gestão Jurídica e Imobiliária</div></div>'
+        +'<div><div style="font-family:\'DM Sans\',sans-serif;font-weight:700;font-size:26px;color:#1a2233">Eixo</div><div style="font-size:11px;color:#8a93a6;margin-top:2px">Gestão Jurídica e Imobiliária</div></div>'
         +'<div style="text-align:right;font-size:11px;color:#8a93a6">Adenilson Borges da Silva<br>OAB/SP 335.600</div>'
       +'</div>'
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#1a2233;margin-bottom:2px">Relatório Financeiro Mensal</div>'
@@ -16318,7 +16404,7 @@ window.cpRenderFixas=cpRenderFixas;
       +htmlCont
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:15px;color:#1a2233;margin:22px 0 6px">Locações</div>'
       +locLinha
-      +'<div style="margin-top:30px;padding-top:12px;border-top:1px solid #e7ecf3;font-size:10px;color:#b0b7c4">Relatório gerado automaticamente pelo LexFlow em '+(new Date()).toLocaleString('pt-BR')+'.</div>';
+      +'<div style="margin-top:30px;padding-top:12px;border-top:1px solid #e7ecf3;font-size:10px;color:#b0b7c4">Relatório gerado automaticamente pelo Eixo em '+(new Date()).toLocaleString('pt-BR')+'.</div>';
     return host;
   }
   window.exportarRelatorioPDF=function(){
@@ -16806,6 +16892,7 @@ window.cpRenderFixas=cpRenderFixas;
       setTimeout(function(){var el=document.getElementById('locSearchInput');if(el){el.value=termo;if(typeof locRender==='function')locRender();}},50);
     } else if(r.modulo==='Acordos'){
       if(typeof window.abrirAcordos==='function')window.abrirAcordos();
+      setTimeout(function(){var el=document.getElementById('accBusca');if(el){el.value=termo;if(typeof window.accRender==='function')window.accRender();}},50);
     }
   };
   window.buscaGlobalAbrir=function(){
@@ -17149,8 +17236,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
 
   function voiceFocarBusca(){
-    var locOv=document.getElementById('locOverlay');
-    var elId=(locOv&&locOv.classList.contains('open'))?'locSearchInput':'searchInput';
+    var elId=(typeof window.focoBuscaAtiva_==='function')?window.focoBuscaAtiva_():'searchInput';
     var el=document.getElementById(elId);
     if(el){el.focus();el.select();}
   }
