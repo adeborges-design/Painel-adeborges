@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Acompanhamento do Processo — Eixo</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#ffffff; --border:#d8d2c4; --text:#1b2430; --muted:#5c6672;
+    --accent:#0d3b66; --accent2:#8a6d1f; --green:#1f7a4d; --red:#b4222a; --orange:#a15a12;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,'Times New Roman',serif;line-height:1.5;padding:24px 16px 60px}
+  .wrap{max-width:560px;margin:0 auto}
+  .brand{text-align:center;margin-bottom:20px}
+  .brand .logo{font-family:Georgia,serif;font-size:22px;font-weight:700;color:var(--accent)}
+  .brand .logo em{font-style:italic;color:var(--accent2)}
+  .brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+  .estado{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+  .estado.erro{color:var(--red)}
+  .cliente-nome{font-size:19px;font-weight:700;color:var(--text);margin-bottom:2px}
+  .processo-num{font-size:13px;color:var(--muted);font-family:'Courier New',monospace;margin-bottom:14px}
+  .status-badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:16px}
+  .status-ativo{background:rgba(31,122,77,0.12);color:var(--green);border:1px solid rgba(31,122,77,0.3)}
+  .status-monitorar{background:rgba(161,90,18,0.12);color:var(--orange);border:1px solid rgba(161,90,18,0.3)}
+  .status-encerrado{background:rgba(92,102,114,0.12);color:var(--muted);border:1px solid rgba(92,102,114,0.3)}
+  .bloco{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}
+  .bloco:first-of-type{border-top:none;padding-top:0;margin-top:0}
+  .label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:Arial,sans-serif}
+  .valor{font-size:15px;color:var(--text)}
+  .destaque{background:rgba(161,90,18,0.08);border:1px solid rgba(161,90,18,0.25);border-radius:8px;padding:12px 14px}
+  .destaque .label{color:var(--orange)}
+  .audiencia{background:rgba(13,59,102,0.06);border:1px solid rgba(13,59,102,0.2);border-radius:8px;padding:12px 14px}
+  .audiencia .label{color:var(--accent)}
+  .rodape{text-align:center;margin-top:20px;font-size:11.5px;color:var(--muted);font-family:Arial,sans-serif}
+  .rodape a{color:var(--accent)}
+  @media(max-width:480px){body{padding:16px 12px 40px}.card{padding:18px 16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo" style="display:inline-flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;font-family:'Georgia',serif;font-weight:700;font-size:46px;color:var(--accent);letter-spacing:-0.5px">EI<span style="display:inline-flex;margin:0 -3px"><svg viewBox="0 0 54 54" width="60" height="60" aria-hidden="true"><defs><mask id="eixoMaskPortal"><rect x="0" y="0" width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="var(--accent2)"/><rect x="16" y="16" width="34" height="34" rx="8" fill="var(--accent)" mask="url(#eixoMaskPortal)"/></svg></span>O</span>
+      <span style="width:1px;height:32px;background:var(--border);flex:none"></span>
+      <span style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent2)">Processos</span>
+    </div>
+    <div class="sub">Acompanhamento do processo</div>
+  </div>
+
+  <div class="card" id="corpo">
+    <div class="estado">⏳ Carregando informações...</div>
+  </div>
+
+  <div class="rodape" id="rodape" style="display:none">
+    Escritório Dr. Adenilson Borges da Silva — OAB/SP 335.600<br>
+    Em caso de dúvida, entre em contato diretamente com o escritório.
+  </div>
+</div>
+
+<script>
+// URL do Apps Script (mesmo backend do Eixo) — GET público, mas só devolve os campos
+// curados que o servidor decide expor para este token (nunca a linha inteira da planilha).
+var URL_AS = 'https://script.google.com/macros/s/AKfycbwMjrcSwDSc8SWQRtbuH0UQKU3uopCWMiZTxwaGJR3V3j95iJjJxFt3t7UKCSwY7nhv/exec';
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function statusInfo(status) {
+  var s = String(status || '').toUpperCase();
+  if (s === 'EXTINTO' || s === 'SUBSTABELECIDO' || s === 'RENUNCIA' || s === 'REVOGADO') {
+    return { cls: 'status-encerrado', label: 'Encerrado' };
+  }
+  if (s === 'MONITORAR') return { cls: 'status-monitorar', label: 'Em monitoramento' };
+  return { cls: 'status-ativo', label: 'Em andamento' };
+}
+
+function render(d) {
+  var corpo = document.getElementById('corpo');
+  var st = statusInfo(d.status);
+  var html = '';
+  html += '<div class="cliente-nome">' + escHtml(d.nome || 'Cliente') + '</div>';
+  html += '<div class="processo-num">' + (d.processo ? escHtml(d.processo) : 'Número não informado') + (d.tipo ? ' · ' + escHtml(d.tipo) : (d.ramo ? ' · ' + escHtml(d.ramo) : '')) + '</div>';
+  if (d.parte || d.outra) {
+    html += '<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">';
+    if (d.parte) html += 'Posição no processo: <strong style="color:var(--text)">' + escHtml(d.parte) + '</strong>';
+    if (d.parte && d.outra) html += '<br>';
+    if (d.outra) html += 'Parte contrária: <strong style="color:var(--text)">' + escHtml(d.outra) + '</strong>';
+    html += '</div>';
+  }
+  html += '<span class="status-badge ' + st.cls + '">' + st.label + '</span>';
+
+  if (d.proximoPasso && d.proximoPasso.trim()) {
+    html += '<div class="bloco destaque"><div class="label">Próximo passo</div><div class="valor">' + escHtml(d.proximoPasso) + '</div></div>';
+  }
+  if (d.providenciaCliente && d.providenciaCliente.trim()) {
+    html += '<div class="bloco destaque" style="margin-top:10px"><div class="label">Providência que aguardamos de você</div><div class="valor">' + escHtml(d.providenciaCliente) + '</div>'
+      + (d.dataPrazoCliente ? '<div class="valor" style="margin-top:4px;font-size:13px;color:var(--orange)">Prazo: ' + escHtml(d.dataPrazoCliente) + '</div>' : '')
+      + '</div>';
+  }
+  if (d.dataAudiencia && d.dataAudiencia.trim()) {
+    html += '<div class="bloco audiencia"><div class="label">Audiência</div><div class="valor">' + escHtml(d.dataAudiencia)
+      + (d.horaAudiencia ? ' às ' + escHtml(d.horaAudiencia) : '') + (d.localAudiencia ? '<br>' + escHtml(d.localAudiencia) : '') + '</div></div>';
+  }
+  if (d.ultimaAtualizacao && d.ultimaAtualizacao.trim()) {
+    html += '<div class="bloco"><div class="label">Última atualização' + (d.dataAtualizacao ? ' — ' + escHtml(d.dataAtualizacao) : '') + '</div><div class="valor">' + escHtml(d.ultimaAtualizacao) + '</div></div>';
+  }
+  if (!d.proximoPasso && !d.providenciaCliente && !d.dataAudiencia && !d.ultimaAtualizacao) {
+    html += '<div class="bloco"><div class="valor" style="color:var(--muted)">Ainda não há nenhuma atualização registrada para este processo.</div></div>';
+  }
+
+  corpo.innerHTML = html;
+  document.getElementById('rodape').style.display = '';
+}
+
+function renderErro(msg) {
+  document.getElementById('corpo').innerHTML = '<div class="estado erro">⚠️ ' + escHtml(msg) + '</div>';
+}
+
+(function () {
+  var params = new URLSearchParams(location.search);
+  var token = (params.get('token') || '').trim();
+  if (!token) {
+    renderErro('Link inválido. Peça ao escritório para reenviar o link de acompanhamento.');
+    return;
+  }
+  fetch(URL_AS + '?acao=portal_processo&token=' + encodeURIComponent(token))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) { renderErro((d && d.error) || 'Link inválido ou revogado. Entre em contato com o escritório.'); return; }
+      render(d);
+    })
+    .catch(function () {
+      renderErro('Não foi possível carregar as informações agora. Verifique sua conexão e tente novamente.');
+    });
+})();
+</script>
+</body>
+</html>
