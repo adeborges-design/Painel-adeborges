@@ -1392,7 +1392,41 @@
       max-width: 100% !important;
       background: #f5f0e8 !important;
     }
-    body.printing-recibo .recibo-doc { padding: 20px 28px !important; background: #f5f0e8 !important; }
+    body.printing-recibo .recibo-doc { padding: 14px 20px !important; background: #f5f0e8 !important; }
+
+    /* Recibo compacto na impressão/PDF: o layout do formulário na tela tem espaçamento
+       generoso pra facilitar a digitação, mas isso não cabe numa folha A4 só — o recibo
+       tem que sair sempre numa página única. As regras abaixo (só ativas com a classe
+       printing-recibo, então não afetam a tela normal) reduzem paddings/margens/fontes
+       de cada bloco do documento. Combinado com a margem de página reduzida (10mm,
+       injetada via JS em imprimirRecibo) e o auto-ajuste de altura dos campos de texto
+       longo (pra não cortar descrição/observações), isso garante uma única folha mesmo
+       com todos os campos preenchidos.  */
+    body.printing-recibo .recibo-header-box { padding: 8px 14px !important; margin-bottom: 6px !important; }
+    body.printing-recibo .recibo-nome-adv { font-size: 15px !important; }
+    body.printing-recibo .recibo-oab strong { font-size: 14px !important; }
+    body.printing-recibo .recibo-endereco { margin-bottom: 8px !important; padding-bottom: 6px !important; font-size: 9.5px !important; }
+    body.printing-recibo .recibo-titulo-row { margin-bottom: 8px !important; }
+    body.printing-recibo .recibo-titulo { font-size: 14px !important; }
+    body.printing-recibo .recibo-grid { margin-bottom: 6px !important; gap: 8px !important; }
+    body.printing-recibo .recibo-field { gap: 2px !important; }
+    body.printing-recibo .recibo-label { font-size: 7.5px !important; }
+    body.printing-recibo .recibo-input,
+    body.printing-recibo .recibo-select,
+    body.printing-recibo .recibo-textarea,
+    body.printing-recibo #recEndereco {
+      padding: 3px 7px !important;
+      min-height: 22px !important;
+      font-size: 10.5px !important;
+    }
+    body.printing-recibo .recibo-valores-box { padding: 8px !important; margin-bottom: 6px !important; gap: 10px !important; }
+    body.printing-recibo .recibo-qr { width: 68px !important; height: 68px !important; }
+    body.printing-recibo .recibo-total-box { padding: 6px 14px !important; }
+    body.printing-recibo .recibo-total-valor { font-size: 17px !important; }
+    body.printing-recibo .recibo-obs-box { padding: 6px 10px !important; margin-bottom: 8px !important; }
+    body.printing-recibo .recibo-assinatura { margin: 8px 0 6px !important; }
+    body.printing-recibo .recibo-assinatura img { height: 36px !important; }
+    body.printing-recibo .recibo-footer-doc { padding: 5px 12px !important; font-size: 8.5px !important; }
 
     /* Esconder todos os outros modais explicitamente */
     .modal-card-overlay,
@@ -6102,8 +6136,39 @@ async function imprimirRecibo() {
   // Garantir que o modal do recibo esta aberto
   document.getElementById('modalRecibo').classList.add('open');
 
+  // Campos de texto livre (endereço/descrição/observações) crescem pro tamanho exato do
+  // conteúdo digitado antes de imprimir — sem isso, um texto mais longo que o campo na
+  // tela ficaria cortado no PDF (a caixa de texto não estica sozinha ao imprimir). Volta
+  // ao tamanho normal depois, junto com o resto da limpeza de impressão.
+  _reciboAjustarCamposLongos_(true);
+
   // Adicionar classe ao body para o @media print saber o que mostrar
   imprimirComClasse_('printing-recibo', 300);
+
+  let jaRestaurou = false;
+  function restaurarCamposLongos() {
+    if (jaRestaurou) return;
+    jaRestaurou = true;
+    _reciboAjustarCamposLongos_(false);
+    window.removeEventListener('afterprint', restaurarCamposLongos);
+  }
+  window.addEventListener('afterprint', restaurarCamposLongos);
+  setTimeout(restaurarCamposLongos, 15000);
+}
+
+function _reciboAjustarCamposLongos_(ativar) {
+  ['recEndereco', 'recDescricao', 'recObs'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (ativar) {
+      el.dataset.alturaOriginal = el.style.height || '';
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    } else {
+      el.style.height = el.dataset.alturaOriginal || '';
+      delete el.dataset.alturaOriginal;
+    }
+  });
 }
 
 // Recibo de honorários também não fecha mais com clique fora (formulário com vários campos
