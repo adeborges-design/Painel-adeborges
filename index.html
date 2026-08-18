@@ -265,6 +265,30 @@
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+  /* Alerta pulsante — pendências (aluguéis/repasses) de meses anteriores ao mês selecionado */
+  @keyframes mesAlertaPing {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.55); }
+    70%  { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+  .mes-alerta-pulse {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--red);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    border: none;
+    animation: mesAlertaPing 1.6s infinite;
+  }
+  .mes-alerta-pulse:hover { opacity: .88; }
+
   .btn-sync {
     display: flex;
     align-items: center;
@@ -7215,6 +7239,16 @@ window.accGerarProximoMes = function () {
   }
 };
 
+// Pula pro mês anterior mais antigo com pendência (clique no alerta pulsante do seletor de mês)
+window.accIrParaPendenciaAnterior = function () {
+  var meses = window._accMesesPendentes || [];
+  if (!meses.length) return;
+  accSelMes = meses[0];
+  var sel = document.getElementById('accMesSel');
+  if (sel) sel.value = accSelMes;
+  accRender();
+};
+
 // ---------- RENDER PRINCIPAL ----------
 window.accRender = function () {
   var sel = document.getElementById('accMesSel');
@@ -7248,6 +7282,30 @@ window.accRender = function () {
   document.getElementById('accChips').innerHTML =
     '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + accChip('pago', 'Recebidos', cRecRec) + accChip('pend', 'Pendentes', cRecPend) + accChip('atras', 'Atrasados', cRecAtras) + '</div>' +
     '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao cliente</span>' + accChip('pago', 'Repassados', cRepFeito) + accChip('pend', 'Pendentes', cRepPend) + '</div>';
+
+  // Alerta pulsante: parcela/repasse ainda pendente em mês ANTERIOR ao selecionado — mesma
+  // lógica usada em Locações, pra não passar batido só porque a tela mostra outro mês.
+  (function () {
+    var ordem = function (m) { var p = String(m || '').split('/'); return p.length === 2 ? (parseInt(p[1], 10) * 100 + parseInt(p[0], 10)) : 0; };
+    var alvo = ordem(accSelMes);
+    var pendentes = (window.accLancamentos || []).filter(function (l) {
+      if (ordem(l['Mes']) >= alvo) return false; // só meses estritamente anteriores ao selecionado
+      var recPend = l['Status Recebimento'] !== 'Recebido';
+      var repPend = l['Status Recebimento'] === 'Recebido' && l['Status Repasse'] !== 'Repassado';
+      return recPend || repPend;
+    });
+    var badge = document.getElementById('accMesAlerta');
+    if (badge) {
+      if (pendentes.length) {
+        window._accMesesPendentes = pendentes.map(function (l) { return l['Mes']; }).sort(function (a, b) { return ordem(a) - ordem(b); });
+        badge.style.display = '';
+        badge.textContent = '⚠ ' + pendentes.length + ' pendência(s) em mês(es) anterior(es)';
+      } else {
+        badge.style.display = 'none';
+        window._accMesesPendentes = [];
+      }
+    }
+  })();
 
   var accHojeMs = new Date().setHours(0, 0, 0, 0);
   var accAutoAtrasoJaAplicado = window.accAutoAtrasoJaAplicado || (window.accAutoAtrasoJaAplicado = {});
@@ -10201,6 +10259,7 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-mes-wrap">
         <label>Mês</label>
         <select class="loc-select" id="locMesSel" onchange="locRender()"></select>
+        <span class="mes-alerta-pulse" id="locMesAlerta" style="display:none" onclick="window.locIrParaPendenciaAnterior()" title="Ver o mês anterior mais antigo com aluguel ou repasse pendente"></span>
       </div>
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" id="btnLocContratos" onclick="locToggleContratos()">📋 Contratos</button>
@@ -10509,6 +10568,7 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-mes-wrap">
         <label>Mês</label>
         <select class="loc-select" id="accMesSel" onchange="accRender()"></select>
+        <span class="mes-alerta-pulse" id="accMesAlerta" style="display:none" onclick="window.accIrParaPendenciaAnterior()" title="Ver o mês anterior mais antigo com parcela ou repasse pendente"></span>
       </div>
       <button class="loc-btn primary" onclick="accNovoContrato()">💰 Novo acordo</button>
       <button class="loc-btn" id="btnAccContratos" onclick="accToggleContratos()">📋 Acordos cadastrados</button>
@@ -12386,6 +12446,17 @@ window.cpRenderFixas=cpRenderFixas;
 
   window.abrirAlugueis=function(){document.getElementById('locOverlay').classList.add('open');alertaVencidosOpen=false;carregarAlugueis();};
 
+  // Pula pro mês anterior mais antigo com pendência (clique no alerta pulsante do seletor de mês)
+  window.locIrParaPendenciaAnterior=function(){
+    var meses=window._locMesesPendentes||[];
+    if(!meses.length)return;
+    selMes=meses[0];
+    locFiltroAtivo='all';
+    var sel=document.getElementById('locMesSel');
+    if(sel)sel.value=selMes;
+    locRender();
+  };
+
   window.locFiltroAtivo = 'all';
   window.locFiltrar = function (tipo) { locFiltroAtivo = (locFiltroAtivo === tipo) ? 'all' : tipo; locRender(); };
   // ---------- ALERTAS DE VIGÊNCIA DO CONTRATO ----------
@@ -12462,6 +12533,29 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec,'al_recebido')+chip('pend','Pendentes',cAlPend,'al_pendente')+chip('atras','Atrasados',cAlAtras,'al_atrasado')+chip('ativos','Contratos ativos',ativos,null)+'</div>'+
       '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito,'rep_feito')+chip('pend','Pendentes',cRepPend,'rep_pendente')+chip('atras','Atrasados',cRepAtras,'rep_atrasado')+'</div>'+
       (locFiltroAtivo!=='all'?'<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="locFiltrar(\''+locFiltroAtivo+'\')">✕ Limpar filtro</button></div>':'');
+    // Alerta pulsante: aluguel/repasse ainda pendente em mês ANTERIOR ao selecionado — fácil
+    // de passar batido porque a tela só mostra o mês escolhido no seletor.
+    (function(){
+      var ordem=function(m){var p=String(m||'').split('/');return p.length===2?(parseInt(p[1],10)*100+parseInt(p[0],10)):0;};
+      var alvo=ordem(selMes);
+      var pendentes=workingList().filter(function(l){
+        if(ordem(l.mes)>=alvo)return false; // só meses estritamente anteriores ao selecionado
+        var alugPend=l.statusAluguel!=='Recebido';
+        var repPend=l.statusAluguel==='Recebido'&&l.statusRep!=='Repassado';
+        return alugPend||repPend;
+      });
+      var badge=document.getElementById('locMesAlerta');
+      if(badge){
+        if(pendentes.length){
+          window._locMesesPendentes=pendentes.map(function(l){return l.mes;}).sort(function(a,b){return ordem(a)-ordem(b);});
+          badge.style.display='';
+          badge.textContent='⚠ '+pendentes.length+' pendência(s) em mês(es) anterior(es)';
+        }else{
+          badge.style.display='none';
+          window._locMesesPendentes=[];
+        }
+      }
+    })();
     var lst=lstTodos.filter(function(l){
       var termoBusca=(document.getElementById('locSearchInput')||{}).value||'';
       if(termoBusca.trim()){
