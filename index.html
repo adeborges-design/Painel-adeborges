@@ -10485,6 +10485,7 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="loc-btn" onclick="locToggleMenu(event,'locMenuMais')">⚙️ Mais ▾</button>
         <div id="locMenuMais" class="loc-menu-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:230px;overflow:hidden">
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuMais').style.display='none';locGerarProximoMes()">➕ Gerar mês seguinte</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuMais').style.display='none';locAbrirRecriarLanc()" title="Cria o lançamento de um mês específico pra 1 contrato — útil quando um lançamento foi apagado por engano (na planilha) ou um contrato novo precisa começar num mês que não é o seguinte">🔁 Lançar/recriar mês p/ 1 contrato</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuMais').style.display='none';locExportCSV()">⬇️ Exportar CSV</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuMais').style.display='none';locReset()">↺ Limpar alterações locais</button>
         </div>
@@ -10695,6 +10696,11 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="cobr-body">
         <input type="hidden" id="cobr-contrato">
+        <div class="loc-cfield full" style="background:rgba(91,141,238,0.08);border-radius:8px;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--muted)">📋 Duplicar valores de outro mês deste contrato (útil pra recompor um mês apagado por engano):</span>
+          <select class="loc-cinput" id="cobr-duplicar-mes" style="width:auto;min-width:110px;padding:5px 8px;font-size:12px"></select>
+          <button type="button" class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="cobrDuplicarDeMes()">Duplicar pra este mês</button>
+        </div>
         <div class="cobr-secao full">Aluguel deste mês</div>
         <div class="loc-cfield full">
           <label>Aluguel (R$) <span style="font-weight:400;color:var(--muted)">— pré-preenchido com o valor atual; deixe 0,00 se este mês for só multa rescisória/outras cobranças (contrato encerrado)</span></label>
@@ -11119,6 +11125,27 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="loc-cfield full" style="text-align:right">
         <button class="loc-btn primary" onclick="calcMultaJurosUsar()">✓ Usar multa e juros calculados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LANÇAR/RECRIAR MÊS PARA 1 CONTRATO -->
+<div class="modal-cobr-overlay" id="modalRecriarLanc">
+  <div class="cobr-wrap" style="max-width:520px">
+    <div class="cobr-header">
+      <div class="cobr-title">🔁 Lançar/recriar mês para 1 contrato</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRecriarLanc').classList.remove('open')">✕</button>
+    </div>
+    <div class="cobr-body" style="grid-template-columns:1fr">
+      <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Use quando o lançamento de um mês foi apagado por engano (direto na planilha) e o contrato sumiu daquele mês na tela de Lançamentos, ou quando um contrato precisa começar num mês que não é o "mês seguinte" de todo o portfólio. "➕ Gerar mês seguinte" só cria o próximo mês pra todos os contratos ativos de uma vez — isto aqui cria o lançamento de UM mês específico, só pra UM contrato.</div>
+      <div class="loc-cfield full"><label>Contrato</label><select class="loc-cinput" id="recriarlanc-contrato" onchange="locRecriarLancContratoMudou()"></select></div>
+      <div class="loc-cfield"><label>Mês a lançar</label><input class="loc-cinput" id="recriarlanc-mes" type="month"></div>
+      <div class="loc-cfield"><label>Copiar valores de <span style="font-weight:400;color:var(--muted)">(opcional)</span></label><select class="loc-cinput" id="recriarlanc-copiar"><option value="">Nenhum (usa valores padrão do contrato)</option></select></div>
+      <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px;font-size:11px;color:#5c6f8a">Aluguel, condomínio, IPTU, outras cobranças e desconto vêm do mês escolhido em "Copiar valores de" (se selecionado) ou do cadastro do contrato. Multa e juros sempre começam zerados. Status sempre começa como "Pendente". Depois de criado, abra "🧾 lançamentos" nesse mês pra revisar e ajustar o que for preciso.</div>
+      <div class="loc-cfield full" style="text-align:right">
+        <span class="msg" id="recriarlanc-msg" style="display:block;margin-bottom:8px;font-size:12px"></span>
+        <button class="loc-btn primary" onclick="locCriarLancamento()">✓ Criar lançamento</button>
       </div>
     </div>
   </div>
@@ -13117,6 +13144,13 @@ window.cpRenderFixas=cpRenderFixas;
     var wrap=sel.parentElement.querySelector('.cobr-item-parcelas-wrap');
     if(wrap)wrap.style.display=sel.value==='parcelado'?'flex':'none';
   };
+  // Meses (de trás pra frente) em que ESTE contrato específico já tem lançamento — usado pra
+  // popular o seletor de "duplicar valores de outro mês" no modal de Encargos.
+  function mesesContratoDisponiveis_(contrato){
+    var set={};
+    workingList().forEach(function(l){if(l.contrato===contrato)set[l.mes]=1;});
+    return Object.keys(set).sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return (pb[1]+pb[0]).localeCompare(pa[1]+pa[0]);});
+  }
   window.abrirModalCobrancas=function(contrato){
     var l=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!l)return;
@@ -13131,7 +13165,33 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-outras-lista').innerHTML='';
     parseOutrasCobrancas(l).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino,it.incideTaxa);});
     cobrAtualizarPreview();
+    var mesesOutros=mesesContratoDisponiveis_(contrato).filter(function(m){return m!==selMes;});
+    var selDup=document.getElementById('cobr-duplicar-mes');
+    selDup.innerHTML=mesesOutros.length
+      ? mesesOutros.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('')
+      : '<option value="">Nenhum outro mês lançado</option>';
     document.getElementById('modalCobrancas').classList.add('open');
+  };
+  // Copia aluguel + todos os encargos/IPTU/outras cobranças/desconto de outro mês já lançado
+  // pra dentro do formulário do mês atualmente aberto (não salva sozinho — só preenche os
+  // campos, pra revisar e ajustar antes de clicar em "Salvar"). Multa/juros NÃO são copiados,
+  // pois são específicos do atraso daquele mês de origem, não fazem sentido repetir.
+  window.cobrDuplicarDeMes=function(){
+    var mesOrigem=document.getElementById('cobr-duplicar-mes').value;
+    if(!mesOrigem){alert('Não há outro mês lançado pra esse contrato pra copiar.');return;}
+    var contrato=document.getElementById('cobr-contrato').value;
+    var origem=workingList().filter(function(x){return x.mes===mesOrigem&&x.contrato===contrato;})[0];
+    if(!origem){alert('Não foi possível encontrar o lançamento de '+mesOrigem+' pra esse contrato.');return;}
+    if(!confirm('Isso vai SUBSTITUIR os valores preenchidos agora no formulário (aluguel, condomínio, IPTU, outras cobranças e desconto) pelos de '+mesExtenso(mesOrigem)+'. Multa e juros não são copiados. Revise tudo antes de clicar em "Salvar". Continuar?'))return;
+    document.getElementById('cobr-aluguel-mes').value=(origem.aluguel!=null?origem.aluguel:0).toFixed(2);
+    COBR_CAMPOS_NUM.forEach(function(p){
+      if(p[1]==='multa'||p[1]==='juros')return;
+      document.getElementById(p[0]).value=origem[p[1]]||'';
+    });
+    document.getElementById('cobr-desconto-incide-taxa').value=origem.descontoIncideTaxa?'Sim':'Nao';
+    document.getElementById('cobr-outras-lista').innerHTML='';
+    parseOutrasCobrancas(origem).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino,it.incideTaxa);});
+    cobrAtualizarPreview();
   };
   window.fecharModalCobrancas=function(){document.getElementById('modalCobrancas').classList.remove('open');};
   // Botão "🧾 lançamentos" da lista de Contratos: mesmo modal de encargos/cobranças que já
@@ -13323,6 +13383,80 @@ window.cpRenderFixas=cpRenderFixas;
   document.addEventListener('DOMContentLoaded',function(){
     var mcmj=document.getElementById('modalCalcMultaJuros');
     if(mcmj)mcmj.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+  });
+
+  // ---------- LANÇAR/RECRIAR MÊS PARA 1 CONTRATO ----------
+  // "Gerar mês seguinte" só cria o mês seguinte ao último já existente, pra TODOS os contratos
+  // ativos de uma vez — não serve pra repor o lançamento de UM contrato específico que foi
+  // apagado (ex.: direto na planilha) nem pra um contrato que precisa começar num mês que já
+  // ficou pra trás. Isto aqui cria o lançamento de um mês arbitrário, só pro contrato escolhido,
+  // reaproveitando a ação genérica 'lancar_locl' já existente no backend (nunca usada até agora
+  // pelo front-end). gravarSheet()/atualizar_locl não servem aqui porque exigem um ID de
+  // lançamento já existente — é por isso que esta ação usa 'lancar_locl' (criação), não 'atualizar_locl'.
+  window.locAbrirRecriarLanc=function(){
+    var sel=document.getElementById('recriarlanc-contrato');
+    sel.innerHTML='<option value="">Selecione...</option>'+DATA.contratos.slice().sort(function(a,b){return String(a.contrato).localeCompare(String(b.contrato),'pt-BR');}).map(function(c){
+      return '<option value="'+E(c.contrato)+'">'+E(c.contrato)+' — '+E(c.locador||'')+' / '+E(c.locatario||'')+'</option>';
+    }).join('');
+    document.getElementById('recriarlanc-mes').value='';
+    document.getElementById('recriarlanc-copiar').innerHTML='<option value="">Nenhum (usa valores padrão do contrato)</option>';
+    document.getElementById('recriarlanc-msg').textContent='';
+    document.getElementById('modalRecriarLanc').classList.add('open');
+  };
+  window.locRecriarLancContratoMudou=function(){
+    var contrato=document.getElementById('recriarlanc-contrato').value;
+    var selCopiar=document.getElementById('recriarlanc-copiar');
+    var meses=contrato?mesesContratoDisponiveis_(contrato):[];
+    selCopiar.innerHTML='<option value="">Nenhum (usa valores padrão do contrato)</option>'+meses.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  };
+  window.locCriarLancamento=function(){
+    var msg=document.getElementById('recriarlanc-msg');
+    var contrato=document.getElementById('recriarlanc-contrato').value;
+    var mesInput=document.getElementById('recriarlanc-mes').value; // yyyy-mm (input type=month)
+    if(!contrato){msg.style.color='var(--red)';msg.textContent='Selecione o contrato.';return;}
+    if(!mesInput){msg.style.color='var(--red)';msg.textContent='Selecione o mês.';return;}
+    var p=mesInput.split('-'); var mes=p[1]+'/'+p[0];
+    var c=contratosById[contrato];
+    if(!c){msg.style.color='var(--red)';msg.textContent='Contrato não encontrado.';return;}
+    if((workingList()||[]).some(function(x){return x.mes===mes&&x.contrato===contrato;})){
+      msg.style.color='var(--red)';msg.textContent='Este contrato já tem lançamento em '+mes+'. Use "🧾 lançamentos" nesse mês pra editar, em vez de criar outro.';return;
+    }
+    var mesOrigem=document.getElementById('recriarlanc-copiar').value;
+    var origem=mesOrigem?(workingList()||[]).filter(function(x){return x.mes===mesOrigem&&x.contrato===contrato;})[0]:null;
+    var base=origem
+      ?{aluguel:origem.aluguel,condominio:origem.condominio,iptu:origem.iptu,aguaPriv:origem.aguaPriv,gasPriv:origem.gasPriv,aguaComum:origem.aguaComum,gasPiscina:origem.gasPiscina,energiaComum:origem.energiaComum,taxaLeitura:origem.taxaLeitura,fundoFerias:origem.fundoFerias,decimoTerceiro:origem.decimoTerceiro,desconto:origem.desconto,descontoIncideTaxa:origem.descontoIncideTaxa,outrasDesc:origem.outrasDesc}
+      :{aluguel:num(c.aluguel),condominio:num(c.condominioPadrao),iptu:num(c.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,descontoIncideTaxa:false,outrasDesc:''};
+    var taxa=calcularTaxa(base,c);
+    var campos={'Mes Ref':mes,'Contrato':contrato,'Locador':c.locador||'','Locatario':c.locatario||'','Endereco':c.end||'',
+      'Aluguel':base.aluguel||0,'Taxa Adm':taxa,'Valor Repasse':'','Dia Vencimento':c.venc||'','Dia Repasse':c.rep||'',
+      'Status':'Pendente','Data Pagamento':'','Origem Pgto':'','Data Repasse':'','Status Repasse':'Pendente',
+      'Condominio':base.condominio||0,'IPTU':base.iptu||0,'Outras Cobrancas Desc':base.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(base),
+      'Agua Privativa':base.aguaPriv||0,'Gas Privativa':base.gasPriv||0,'Agua Comum':base.aguaComum||0,'Gas Piscina':base.gasPiscina||0,
+      'Energia Comum':base.energiaComum||0,'Taxa Leitura':base.taxaLeitura||0,'Fundo Ferias':base.fundoFerias||0,'Decimo Terceiro':base.decimoTerceiro||0,
+      'Desconto':base.desconto||0,'Multa':0,'Juros':0,'Desconto Incide Taxa':base.descontoIncideTaxa?'Sim':'Nao','Observacoes':'','Observacoes Locatario':''};
+    var detalhe='Mês '+mes+(mesOrigem?' — copiado de '+mesOrigem:' — valores padrão do contrato');
+    if(live){
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locl',campos:campos})});}catch(e){}
+      logAuditoria_('Lançamento recriado',contrato,detalhe);
+      document.getElementById('modalRecriarLanc').classList.remove('open');
+      alert('Solicitada a criação do lançamento de '+mes+' para '+contrato+'. Aguarde alguns segundos e clique em 🔄 Atualizar (ou espere — a tela recarrega sozinha).');
+      selMes=mes;
+      setTimeout(carregarAlugueis,2800);
+    }else{
+      var s=state();
+      s.extra.push({id:'',mes:mes,contrato:contrato,aluguel:base.aluguel||0,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',
+        condominio:base.condominio||0,iptu:base.iptu||0,aguaPriv:base.aguaPriv||0,gasPriv:base.gasPriv||0,aguaComum:base.aguaComum||0,gasPiscina:base.gasPiscina||0,
+        energiaComum:base.energiaComum||0,taxaLeitura:base.taxaLeitura||0,fundoFerias:base.fundoFerias||0,decimoTerceiro:base.decimoTerceiro||0,
+        desconto:base.desconto||0,multa:0,juros:0,outrasDesc:base.outrasDesc||'',outrasValor:somaOutrasCobrancas(base),descontoIncideTaxa:!!base.descontoIncideTaxa});
+      saveState(s);
+      logAuditoria_('Lançamento recriado (local)',contrato,detalhe);
+      document.getElementById('modalRecriarLanc').classList.remove('open');
+      selMes=mes;locRefreshMeses();locRender();
+    }
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var mrl=document.getElementById('modalRecriarLanc');
+    if(mrl)mrl.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   });
 
   // ---------- ANOTAÇÕES E MENSAGEM AO LOCATÁRIO ----------
