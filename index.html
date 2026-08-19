@@ -13427,41 +13427,69 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- RELATÓRIO MENSAL DE REPASSES (extrato financeiro de um mês específico) ----------
   // ---------- DESPESAS/CRÉDITOS DO LOCADOR (não ligados a um imóvel específico) ----------
   window.locLocCache=[];
+  // Fica true quando a última tentativa de carregar do Sheets falhou (rede, quota, etc.) —
+  // usado só pra ARENDER um aviso ("não consegui atualizar") em vez de deixar a lista
+  // silenciosamente vazia, que parecia "sumiram os lançamentos" sem ter sumido nada de
+  // verdade (os dados continuam na planilha; só essa tela que não conseguiu buscá-los).
+  window.locLocErroCarregar=false;
   window.carregarLocLoc=async function(){
     try{
       var cfg=getConfig();
-      if(!cfg||!cfg.apiKey||!cfg.sheetId){window.locLocCache=[];return;}
+      if(!cfg||!cfg.apiKey||!cfg.sheetId){window.locLocCache=[];window.locLocErroCarregar=false;return;}
       var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:H500')+'?key='+cfg.apiKey);
-      if(!r.ok){window.locLocCache=[];return;}
+      if(!r.ok){window.locLocErroCarregar=true;return;} // mantém o cache anterior — não apaga o que já tinha carregado
       var d=await r.json();
       var rows=d.values||[];
-      if(rows.length<2){window.locLocCache=[];return;}
+      window.locLocErroCarregar=false;
+      if(rows.length<2){window.locLocCache=[];return;} // aba realmente vazia (sem nenhum lançamento ainda) — isso sim é vazio de verdade
       var hd=rows[0];
       window.locLocCache=rows.slice(1).filter(function(x){return x[0];}).map(function(row){
         var o={};hd.forEach(function(h,i){o[h]=row[i]!==undefined?row[i]:'';});return o;
       });
-    }catch(e){window.locLocCache=[];}
+    }catch(e){window.locLocErroCarregar=true;} // idem: erro de rede não apaga o cache anterior
   };
-  window.locLocAbrir=function(){
+  window.locLocMontarSelectLocador_=function(manterSelecionado){
+    var atual=manterSelecionado?document.getElementById('locLocLocadorSelect').value:'';
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
     (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    // Também inclui locadores que só têm lançamento avulso (sem contrato ativo cadastrado
+    // em Locações agora) — senão o nome nunca aparece na lista pra selecionar, e os
+    // lançamentos dele ficam "escondidos" mesmo estando salvos na planilha certinho.
+    (window.locLocCache||[]).forEach(function(x){var n=String(x['Locador']||'').trim();if(n)nomes[n]=true;});
     var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
     var sel=document.getElementById('locLocLocadorSelect');
-    sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'"'+(n===atual?' selected':'')+'>'+E(n)+'</option>';}).join('');
+  };
+  window.locLocAbrir=async function(){
+    window.locLocMontarSelectLocador_(false);
     var hoje=new Date();
     document.getElementById('locLoc-data').value=hoje.toISOString().split('T')[0];
-    document.getElementById('locLocLista').innerHTML='';
+    document.getElementById('locLocLista').innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">⏳ Carregando lançamentos da planilha...</div>';
     document.getElementById('modalLocLoc').classList.add('open');
+    // Busca sempre os dados mais recentes do Sheets ao abrir (não confia só no cache
+    // carregado lá atrás, quando a página foi aberta) — evita mostrar uma lista
+    // desatualizada ou vazia por causa de uma falha antiga de sincronização.
+    await window.carregarLocLoc();
+    window.locLocMontarSelectLocador_(true);
+    window.locLocRender();
   };
   function locLocParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
   window.locLocRender=function(){
     var nome=document.getElementById('locLocLocadorSelect').value;
     var host=document.getElementById('locLocLista');
-    if(!nome){host.innerHTML='';return;}
+    // Se a última busca no Sheets falhou, avisa em vez de mostrar uma lista vazia enganosa —
+    // os lançamentos continuam na planilha, só não deu pra buscar agora (rede, quota, etc.).
+    var avisoErro=window.locLocErroCarregar
+      ? '<div style="background:rgba(224,84,84,.1);border:1px solid rgba(224,84,84,.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:var(--red)">'
+        +'⚠️ Não foi possível atualizar a lista agora (falha ao conectar com o Google Sheets). Os lançamentos já feitos <strong>continuam salvos na planilha</strong> — isto aqui é só uma falha temporária de carregamento.'
+        +' <button onclick="carregarLocLoc().then(locLocRender)" style="margin-left:4px;background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11.5px">🔄 Tentar de novo</button>'
+        +'</div>'
+      : '';
+    if(!nome){host.innerHTML=avisoErro;return;}
     var itens=(window.locLocCache||[]).filter(function(x){return String(x['Locador']||'').trim()===nome;})
       .sort(function(a,b){return (locLocParseDataBR(b['Data'])||0)-(locLocParseDataBR(a['Data'])||0);});
-    if(!itens.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">Nenhum lançamento avulso para este locador ainda.</div>';return;}
+    if(!itens.length){host.innerHTML=avisoErro+'<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">Nenhum lançamento avulso para este locador ainda.</div>';return;}
     host.innerHTML=itens.map(function(it){
       var quitado=String(it['Status']).toLowerCase()==='quitado';
       var valor=num(it['Valor']);
@@ -13475,6 +13503,7 @@ window.cpRenderFixas=cpRenderFixas;
         +'<button onclick="locLocExcluir(\''+E(it['ID'])+'\')" title="Excluir" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px">🗑️</button>'
         +'</div>';
     }).join('');
+    host.innerHTML=avisoErro+host.innerHTML;
   };
   window.locLocTogglePavelas=function(){
     var forma=document.getElementById('locLoc-forma').value;
