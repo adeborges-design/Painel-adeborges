@@ -13889,7 +13889,7 @@ window.cpRenderFixas=cpRenderFixas;
   function relInadLocDados_(nome){
     var imoveis=relLocadorImoveis(nome);
     var lista=workingList();
-    var blocos=[],totalGeral=0,totalMeses=0;
+    var blocos=[],totalGeral=0,totalGeralRep=0,totalMeses=0;
     imoveis.forEach(function(im){
       var c=im.contrato;
       var atrasados=lista.filter(function(l){return l.contrato===c.contrato&&inadLocEstaAtrasado_(l,c);})
@@ -13899,13 +13899,20 @@ window.cpRenderFixas=cpRenderFixas;
       var tenantsNome=tenants.length?tenants.map(function(t){return t.Nome;}).join(', '):(c.locatario||'—');
       var itens=atrasados.map(function(l){
         var valorShare=Math.round((l.aluguel||0)*im.pct/100*100)/100;
-        return {mes:l.mes,valor:valorShare,dias:inadLocDiasAtraso_(l,c),status:l.statusAluguel};
+        // Repasse: o que o locador deixa de receber daquele mês, já com taxa de administração e
+        // demais encargos considerados (mesma fórmula/critério do Relatório Mensal de Repasses —
+        // effRep — escalada pelo percentual dele quando o imóvel tem coproprietários). É diferente
+        // do valor do aluguel puro: pode ser maior (se tem IPTU/condomínio repassável somando) ou
+        // menor (depois de descontada a taxa de administração).
+        var repShare=Math.round(effRep(l)*im.pct/100*100)/100;
+        return {mes:l.mes,valor:valorShare,repasse:repShare,dias:inadLocDiasAtraso_(l,c),status:l.statusAluguel};
       });
       var subtotal=itens.reduce(function(s,it){return s+it.valor;},0);
-      blocos.push({end:c.end,contrato:c.contrato,pct:im.pct,viaCoprop:im.viaCoprop,locatario:tenantsNome,itens:itens,subtotal:Math.round(subtotal*100)/100});
-      totalGeral+=subtotal; totalMeses+=itens.length;
+      var subtotalRep=itens.reduce(function(s,it){return s+it.repasse;},0);
+      blocos.push({end:c.end,contrato:c.contrato,pct:im.pct,viaCoprop:im.viaCoprop,locatario:tenantsNome,itens:itens,subtotal:Math.round(subtotal*100)/100,subtotalRep:Math.round(subtotalRep*100)/100});
+      totalGeral+=subtotal; totalGeralRep+=subtotalRep; totalMeses+=itens.length;
     });
-    return {nome:nome,blocos:blocos,totalGeral:Math.round(totalGeral*100)/100,totalMeses:totalMeses};
+    return {nome:nome,blocos:blocos,totalGeral:Math.round(totalGeral*100)/100,totalGeralRep:Math.round(totalGeralRep*100)/100,totalMeses:totalMeses};
   }
   window.relInadLocGerar=function(){
     var nome=document.getElementById('relInadLocSelect').value;
@@ -13918,9 +13925,9 @@ window.cpRenderFixas=cpRenderFixas;
     }
     var blocosHtml=d.blocos.map(function(b,idx){
       var itensHtml=b.itens.map(function(it){
-        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(255,255,255,.12);font-size:12.5px">'
-          +'<span>'+E(mesExtenso(it.mes))+(it.status==='Atrasado'?' <span style="color:var(--red);font-size:10.5px">(atrasado)</span>':' <span style="color:var(--yellow);font-size:10.5px">(vencido, ainda pendente)</span>')+'</span>'
-          +'<span><strong>'+BRL(it.valor)+'</strong> — '+it.dias+' dia(s)</span>'
+        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(255,255,255,.12);font-size:12.5px;gap:8px">'
+          +'<span>'+E(mesExtenso(it.mes))+(it.status==='Atrasado'?' <span style="color:var(--red);font-size:10.5px">(atrasado)</span>':' <span style="color:var(--yellow);font-size:10.5px">(vencido, ainda pendente)</span>')+'<br><span style="font-size:10.5px;color:var(--muted)">'+it.dias+' dia(s) de atraso</span></span>'
+          +'<span style="text-align:right;white-space:nowrap">Aluguel: <strong>'+BRL(it.valor)+'</strong><br>Repasse: <strong style="color:var(--red)">'+BRL(it.repasse)+'</strong></span>'
           +'</div>';
       }).join('');
       return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
@@ -13932,7 +13939,10 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div>Contrato nº <strong>'+E(b.contrato)+'</strong></div>'
         +'<div>Locatário: <strong>'+E(b.locatario)+'</strong></div>'
         +'<div style="margin-top:6px">'+itensHtml+'</div>'
-        +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Subtotal em aberto: <strong style="color:var(--red)">'+BRL(b.subtotal)+'</strong></div>'
+        +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+        +'<span>Subtotal aluguel em aberto: <strong>'+BRL(b.subtotal)+'</strong></span>'
+        +'<span>Subtotal repasse em aberto: <strong style="color:var(--red)">'+BRL(b.subtotalRep)+'</strong></span>'
+        +'</div>'
         +'</div></div>';
     }).join('');
     card.innerHTML=
@@ -13942,7 +13952,11 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">'+d.blocos.length+' imóvel(is) com pendência, '+d.totalMeses+' mês(es) em aberto no total — emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div>'
       +blocosHtml
-      +'<div class="parc-section"><div class="parc-section-label">Total Geral em Aberto</div><div class="parc-tarefa-box"><strong style="color:var(--red)">'+BRL(d.totalGeral)+'</strong><div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Soma de todos os meses em atraso, já considerando a fatia de participação em cada imóvel</div></div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Total Geral em Aberto</div><div class="parc-tarefa-box">'
+      +'<div>Total aluguel (bruto, devido pelos locatários): <strong>'+BRL(d.totalGeral)+'</strong></div>'
+      +'<div style="margin-top:4px">Total repasse (líquido, o que deixa de chegar a você): <strong style="color:var(--red)">'+BRL(d.totalGeralRep)+'</strong></div>'
+      +'<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Repasse já considera taxa de administração e demais encargos de cada mês, e a fatia de participação em imóveis com coproprietários.</div>'
+      +'</div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
   };
@@ -13960,12 +13974,14 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Contrato nº '+b.contrato+'\n';
       txt+='Locatário: '+b.locatario+'\n';
       b.itens.forEach(function(it){
-        txt+='  '+mesExtenso(it.mes)+' — '+BRL(it.valor)+' — '+it.dias+' dia(s) ('+it.status+')\n';
+        txt+='  '+mesExtenso(it.mes)+' — Aluguel: '+BRL(it.valor)+' — Repasse: '+BRL(it.repasse)+' — '+it.dias+' dia(s) ('+it.status+')\n';
       });
-      txt+='Subtotal: '+BRL(b.subtotal)+'\n';
+      txt+='Subtotal aluguel: '+BRL(b.subtotal)+'\n';
+      txt+='Subtotal repasse: '+BRL(b.subtotalRep)+'\n';
       txt+='－－－－－－－－－－\n\n';
     });
-    txt+='\n*TOTAL GERAL EM ABERTO:* '+BRL(d.totalGeral)+'\n\n';
+    txt+='\n*TOTAL ALUGUEL EM ABERTO:* '+BRL(d.totalGeral)+'\n';
+    txt+='*TOTAL REPASSE EM ABERTO:* '+BRL(d.totalGeralRep)+'\n\n';
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
