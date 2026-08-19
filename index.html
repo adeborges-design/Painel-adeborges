@@ -10467,6 +10467,7 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn" id="btnLocResumo" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('locMenuRelatorios').style.display='none';locToggleResumoLocadores()">👥 Resumo dos Locadores</button>
           <button class="loc-btn" id="btnLocRepasse" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locToggleRepasse()">👥 Repasse por locador (mês)</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relLocadorAbrir()">📄 Imóveis do Locador</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relInadLocAbrir()" title="Aluguéis em atraso do locador, de todos os meses, com dias de atraso e total em aberto">📋 Inadimplência do Locador</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relMensalAbrir()">💰 Aluguéis Recebidos a serem Repassados</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';informesLoteAbrir()" title="Gera o Informe de Repasse de todos os imóveis de um locador de uma vez, pra imprimir/PDF junto">🖨 Todos os Informes de Repasse</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locAuditoriaAbrir()">📜 Histórico</button>
@@ -10950,6 +10951,23 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-locador .rel-imovel-bloco,
   body.printing-rel-locador .parc-header,
   body.printing-rel-locador .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body.printing-rel-inad-loc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rel-inad-loc html, body.printing-rel-inad-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-rel-inad-loc > * { display:none !important; }
+  body.printing-rel-inad-loc #modalRelInadLoc {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-rel-inad-loc #modalRelInadLoc .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-rel-inad-loc .parceiro-toolbar,
+  body.printing-rel-inad-loc .entr-no-print { display:none !important; }
+  body.printing-rel-inad-loc .rel-imovel-bloco,
+  body.printing-rel-inad-loc .parc-header,
+  body.printing-rel-inad-loc .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-rel-mensal * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-rel-mensal html, body.printing-rel-mensal body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-rel-mensal > * { display:none !important; }
@@ -11346,6 +11364,27 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-email" onclick="relLocadorEnviarEmail()">✉️ E-mail</button>
       <button class="btn-recibo-print" onclick="relLocadorImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="relLocadorCopiarTexto()">📋 Copiar texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIO DE INADIMPLÊNCIA DO LOCADOR (aluguéis em atraso, de todos os meses, não só o atual) -->
+<div class="modal-repasse-overlay" id="modalRelInadLoc">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📋 Inadimplência do Locador</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRelInadLoc').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print">
+      <div class="loc-note" style="margin-bottom:14px">Escolha o locador — o relatório lista, imóvel por imóvel, todos os meses de aluguel em atraso (inclusive de meses anteriores, não só o atual), com valor e dias de atraso de cada um, e o total geral em aberto. Serve pra você informar o locador sobre a situação de inadimplência dos inquilinos dele.</div>
+      <select class="loc-cinput" id="relInadLocSelect" style="width:100%;margin-bottom:14px" onchange="relInadLocGerar()"></select>
+    </div>
+    <div id="relInadLocCard" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="relInadLocEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="relInadLocEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-recibo-print" onclick="relInadLocImprimir()">🖨 Imprimir/PDF</button>
+      <button class="loc-btn" onclick="relInadLocCopiarTexto()">📋 Copiar texto</button>
     </div>
   </div>
 </div>
@@ -13568,6 +13607,159 @@ window.cpRenderFixas=cpRenderFixas;
     var nome=document.getElementById('relLocadorSelect').value;
     if(!nome){alert('Selecione um locador primeiro.');return;}
     abrirEmailFlex('Relatório de Imóveis — '+nome, relLocadorMontarTexto(nome));
+  };
+
+  // ---------- RELATÓRIO DE INADIMPLÊNCIA DO LOCADOR (aluguéis em atraso, todos os meses) ----------
+  // Diferente do aviso da tela inicial (window.locAvisos, que só olha o mês corrente), este
+  // relatório varre TODO o histórico de lançamentos do locador em busca de aluguéis em atraso —
+  // tanto os já marcados manualmente como "Atrasado" quanto os ainda "Pendente" cujo dia de
+  // vencimento do mês já passou (mesma regra do locAvisos, só que aplicada a cada mês do
+  // histórico, não só o atual). É sobre COBRANÇA (informar o locador quem deve, quanto e desde
+  // quando) — não sobre repasse (isso já existe em "Aluguéis Recebidos a serem Repassados").
+  function inadLocMesJaPassou_(mesStr){
+    var p=String(mesStr||'').split('/'); if(p.length!==2)return false;
+    var mm=parseInt(p[0],10),yyyy=parseInt(p[1],10);
+    var hoje=new Date();
+    return (yyyy<hoje.getFullYear())||(yyyy===hoje.getFullYear()&&mm<(hoje.getMonth()+1));
+  }
+  function inadLocVencimentoData_(mesStr,diaVenc){
+    var p=String(mesStr||'').split('/'); var mm=parseInt(p[0],10),yyyy=parseInt(p[1],10);
+    var ultimoDia=new Date(yyyy,mm,0).getDate();
+    return new Date(yyyy,mm-1,Math.min(diaVenc||1,ultimoDia));
+  }
+  function inadLocEstaAtrasado_(l,c){
+    if(l.statusAluguel==='Atrasado')return true;
+    if(l.statusAluguel!=='Pendente')return false;
+    if(inadLocMesJaPassou_(l.mes))return true; // mês inteiro já ficou pra trás — pendente vira atraso
+    var venc=inadLocVencimentoData_(l.mes,num(c.venc));
+    var hoje=new Date();hoje.setHours(0,0,0,0);
+    return venc<hoje; // mês corrente: só conta se o dia de vencimento já passou
+  }
+  function inadLocDiasAtraso_(l,c){
+    var venc=inadLocVencimentoData_(l.mes,num(c.venc));
+    var hoje=new Date();hoje.setHours(0,0,0,0);
+    return Math.max(0,Math.round((hoje-venc)/86400000));
+  }
+  window.relInadLocAbrir=function(){
+    var nomes={};
+    DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
+    (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var sel=document.getElementById('relInadLocSelect');
+    sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    document.getElementById('relInadLocCard').innerHTML='';
+    document.getElementById('modalRelInadLoc').classList.add('open');
+  };
+  function relInadLocDados_(nome){
+    var imoveis=relLocadorImoveis(nome);
+    var lista=workingList();
+    var blocos=[],totalGeral=0,totalMeses=0;
+    imoveis.forEach(function(im){
+      var c=im.contrato;
+      var atrasados=lista.filter(function(l){return l.contrato===c.contrato&&inadLocEstaAtrasado_(l,c);})
+        .sort(function(a,b){var pa=a.mes.split('/'),pb=b.mes.split('/');return (pa[1]+pa[0]).localeCompare(pb[1]+pb[0]);});
+      if(!atrasados.length)return;
+      var tenants=(window.locColoc||[]).filter(function(o){return o.Contrato===c.contrato;});
+      var tenantsNome=tenants.length?tenants.map(function(t){return t.Nome;}).join(', '):(c.locatario||'—');
+      var itens=atrasados.map(function(l){
+        var valorShare=Math.round((l.aluguel||0)*im.pct/100*100)/100;
+        return {mes:l.mes,valor:valorShare,dias:inadLocDiasAtraso_(l,c),status:l.statusAluguel};
+      });
+      var subtotal=itens.reduce(function(s,it){return s+it.valor;},0);
+      blocos.push({end:c.end,contrato:c.contrato,pct:im.pct,viaCoprop:im.viaCoprop,locatario:tenantsNome,itens:itens,subtotal:Math.round(subtotal*100)/100});
+      totalGeral+=subtotal; totalMeses+=itens.length;
+    });
+    return {nome:nome,blocos:blocos,totalGeral:Math.round(totalGeral*100)/100,totalMeses:totalMeses};
+  }
+  window.relInadLocGerar=function(){
+    var nome=document.getElementById('relInadLocSelect').value;
+    var card=document.getElementById('relInadLocCard');
+    if(!nome){card.innerHTML='';return;}
+    var d=relInadLocDados_(nome);
+    if(!d.blocos.length){
+      card.innerHTML='<div class="loc-note" style="text-align:center;padding:16px">✅ Nenhum aluguel em atraso para este locador no momento.</div>';
+      return;
+    }
+    var blocosHtml=d.blocos.map(function(b,idx){
+      var itensHtml=b.itens.map(function(it){
+        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(255,255,255,.12);font-size:12.5px">'
+          +'<span>'+E(mesExtenso(it.mes))+(it.status==='Atrasado'?' <span style="color:var(--red);font-size:10.5px">(atrasado)</span>':' <span style="color:var(--yellow);font-size:10.5px">(vencido, ainda pendente)</span>')+'</span>'
+          +'<span><strong>'+BRL(it.valor)+'</strong> — '+it.dias+' dia(s)</span>'
+          +'</div>';
+      }).join('');
+      return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
+        +'<div class="parc-box" style="border-left:3px solid var(--red)">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+        +'<div style="font-weight:700;color:var(--accent2);font-size:14px">'+(idx+1)+'. '+E(b.end||'(sem endereço)')+(b.pct<100?' ('+b.pct+'%)':'')+'</div>'
+        +'<div style="font-size:11px;color:var(--red);font-weight:700;white-space:nowrap;margin-left:10px">'+b.itens.length+' mês(es) em aberto</div>'
+        +'</div>'
+        +'<div>Contrato nº <strong>'+E(b.contrato)+'</strong></div>'
+        +'<div>Locatário: <strong>'+E(b.locatario)+'</strong></div>'
+        +'<div style="margin-top:6px">'+itensHtml+'</div>'
+        +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Subtotal em aberto: <strong style="color:var(--red)">'+BRL(b.subtotal)+'</strong></div>'
+        +'</div></div>';
+    }).join('');
+    card.innerHTML=
+      '<div class="parc-header">'
+      +'<div><div class="parc-header-title">Relatório de Inadimplência</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+      +'</div>'
+      +'<div class="parc-body">'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">'+d.blocos.length+' imóvel(is) com pendência, '+d.totalMeses+' mês(es) em aberto no total — emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div>'
+      +blocosHtml
+      +'<div class="parc-section"><div class="parc-section-label">Total Geral em Aberto</div><div class="parc-tarefa-box"><strong style="color:var(--red)">'+BRL(d.totalGeral)+'</strong><div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Soma de todos os meses em atraso, já considerando a fatia de participação em cada imóvel</div></div></div>'
+      +'</div>'
+      +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
+  };
+  function relInadLocMontarTexto_(nome){
+    var d=relInadLocDados_(nome);
+    if(!d.blocos.length)return '';
+    var txt='*RELATÓRIO DE INADIMPLÊNCIA*\n';
+    txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
+    txt+='Emitido em '+new Date().toLocaleDateString('pt-BR')+'\n';
+    txt+='═══════════════════\n\n';
+    txt+='*Locador:* '+nome+'\n';
+    txt+=d.blocos.length+' imóvel(is) com pendência, '+d.totalMeses+' mês(es) em aberto\n\n';
+    d.blocos.forEach(function(b,idx){
+      txt+=(idx+1)+'. *'+(b.end||'(sem endereço)')+'*'+(b.pct<100?' ('+b.pct+'%)':'')+'\n';
+      txt+='Contrato nº '+b.contrato+'\n';
+      txt+='Locatário: '+b.locatario+'\n';
+      b.itens.forEach(function(it){
+        txt+='  '+mesExtenso(it.mes)+' — '+BRL(it.valor)+' — '+it.dias+' dia(s) ('+it.status+')\n';
+      });
+      txt+='Subtotal: '+BRL(b.subtotal)+'\n';
+      txt+='－－－－－－－－－－\n\n';
+    });
+    txt+='\n*TOTAL GERAL EM ABERTO:* '+BRL(d.totalGeral)+'\n\n';
+    txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
+    return txt;
+  }
+  window.relInadLocImprimir=function(){
+    imprimirComClasse_('printing-rel-inad-loc', 200);
+  };
+  window.relInadLocCopiarTexto=function(){
+    var nome=document.getElementById('relInadLocSelect').value;
+    if(!nome){alert('Selecione um locador primeiro.');return;}
+    var texto=relInadLocMontarTexto_(nome);
+    if(!texto){alert('Nenhum aluguel em atraso para este locador — não há o que copiar.');return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){alert('Texto copiado! Já pode colar onde precisar (WhatsApp, e-mail, etc.).');}).catch(function(){alert('Não consegui copiar automaticamente. Selecione o texto na tela e copie manualmente.');});
+    }else{
+      alert('Seu navegador não permite copiar automaticamente. Selecione o texto na tela e copie manualmente.');
+    }
+  };
+  window.relInadLocEnviarWhats=function(){
+    var nome=document.getElementById('relInadLocSelect').value;
+    if(!nome){alert('Selecione um locador primeiro.');return;}
+    var texto=relInadLocMontarTexto_(nome);
+    if(!texto){alert('Nenhum aluguel em atraso para este locador — não há o que enviar.');return;}
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  };
+  window.relInadLocEnviarEmail=function(){
+    var nome=document.getElementById('relInadLocSelect').value;
+    if(!nome){alert('Selecione um locador primeiro.');return;}
+    var texto=relInadLocMontarTexto_(nome);
+    if(!texto){alert('Nenhum aluguel em atraso para este locador — não há o que enviar.');return;}
+    abrirEmailFlex('Relatório de Inadimplência — '+nome, texto);
   };
 
   // ---------- RELATÓRIO MENSAL DE REPASSES (extrato financeiro de um mês específico) ----------
