@@ -11105,7 +11105,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="cobr-body" style="grid-template-columns:1fr">
       <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Calcula a multa (percentual fixo sobre o valor em atraso, não cresce por dia) e os juros de mora (percentual ao mês, pro rata die, a partir do vencimento) — e insere os dois valores nos campos "Multa (R$)" e "Juros (R$)" deste lançamento.</div>
 
-      <div class="loc-cfield full"><label>Valor base do cálculo (R$) <span style="font-weight:400;color:var(--muted)">— normalmente o aluguel do mês; ajuste se o contrato mandar incluir encargos</span></label><input class="loc-cinput" id="calcmj-base" type="text" inputmode="decimal" placeholder="0,00" oninput="calcMultaJurosAtualizar()"></div>
+      <div class="loc-cfield full"><label>Valor base do cálculo (R$) <span style="font-weight:400;color:var(--muted)">— já vem com aluguel + todos os encargos do mês (condomínio, IPTU, outras cobranças...); ajuste se precisar</span></label><input class="loc-cinput" id="calcmj-base" type="text" inputmode="decimal" placeholder="0,00" oninput="calcMultaJurosAtualizar()"></div>
       <div class="loc-cfield"><label>Data de vencimento</label><input class="loc-cinput" id="calcmj-venc" type="date" onchange="calcMultaJurosAtualizar()"></div>
       <div class="loc-cfield"><label>Data de pagamento (ou de hoje, se ainda em aberto)</label><input class="loc-cinput" id="calcmj-pagto" type="date" onchange="calcMultaJurosAtualizar()"></div>
 
@@ -11350,6 +11350,10 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="parcelado">Parcelado (valores podem ser diferentes)</option>
         </select></div>
         <div class="loc-cfield full" id="locLoc-vista-wrap"><label>Valor (R$) — negativo desconta, positivo é crédito a favor dele</label><input class="loc-cinput" id="locLoc-valor" type="text" inputmode="decimal" placeholder="-5000,00"></div>
+        <div class="loc-cfield full" id="locLoc-mesfixo-wrap" style="display:none"><label>Este lançamento tem mês fixo?</label><select class="loc-cinput" id="locLoc-mesfixo">
+          <option value="Nao">Não — aparece em qualquer mês pendente, até ser quitado</option>
+          <option value="Sim">Sim — só entra no Relatório Mensal de Repasses do mês da data acima</option>
+        </select></div>
         <div class="loc-cfield full" id="locLoc-parcelas-wrap" style="display:none">
           <label>Parcelas — cada uma com seu valor (negativo desconta, positivo é crédito)</label>
           <div id="locLoc-parcelas-lista"></div>
@@ -13339,11 +13343,30 @@ window.cpRenderFixas=cpRenderFixas;
   function dataISO_(d){
     return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   }
+  // Soma aluguel + todos os encargos do mês (condomínio, água, gás, energia, taxa de leitura,
+  // fundo de férias, 13º, IPTU, outras cobranças com destino != "só entre você e o locatário",
+  // já descontando o desconto) — LÊ DIRETO DOS CAMPOS DO FORMULÁRIO (não do lançamento salvo),
+  // pra já refletir qualquer ajuste feito na tela antes de abrir a calculadora. Não inclui multa
+  // nem juros (são o que está sendo calculado) nem taxa de administração (não é cobrada do
+  // inquilino, é o valor do escritório — não faz parte da base de mora dele).
+  function cobrBaseAluguelEncargosAtual_(){
+    var base=num(document.getElementById('cobr-aluguel-mes').value);
+    COBR_CAMPOS_NUM.forEach(function(p){
+      if(p[1]==='multa'||p[1]==='juros')return;
+      var v=num(document.getElementById(p[0]).value);
+      base+=(p[1]==='desconto')?-v:v;
+    });
+    Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).forEach(function(div){
+      var destinoEl=div.querySelector('.cobr-item-destino');
+      if(destinoEl&&destinoEl.value==='escritorio')return;
+      base+=num(div.querySelector('.cobr-item-valor').value);
+    });
+    return base;
+  }
   window.abrirCalcMultaJuros=function(){
     var contrato=document.getElementById('cobr-contrato').value;
     var c=contratosById[contrato]||{};
-    var aluguelMes=num(document.getElementById('cobr-aluguel-mes').value)||num(c.aluguel);
-    document.getElementById('calcmj-base').value=aluguelMes.toFixed(2);
+    document.getElementById('calcmj-base').value=cobrBaseAluguelEncargosAtual_().toFixed(2);
     var mesLancamento=selMes||mesAtual();
     var vencData=inadLocVencimentoData_(mesLancamento,num(c.venc));
     document.getElementById('calcmj-venc').value=dataISO_(vencData);
@@ -14026,7 +14049,7 @@ window.cpRenderFixas=cpRenderFixas;
     try{
       var cfg=getConfig();
       if(!cfg||!cfg.apiKey||!cfg.sheetId){window.locLocCache=[];window.locLocErroCarregar=false;return;}
-      var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:I500')+'?key='+cfg.apiKey);
+      var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:J500')+'?key='+cfg.apiKey);
       if(!r.ok){window.locLocErroCarregar=true;return;} // mantém o cache anterior — não apaga o que já tinha carregado
       var d=await r.json();
       var rows=d.values||[];
@@ -14219,6 +14242,13 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locLoc-data').value=p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):'';
     window.locLocMontarSelectImovel_();
     document.getElementById('locLoc-imovel').value=String(it['Imovel']||'').trim();
+    // "Mes Fixo" pode estar em branco (lançamento antigo, de antes deste campo existir) — nesse
+    // caso, sugere o valor a partir do critério antigo (descrição terminando em "(N/M)"), só
+    // como ponto de partida; o usuário confirma ou corrige explicitamente aqui.
+    var mesFixoRaw=String(it['Mes Fixo']||'').trim().toLowerCase();
+    var mesFixoSugerido=mesFixoRaw==='sim'?'Sim':mesFixoRaw==='nao'?'Nao':(/\(\d+\/\d+\)\s*$/.test(String(it['Descricao']||''))?'Sim':'Nao');
+    document.getElementById('locLoc-mesfixo').value=mesFixoSugerido;
+    document.getElementById('locLoc-mesfixo-wrap').style.display='';
     document.getElementById('locLoc-editando-aviso').style.display='';
     document.getElementById('locLoc-btn-salvar').textContent='💾 Salvar alterações';
     document.getElementById('locLoc-btn-cancelar').style.display='';
@@ -14231,6 +14261,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locLoc-data').value='';
     document.getElementById('locLoc-imovel').value='';
     document.getElementById('locLoc-forma-wrap').style.display='';
+    document.getElementById('locLoc-mesfixo-wrap').style.display='none';
     document.getElementById('locLoc-editando-aviso').style.display='none';
     document.getElementById('locLoc-btn-salvar').textContent='+ Adicionar lançamento';
     document.getElementById('locLoc-btn-cancelar').style.display='none';
@@ -14247,12 +14278,13 @@ window.cpRenderFixas=cpRenderFixas;
       var id=window._locLocEditId;
       var valorEdit=num(document.getElementById('locLoc-valor').value);
       if(!valorEdit){alert('Preencha o valor.');return;}
+      var mesFixoEdit=document.getElementById('locLoc-mesfixo').value;
       var itCache=(window.locLocCache||[]).find(function(x){return String(x['ID'])===String(id);});
-      if(itCache){itCache['Descricao']=desc;itCache['Valor']=valorEdit;itCache['Data']=dataBR;itCache['Imovel']=imovel;}
+      if(itCache){itCache['Descricao']=desc;itCache['Valor']=valorEdit;itCache['Data']=dataBR;itCache['Imovel']=imovel;itCache['Mes Fixo']=mesFixoEdit;}
       locLocCancelarEdicao();
       locLocRender();
       try{
-        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locloc',id:id,campos:{'Descricao':desc,'Valor':valorEdit,'Data':dataBR,'Imovel':imovel}})});
+        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locloc',id:id,campos:{'Descricao':desc,'Valor':valorEdit,'Data':dataBR,'Imovel':imovel,'Mes Fixo':mesFixoEdit}})});
       }catch(e){}
       setTimeout(function(){carregarLocLoc().then(locLocRender);},1500);
       return;
@@ -14264,16 +14296,21 @@ window.cpRenderFixas=cpRenderFixas;
       // em partes iguais (ex.: R$2.500 em R$2.000 + R$500).
       var valoresParcelas=Array.from(document.querySelectorAll('#locLoc-parcelas-lista .locloc-parcela-valor')).map(function(inp){return num(inp.value);}).filter(function(v){return v;});
       if(valoresParcelas.length<1){alert('Informe o valor de pelo menos 1 parcela.');return;}
+      // "Parcelado" SEMPRE grava com mês fixo — cada parcela só deve entrar no relatório do mês
+      // da sua própria data (mesmo quando é uma parcela só, usada de propósito pra descontar de
+      // um mês específico apenas).
       valoresParcelas.forEach(function(v,i){
-        novos.push({desc:desc+' ('+(i+1)+'/'+valoresParcelas.length+')',valor:v,data:locLocSomarMeses(dataBR,i)});
+        novos.push({desc:desc+' ('+(i+1)+'/'+valoresParcelas.length+')',valor:v,data:locLocSomarMeses(dataBR,i),mesFixo:'Sim'});
       });
     }else{
       var valor=num(document.getElementById('locLoc-valor').value);
       if(!valor){alert('Preencha o valor.');return;}
-      novos.push({desc:desc,valor:valor,data:dataBR});
+      // "À vista" não tem mês fixo por padrão — continua aparecendo em qualquer mês pendente,
+      // até ser quitado (não tem uma competência definida).
+      novos.push({desc:desc,valor:valor,data:dataBR,mesFixo:'Nao'});
     }
     novos.forEach(function(n){
-      var temp={ID:'tmp'+Date.now()+Math.random(),Locador:nome,Descricao:n.desc,Valor:n.valor,Data:n.data,Status:'Pendente',Imovel:imovel};
+      var temp={ID:'tmp'+Date.now()+Math.random(),Locador:nome,Descricao:n.desc,Valor:n.valor,Data:n.data,Status:'Pendente',Imovel:imovel,'Mes Fixo':n.mesFixo};
       window.locLocCache.unshift(temp);
     });
     document.getElementById('locLoc-desc').value='';
@@ -14283,7 +14320,7 @@ window.cpRenderFixas=cpRenderFixas;
     for(var j=0;j<novos.length;j++){
       var n2=novos[j];
       try{
-        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':n2.desc,'Valor':n2.valor,'Data':n2.data,'Status':'Pendente','Imovel':imovel}})});
+        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':n2.desc,'Valor':n2.valor,'Data':n2.data,'Status':'Pendente','Imovel':imovel,'Mes Fixo':n2.mesFixo}})});
       }catch(e){}
     }
     setTimeout(function(){carregarLocLoc().then(locLocRender);},1500);
@@ -14308,8 +14345,14 @@ window.cpRenderFixas=cpRenderFixas;
     return (window.locLocCache||[]).filter(function(x){
       if(String(x['Locador']||'').trim()!==nome)return false;
       if(String(x['Status']).toLowerCase()==='quitado')return false;
-      var ehParcela=/\(\d+\/\d+\)\s*$/.test(String(x['Descricao']||''));
-      if(!ehParcela)return true;
+      // "Mes Fixo" é o critério oficial (Sim = só entra no mês da Data; Nao = entra em qualquer
+      // mês pendente). Lançamentos antigos, de antes deste campo existir, ficam em branco — pra
+      // esses, cai no critério antigo (olhar se a Descricao termina em "(N/M)"), só por
+      // compatibilidade. Corrija-os uma vez em "✎ editar" e marcando o mês fixo certo — depois
+      // disso passam a usar o campo, não mais o texto da descrição.
+      var mesFixoRaw=String(x['Mes Fixo']||'').trim().toLowerCase();
+      var temMesFixo=mesFixoRaw==='sim'?true:mesFixoRaw==='nao'?false:/\(\d+\/\d+\)\s*$/.test(String(x['Descricao']||''));
+      if(!temMesFixo)return true;
       var p=String(x['Data']||'').split('/');
       if(p.length!==3)return true;
       var mesEntrada=p[1]+'/'+p[2];
