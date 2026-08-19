@@ -2373,7 +2373,21 @@
 </style>
 </head>
 <body>
+<!-- Saída de emergência do "modo impressão" (ver imprimirComClasse_): fica escondido o tempo
+     todo, só aparece quando alguma classe "printing-*" está no body (ver CSS mais abaixo).
+     Serve pra quem ficar preso na tela isolada/em branco de impressão caso os gatilhos
+     automáticos de limpeza (afterprint, aba voltando a ficar visível, tecla Esc, limite de
+     15s) por algum motivo não disparem — sem isto, a única saída seria recarregar a página
+     inteira (perdendo o que estivesse em andamento). Fica de fora do "body > * {display:none}"
+     porque tem uma regra específica liberando só ele. -->
+<button id="printEscapeBtn" type="button" onclick="window.sairModoImpressao_()" style="display:none;position:fixed;top:12px;right:12px;z-index:2147483647;background:#1a2a4a;color:#fff;border:none;border-radius:20px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35)">✕ Voltar ao sistema</button>
 <script>
+  // Botão de emergência acima: remove qualquer classe "printing-*" do body na marra, mesmo que
+  // o fechamento automático (afterprint/visibilitychange/Esc/timeout, em imprimirComClasse_)
+  // não tenha disparado por algum motivo — evita ter que recarregar a página inteira.
+  window.sairModoImpressao_ = function () {
+    document.body.className = document.body.className.split(' ').filter(function (c) { return c.indexOf('printing-') !== 0; }).join(' ');
+  };
   // Converte texto digitado com vírgula OU ponto pra número — usada em todos os campos
   // de valor do sistema (agora todos aceitam os dois formatos, não só os de Locações/Acordos
   // que já tinham isso). Fica em window pra estar disponível em qualquer bloco de script.
@@ -6067,16 +6081,31 @@ function limparRecibo() {
 function imprimirComClasse_(classe, delay) {
   document.body.classList.add(classe);
   setTimeout(function () {
-    window.print();
     var jaLimpou = false;
     function limpar() {
       if (jaLimpou) return;
       jaLimpou = true;
       document.body.classList.remove(classe);
       window.removeEventListener('afterprint', limpar);
+      document.removeEventListener('visibilitychange', limparSeVisivel);
+      document.removeEventListener('keydown', limparNoEsc);
     }
+    // 'afterprint' é o gatilho principal (dispara ao fechar a caixa de impressão/PDF), mas
+    // não é 100% confiável em todo navegador/fluxo (ex.: caixa de impressão do sistema
+    // operacional em vez da do navegador). Por isso tem mais duas redes de segurança: a aba
+    // voltando a ficar visível (a pessoa fechou a caixa e voltou pro app) e a tecla Esc (saída
+    // manual, caso a pessoa fique presa na tela branca antes de qualquer um dos gatilhos
+    // automáticos disparar) — além do tempo limite de 15s já existente.
+    function limparSeVisivel() { if (document.visibilityState === 'visible') limpar(); }
+    function limparNoEsc(e) { if (e.key === 'Escape') limpar(); }
     window.addEventListener('afterprint', limpar);
-    setTimeout(limpar, 15000);
+    document.addEventListener('visibilitychange', limparSeVisivel);
+    document.addEventListener('keydown', limparNoEsc);
+    try {
+      window.print();
+    } finally {
+      setTimeout(limpar, 15000);
+    }
   }, delay || 300);
 }
 window.imprimirComClasse_ = imprimirComClasse_;
@@ -10439,6 +10468,7 @@ window.cpRenderFixas=cpRenderFixas;
           <button class="loc-btn" id="btnLocRepasse" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locToggleRepasse()">👥 Repasse por locador (mês)</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relLocadorAbrir()">📄 Imóveis do Locador</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';relMensalAbrir()">💰 Aluguéis Recebidos a serem Repassados</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';informesLoteAbrir()" title="Gera o Informe de Repasse de todos os imóveis de um locador de uma vez, pra imprimir/PDF junto">🖨 Todos os Informes de Repasse</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';locAuditoriaAbrir()">📜 Histórico</button>
           <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('locMenuRelatorios').style.display='none';avisoAbrir()">✉️ Cartas</button>
         </div>
@@ -10845,6 +10875,63 @@ window.cpRenderFixas=cpRenderFixas;
 </div>
 
 <style>
+  /* Enquanto qualquer impressão está em andamento (qualquer classe "printing-*" no body), o
+     fundo já vira branco (regras mais abaixo) antes mesmo da caixa de impressão abrir — mas
+     sem isto aqui, as cores do conteúdo continuam sendo as da TELA: tanto as variáveis do
+     modo escuro quanto, principalmente, as cores FIXAS (não var()) usadas nos cartões
+     ".parc-*" (repasse, informe, relatório do locador etc.), que foram pensadas pra ficar em
+     cima do fundo escuro do próprio cartão — não do papel branco. Isso deixa o texto
+     praticamente ilegível (pastel claro sobre fundo branco) no instante entre clicar em
+     "Imprimir" e a caixa de impressão realmente abrir — e, se por qualquer motivo a limpeza
+     automática depois de imprimir falhar (ver imprimirComClasse_, que depende do evento
+     'afterprint'), a pessoa fica presa nessa tela ilegível até recarregar a página, já que o
+     resto da interface (inclusive o botão de fechar) também fica escondido nesse estado.
+     Por isso repete aqui, fora do @media print, exatamente as mesmas correções de cor que já
+     existem lá (variáveis de tema E as cores fixas dos cartões .parc-*) — cobrindo a tela
+     inteira desde o instante em que a classe é aplicada até ser removida, não só o PDF
+     gerado em si. Vale pra qualquer impressão atual ou futura que use var(--cor) ou as
+     classes .parc-* e .resc-*. */
+  body[class*="printing-"] {
+    --bg: #eef3f9; --surface: #ffffff; --surface2: #eef4fb;
+    --border: #dde7f3; --border2: #c7d7ea; --text: #16233a; --muted: #5c6f8a;
+    --accent: #2f6fb3; --accent2: #1b3a5c; --red: #d1454a; --orange: #d9772f;
+    --yellow: #c99a1c; --green: #2f9d68; --blue: #3b7dd8; --purple: #7d5cd6;
+  }
+  /* Libera o botão de emergência (ver #printEscapeBtn, logo no início do <body>) mesmo com a
+     regra "body[class*=printing-] > * {display:none}" ativa em cada bloco de impressão — sem
+     isso ele nunca apareceria justamente na hora em que é necessário. */
+  body[class*="printing-"] #printEscapeBtn { display: block !important; }
+  body[class*="printing-"] .parc-header { background: #e8eef7 !important; border-bottom: 2px solid #5b8dee !important; }
+  body[class*="printing-"] .parc-card {
+    background: #fff !important; border: 1px solid #d8dee8 !important; overflow: visible !important;
+    --text: #16233a !important; --muted: #5c6f8a !important; --accent: #2f6fb3 !important; --accent2: #1b3a5c !important;
+    --red: #d1454a !important; --green: #2f9d68 !important; --orange: #d9772f !important; --border2: #c7d7ea !important; --surface2: #eef4fb !important;
+  }
+  body[class*="printing-"] .parc-header-title { color: #1a2a4a !important; }
+  body[class*="printing-"] .parc-header-sub { color: #4a5a7a !important; }
+  body[class*="printing-"] .parc-footer { background: #f4f6f9 !important; border-top: 1px solid #c8d0dc !important; color: #5a6578 !important; }
+  body[class*="printing-"] .parc-section-label { color: #5a7bab !important; }
+  body[class*="printing-"] .parc-section-label::before { background: #3a6ac8 !important; }
+  body[class*="printing-"] .parc-processo-nome { color: #1a2a4a !important; }
+  body[class*="printing-"] .parc-processo-num { color: #3a6ac8 !important; }
+  body[class*="printing-"] .parc-processo-meta { color: #4a6585 !important; }
+  body[class*="printing-"] .parc-box { background: #eef2fa !important; border-color: #c8d4e8 !important; color: #2d3b52 !important; }
+  body[class*="printing-"] .parc-box strong, body[class*="printing-"] .parc-box b { color: #142440 !important; }
+  body[class*="printing-"] .parc-tarefa-box { background: #fbf3e3 !important; border-color: #d4a017 !important; color: #6b5116 !important; }
+  body[class*="printing-"] .parc-tarefa-box strong, body[class*="printing-"] .parc-tarefa-box b { color: #4a3810 !important; }
+  body[class*="printing-"] .parc-body [style*="color:#8"], body[class*="printing-"] .parc-body [style*="color:#9"], body[class*="printing-"] .parc-body [style*="color:#a"],
+  body[class*="printing-"] .parc-body [style*="color:#b"], body[class*="printing-"] .parc-body [style*="color:#c"], body[class*="printing-"] .parc-body [style*="color:#d"],
+  body[class*="printing-"] .parc-body [style*="color:#e"], body[class*="printing-"] .parc-body [style*="color:#f"] { color: #2d3b52 !important; }
+  body[class*="printing-"] .rel-imovel-bloco [style*="color:var(--accent2)"] { color: #1a2a4a !important; }
+  body[class*="printing-"] .rel-imovel-bloco [style*="color:var(--green)"] { color: #1a7a3a !important; }
+  body[class*="printing-"] .rel-imovel-bloco [style*="color:var(--red)"] { color: #b02a2a !important; }
+  body[class*="printing-"] .parc-tarefa-box [style*="color:#c8d8f0"] { color: #6b5116 !important; }
+  body[class*="printing-"] .parc-body [style*="color:#8fadd4"] { color: #4a6585 !important; }
+  body[class*="printing-"] .parc-body [style*="color:#f2d3b0"] { color: #8a5a1a !important; }
+  body[class*="printing-"] .resc-line .desc { color: #1a2a4a !important; }
+  body[class*="printing-"] .resc-badge { background: rgba(58,106,200,0.12) !important; color: #1a3a6a !important; }
+  body[class*="printing-"] .resc-sec { color: #1a2a4a !important; border-bottom-color: rgba(58,106,200,0.25) !important; }
+  body[class*="printing-"] .resc-subtotal { color: #1a2a4a !important; background: rgba(58,106,200,0.08) !important; }
   body.printing-recibo-acordo * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-rel-locador * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-rel-locador html, body.printing-rel-locador body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
@@ -10880,6 +10967,23 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-mensal .rel-imovel-bloco,
   body.printing-rel-mensal .parc-header,
   body.printing-rel-mensal .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body.printing-informes-lote * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-informes-lote html, body.printing-informes-lote body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-informes-lote > * { display:none !important; }
+  body.printing-informes-lote #modalInformesLote {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+  }
+  body.printing-informes-lote #modalInformesLote .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-informes-lote .parceiro-toolbar,
+  body.printing-informes-lote .entr-no-print { display:none !important; }
+  body.printing-informes-lote .rel-imovel-bloco,
+  body.printing-informes-lote .parc-header,
+  body.printing-informes-lote .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-aviso-loc html, body.printing-aviso-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-aviso-loc > * { display:none !important; }
   body.printing-aviso-loc #modalAvisoLoc {
@@ -11199,6 +11303,28 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-email" onclick="relMensalEnviarEmail()">✉️ E-mail</button>
       <button class="btn-recibo-print" onclick="relMensalImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="relMensalCopiarTexto()">📋 Copiar texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPRIMIR TODOS OS INFORMES DE REPASSE DE UM LOCADOR (um por imóvel dele, de uma vez só) -->
+<div class="modal-repasse-overlay" id="modalInformesLote">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">🖨 Todos os Informes de Repasse</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalInformesLote').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print">
+      <div class="loc-note" style="margin-bottom:14px">Gera o Informe de Repasse individual de <strong>cada imóvel</strong> deste locador no mês escolhido (um por coproprietário, quando for o caso), um atrás do outro — pra imprimir ou salvar tudo junto num PDF só e enviar de uma vez. Só entram os imóveis já com aluguel recebido e ainda não repassados (mesmo critério do Relatório Mensal de Repasses).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <select class="loc-cinput" id="informesLoteLocadorSelect" style="flex:2;min-width:200px" onchange="informesLoteGerar()"></select>
+        <select class="loc-cinput" id="informesLoteMesSelect" style="flex:1;min-width:120px" onchange="informesLoteGerar()"></select>
+      </div>
+      <div id="informesLoteResumo" style="margin-top:10px;font-size:12.5px;color:var(--muted)"></div>
+    </div>
+    <div id="informesLoteCards" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-recibo-print" onclick="informesLoteImprimir()">🖨 Imprimir/PDF (todos)</button>
     </div>
   </div>
 </div>
@@ -13875,6 +14001,108 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.relMensalImprimir=function(){
     imprimirComClasse_('printing-rel-mensal', 200);
+  };
+
+  // ---------- IMPRIMIR TODOS OS INFORMES DE REPASSE DE UM LOCADOR DE UMA VEZ ----------
+  // Monta o card HTML do Informe de Repasse de UM imóvel específico (im = item de
+  // relLocadorImoveis, já com {contrato,pct,viaCoprop}), no mês dado, endereçado só ao
+  // "nomeAlvo" (o locador escolhido no seletor) — mesmo se o imóvel tiver outros
+  // coproprietários, só entra a parte do nomeAlvo (evita imprimir o informe de terceiros
+  // que não têm nada a ver com quem foi selecionado). Retorna null se o imóvel não estiver
+  // apto a repassar neste mês (mesmo critério do Relatório Mensal de Repasses: aluguel já
+  // recebido e ainda não repassado) — não é considerado erro, só significa "não entra".
+  function montarInformeRepasseCardHtml_(im,mes,nomeAlvo){
+    var c=im.contrato;
+    var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
+    if(!w)return null;
+    if(w.statusAluguel!=='Recebido')return null;
+    if(w.statusRep==='Repassado')return null;
+
+    var tenants=(window.locColoc||[]).filter(function(o){return o.Contrato===c.contrato;});
+    var tenantsBoxHtml=tenants.length
+      ? tenants.map(function(t){return E(t.Nome)+' — CPF/CNPJ: '+E(t.CPF_CNPJ||'—');}).join('<br>')
+      : E(c.locatario||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocatario||'—');
+    var tenantsLabel='Locatário'+(tenants.length>1?'s (responsáveis solidários)':'');
+    var observacaoTxt=w.observacoesLocador||'';
+    var observacaoSection=observacaoTxt?'<div class="parc-section"><div class="parc-section-label">Observação</div><div class="parc-box">'+E(observacaoTxt).replace(/\n/g,'<br>')+'</div></div>':'';
+
+    var valoresHtml,totalLabel,totalValor,totalRodape,contaHtml,ownerLabel,ownerNome;
+    if(im.viaCoprop){
+      var owner=(window.locCoprop||[]).filter(function(o){return o.Contrato===c.contrato&&String(o.Nome||'').trim()===nomeAlvo;})[0];
+      if(!owner)return null;
+      var d=reciboLocDadosProprietario(w,c,owner);
+      valoresHtml=d.valoresHtml; totalLabel=d.totalLabel; totalValor=d.totalValor; totalRodape=d.totalRodape; contaHtml=d.contaHtml;
+      ownerLabel='Proprietário'; ownerNome=owner.Nome;
+    }else{
+      var itensCondoLocador=reciboLocItensCondo(w,true);
+      var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
+      var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel acima, mês de referência indicado.</div>';
+      valoresHtml=introValores
+        +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
+        +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
+        +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
+        +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
+        +linhasCondoRep
+        +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
+        +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
+      totalLabel='Total repassado'; totalValor=effRep(w);
+      totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
+      contaHtml=reciboLocContaHtml({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
+      ownerLabel='Locador'; ownerNome=c.locador||'—';
+    }
+
+    return '<div class="parc-card rel-imovel-bloco" style="margin-bottom:18px;page-break-after:always;break-after:page">'
+      +'<div class="parc-header"><div><div class="parc-header-title">Informe de Repasse</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
+      +'<div class="parc-body">'
+      +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato)+' — Ref. '+E(w.mes)+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">'+ownerLabel+'</div><div class="parc-box">'+E(ownerNome)+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Valores</div><div class="parc-box">'+valoresHtml+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">'+totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(totalValor)+'</strong>'+totalRodape+'</div></div>'
+      +observacaoSection
+      +'<div class="parc-section" style="margin-bottom:0"><div class="parc-section-label">'+(im.viaCoprop?'Dados bancários do proprietário (repasse)':'Dados bancários do locador (repasse)')+'</div><div class="parc-box">'+contaHtml+'</div></div>'
+      +'</div>'
+      +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>'
+      +'</div>';
+  }
+  window.informesLoteAbrir=function(){
+    var nomes={};
+    DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
+    (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
+    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var selLoc=document.getElementById('informesLoteLocadorSelect');
+    selLoc.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    var meses=mesesDisponiveis();
+    var selMesEl=document.getElementById('informesLoteMesSelect');
+    selMesEl.innerHTML=meses.map(function(m){return '<option value="'+m+'">'+E(mesExtenso(m))+'</option>';}).join('');
+    if(meses.indexOf(selMes)>=0)selMesEl.value=selMes;
+    document.getElementById('informesLoteCards').innerHTML='';
+    document.getElementById('informesLoteResumo').textContent='';
+    document.getElementById('modalInformesLote').classList.add('open');
+  };
+  window.informesLoteGerar=function(){
+    var nome=document.getElementById('informesLoteLocadorSelect').value;
+    var mes=document.getElementById('informesLoteMesSelect').value;
+    var host=document.getElementById('informesLoteCards');
+    var resumo=document.getElementById('informesLoteResumo');
+    if(!nome||!mes){host.innerHTML='';resumo.textContent='';return;}
+    var imoveis=relLocadorImoveis(nome);
+    var cardsHtml='',informes=0,pulados=0;
+    imoveis.forEach(function(im){
+      var html=montarInformeRepasseCardHtml_(im,mes,nome);
+      if(html){cardsHtml+=html;informes++;}else{pulados++;}
+    });
+    if(!informes){
+      host.innerHTML='<div class="loc-note">Nenhum imóvel apto a repassar neste mês para este locador'+(pulados?' ('+pulados+' com aluguel pendente/atrasado ou já repassado)':'')+'.</div>';
+      resumo.textContent='';
+      return;
+    }
+    host.innerHTML=cardsHtml;
+    resumo.textContent=informes+' informe(s) de repasse pronto(s) pra imprimir/gerar PDF'+(pulados?' — '+pulados+' imóvel(is) não incluído(s) (pendente/atrasado ou já repassado)':'')+'.';
+  };
+  window.informesLoteImprimir=function(){
+    if(!document.getElementById('informesLoteCards').innerHTML.trim()){alert('Selecione o locador e o mês, e gere os informes primeiro.');return;}
+    imprimirComClasse_('printing-informes-lote', 250);
   };
 
   // ---------- AVISOS AO LOCATÁRIO/LOCADOR ----------
