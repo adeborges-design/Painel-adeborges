@@ -10651,7 +10651,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="text" inputmode="decimal" placeholder="Ex.: 2"></div>
-        <div class="loc-cfield"><label>&nbsp;</label><input class="loc-cinput" id="lc-spacer" style="visibility:hidden"></div>
+        <div class="loc-cfield"><label>Juros de mora (% ao mês)</label><input class="loc-cinput" id="lc-juros-mora-pct" type="text" inputmode="decimal" placeholder="Ex.: 1"></div>
         <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
         <div class="loc-cform-actions">
           <span class="msg" id="lc-msg"></span>
@@ -10714,7 +10714,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="cobr-secao full">IPTU</div>
         <div class="loc-cfield"><label>Parcela deste mês (R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('cobr-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="cobr-iptu" type="text" inputmode="decimal" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
 
-        <div class="cobr-secao full">Multa e juros (sobre o aluguel)</div>
+        <div class="cobr-secao full">Multa e juros (sobre o aluguel) <a href="javascript:void(0)" onclick="abrirCalcMultaJuros()" style="font-size:11px;text-decoration:underline;color:var(--accent2);font-weight:400;text-transform:none;letter-spacing:0">📐 calcular por dias de atraso</a></div>
         <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
         <div class="loc-cfield"><label>Juros (R$)</label><input class="loc-cinput" id="cobr-juros" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
 
@@ -11084,6 +11084,41 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="loc-cfield full" style="text-align:right">
         <button class="loc-btn primary" onclick="calcIptuUsar2()">✓ Usar este valor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALCULADORA DE MULTA E JUROS POR ATRASO -->
+<div class="modal-cobr-overlay" id="modalCalcMultaJuros">
+  <div class="cobr-wrap" style="max-width:520px">
+    <div class="cobr-header">
+      <div class="cobr-title">📐 Calculadora de Multa e Juros por Atraso</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCalcMultaJuros').classList.remove('open')">✕</button>
+    </div>
+    <div class="cobr-body" style="grid-template-columns:1fr">
+      <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Calcula a multa (percentual fixo sobre o valor em atraso, não cresce por dia) e os juros de mora (percentual ao mês, pro rata die, a partir do vencimento) — e insere os dois valores nos campos "Multa (R$)" e "Juros (R$)" deste lançamento.</div>
+
+      <div class="loc-cfield full"><label>Valor base do cálculo (R$) <span style="font-weight:400;color:var(--muted)">— normalmente o aluguel do mês; ajuste se o contrato mandar incluir encargos</span></label><input class="loc-cinput" id="calcmj-base" type="text" inputmode="decimal" placeholder="0,00" oninput="calcMultaJurosAtualizar()"></div>
+      <div class="loc-cfield"><label>Data de vencimento</label><input class="loc-cinput" id="calcmj-venc" type="date" onchange="calcMultaJurosAtualizar()"></div>
+      <div class="loc-cfield"><label>Data de pagamento (ou de hoje, se ainda em aberto)</label><input class="loc-cinput" id="calcmj-pagto" type="date" onchange="calcMultaJurosAtualizar()"></div>
+
+      <div class="cobr-secao full" style="margin-top:6px">Multa</div>
+      <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="calcmj-pct-multa" type="text" inputmode="decimal" placeholder="Ex.: 2" oninput="calcMultaJurosAtualizar()"></div>
+      <div class="loc-cfield"><label style="display:flex;gap:6px;align-items:center;cursor:pointer;margin-top:22px"><input type="checkbox" id="calcmj-cobra-multa" checked onchange="calcMultaJurosAtualizar()"> Cobrar multa neste lançamento</label></div>
+
+      <div class="cobr-secao full">Juros de mora</div>
+      <div class="loc-cfield"><label>Juros de mora (% ao mês)</label><input class="loc-cinput" id="calcmj-pct-juros" type="text" inputmode="decimal" placeholder="Ex.: 1" oninput="calcMultaJurosAtualizar()"></div>
+      <div class="loc-cfield"><label style="display:flex;gap:6px;align-items:center;cursor:pointer;margin-top:22px"><input type="checkbox" id="calcmj-cobra-juros" checked onchange="calcMultaJurosAtualizar()"> Cobrar juros neste lançamento</label></div>
+
+      <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+        <div id="calcmj-dias" style="font-size:12px;color:#5c6f8a;line-height:1.6">0 dia(s) de atraso</div>
+        <div style="margin-top:6px;font-size:13px">Multa: <strong id="calcmj-result-multa" style="color:var(--accent2)">R$ 0,00</strong></div>
+        <div style="margin-top:2px;font-size:13px">Juros: <strong id="calcmj-result-juros" style="color:var(--accent2)">R$ 0,00</strong></div>
+        <div style="margin-top:6px;font-size:15px">Total: <strong id="calcmj-result-total" style="color:var(--accent2)">R$ 0,00</strong></div>
+      </div>
+      <div class="loc-cfield full" style="text-align:right">
+        <button class="loc-btn primary" onclick="calcMultaJurosUsar()">✓ Usar multa e juros calculados</button>
       </div>
     </div>
   </div>
@@ -12331,7 +12366,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
@@ -13225,6 +13260,69 @@ window.cpRenderFixas=cpRenderFixas;
   document.addEventListener('DOMContentLoaded',function(){
     var mci=document.getElementById('modalCalcIptu');
     if(mci)mci.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+  });
+
+  // ---------- CALCULADORA DE MULTA E JUROS POR ATRASO ----------
+  // Multa: percentual fixo (cláusula penal) sobre o valor base — não cresce com os dias de
+  // atraso, é devida uma vez só a partir da mora. Juros de mora: percentual ao mês, pro rata
+  // die (simples) desde o vencimento até a data de pagamento/cálculo informada. Os dois
+  // percentuais vêm pré-preenchidos do contrato (Multa por atraso % / Juros de mora % ao mês),
+  // mas ficam editáveis aqui — o valor final só é gravado quando o usuário clica "Usar".
+  function hojeISO_(){
+    var d=new Date();
+    return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+  }
+  function dataISO_(d){
+    return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+  }
+  window.abrirCalcMultaJuros=function(){
+    var contrato=document.getElementById('cobr-contrato').value;
+    var c=contratosById[contrato]||{};
+    var aluguelMes=num(document.getElementById('cobr-aluguel-mes').value)||num(c.aluguel);
+    document.getElementById('calcmj-base').value=aluguelMes.toFixed(2);
+    var mesLancamento=selMes||mesAtual();
+    var vencData=inadLocVencimentoData_(mesLancamento,num(c.venc));
+    document.getElementById('calcmj-venc').value=dataISO_(vencData);
+    document.getElementById('calcmj-pagto').value=hojeISO_();
+    document.getElementById('calcmj-pct-multa').value=num(c.multaAtrasoPct)||'';
+    document.getElementById('calcmj-pct-juros').value=num(c.jurosMoraPct)||'';
+    document.getElementById('calcmj-cobra-multa').checked=true;
+    document.getElementById('calcmj-cobra-juros').checked=true;
+    calcMultaJurosAtualizar();
+    document.getElementById('modalCalcMultaJuros').classList.add('open');
+  };
+  window.calcMultaJurosAtualizar=function(){
+    var base=num(document.getElementById('calcmj-base').value);
+    var vencStr=document.getElementById('calcmj-venc').value;
+    var pagStr=document.getElementById('calcmj-pagto').value;
+    var pctMulta=num(document.getElementById('calcmj-pct-multa').value);
+    var pctJuros=num(document.getElementById('calcmj-pct-juros').value);
+    var cobraMulta=document.getElementById('calcmj-cobra-multa').checked;
+    var cobraJuros=document.getElementById('calcmj-cobra-juros').checked;
+    var dias=0;
+    if(vencStr&&pagStr){
+      var dV=new Date(vencStr+'T00:00:00'), dP=new Date(pagStr+'T00:00:00');
+      dias=Math.round((dP-dV)/86400000);
+      if(dias<0)dias=0;
+    }
+    var valMulta=cobraMulta?Math.round(base*(pctMulta/100)*100)/100:0;
+    var valJuros=cobraJuros?Math.round(base*(pctJuros/100/30)*dias*100)/100:0;
+    window._calcMJ={multa:valMulta,juros:valJuros};
+    document.getElementById('calcmj-dias').textContent=dias+' dia(s) de atraso'+(!cobraMulta&&!cobraJuros?' — nenhuma cobrança marcada abaixo':'');
+    document.getElementById('calcmj-result-multa').textContent=BRL(valMulta);
+    document.getElementById('calcmj-result-juros').textContent=BRL(valJuros);
+    document.getElementById('calcmj-result-total').textContent=BRL(valMulta+valJuros);
+  };
+  window.calcMultaJurosUsar=function(){
+    var v=window._calcMJ||{multa:0,juros:0};
+    document.getElementById('cobr-multa').value=(v.multa||0).toFixed(2);
+    document.getElementById('cobr-juros').value=(v.juros||0).toFixed(2);
+    if(typeof window.cobrAtualizarPreview==='function')window.cobrAtualizarPreview();
+    document.getElementById('modalCalcMultaJuros').classList.remove('open');
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var mcmj=document.getElementById('modalCalcMultaJuros');
+    if(mcmj)mcmj.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   });
 
   // ---------- ANOTAÇÕES E MENSAGEM AO LOCATÁRIO ----------
@@ -14829,12 +14927,15 @@ window.cpRenderFixas=cpRenderFixas;
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
     ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
+    // Juros de mora: sugere 1% ao mês por padrão (o mais comum em contrato de locação) — só
+    // em contrato NOVO; ao editar um já existente, o valor gravado é que prevalece (abaixo).
+    document.getElementById('lc-juros-mora-pct').value='1';
     document.getElementById('lc-tipo-locacao').value='';document.getElementById('lc-tipo-imovel').value='';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-taxa-incide-encargos').value='Nao';document.getElementById('lc-msg').textContent='';
     try{locToggleGarantia();}catch(e){}
@@ -14916,6 +15017,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-condominio').value=num(c.condominioPadrao)||'';
     document.getElementById('lc-iptu').value=num(c.iptuParcela)||'';
     document.getElementById('lc-multa-atraso-pct').value=num(c.multaAtrasoPct)||'';
+    document.getElementById('lc-juros-mora-pct').value=num(c.jurosMoraPct)||'';
     document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
     document.getElementById('lc-obs').value=c.obs||'';
     document.getElementById('lc-tel-locador-1').value=c.telLocador1||'';
@@ -14976,6 +15078,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Condominio Padrao':num(document.getElementById('lc-condominio').value),
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
       'Multa Atraso Perc':num(document.getElementById('lc-multa-atraso-pct').value),
+      'Juros Mora Perc':num(document.getElementById('lc-juros-mora-pct').value),
       'Telefone Locador 1':document.getElementById('lc-tel-locador-1').value.trim(),
       'Telefone Locador 2':document.getElementById('lc-tel-locador-2').value.trim(),
       'Email Locador 1':document.getElementById('lc-email-locador-1').value.trim(),
@@ -15003,7 +15106,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
