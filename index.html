@@ -12859,7 +12859,8 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">'
       +'<span style="font-size:11px;color:var(--muted)">Quem recebe/paga esse valor?</span>'
       +'<select class="loc-cinput cobr-item-destino" style="width:auto;padding:4px 8px;font-size:12px" oninput="cobrAtualizarPreview()">'
-      +'<option value="repasse"'+(destino==='repasse'?' selected':'')+'>Repassar ao locador (soma/desconta do que ele recebe)</option>'
+      +'<option value="repasse"'+(destino==='repasse'?' selected':'')+'>Repassar ao locador (soma/desconta do que ele recebe — E aparece no recibo do locatário)</option>'
+      +'<option value="privado_locador"'+(destino==='privado_locador'?' selected':'')+'>Só entre você e o locador (desconta do repasse dele, mas o locatário NÃO vê)</option>'
       +'<option value="escritorio"'+(destino==='escritorio'?' selected':'')+'>Só entre você e o locatário (não entra na conta do locador)</option>'
       +'</select>'
       +'</div>'
@@ -13084,10 +13085,14 @@ window.cpRenderFixas=cpRenderFixas;
   // ou parcelado (repete por N meses, contando a parcela atual, ex.: IPTU 7/10) — o backend
   // (gerar_mes_loc) carrega isso automaticamente pro mês seguinte, sem precisar redigitar.
   // Guardado como texto simples: "descrição::valor::tipo::parcelaAtual::parcelaTotal||...".
-  // "destino" decide se o item entra na conta do locador: 'repasse' (padrão) soma/desconta
-  // do repasse normalmente; 'escritorio' é uma cobrança que fica só entre você e o locatário
-  // (ex.: seguro fiança que você pagou e está recuperando em parcelas) — aparece no recibo do
-  // inquilino quando positivo, mas NUNCA entra na conta do que vai pro locador.
+  // "destino" decide se o item entra na conta do locador e/ou aparece no recibo do inquilino:
+  // 'repasse' (padrão) soma/desconta do repasse normalmente E aparece no recibo do inquilino
+  // (ex.: um desconto de aluguel combinado entre locador e locatário, que os dois têm que ver);
+  // 'privado_locador' também desconta do repasse, mas fica só entre você e o locador — NUNCA
+  // aparece pro inquilino (ex.: uma cobrança sua ao locador que não é da conta do inquilino);
+  // 'escritorio' é uma cobrança que fica só entre você e o locatário (ex.: seguro fiança que
+  // você pagou e está recuperando em parcelas) — aparece no recibo do inquilino quando
+  // positivo, mas NUNCA entra na conta do que vai pro locador.
   function parseOutrasCobrancas(l){
     var bruto=String(l.outrasDesc||'').trim();
     if(!bruto)return [];
@@ -13112,8 +13117,9 @@ window.cpRenderFixas=cpRenderFixas;
       return it.desc.trim()+'::'+num(it.valor)+'::'+(it.tipo||'pontual')+'::'+(it.parcelaAtual||0)+'::'+(it.parcelaTotal||0)+'::'+(it.destino||'repasse')+'::'+(it.incideTaxa?'1':'0');
     }).join('||');
   }
-  // Soma só os itens que realmente afetam o repasse ao locador (destino='repasse') — usada
-  // no cálculo do que vai pro locador. Itens "só escritório" ficam de fora dessa conta.
+  // Soma os itens que afetam o repasse ao locador ('repasse' e 'privado_locador') — usada
+  // no cálculo do que vai pro locador. Só itens "só escritório" (com o locatário) ficam de
+  // fora dessa conta.
   function somaOutrasCobrancas(l){
     return parseOutrasCobrancas(l).filter(function(it){return it.destino!=='escritorio';}).reduce(function(s,it){return s+it.valor;},0);
   }
@@ -13136,8 +13142,13 @@ window.cpRenderFixas=cpRenderFixas;
     }else if(modo==='inquilino'){
       // Visão do inquilino: mostra os itens normais de repasse (mesmo quando negativos — ex.:
       // um desconto de aluguel combinado com o locador, que reduz o que ele paga) e os itens
-      // "só escritório" apenas quando são cobrança dele (positivo) — ex.: seguro fiança.
-      outras=outras.filter(function(it){return it.destino!=='escritorio'||it.valor>0;});
+      // "só escritório" apenas quando são cobrança dele (positivo) — ex.: seguro fiança. Itens
+      // "privado_locador" NUNCA aparecem aqui — são assunto só entre você e o locador, o
+      // inquilino não pode nem saber que existem.
+      outras=outras.filter(function(it){
+        if(it.destino==='privado_locador')return false;
+        return it.destino!=='escritorio'||it.valor>0;
+      });
     }
     return [
       ['Cota de condomínio',w.condominio],
