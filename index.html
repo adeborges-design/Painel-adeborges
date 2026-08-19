@@ -11137,7 +11137,26 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
     <div style="padding:16px 20px 0">
       <div class="loc-note" style="margin-bottom:12px">Para cobranças do locador que não são de um imóvel específico — ex.: honorários de uma ação judicial que ele te pediu pra fazer, descontados do próximo repasse. Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (📅) daquele locador, descontando do total. Se for parcelado, cada parcela pode ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) — não precisa ser dividido igual.</div>
-      <select class="loc-cinput" id="locLocLocadorSelect" style="width:100%;margin-bottom:12px" onchange="locLocRender()"></select>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <select class="loc-cinput" id="locLocLocadorSelect" style="flex:1" onchange="locLocRender()"></select>
+        <button type="button" class="loc-btn" onclick="locLocMesclarToggle()" style="padding:8px 12px;font-size:12px;white-space:nowrap" title="Quando o mesmo locador ficou cadastrado com nomes ligeiramente diferentes (ex.: com/sem &quot;S.A.&quot;)">🔀 Corrigir nome duplicado</button>
+      </div>
+      <div id="locLocMesclarWrap" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Renomeia <strong>todos</strong> os lançamentos do nome errado (de baixo) pro nome certo — o nome errado deixa de aparecer na lista depois disso.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Nome errado (de)</label>
+            <select class="loc-cinput" id="locLocMesclarDe" style="width:100%"></select>
+          </div>
+          <span style="font-size:14px;color:var(--muted);margin-top:16px">→</span>
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Nome certo (para)</label>
+            <select class="loc-cinput" id="locLocMesclarPara" style="width:100%"></select>
+          </div>
+        </div>
+        <button type="button" class="loc-btn primary" onclick="locLocMesclarExecutar()" style="margin-top:8px;padding:7px 16px;font-size:12.5px">Corrigir agora</button>
+        <div id="locLocMesclarMsg" style="font-size:12px;margin-top:6px"></div>
+      </div>
       <div class="loc-cform" style="padding:0;border:none;background:none">
         <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="locLoc-desc" placeholder="Ex.: Honorários — Ação de despejo processo nº..."></div>
         <div class="loc-cfield"><label>Data (do lançamento, ou da 1ª parcela)</label><input class="loc-cinput" id="locLoc-data" type="date"></div>
@@ -13448,8 +13467,7 @@ window.cpRenderFixas=cpRenderFixas;
       });
     }catch(e){window.locLocErroCarregar=true;} // idem: erro de rede não apaga o cache anterior
   };
-  window.locLocMontarSelectLocador_=function(manterSelecionado){
-    var atual=manterSelecionado?document.getElementById('locLocLocadorSelect').value:'';
+  function locLocNomesLista_(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
     (window.locCoprop||[]).forEach(function(o){if(o.Nome)nomes[o.Nome.trim()]=true;});
@@ -13457,7 +13475,11 @@ window.cpRenderFixas=cpRenderFixas;
     // em Locações agora) — senão o nome nunca aparece na lista pra selecionar, e os
     // lançamentos dele ficam "escondidos" mesmo estando salvos na planilha certinho.
     (window.locLocCache||[]).forEach(function(x){var n=String(x['Locador']||'').trim();if(n)nomes[n]=true;});
-    var lista=Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    return Object.keys(nomes).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+  }
+  window.locLocMontarSelectLocador_=function(manterSelecionado){
+    var atual=manterSelecionado?document.getElementById('locLocLocadorSelect').value:'';
+    var lista=locLocNomesLista_();
     var sel=document.getElementById('locLocLocadorSelect');
     sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'"'+(n===atual?' selected':'')+'>'+E(n)+'</option>';}).join('');
   };
@@ -13466,6 +13488,7 @@ window.cpRenderFixas=cpRenderFixas;
     var hoje=new Date();
     document.getElementById('locLoc-data').value=hoje.toISOString().split('T')[0];
     document.getElementById('locLocLista').innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">⏳ Carregando lançamentos da planilha...</div>';
+    document.getElementById('locLocMesclarWrap').style.display='none';
     document.getElementById('modalLocLoc').classList.add('open');
     // Busca sempre os dados mais recentes do Sheets ao abrir (não confia só no cache
     // carregado lá atrás, quando a página foi aberta) — evita mostrar uma lista
@@ -13473,6 +13496,57 @@ window.cpRenderFixas=cpRenderFixas;
     await window.carregarLocLoc();
     window.locLocMontarSelectLocador_(true);
     window.locLocRender();
+  };
+  // Corrige nomes de locador duplicados (ex.: "Cachirulo Participações" vs "Cachirulo
+  // Participações S.A" — mesma pessoa/empresa, cadastrada com texto ligeiramente diferente em
+  // lançamentos avulsos feitos em momentos distintos). RENOMEIA os lançamentos existentes do
+  // nome errado pro nome certo (em vez de excluir e recriar) — preserva ID, data e status de
+  // cada um. O nome errado some da lista sozinho depois, já que nenhum lançamento mais usa ele
+  // (a menos que ele também seja o nome de um contrato cadastrado em Locações — nesse caso o
+  // contrato em si também precisa ser corrigido na tela de Contratos, isso aqui não alcança lá).
+  window.locLocMesclarToggle=function(){
+    var wrap=document.getElementById('locLocMesclarWrap');
+    var abrindo=wrap.style.display==='none';
+    wrap.style.display=abrindo?'':'none';
+    if(!abrindo)return;
+    var lista=locLocNomesLista_();
+    var opts='<option value="">Selecione...</option>'+lista.map(function(n){return '<option value="'+E(n)+'">'+E(n)+'</option>';}).join('');
+    document.getElementById('locLocMesclarDe').innerHTML=opts;
+    document.getElementById('locLocMesclarPara').innerHTML=opts;
+    document.getElementById('locLocMesclarMsg').textContent='';
+  };
+  window.locLocMesclarExecutar=async function(){
+    var de=document.getElementById('locLocMesclarDe').value;
+    var para=document.getElementById('locLocMesclarPara').value;
+    var msgEl=document.getElementById('locLocMesclarMsg');
+    if(!de||!para){msgEl.style.color='var(--red)';msgEl.textContent='Selecione os dois nomes.';return;}
+    if(de===para){msgEl.style.color='var(--red)';msgEl.textContent='Os dois nomes são iguais — nada para corrigir.';return;}
+    var itens=(window.locLocCache||[]).filter(function(x){return String(x['Locador']||'').trim()===de;});
+    if(!itens.length){msgEl.style.color='var(--red)';msgEl.textContent='Não há lançamentos avulsos com o nome "'+de+'" (ele deve vir só de um contrato cadastrado — corrija por lá).';return;}
+    if(!confirm('Renomear '+itens.length+' lançamento(s) de "'+de+'" para "'+para+'"?\n\nOs lançamentos não são apagados nem recriados — só o nome do locador é corrigido em cada um.'))return;
+    msgEl.style.color='var(--muted)';msgEl.textContent='⏳ Corrigindo '+itens.length+' lançamento(s)...';
+    var falhas=0;
+    for(var i=0;i<itens.length;i++){
+      try{
+        var r=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locloc',id:itens[i]['ID'],campos:{'Locador':para}})});
+        var d=await r.json();
+        if(d&&d.ok){itens[i]['Locador']=para;}else{falhas++;}
+      }catch(e){falhas++;}
+    }
+    if(falhas){
+      msgEl.style.color='var(--red)';
+      msgEl.textContent='⚠️ '+(itens.length-falhas)+' de '+itens.length+' corrigido(s) — '+falhas+' falharam (sem conexão). Tente de novo em alguns instantes.';
+    }else{
+      msgEl.style.color='var(--green)';
+      msgEl.textContent='✓ '+itens.length+' lançamento(s) corrigido(s) para "'+para+'".';
+    }
+    // Rebusca do Sheets pra confirmar o que realmente ficou gravado (não confia só no
+    // otimismo local acima) e já deixa "para" selecionado, mostrando o resultado final.
+    await window.carregarLocLoc();
+    window.locLocMontarSelectLocador_(false);
+    document.getElementById('locLocLocadorSelect').value=para;
+    window.locLocRender();
+    if(!falhas){document.getElementById('locLocMesclarWrap').style.display='none';}
   };
   function locLocParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
   window.locLocRender=function(){
