@@ -11322,7 +11322,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div style="padding:16px 20px 0">
       <div class="loc-note" style="margin-bottom:12px">Para cobranças descontadas ou creditadas ao locador fora do cálculo normal do aluguel — ex.: honorários de uma ação judicial (geral, sem imóvel específico) ou uma parcela de seguro fiança retida porque o inquilino não pagou (vinculada a um imóvel do locador). Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (📅) daquele locador, descontando do total. Se for parcelado, cada parcela pode ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) — não precisa ser dividido igual, e pode ser uma parcela só, se o desconto for de um mês específico apenas.</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <select class="loc-cinput" id="locLocLocadorSelect" style="flex:1" onchange="locLocMontarSelectImovel_();locLocRender()"></select>
+        <select class="loc-cinput" id="locLocLocadorSelect" style="flex:1" onchange="locLocCancelarEdicao();locLocMontarSelectImovel_();locLocRender()"></select>
         <button type="button" class="loc-btn" onclick="locLocMesclarToggle()" style="padding:8px 12px;font-size:12px;white-space:nowrap" title="Quando o mesmo locador ficou cadastrado com nomes ligeiramente diferentes (ex.: com/sem &quot;S.A.&quot;)">🔀 Corrigir nome duplicado</button>
       </div>
       <div id="locLocMesclarWrap" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2)">
@@ -11345,7 +11345,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="locLoc-desc" placeholder="Ex.: Honorários — Ação de despejo processo nº..."></div>
         <div class="loc-cfield full"><label>Imóvel (opcional — deixe em "Geral" se não for de um imóvel específico)</label><select class="loc-cinput" id="locLoc-imovel"></select></div>
         <div class="loc-cfield"><label>Data (do lançamento, ou da 1ª parcela)</label><input class="loc-cinput" id="locLoc-data" type="date"></div>
-        <div class="loc-cfield"><label>Forma</label><select class="loc-cinput" id="locLoc-forma" onchange="locLocTogglePavelas()">
+        <div class="loc-cfield" id="locLoc-forma-wrap"><label>Forma</label><select class="loc-cinput" id="locLoc-forma" onchange="locLocTogglePavelas()">
           <option value="vista">À vista</option>
           <option value="parcelado">Parcelado (valores podem ser diferentes)</option>
         </select></div>
@@ -11356,7 +11356,11 @@ window.cpRenderFixas=cpRenderFixas;
           <button type="button" class="loc-btn" onclick="locLocAdicionarLinhaParcela()" style="margin-top:6px;padding:6px 12px;font-size:12px">+ adicionar parcela</button>
           <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">Total das parcelas: <strong id="locLoc-parcelas-total" style="color:var(--accent2)">R$ 0,00</strong></div>
         </div>
-        <div class="loc-cfield full"><button type="button" class="loc-btn primary" onclick="locLocAdicionar()" style="width:100%">+ Adicionar lançamento</button></div>
+        <div id="locLoc-editando-aviso" style="display:none;font-size:12px;color:var(--accent);background:rgba(91,141,238,.1);border-radius:8px;padding:8px 10px;margin-bottom:4px">✎ Editando lançamento existente — ajuste os campos acima e salve.</div>
+        <div class="loc-cfield full" style="display:flex;gap:8px">
+          <button type="button" class="loc-btn primary" id="locLoc-btn-salvar" onclick="locLocAdicionar()" style="flex:1">+ Adicionar lançamento</button>
+          <button type="button" class="loc-btn" id="locLoc-btn-cancelar" onclick="locLocCancelarEdicao()" style="display:none">✕ Cancelar edição</button>
+        </div>
       </div>
     </div>
     <div id="locLocLista" style="padding:14px 20px 20px;max-height:40vh;overflow-y:auto"></div>
@@ -14046,6 +14050,7 @@ window.cpRenderFixas=cpRenderFixas;
       +imoveis.map(function(im){var lbl=im.contrato.end||im.contrato.contrato;return '<option value="'+E(lbl)+'">'+E(lbl)+'</option>';}).join('');
   };
   window.locLocAbrir=async function(){
+    try{locLocCancelarEdicao();}catch(e){}
     window.locLocMontarSelectLocador_(false);
     window.locLocMontarSelectImovel_();
     var hoje=new Date();
@@ -14139,6 +14144,7 @@ window.cpRenderFixas=cpRenderFixas;
         +'</div>'
         +'<div style="font-weight:700;color:'+(valor<0?'var(--red)':'var(--green)')+';white-space:nowrap">'+(valor<0?'-':'+')+BRL(Math.abs(valor))+'</div>'
         +(quitado?'':'<button onclick="locLocMarcarQuitado(\''+E(it['ID'])+'\')" title="Marcar como quitado" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:16px;padding:2px 4px">✓</button>')
+        +'<button onclick="locLocEditar(\''+E(it['ID'])+'\')" title="Editar descrição/valor/data/imóvel" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;padding:2px 4px">✎</button>'
         +'<button onclick="locLocExcluir(\''+E(it['ID'])+'\')" title="Excluir" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px">🗑️</button>'
         +'</div>';
     }).join('');
@@ -14179,15 +14185,63 @@ window.cpRenderFixas=cpRenderFixas;
     var d=new Date(+p[2],+p[1]-1+n,+p[0]);
     return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
   }
+  // Edição de um lançamento avulso já existente: reaproveita o mesmo formulário de "Adicionar
+  // lançamento" (pré-preenchido), mas fixa "Forma" em "À vista" (editar não deve virar uma
+  // criação de várias parcelas novas — pra parcelar de verdade, exclui e relança). Enquanto
+  // window._locLocEditId estiver setado, locLocAdicionar() salva uma EDIÇÃO (atualizar_locloc)
+  // em vez de criar um lançamento novo.
+  window.locLocEditar=function(id){
+    var it=(window.locLocCache||[]).find(function(x){return String(x['ID'])===String(id);});
+    if(!it)return;
+    window._locLocEditId=id;
+    document.getElementById('locLoc-desc').value=it['Descricao']||'';
+    document.getElementById('locLoc-forma-wrap').style.display='none';
+    document.getElementById('locLoc-parcelas-wrap').style.display='none';
+    document.getElementById('locLoc-vista-wrap').style.display='';
+    document.getElementById('locLoc-valor').value=num(it['Valor'])||'';
+    var p=String(it['Data']||'').split('/');
+    document.getElementById('locLoc-data').value=p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):'';
+    window.locLocMontarSelectImovel_();
+    document.getElementById('locLoc-imovel').value=String(it['Imovel']||'').trim();
+    document.getElementById('locLoc-editando-aviso').style.display='';
+    document.getElementById('locLoc-btn-salvar').textContent='💾 Salvar alterações';
+    document.getElementById('locLoc-btn-cancelar').style.display='';
+    try{document.getElementById('locLoc-desc').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('locLoc-desc').focus();}catch(e){}
+  };
+  window.locLocCancelarEdicao=function(){
+    window._locLocEditId=null;
+    document.getElementById('locLoc-desc').value='';
+    document.getElementById('locLoc-valor').value='';
+    document.getElementById('locLoc-data').value='';
+    document.getElementById('locLoc-imovel').value='';
+    document.getElementById('locLoc-forma-wrap').style.display='';
+    document.getElementById('locLoc-editando-aviso').style.display='none';
+    document.getElementById('locLoc-btn-salvar').textContent='+ Adicionar lançamento';
+    document.getElementById('locLoc-btn-cancelar').style.display='none';
+  };
   window.locLocAdicionar=async function(){
     var nome=document.getElementById('locLocLocadorSelect').value;
     if(!nome){alert('Selecione o locador primeiro.');return;}
     var desc=document.getElementById('locLoc-desc').value.trim();
     var imovel=document.getElementById('locLoc-imovel').value;
     var dataIso=document.getElementById('locLoc-data').value;
-    var forma=document.getElementById('locLoc-forma').value;
     if(!desc){alert('Preencha a descrição.');return;}
     var dataBR=dataIso?locDtBRfromInput(dataIso):new Date().toLocaleDateString('pt-BR');
+    if(window._locLocEditId){
+      var id=window._locLocEditId;
+      var valorEdit=num(document.getElementById('locLoc-valor').value);
+      if(!valorEdit){alert('Preencha o valor.');return;}
+      var itCache=(window.locLocCache||[]).find(function(x){return String(x['ID'])===String(id);});
+      if(itCache){itCache['Descricao']=desc;itCache['Valor']=valorEdit;itCache['Data']=dataBR;itCache['Imovel']=imovel;}
+      locLocCancelarEdicao();
+      locLocRender();
+      try{
+        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locloc',id:id,campos:{'Descricao':desc,'Valor':valorEdit,'Data':dataBR,'Imovel':imovel}})});
+      }catch(e){}
+      setTimeout(function(){carregarLocLoc().then(locLocRender);},1500);
+      return;
+    }
+    var forma=document.getElementById('locLoc-forma').value;
     var novos=[];
     if(forma==='parcelado'){
       // Cada parcela tem seu PRÓPRIO valor, digitado individualmente — não precisa ser dividido
