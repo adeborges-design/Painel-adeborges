@@ -11128,7 +11128,7 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
-<!-- MODAL DESPESAS/CRÉDITOS DO LOCADOR (não ligados a um imóvel específico, ex.: honorários de ação judicial) -->
+<!-- MODAL DESPESAS/CRÉDITOS DO LOCADOR (avulsos: gerais do locador OU vinculados a um imóvel específico dele) -->
 <div class="modal-repasse-overlay" id="modalLocLoc">
   <div class="repasse-wrap" style="max-width:600px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
@@ -11136,9 +11136,9 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-form-cancel" onclick="document.getElementById('modalLocLoc').classList.remove('open')">✕</button>
     </div>
     <div style="padding:16px 20px 0">
-      <div class="loc-note" style="margin-bottom:12px">Para cobranças do locador que não são de um imóvel específico — ex.: honorários de uma ação judicial que ele te pediu pra fazer, descontados do próximo repasse. Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (📅) daquele locador, descontando do total. Se for parcelado, cada parcela pode ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) — não precisa ser dividido igual.</div>
+      <div class="loc-note" style="margin-bottom:12px">Para cobranças descontadas ou creditadas ao locador fora do cálculo normal do aluguel — ex.: honorários de uma ação judicial (geral, sem imóvel específico) ou uma parcela de seguro fiança retida porque o inquilino não pagou (vinculada a um imóvel do locador). Cadastre aqui, marque como "Pendente", e o valor aparece automaticamente no Relatório Mensal de Repasses (📅) daquele locador, descontando do total. Se for parcelado, cada parcela pode ter um valor diferente (ex.: R$2.000 numa e R$500 na outra) — não precisa ser dividido igual, e pode ser uma parcela só, se o desconto for de um mês específico apenas.</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <select class="loc-cinput" id="locLocLocadorSelect" style="flex:1" onchange="locLocRender()"></select>
+        <select class="loc-cinput" id="locLocLocadorSelect" style="flex:1" onchange="locLocMontarSelectImovel_();locLocRender()"></select>
         <button type="button" class="loc-btn" onclick="locLocMesclarToggle()" style="padding:8px 12px;font-size:12px;white-space:nowrap" title="Quando o mesmo locador ficou cadastrado com nomes ligeiramente diferentes (ex.: com/sem &quot;S.A.&quot;)">🔀 Corrigir nome duplicado</button>
       </div>
       <div id="locLocMesclarWrap" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2)">
@@ -11159,6 +11159,7 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <div class="loc-cform" style="padding:0;border:none;background:none">
         <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="locLoc-desc" placeholder="Ex.: Honorários — Ação de despejo processo nº..."></div>
+        <div class="loc-cfield full"><label>Imóvel (opcional — deixe em "Geral" se não for de um imóvel específico)</label><select class="loc-cinput" id="locLoc-imovel"></select></div>
         <div class="loc-cfield"><label>Data (do lançamento, ou da 1ª parcela)</label><input class="loc-cinput" id="locLoc-data" type="date"></div>
         <div class="loc-cfield"><label>Forma</label><select class="loc-cinput" id="locLoc-forma" onchange="locLocTogglePavelas()">
           <option value="vista">À vista</option>
@@ -13444,7 +13445,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
 
   // ---------- RELATÓRIO MENSAL DE REPASSES (extrato financeiro de um mês específico) ----------
-  // ---------- DESPESAS/CRÉDITOS DO LOCADOR (não ligados a um imóvel específico) ----------
+  // ---------- DESPESAS/CRÉDITOS DO LOCADOR (avulsos: gerais OU vinculados a um imóvel específico dele) ----------
   window.locLocCache=[];
   // Fica true quando a última tentativa de carregar do Sheets falhou (rede, quota, etc.) —
   // usado só pra ARENDER um aviso ("não consegui atualizar") em vez de deixar a lista
@@ -13455,7 +13456,7 @@ window.cpRenderFixas=cpRenderFixas;
     try{
       var cfg=getConfig();
       if(!cfg||!cfg.apiKey||!cfg.sheetId){window.locLocCache=[];window.locLocErroCarregar=false;return;}
-      var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:H500')+'?key='+cfg.apiKey);
+      var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('LOC_LANCAMENTOS_LOCADOR!A1:I500')+'?key='+cfg.apiKey);
       if(!r.ok){window.locLocErroCarregar=true;return;} // mantém o cache anterior — não apaga o que já tinha carregado
       var d=await r.json();
       var rows=d.values||[];
@@ -13483,8 +13484,20 @@ window.cpRenderFixas=cpRenderFixas;
     var sel=document.getElementById('locLocLocadorSelect');
     sel.innerHTML='<option value="">Selecione o locador...</option>'+lista.map(function(n){return '<option value="'+E(n)+'"'+(n===atual?' selected':'')+'>'+E(n)+'</option>';}).join('');
   };
+  // Popula o select de imóvel com os imóveis do locador atualmente selecionado (incluindo os
+  // que ele é só coproprietário) — a opção em branco significa "Geral", isto é, uma cobrança
+  // que não é de nenhum imóvel específico (ex.: honorários de uma ação judicial qualquer).
+  window.locLocMontarSelectImovel_=function(){
+    var sel=document.getElementById('locLoc-imovel');
+    var nome=document.getElementById('locLocLocadorSelect').value;
+    if(!nome){sel.innerHTML='<option value="">Geral (não ligado a um imóvel específico)</option>';return;}
+    var imoveis=relLocadorImoveis(nome);
+    sel.innerHTML='<option value="">Geral (não ligado a um imóvel específico)</option>'
+      +imoveis.map(function(im){var lbl=im.contrato.end||im.contrato.contrato;return '<option value="'+E(lbl)+'">'+E(lbl)+'</option>';}).join('');
+  };
   window.locLocAbrir=async function(){
     window.locLocMontarSelectLocador_(false);
+    window.locLocMontarSelectImovel_();
     var hoje=new Date();
     document.getElementById('locLoc-data').value=hoje.toISOString().split('T')[0];
     document.getElementById('locLocLista').innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">⏳ Carregando lançamentos da planilha...</div>';
@@ -13495,6 +13508,7 @@ window.cpRenderFixas=cpRenderFixas;
     // desatualizada ou vazia por causa de uma falha antiga de sincronização.
     await window.carregarLocLoc();
     window.locLocMontarSelectLocador_(true);
+    window.locLocMontarSelectImovel_();
     window.locLocRender();
   };
   // Corrige nomes de locador duplicados (ex.: "Cachirulo Participações" vs "Cachirulo
@@ -13567,10 +13581,11 @@ window.cpRenderFixas=cpRenderFixas;
     host.innerHTML=itens.map(function(it){
       var quitado=String(it['Status']).toLowerCase()==='quitado';
       var valor=num(it['Valor']);
+      var imovel=String(it['Imovel']||'').trim();
       return '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);'+(quitado?'opacity:.5':'')+'">'
         +'<div style="flex:1">'
         +'<div style="font-size:13px">'+E(it['Descricao']||'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+E(it['Data']||'')+' · '+(quitado?'Quitado':'Pendente')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+E(it['Data']||'')+' · '+(quitado?'Quitado':'Pendente')+(imovel?' · 🏠 '+E(imovel):' · Geral')+'</div>'
         +'</div>'
         +'<div style="font-weight:700;color:'+(valor<0?'var(--red)':'var(--green)')+';white-space:nowrap">'+(valor<0?'-':'+')+BRL(Math.abs(valor))+'</div>'
         +(quitado?'':'<button onclick="locLocMarcarQuitado(\''+E(it['ID'])+'\')" title="Marcar como quitado" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:16px;padding:2px 4px">✓</button>')
@@ -13618,6 +13633,7 @@ window.cpRenderFixas=cpRenderFixas;
     var nome=document.getElementById('locLocLocadorSelect').value;
     if(!nome){alert('Selecione o locador primeiro.');return;}
     var desc=document.getElementById('locLoc-desc').value.trim();
+    var imovel=document.getElementById('locLoc-imovel').value;
     var dataIso=document.getElementById('locLoc-data').value;
     var forma=document.getElementById('locLoc-forma').value;
     if(!desc){alert('Preencha a descrição.');return;}
@@ -13627,7 +13643,7 @@ window.cpRenderFixas=cpRenderFixas;
       // Cada parcela tem seu PRÓPRIO valor, digitado individualmente — não precisa ser dividido
       // em partes iguais (ex.: R$2.500 em R$2.000 + R$500).
       var valoresParcelas=Array.from(document.querySelectorAll('#locLoc-parcelas-lista .locloc-parcela-valor')).map(function(inp){return num(inp.value);}).filter(function(v){return v;});
-      if(valoresParcelas.length<2){alert('Informe o valor de pelo menos 2 parcelas, ou troque para "À vista".');return;}
+      if(valoresParcelas.length<1){alert('Informe o valor de pelo menos 1 parcela.');return;}
       valoresParcelas.forEach(function(v,i){
         novos.push({desc:desc+' ('+(i+1)+'/'+valoresParcelas.length+')',valor:v,data:locLocSomarMeses(dataBR,i)});
       });
@@ -13637,7 +13653,7 @@ window.cpRenderFixas=cpRenderFixas;
       novos.push({desc:desc,valor:valor,data:dataBR});
     }
     novos.forEach(function(n){
-      var temp={ID:'tmp'+Date.now()+Math.random(),Locador:nome,Descricao:n.desc,Valor:n.valor,Data:n.data,Status:'Pendente'};
+      var temp={ID:'tmp'+Date.now()+Math.random(),Locador:nome,Descricao:n.desc,Valor:n.valor,Data:n.data,Status:'Pendente',Imovel:imovel};
       window.locLocCache.unshift(temp);
     });
     document.getElementById('locLoc-desc').value='';
@@ -13647,7 +13663,7 @@ window.cpRenderFixas=cpRenderFixas;
     for(var j=0;j<novos.length;j++){
       var n2=novos[j];
       try{
-        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':n2.desc,'Valor':n2.valor,'Data':n2.data,'Status':'Pendente'}})});
+        await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locloc',campos:{'Locador':nome,'Descricao':n2.desc,'Valor':n2.valor,'Data':n2.data,'Status':'Pendente','Imovel':imovel}})});
       }catch(e){}
     }
     setTimeout(function(){carregarLocLoc().then(locLocRender);},1500);
@@ -13762,8 +13778,8 @@ window.cpRenderFixas=cpRenderFixas;
     var avulsosHtml=avulsos.length?
       '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
       +'<div class="parc-box" style="border-left:3px solid var(--accent2)">'
-      +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos avulsos (não ligados a um imóvel)</div>'
-      +avulsos.map(function(a){return itemComSinal(a['Descricao']+' ('+a['Data']+')',num(a['Valor']));}).join('')
+      +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos do Locador</div>'
+      +avulsos.map(function(a){var im=String(a['Imovel']||'').trim();return itemComSinal(a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:' — Geral'),num(a['Valor']));}).join('')
       +'</div></div>' : '';
     var subtotalHtml=(linhas.length&&avulsos.length)?
       '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
@@ -13778,7 +13794,7 @@ window.cpRenderFixas=cpRenderFixas;
       +blocos
       +subtotalHtml
       +avulsosHtml
-      +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos avulsos':'')+'</div></div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos do locador':'')+'</div></div></div>'
       +contaLocadorHtml
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
@@ -13819,8 +13835,8 @@ window.cpRenderFixas=cpRenderFixas;
     });
     if(linhas.length&&avulsos.length)txt+='*Subtotal dos imóveis:* '+BRL(subtotalImoveis)+'\n\n';
     if(avulsos.length){
-      txt+='*💼 Despesas/Créditos avulsos:*\n';
-      avulsos.forEach(function(a){txt+='('+(num(a['Valor'])<0?'−':'+')+') '+a['Descricao']+' ('+a['Data']+'): '+BRL(Math.abs(num(a['Valor'])))+'\n';});
+      txt+='*💼 Despesas/Créditos do Locador:*\n';
+      avulsos.forEach(function(a){var im=String(a['Imovel']||'').trim();txt+='('+(num(a['Valor'])<0?'−':'+')+') '+a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:' — Geral')+': '+BRL(Math.abs(num(a['Valor'])))+'\n';});
       txt+='\n';
     }
     txt+='*TOTAL GERAL DO MÊS:* '+BRL(totalGeral)+'\n\n';
