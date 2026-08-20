@@ -16504,7 +16504,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-alertas" id="homeAlertLoc"></div>
       </div>
       <div class="home-module">
-        <div class="home-card loc" onclick="abrirAcordos()">
+        <div class="home-card loc" onclick="openAcordosHome()">
           <div class="arrow">→</div>
           <div class="ic">💰</div>
           <div class="ctitle">Acordos</div>
@@ -16653,7 +16653,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.renderNotifBell=renderNotifBell;
 
-  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
@@ -16695,7 +16695,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
-        '<button class="home-user-item" onclick="abrirAcordos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
+        '<button class="home-user-item" onclick="openAcordosHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="painelInadimplenciaAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">💰 &nbsp;Inadimplência (tudo junto)</button>'+
         '<button class="home-user-item" onclick="fechamentoAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">📊 &nbsp;Fechamento mensal</button>'+
@@ -17454,6 +17454,10 @@ window.cpRenderFixas=cpRenderFixas;
   window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}try{if(typeof renderFluxoCaixa==='function')renderFluxoCaixa();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
   window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
+  // Mesma lógica dos wrappers acima (openContas/openHonorariosHome/openAlugueisHome): fecha
+  // qualquer overlay já aberto ANTES de abrir o de Acordos — sem isto, navegar direto de outra
+  // tela (ex.: Locações) pro menu "Acordos" empilhava as duas telas uma sobre a outra.
+  window.openAcordosHome=function(){closeOverlays();try{abrirAcordos();}catch(e){}};
 
   // ---- Contas a Pagar: relocar para o overlay próprio (tirar de Honorários) ----
   function relocateContas(){var host=document.getElementById('contasPagar');var dest=document.getElementById('contasHostBody');if(host&&dest&&host.parentNode!==dest)dest.appendChild(host);}
