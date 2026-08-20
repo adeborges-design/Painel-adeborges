@@ -648,12 +648,16 @@
   .badge-monitorar { background: rgba(91,141,238,0.15); color: var(--blue); border-color: rgba(91,141,238,0.3); }
   .badge-extinto { background: rgba(120,120,130,0.25); color: #c8c8d0; border-color: rgba(120,120,130,0.5); }
   .badge-semAtuacao { background: rgba(200,140,60,0.18); color: #e0a860; border-color: rgba(200,140,60,0.4); }
+  .badge-suspenso { background: rgba(150,120,220,0.18); color: #b3a0ec; border-color: rgba(150,120,220,0.4); }
   .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
   .processo-card-extinto:hover { opacity: 1; }
   .processo-card-semAtuacao { background: repeating-linear-gradient(135deg, rgba(200,140,60,0.08), rgba(200,140,60,0.08) 10px, rgba(200,140,60,0.14) 10px, rgba(200,140,60,0.14) 20px) !important; opacity: 0.85; }
   .processo-card-semAtuacao:hover { opacity: 1; }
+  .processo-card-suspenso { background: repeating-linear-gradient(135deg, rgba(150,120,220,0.08), rgba(150,120,220,0.08) 10px, rgba(150,120,220,0.14) 10px, rgba(150,120,220,0.14) 20px) !important; opacity: 0.9; }
+  .processo-card-suspenso:hover { opacity: 1; }
   .priority-extinto { background: #6b7280 !important; }
   .priority-semAtuacao { background: #c88c3c !important; }
+  .priority-suspenso { background: #9678dc !important; }
 
   .processo-numero {
     font-family: 'DM Mono', monospace;
@@ -2566,6 +2570,10 @@
       <button class="filter-btn" onclick="filterBy('monitorar', this)" data-filter="monitorar">
         <span class="urgency-dot dot-monitorar"></span>Monitorar
         <span class="count" id="cnt-monitorar">—</span>
+      </button>
+      <button class="filter-btn" onclick="filterBy('suspenso', this)" data-filter="suspenso" style="border-color:rgba(150,120,220,0.35)" title="Processos suspensos — prazos parados enquanto durar a suspensão">
+        <span class="urgency-dot" style="background:#9678dc"></span>Suspensos
+        <span class="count" id="cnt-suspenso">—</span>
       </button>
       <button class="filter-btn" onclick="filterBy('extinto', this)" data-filter="extinto" style="border-color:rgba(120,120,130,0.3)">
         <span class="urgency-dot" style="background:#6b7280"></span>Extintos
@@ -4731,6 +4739,13 @@ function calcUrgencia(diasPrazo, prazoData, dataPrazoCliente, dataAudi, status, 
   // mas o processo em si pode continuar correndo — nao entra em critico/urgente/normal
   if (stUp === 'SUBSTABELECIDO' || stUp === 'RENUNCIA' || stUp === 'REVOGADO') return 'semAtuacao';
 
+  // Processo suspenso: enquanto durar a suspensão, os prazos processuais não correm — não faz
+  // sentido continuar contando como crítico/urgente por causa de uma data de antes da pausa
+  // (ex.: prazo que já estava vencido quando a suspensão começou). Diferente de EXTINTO/
+  // SUBSTABELECIDO/RENUNCIA/REVOGADO, continua contando como "ativo" (ainda é seu processo,
+  // pode voltar a correr a qualquer momento) — só sai dos baldes de urgência baseados em prazo.
+  if (stUp === 'SUSPENSO') return 'suspenso';
+
   // 1. Audiencia proxima - maior prioridade
   if (dataAudi && dataAudi.length > 3) {
     const d = parseDate(dataAudi);
@@ -4842,7 +4857,7 @@ function buildRamoFilter() {
 function renderProcessos() {
   const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
   const sort = (document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : '') || 'prioridade';
-  const URGENCIA_ORDER = { critico: 0, urgente: 1, atencao: 2, normal: 3, monitorar: 4 };
+  const URGENCIA_ORDER = { critico: 0, urgente: 1, atencao: 2, normal: 3, monitorar: 4, suspenso: 5 };
 
   const diasOf = p => (p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined) ? p.prazoInfo.dias : null;
 
@@ -4857,6 +4872,7 @@ function renderProcessos() {
     if (currentFilter === 'prazo') { const d = diasOf(p); return d !== null && menorPrazoAtual !== null && d === menorPrazoAtual; }
     if (currentFilter === 'extinto') return p.status === 'EXTINTO';
     if (currentFilter === 'semAtuacao') return ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase());
+    if (currentFilter === 'suspenso') return (p.status||'').toUpperCase() === 'SUSPENSO';
     if (currentFilter === 'all' && p.status === 'EXTINTO') return false;
     if (currentFilter === 'all' && ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase())) return false;
     if (currentFilter !== 'all' && p.urgencia !== currentFilter) return false;
@@ -4963,15 +4979,16 @@ function renderCard(p, idx) {
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
-    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}${['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase()) ? ' processo-card-semAtuacao' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
+    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}${['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase()) ? ' processo-card-semAtuacao' : ''}${(p.status||'').toUpperCase() === 'SUSPENSO' ? ' processo-card-suspenso' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
          onclick="toggleCard(${p._uid})">
       <div class="priority-bar priority-${p.urgencia}"></div>
       <div class="processo-body">
         <div class="processo-top">
           <span class="processo-nome">${escHtml(p.nome)}</span>
           <span class="badge badge-ramo">${escHtml(p.ramo || p.tipo)}</span>
-          <span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>
+          ${urgBadge ? `<span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>` : ''}
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
+          ${(p.status||'').toUpperCase() === 'SUSPENSO' ? '<span class="badge badge-urgencia badge-suspenso">⏸ Suspenso</span>' : ''}
           ${p.status === 'EXTINTO' ? '<span class="badge badge-urgencia badge-extinto">⚫ Extinto</span>' : ''}
           ${p.status === 'SUBSTABELECIDO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Substabelecido</span>' : ''}
           ${(p.status||'').toUpperCase() === 'RENUNCIA' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Renúncia</span>' : ''}
@@ -5358,7 +5375,7 @@ function updateStats() {
   document.getElementById('st-providencias').textContent = providencias;
 
   // Contadores sidebar
-  ['critico','urgente','atencao','normal','monitorar'].forEach(u => {
+  ['critico','urgente','atencao','normal','monitorar','suspenso'].forEach(u => {
     document.getElementById(`cnt-${u}`).textContent = allProcessos.filter(p => p.urgencia === u).length;
   });
   document.getElementById('cnt-all').textContent = ativos.length;
