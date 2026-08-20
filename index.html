@@ -10908,6 +10908,16 @@ window.cpRenderFixas=cpRenderFixas;
      regra "body[class*=printing-] > * {display:none}" ativa em cada bloco de impressão — sem
      isso ele nunca apareceria justamente na hora em que é necessário. */
   body[class*="printing-"] #printEscapeBtn { display: block !important; }
+  /* ...mas ele é só uma saída de emergência pra tela — nunca deve ir parar no papel/PDF. A
+     regra acima usa a media "all" (sem @media print) de propósito (precisa aparecer na TELA
+     antes/depois do print), então aqui, dentro de @media print, ele é escondido de novo
+     especificamente para a saída impressa/PDF em si. Repete o mesmo seletor "body[class*=
+     printing-] #printEscapeBtn" (não só "#printEscapeBtn") pra ter a MESMA especificidade da
+     regra acima — como as duas usam !important, quem decide é a ordem: esta vem depois, então
+     vence só dentro de @media print (a de cima continua valendo pra tela normal). */
+  @media print {
+    body[class*="printing-"] #printEscapeBtn { display: none !important; }
+  }
   body[class*="printing-"] .parc-header { background: #e8eef7 !important; border-bottom: 2px solid #5b8dee !important; }
   body[class*="printing-"] .parc-card {
     background: #fff !important; border: 1px solid #d8dee8 !important; overflow: visible !important;
