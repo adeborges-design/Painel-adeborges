@@ -4266,6 +4266,10 @@ window.rascunhoSalvar=async function(){
   document.getElementById('rascunhoFormWrap').style.display='none';
   rascunhosRender();
   atualizarBadgeRascunhos();
+  // Se este rascunho veio do botão "Gerar follow-up" (tela de Anotações de Locação ou do card
+  // de WhatsApp), volta sozinho pra Anotações com a mensagem que já estava sendo digitada —
+  // assim salvar o follow-up não faz perder a chance de ainda enviar a mensagem por WhatsApp.
+  if(window._anotRetorno&&typeof window.anotFecharEVoltar_==='function')window.anotFecharEVoltar_('modalRascunhos');
 };
 window.rascunhoExcluir=function(id){
   if(!confirm('Excluir este rascunho?'))return;
@@ -9112,6 +9116,15 @@ window.addEventListener('DOMContentLoaded', () => {
 document.getElementById('modalCard').addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('open');
 });
+document.addEventListener('DOMContentLoaded', function() {
+  // #modalCardLoc está mais abaixo no HTML (dentro do bloco de modais de Locações), então
+  // precisa esperar o DOM terminar de carregar antes de existir — diferente do #modalCard
+  // (Processos), que já está declarado antes deste script.
+  var mcl = document.getElementById('modalCardLoc');
+  if (mcl) mcl.addEventListener('click', function(e) {
+    if (e.target === this && typeof window.anotFecharEVoltar_ === 'function') window.anotFecharEVoltar_('modalCardLoc');
+  });
+});
 // Config e Documento têm campos digitados/editados — não fecham com clique fora, só "tremem"
 // (mesma correção já aplicada em Novo Processo/Editar/Anotações/Recibo).
 document.getElementById('modalConfig').addEventListener('click', function(e) {
@@ -11208,8 +11221,71 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-cfield full"><textarea class="loc-cinput" id="anot-mensagem" rows="3" placeholder="Escreva a mensagem..."></textarea></div>
       <div class="loc-cfield full" style="text-align:right;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <button class="loc-btn" onclick="anotGerarFollowup()" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
-        <button class="loc-btn" onclick="enviarMensagemAnot()">📱 Enviar por WhatsApp</button>
+        <button class="loc-btn primary" onclick="abrirCardLocacaoDaAnotacao()" title="Monta o card padrão do escritório com os dados da locação pra enviar por WhatsApp">📇 Ver card e enviar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARD DE ATUALIZAÇÃO — LOCAÇÕES (mesmo padrão visual do card de Processos: mostra os
+     dados da locação + a mensagem, com opção de enviar como foto, texto padronizado no WhatsApp,
+     salvar PNG ou copiar o texto) -->
+<div class="modal-card-overlay" id="modalCardLoc">
+  <div class="card-preview-wrap">
+    <div class="card-preview-title">Card de Locação</div>
+    <div class="card-preview-sub" id="cardLocPreviewSub">pré-visualização para envio</div>
+
+    <div class="atend-card" id="atendCardLoc">
+      <div class="atend-header">
+        <div class="atend-header-title">Atualização de Locação</div>
+        <div class="atend-header-sub">Escritório Adenilson Borges</div>
+      </div>
+      <div class="atend-body">
+
+        <div class="atend-section">
+          <div class="atend-section-label" id="cardLocDestLabel">Locatário</div>
+          <div class="atend-nome" id="cardLocNome"></div>
+          <div class="atend-processo" id="cardLocContrato"></div>
+          <div class="atend-meta" id="cardLocEndereco"></div>
+        </div>
+
+        <div class="atend-section" id="cardLocDadosSection">
+          <div class="atend-section-label">Dados da Locação</div>
+          <div class="atend-box" id="cardLocDados"></div>
+        </div>
+
+        <div class="atend-section" id="cardLocMensagemSection">
+          <div class="atend-section-label" id="cardLocMensagemLabel">Mensagem</div>
+          <div class="atend-box destaque-adv" id="cardLocMensagem"></div>
+        </div>
+
+      </div>
+      <div class="atend-footer">
+        Dúvidas? Ligue ou envie mensagem.<br>
+        <strong>ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712</strong>
+      </div>
+    </div>
+
+    <div id="cardLocShareStatus"></div>
+    <div class="card-actions">
+      <button class="btn-share btn-share-wpp" id="btnShareLocWpp" onclick="compartilharCardLocImagem()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        📸 Compartilhar como foto
+      </button>
+      <button class="btn-share" id="btnShareLocWppTexto" onclick="enviarCardLocWppTexto()">💬 Enviar texto padrão</button>
+      <button class="btn-share btn-share-png" id="btnSaveLocPng" onclick="salvarCardLocPng()">
+        ↓ Salvar PNG na galeria
+      </button>
+      <button class="btn-share btn-share-copy" onclick="copyCardLocText()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        Copiar texto
+      </button>
+      <button class="loc-btn" onclick="cardLocGerarFollowup()" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
+      <button class="btn-close-card" onclick="anotFecharEVoltar_('modalCardLoc')">✕</button>
     </div>
   </div>
 </div>
@@ -11263,7 +11339,7 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="repasse-wrap" style="max-width:640px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
       <div class="parceiro-toolbar-title" style="color:var(--accent)">🗂️ Tarefas & Rascunhos</div>
-      <button class="btn-form-cancel" onclick="document.getElementById('modalRascunhos').classList.remove('open')">✕</button>
+      <button class="btn-form-cancel" onclick="anotFecharEVoltar_('modalRascunhos')">✕</button>
     </div>
     <div style="padding:16px 20px 0">
       <div class="loc-note" style="margin-bottom:12px">Anote aqui um atendimento em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — quando fechar, converta direto em Processo ou Contrato, sem digitar tudo de novo.</div>
@@ -13577,6 +13653,9 @@ window.cpRenderFixas=cpRenderFixas;
       try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locc',id:c.id,campos:campos})});}catch(e){}
     }
   };
+  // Envio livre (texto digitado na hora, sem o card padrão) — deixado de fora dos botões da
+  // tela (substituído por abrirCardLocacaoDaAnotacao/enviarCardLocWppTexto, que seguem o padrão
+  // visual do escritório), mas mantido aqui por segurança/compatibilidade.
   window.enviarMensagemAnot=function(){
     var contrato=document.getElementById('anot-contrato').value;
     var audiencia=document.getElementById('anot-audiencia').value||'locatario';
@@ -13584,27 +13663,20 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contrato]||{};
     var msg=document.getElementById('anot-mensagem').value.trim();
     if(!msg)return;
-    // Usa o telefone cadastrado no contrato quando existir (abre a conversa já com o contato
-    // certo); sem telefone cadastrado, cai no comportamento antigo (WhatsApp em branco, você
-    // escolhe o contato na hora).
     var telRaw=ehLocador?(c.telLocador1||c.telLocador2||''):(c.telLocatario1||c.telLocatario2||'');
     var tel=String(telRaw).replace(/[^\d]/g,'');
     var url=tel?('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg)):('https://wa.me/?text='+encodeURIComponent(msg));
     window.open(url,'_blank');
   };
-  // "Gerar follow-up": pega o que acabou de ser escrito (mensagem enviada ou anotação) e
-  // pré-preenche um novo rascunho em Tarefas & Rascunhos, já com contrato/locador/locatário/
-  // telefone preenchidos — só falta você escolher a data de follow-up e confirmar. Não salva
-  // nada sozinho: abre o formulário já pronto, quem decide se cria é você (rascunhoSalvar()).
-  window.anotGerarFollowup=function(){
-    var contrato=document.getElementById('anot-contrato').value;
-    var audiencia=document.getElementById('anot-audiencia').value||'locatario';
+  // Monta o "seed" de um rascunho de follow-up a partir de contrato/audiência/texto — usado tanto
+  // pelo botão "Gerar follow-up" da tela de Anotações quanto pelo mesmo botão dentro do card de
+  // WhatsApp (cardLocGerarFollowup), pra não duplicar a lógica nos dois lugares.
+  function construirSeedFollowupLoc_(contrato,audiencia,textoBase){
     var ehLocador=audiencia==='locador';
     var c=contratosById[contrato]||{};
     var nomeContato=ehLocador?(c.locador||''):(c.locatario||'');
-    var textoBase=(document.getElementById('anot-mensagem').value||'').trim()||(document.getElementById('anot-nova').value||'').trim();
     var notas='Contrato '+contrato+(c.end?' — '+c.end:'')+(textoBase?('\n\n'+textoBase):'');
-    var seed={
+    return {
       'Tipo':'Acompanhamento de Locação',
       'Titulo':'Follow-up — '+(nomeContato||contrato)+(ehLocador?' (locador)':' (locatário)'),
       'Locador':c.locador||'',
@@ -13615,7 +13687,214 @@ window.cpRenderFixas=cpRenderFixas;
       'Notas':notas,
       'Status':'Em andamento'
     };
+  }
+  // "Gerar follow-up": pega o que acabou de ser escrito (mensagem ou anotação) e pré-preenche um
+  // novo rascunho em Tarefas & Rascunhos, já com contrato/locador/locatário/telefone preenchidos —
+  // só falta escolher a data de follow-up e confirmar. Não salva nada sozinho: abre o formulário
+  // já pronto, quem decide se cria é você (rascunhoSalvar()).
+  //
+  // Guarda em window._anotRetorno de onde essa geração partiu (contrato/audiência/rascunho da
+  // mensagem que estava sendo digitada) — assim, ao fechar Tarefas & Rascunhos (✕ ou depois de
+  // salvar), o sistema volta sozinho pra tela de Anotações com a mensagem ainda ali, em vez de
+  // simplesmente perdê-la. É isso que resolve "ou gero o follow-up ou mando WhatsApp, nunca os
+  // dois": nenhuma das duas ações fecha mais a porta da outra.
+  window.anotGerarFollowup=function(){
+    var contrato=document.getElementById('anot-contrato').value;
+    var audiencia=document.getElementById('anot-audiencia').value||'locatario';
+    var msgAtual=document.getElementById('anot-mensagem').value||'';
+    var novaAtual=document.getElementById('anot-nova').value||'';
+    var seed=construirSeedFollowupLoc_(contrato,audiencia,msgAtual.trim()||novaAtual.trim());
+    window._anotRetorno={contrato:contrato,audiencia:audiencia,mensagem:msgAtual,nova:novaAtual};
     document.getElementById('modalAnotacoes').classList.remove('open');
+    if(typeof window.rascunhosAbrirComSeed==='function')window.rascunhosAbrirComSeed(seed);
+  };
+  // Fecha o modal indicado e, se havia um follow-up pendente de retorno (window._anotRetorno,
+  // setado por anotGerarFollowup ou abrirCardLocacaoDaAnotacao), reabre a tela de Anotações do
+  // mesmo contrato/audiência com a mensagem que estava sendo digitada. Usado pelo ✕ do modal de
+  // Tarefas & Rascunhos, pelo ✕ do card de WhatsApp e pelo fim de um rascunhoSalvar() bem-
+  // sucedido. Sem retorno pendente, só fecha o modal normalmente (comportamento de sempre).
+  window.anotFecharEVoltar_=function(idModal){
+    var el=document.getElementById(idModal);
+    if(el)el.classList.remove('open');
+    var ret=window._anotRetorno;
+    if(ret){
+      window._anotRetorno=null;
+      window.abrirAnotacoes(ret.contrato,ret.audiencia);
+      if(ret.mensagem)document.getElementById('anot-mensagem').value=ret.mensagem;
+      if(ret.nova)document.getElementById('anot-nova').value=ret.nova;
+    }
+  };
+
+  // ---------- CARD DE WHATSAPP (LOCAÇÕES) — mesmo padrão visual/de envio do card de Processos ----------
+  // Abre o card a partir da tela de Anotações: fecha as Anotações (guardando em
+  // window._anotRetorno pra poder voltar) e monta o card com os dados do contrato + a mensagem
+  // que estava sendo digitada, pronto pra enviar como foto, texto padrão no WhatsApp, salvar PNG
+  // ou copiar.
+  window.abrirCardLocacaoDaAnotacao=function(){
+    var contrato=document.getElementById('anot-contrato').value;
+    var audiencia=document.getElementById('anot-audiencia').value||'locatario';
+    var msgAtual=document.getElementById('anot-mensagem').value||'';
+    var novaAtual=document.getElementById('anot-nova').value||'';
+    window._anotRetorno={contrato:contrato,audiencia:audiencia,mensagem:msgAtual,nova:novaAtual};
+    document.getElementById('modalAnotacoes').classList.remove('open');
+    window.abrirCardLocacao(contrato,audiencia,msgAtual.trim()||novaAtual.trim());
+  };
+  var _cardLocImgCache=null,_cardLocImgCacheKey=null;
+  window.abrirCardLocacao=function(contrato,audiencia,mensagem){
+    audiencia=(audiencia==='locador')?'locador':'locatario';
+    var ehLocador=audiencia==='locador';
+    var c=contratosById[contrato]||{};
+    var modal=document.getElementById('modalCardLoc');
+    modal.dataset.contrato=contrato;
+    modal.dataset.audiencia=audiencia;
+    modal.dataset.mensagem=mensagem||'';
+    document.getElementById('cardLocDestLabel').textContent=ehLocador?'Locador':'Locatário';
+    document.getElementById('cardLocNome').textContent=(ehLocador?(c.locador||''):(c.locatario||'')).toUpperCase();
+    document.getElementById('cardLocContrato').textContent='Contrato '+contrato;
+    document.getElementById('cardLocEndereco').textContent=c.end||'';
+
+    var dadosLinhas=[];
+    dadosLinhas.push('Aluguel: '+BRL(c.aluguel||0));
+    if(c.tipoLocacao)dadosLinhas.push('Tipo: '+c.tipoLocacao+(c.tipoImovel?' — '+c.tipoImovel:''));
+    if(c.venc)dadosLinhas.push('Vencimento: dia '+c.venc);
+    dadosLinhas.push(ehLocador?'Locatário: '+(c.locatario||'-'):'Locador: '+(c.locador||'-'));
+    document.getElementById('cardLocDados').textContent=dadosLinhas.join('\n');
+
+    var msgSection=document.getElementById('cardLocMensagemSection');
+    if(mensagem){
+      document.getElementById('cardLocMensagemLabel').textContent='Mensagem';
+      document.getElementById('cardLocMensagem').textContent=mensagem;
+      msgSection.style.display='';
+    }else{
+      msgSection.style.display='none';
+    }
+
+    document.getElementById('cardLocPreviewSub').textContent=(ehLocador?(c.locador||''):(c.locatario||''))+' — pré-visualização';
+    modal.classList.add('open');
+
+    _cardLocImgCache=null;_cardLocImgCacheKey=contrato+'|'+audiencia+'|'+(mensagem||'');
+    var chaveAtual=_cardLocImgCacheKey;
+    setTimeout(function(){
+      if(_cardLocImgCacheKey!==chaveAtual)return;
+      gerarImagemCardLocFile().then(function(file){
+        if(_cardLocImgCacheKey===chaveAtual)_cardLocImgCache=file;
+      }).catch(function(){});
+    },80);
+  };
+  function getCardLocImagemFile(){
+    if(_cardLocImgCache)return Promise.resolve(_cardLocImgCache);
+    return gerarImagemCardLocFile().then(function(file){_cardLocImgCache=file;return file;});
+  }
+  function gerarImagemCardLocFile(){
+    var alvo=document.getElementById('atendCardLoc');
+    var contrato=document.getElementById('modalCardLoc').dataset.contrato||'card';
+    var nome=String(contrato).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'').toLowerCase();
+    return html2canvas(alvo,{
+      scale:3,useCORS:true,backgroundColor:'#0f1923',logging:false,
+      windowWidth:alvo.scrollWidth,windowHeight:alvo.scrollHeight,
+      onclone:function(doc){
+        var el=doc.getElementById('atendCardLoc');
+        if(el){el.style.fontFamily="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";el.style.wordSpacing='0.06em';el.style.letterSpacing='0.01em';}
+      }
+    }).then(function(canvas){
+      return new Promise(function(resolve){
+        canvas.toBlob(function(blob){
+          var filename='locacao_'+nome+'_'+new Date().toISOString().slice(0,10)+'.png';
+          resolve(new File([blob],filename,{type:'image/png'}));
+        },'image/png');
+      });
+    });
+  }
+  window.compartilharCardLocImagem=function(){
+    var btn=document.getElementById('btnShareLocWpp');
+    var statusEl=document.getElementById('cardLocShareStatus');
+    var orig=btn.innerHTML;
+    btn.disabled=true;btn.innerHTML='⏳ Gerando...';
+    if(statusEl)statusEl.innerHTML='';
+    getCardLocImagemFile().then(function(file){
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'Atualização de Locação'})
+          .then(function(){if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';})
+          .catch(function(e){if(e.name!=='AbortError'&&statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';})
+          .finally(function(){btn.disabled=false;btn.innerHTML=orig;});
+      }else{
+        if(statusEl)statusEl.innerHTML='<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
+        btn.disabled=false;btn.innerHTML=orig;
+      }
+    }).catch(function(e){
+      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
+      btn.disabled=false;btn.innerHTML=orig;
+    });
+  };
+  window.salvarCardLocPng=function(){
+    var btn=document.getElementById('btnSaveLocPng');
+    var statusEl=document.getElementById('cardLocShareStatus');
+    var orig=btn.innerHTML;
+    btn.disabled=true;btn.innerHTML='⏳ Gerando...';
+    if(statusEl)statusEl.innerHTML='';
+    getCardLocImagemFile().then(function(file){
+      var url=URL.createObjectURL(file);
+      var a=document.createElement('a');a.href=url;a.download=file.name;a.click();
+      URL.revokeObjectURL(url);
+      if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo na galeria.</div>';
+    }).catch(function(e){
+      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
+    }).finally(function(){btn.disabled=false;btn.innerHTML=orig;});
+  };
+  function montarTextoCardLoc_(formatoWpp){
+    var modal=document.getElementById('modalCardLoc');
+    var contrato=modal.dataset.contrato;
+    var audiencia=modal.dataset.audiencia||'locatario';
+    var mensagem=modal.dataset.mensagem||'';
+    var ehLocador=audiencia==='locador';
+    var c=contratosById[contrato]||{};
+    var b=formatoWpp?'*':'',ib=formatoWpp?'_':'';
+    var txt=b+'ATUALIZAÇÃO DE LOCAÇÃO'+b+'\n'+ib+'Escritório Adenilson Borges'+ib+'\n\n';
+    txt+=b+(ehLocador?'LOCADOR':'LOCATÁRIO')+b+'\n'+(ehLocador?(c.locador||''):(c.locatario||''))+'\n';
+    txt+='Contrato '+contrato+'\n';
+    if(c.end)txt+=c.end+'\n';
+    txt+='\n'+b+'DADOS DA LOCAÇÃO'+b+'\n';
+    txt+='Aluguel: '+BRL(c.aluguel||0)+'\n';
+    if(c.tipoLocacao)txt+='Tipo: '+c.tipoLocacao+(c.tipoImovel?' — '+c.tipoImovel:'')+'\n';
+    if(c.venc)txt+='Vencimento: dia '+c.venc+'\n';
+    if(mensagem)txt+='\n'+b+'MENSAGEM'+b+'\n'+mensagem+'\n';
+    txt+='\nDúvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
+    return txt;
+  }
+  window.enviarCardLocWppTexto=function(){
+    var modal=document.getElementById('modalCardLoc');
+    var contrato=modal.dataset.contrato;
+    var audiencia=modal.dataset.audiencia||'locatario';
+    var ehLocador=audiencia==='locador';
+    var c=contratosById[contrato]||{};
+    var txt=montarTextoCardLoc_(true);
+    var telRaw=ehLocador?(c.telLocador1||c.telLocador2||''):(c.telLocatario1||c.telLocatario2||'');
+    var tel=String(telRaw).replace(/[^\d]/g,'');
+    var url=tel?('https://wa.me/55'+tel+'?text='+encodeURIComponent(txt)):('https://wa.me/?text='+encodeURIComponent(txt));
+    window.open(url,'_blank');
+  };
+  window.copyCardLocText=function(){
+    var txt=montarTextoCardLoc_(false);
+    navigator.clipboard.writeText(txt).then(function(){
+      var tmp=document.createElement('div');
+      tmp.style.cssText='position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+      tmp.textContent='Texto copiado!';
+      document.body.appendChild(tmp);
+      setTimeout(function(){tmp.remove();},2000);
+    });
+  };
+  // "Gerar follow-up" a partir do próprio card: fecha o card (sem voltar pra Anotações agora — o
+  // destino é direto o formulário de Tarefas & Rascunhos) e abre o rascunho pré-preenchido.
+  // window._anotRetorno continua valendo (foi setado quando o card foi aberto a partir das
+  // Anotações), então ao fechar/salvar o rascunho depois, o sistema volta pra Anotações do mesmo
+  // jeito — a mensagem não se perde e o WhatsApp continua acessível se precisar reenviar.
+  window.cardLocGerarFollowup=function(){
+    var modal=document.getElementById('modalCardLoc');
+    var contrato=modal.dataset.contrato;
+    var audiencia=modal.dataset.audiencia||'locatario';
+    var mensagem=modal.dataset.mensagem||'';
+    var seed=construirSeedFollowupLoc_(contrato,audiencia,mensagem);
+    modal.classList.remove('open');
     if(typeof window.rascunhosAbrirComSeed==='function')window.rascunhosAbrirComSeed(seed);
   };
   document.addEventListener('DOMContentLoaded',function(){
