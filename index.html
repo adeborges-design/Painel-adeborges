@@ -3033,6 +3033,7 @@
   <div class="form-modal-wrap">
     <div class="form-modal-header">
       <div class="form-modal-title" id="edicaoTitulo">✏️ Editar Processo</div>
+      <button class="btn-sync" style="margin-left:auto;margin-right:10px" onclick="copiarDadosParaPeticao('ed')" title="Copia qualificação da parte + dados do processo, formatados e prontos pra colar no início de uma petição inicial ou intermediária">📄 Copiar p/ petição</button>
       <button class="btn-form-cancel" onclick="document.getElementById('modalEdicao').classList.remove('open')">✕</button>
     </div>
     <div class="form-modal-body">
@@ -3145,7 +3146,7 @@
           </div>
           <div class="form-field form-full" style="position:relative">
             <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
-            <input type="text" id="ed-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'ed')" autocomplete="off">
+            <input type="text" id="ed-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'ed')" autocomplete="off" data-no-copy="1">
             <div id="ed-processoPrincipalResultados" class="cad-busca-resultados"></div>
           </div>
           <div class="form-field">
@@ -3353,6 +3354,7 @@
   <div class="form-modal-wrap">
     <div class="form-modal-header">
       <div class="form-modal-title">➕ Novo Processo</div>
+      <button class="btn-sync" style="margin-left:auto;margin-right:10px" onclick="copiarDadosParaPeticao('cad')" title="Copia qualificação da parte + dados do processo, formatados e prontos pra colar no início de uma petição inicial ou intermediária">📄 Copiar p/ petição</button>
       <button class="btn-form-cancel" onclick="document.getElementById('modalCadastro').classList.remove('open')">✕</button>
     </div>
     <div class="form-modal-body">
@@ -9058,8 +9060,93 @@ function copiarValorFallback_(valor) {
 }
 document.addEventListener('DOMContentLoaded', function() {
   adicionarBotoesCopiarCampos('#modalCadastro', '.form-field');
+  adicionarBotoesCopiarCampos('#modalEdicao', '.form-field');
   adicionarBotoesCopiarCampos('#locCFormWrap', '.loc-cfield');
 });
+
+// ---------- "COPIAR P/ PETIÇÃO" (cadastro do cliente em Processos) ----------
+// Monta, num texto só, a qualificação da parte + os dados do processo já cadastrados — pronto
+// pra colar no cabeçalho de uma petição inicial (se o processo ainda não tem número) ou no "vem
+// respeitosamente aos autos do processo nº..." de uma petição intermediária. Não substitui os
+// botões de copiar campo a campo (ficam pra quando só se precisa de um dado isolado); este é
+// pra montar de uma vez só o bloco de abertura de uma peça.
+function montarTextoParaPeticao_(prefixo) {
+  var v = function(id) { var el = document.getElementById(prefixo + '-' + id); return el ? String(el.value || '').trim() : ''; };
+  var ehJuridica = v('tipoPessoa') === 'Jurídica';
+
+  var enderecoPartes = [v('endereco'), v('bairro')].filter(Boolean).join(', ');
+  var cidadeUf = [v('cidade'), v('estado')].filter(Boolean).join('/');
+  var enderecoCompleto = [enderecoPartes, cidadeUf, v('cep') ? ('CEP ' + v('cep')) : ''].filter(Boolean).join(', ');
+
+  var linhas = [];
+  linhas.push('QUALIFICAÇÃO DA PARTE');
+  if (ehJuridica) {
+    var repPartes = [];
+    if (v('repNome')) {
+      var repQuali = ['nacionalidade brasileira', v('repCargo')].filter(Boolean).join(', ');
+      var repDoc = [v('repRg') ? ('RG nº ' + v('repRg')) : '', v('repCpf') ? ('CPF nº ' + v('repCpf')) : ''].filter(Boolean).join(', ');
+      repPartes.push('neste ato representada por ' + v('repNome') + (repQuali ? ', ' + repQuali : '') + (repDoc ? ', portador(a) do ' + repDoc : ''));
+    }
+    var qualJuridica = [
+      v('nome') || '[RAZÃO SOCIAL]',
+      'pessoa jurídica de direito privado',
+      v('cpf') ? ('inscrita no CNPJ sob o nº ' + v('cpf')) : '',
+      enderecoCompleto ? ('com sede na ' + enderecoCompleto) : '',
+      repPartes.join('')
+    ].filter(Boolean).join(', ');
+    linhas.push(qualJuridica + '.');
+  } else {
+    var qualFisica = [
+      v('nome') || '[NOME]',
+      'nacionalidade brasileira',
+      v('estadoCivil') || '',
+      v('profissao') || '',
+      v('rg') ? ('portador(a) do RG nº ' + v('rg')) : '',
+      v('cpf') ? ('inscrito(a) no CPF sob o nº ' + v('cpf')) : '',
+      enderecoCompleto ? ('residente e domiciliado(a) na ' + enderecoCompleto) : ''
+    ].filter(Boolean).join(', ');
+    linhas.push(qualFisica + '.');
+  }
+  var contato = [v('telefone'), v('email')].filter(Boolean).join(' | ');
+  if (contato) linhas.push('Contato: ' + contato);
+
+  var dadosProcesso = [];
+  dadosProcesso.push('Processo nº: ' + (v('processo') || '(ainda não distribuído)'));
+  if (v('vara')) dadosProcesso.push('Juízo/Vara: ' + v('vara'));
+  if (v('tribunal')) dadosProcesso.push('Foro/Tribunal: ' + v('tribunal'));
+  if (v('sistema')) dadosProcesso.push('Sistema: ' + v('sistema'));
+  if (v('tipo')) dadosProcesso.push('Ação: ' + v('tipo'));
+  if (v('parte') || v('outra')) dadosProcesso.push('Posição: ' + (v('parte') || '-') + (v('outra') ? (' em face de ' + v('outra')) : ''));
+  if (v('processoPrincipal')) dadosProcesso.push('Processo principal: ' + v('processoPrincipal'));
+  linhas.push('');
+  linhas.push('DADOS DO PROCESSO');
+  linhas.push.apply(linhas, dadosProcesso);
+
+  linhas.push('');
+  linhas.push('ADVOGADO');
+  linhas.push('Dr. Adenilson Borges da Silva — OAB/SP 335.600');
+
+  return linhas.join('\n');
+}
+function copiarDadosParaPeticao(prefixo) {
+  var txt = montarTextoParaPeticao_(prefixo);
+  var mostrarToastCopiaPeticao_ = function(msg, cor) {
+    var tmp = document.createElement('div');
+    tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:' + (cor || '#4caf7d') + ';color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+    tmp.textContent = msg;
+    document.body.appendChild(tmp);
+    setTimeout(function() { tmp.remove(); }, 2200);
+  };
+  var feito = function() { mostrarToastCopiaPeticao_('📄 Dados copiados — cole na petição.'); };
+  var falhou = function() { mostrarToastCopiaPeticao_('Não foi possível copiar. Tente novamente.', '#e07c3a'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(feito).catch(function() {
+      if (copiarValorFallback_(txt)) feito(); else falhou();
+    });
+  } else {
+    if (copiarValorFallback_(txt)) feito(); else falhou();
+  }
+}
 
 async function salvarCadastro() {
   const nome = document.getElementById('cad-nome').value.trim();
