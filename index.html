@@ -885,7 +885,7 @@
   .modal-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.7);
     z-index: 950;
     align-items: center;
@@ -987,7 +987,7 @@
   .modal-recibo-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.88);
     z-index: 950;
     align-items: flex-start;
@@ -1444,7 +1444,7 @@
   .modal-parceiro-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.85);
     z-index: 950;
     align-items: flex-start;
@@ -1458,7 +1458,7 @@
   .modal-repasse-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.85);
     z-index: 950;
     align-items: flex-start;
@@ -1787,7 +1787,7 @@
   .modal-form-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.85);
     z-index: 950;
     align-items: flex-start;
@@ -1885,6 +1885,24 @@
 
   .form-field select option { background: var(--surface2); }
 
+  /* Botão "copiar" injetado ao lado de cada campo dos cadastros (Processos e Locações) — ver
+     adicionarBotoesCopiarCampos()/copiarValorCampo_() mais abaixo. Genérico, não fica preso a
+     nenhum dos dois formulários. */
+  .btn-copiar-campo {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 4px 2px;
+    opacity: 0.6;
+    flex: none;
+    align-self: center;
+  }
+  .btn-copiar-campo:hover { opacity: 1; color: var(--accent); }
+  .btn-copiar-campo.copiado { opacity: 1; color: var(--green); }
+
   .form-modal-footer {
     padding: 16px 24px;
     border-top: 1px solid var(--border);
@@ -1934,7 +1952,7 @@
   .modal-doc-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.88);
     z-index: 950;
     align-items: flex-start;
@@ -2127,7 +2145,7 @@
   .modal-card-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.85);
     z-index: 950;
     align-items: center;
@@ -2411,7 +2429,7 @@
 </script>
 
 <!-- LEXFLOW GATE (senha de acesso) -->
-<div id="lexflowGate" style="position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',Arial,sans-serif;">
+<div id="lexflowGate" style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',Arial,sans-serif;">
   <form id="lexflowGateForm" style="background:#fff;border-radius:14px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
     <div style="display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:700;font-size:26px;color:#0d1f35;margin-bottom:4px;">EI<span style="display:inline-flex;margin:0 -1px"><svg viewBox="0 0 54 54" width="30" height="30" aria-hidden="true"><defs><mask id="eixoMaskGate"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" fill="#0d1f35" mask="url(#eixoMaskGate)"/></svg></span>O</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Acesso restrito</div>
@@ -3456,7 +3474,7 @@
           </div>
           <div class="form-field form-full" style="position:relative">
             <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
-            <input type="text" id="cad-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'cad')" autocomplete="off">
+            <input type="text" id="cad-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'cad')" autocomplete="off" data-no-copy="1">
             <div id="cad-processoPrincipalResultados" class="cad-busca-resultados"></div>
           </div>
           <div class="form-field">
@@ -6542,7 +6560,7 @@ function atendEnsureModal() {
   if (document.getElementById('atendModalOverlay')) return;
   var ov = document.createElement('div');
   ov.id = 'atendModalOverlay';
-  ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.style.cssText = 'display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
   ov.innerHTML = '<div id="atendModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
   ov.addEventListener('click', function (e) { if (e.target === ov) window.atendFechar(); });
   document.body.appendChild(ov);
@@ -6677,7 +6695,7 @@ function entrEnsureModal() {
   if (document.getElementById('entrModalOverlay')) return;
   var ov = document.createElement('div');
   ov.id = 'entrModalOverlay';
-  ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.style.cssText = 'display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
   ov.innerHTML = '<div id="entrModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
   ov.addEventListener('click', function (e) { if (e.target === ov) window.entrFechar(); });
   document.body.appendChild(ov);
@@ -8969,6 +8987,80 @@ function abrirCadastro() {
   document.getElementById('modalCadastro').classList.add('open');
 }
 
+// ---------- BOTÃO "COPIAR" EM CADA CAMPO DOS CADASTROS (Processos e Locações) ----------
+// Injeta um pequeno ícone de copiar ao lado de cada campo de um formulário de cadastro — pra
+// reaproveitar um dado isolado (nome, CPF, endereço, nº do processo/contrato, telefone...) em
+// outro trabalho (uma petição, um e-mail, outro sistema) sem precisar selecionar manualmente o
+// texto de dentro do campo. Genérico: roda uma vez, sobre qualquer contêiner cujos campos sigam
+// o padrão "<div classe-do-campo><label>...</label><input|select|textarea></div>" — usado tanto
+// no cadastro de Processos (#modalCadastro, campos .form-field) quanto no de Locações
+// (#locCFormWrap, campos .loc-cfield). Campos com data-no-copy="1" (ex.: caixas de busca/
+// autocompletar, que guardam um texto de busca e não um dado do cadastro) ficam de fora.
+function adicionarBotoesCopiarCampos(containerSel, fieldSel) {
+  var container = document.querySelector(containerSel);
+  if (!container) return;
+  container.querySelectorAll(fieldSel).forEach(function(campo) {
+    if (campo.dataset.copiarPronto) return; // não duplica se rodar de novo por engano
+    campo.dataset.copiarPronto = '1';
+    var input = campo.querySelector('input, select, textarea');
+    if (!input || input.type === 'hidden' || input.dataset.noCopy) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-copiar-campo';
+    btn.title = 'Copiar';
+    btn.textContent = '📋';
+    btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); copiarValorCampo_(input, btn); };
+    var pai = input.parentElement;
+    if (pai !== campo) {
+      // O campo já tem um "wrapper" próprio (ex.: input + botão "Sugerir" lado a lado) —
+      // só entra na mesma fileira, sem criar outro nível de div.
+      pai.appendChild(btn);
+    } else {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;gap:4px;align-items:' + (input.tagName === 'TEXTAREA' ? 'flex-start' : 'center');
+      campo.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      input.style.flex = '1';
+      input.style.minWidth = '0';
+      wrap.appendChild(btn);
+    }
+  });
+}
+function copiarValorCampo_(input, btn) {
+  var valor = (input.value || '').trim();
+  var orig = btn.textContent;
+  var mostrar = function(txt, classeExtra) {
+    btn.textContent = txt;
+    if (classeExtra) btn.classList.add(classeExtra);
+    setTimeout(function() { btn.textContent = orig; btn.classList.remove('copiado'); }, 900);
+  };
+  if (!valor) { mostrar('—'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(valor).then(function() { mostrar('✓', 'copiado'); }).catch(function() {
+      if (copiarValorFallback_(valor)) mostrar('✓', 'copiado'); else mostrar('⚠️');
+    });
+  } else {
+    if (copiarValorFallback_(valor)) mostrar('✓', 'copiado'); else mostrar('⚠️');
+  }
+}
+function copiarValorFallback_(valor) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = valor;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
+  } catch (e) { return false; }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  adicionarBotoesCopiarCampos('#modalCadastro', '.form-field');
+  adicionarBotoesCopiarCampos('#locCFormWrap', '.loc-cfield');
+});
+
 async function salvarCadastro() {
   const nome = document.getElementById('cad-nome').value.trim();
   if (!nome) {
@@ -9143,7 +9235,7 @@ document.getElementById('modalDoc').addEventListener('click', function(e) {
 
 <style>
   /* ============ MODULO HONORARIOS (CSS que faltava) ============ */
-  .hon-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:900;overflow-y:auto}
+  .hon-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:var(--bg);z-index:900;overflow-y:auto}
   .hon-overlay.open{display:block}
   .hon-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border)}
   .hon-title{font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:700;color:var(--accent);margin-right:auto}
@@ -10212,7 +10304,7 @@ function cpDrillEnsureModal(){
  if(document.getElementById('cpDrillOverlay'))return;
  var ov=document.createElement('div');
  ov.id='cpDrillOverlay';
- ov.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:960;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+ ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:960;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
  ov.innerHTML='<div id="cpDrillWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
  ov.addEventListener('click',function(e){if(e.target===ov)cpFecharDrill();});
  document.body.appendChild(ov);
@@ -10366,7 +10458,7 @@ window.cpRenderFixas=cpRenderFixas;
 <!-- Lê as abas LOC_CONTRATOS e LOC_LANCAMENTOS ao vivo.            -->
 <!-- ============================================================= -->
 <style>
-  .loc-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:920;overflow-y:auto}
+  .loc-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:var(--bg);z-index:920;overflow-y:auto}
   .loc-overlay.open{display:block}
   .loc-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
   .loc-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);min-width:180px}
@@ -10997,7 +11089,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-locador #modalRelLocador {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-rel-locador #modalRelLocador .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11014,7 +11106,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-inad-loc #modalRelInadLoc {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-rel-inad-loc #modalRelInadLoc .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11031,7 +11123,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-mensal #modalRelMensal {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-rel-mensal #modalRelMensal .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11048,7 +11140,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-informes-lote #modalInformesLote {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-informes-lote #modalInformesLote .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11064,7 +11156,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-aviso-loc #modalAvisoLoc {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-aviso-loc #modalAvisoLoc .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11077,7 +11169,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-recibo-acordo #modalReciboAcordo {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-recibo-acordo .reciboloc-toolbar,
   body.printing-recibo-acordo .reciboloc-actions { display:none !important; }
@@ -11087,7 +11179,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-fechamento #modalFechamento {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-fechamento #modalFechamento .repasse-wrap {
     overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
@@ -11245,13 +11337,9 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="atend-section">
           <div class="atend-section-label" id="cardLocDestLabel">Locatário</div>
           <div class="atend-nome" id="cardLocNome"></div>
+          <div class="atend-meta" id="cardLocContraparte"></div>
           <div class="atend-processo" id="cardLocContrato"></div>
           <div class="atend-meta" id="cardLocEndereco"></div>
-        </div>
-
-        <div class="atend-section" id="cardLocDadosSection">
-          <div class="atend-section-label">Dados da Locação</div>
-          <div class="atend-box" id="cardLocDados"></div>
         </div>
 
         <div class="atend-section" id="cardLocMensagemSection">
@@ -12162,7 +12250,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rescisao #modalRescisao {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-rescisao .reciboloc-toolbar,
   body.printing-rescisao .entr-no-print { display:none !important; }
@@ -12183,7 +12271,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-distrato #modalRescisao, body.printing-termo-chaves #modalRescisao, body.printing-laudo-vistoria #modalRescisao {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-distrato .reciboloc-toolbar, body.printing-distrato .entr-no-print,
   body.printing-termo-chaves .reciboloc-toolbar, body.printing-termo-chaves .entr-no-print,
@@ -12221,7 +12309,7 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-recibo-loc #modalReciboLoc {
     display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
     background:#fff !important; padding:24px 0 !important; z-index:auto !important;
-    overflow:visible !important; height:auto !important; max-height:none !important; inset:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
   }
   body.printing-recibo-loc .reciboloc-toolbar,
   body.printing-recibo-loc .reciboloc-actions { display:none !important; }
@@ -12234,7 +12322,7 @@ window.cpRenderFixas=cpRenderFixas;
 </style>
 
 <style>
-  .modal-cobr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:960;align-items:center;justify-content:center}
+  .modal-cobr-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.55);z-index:960;align-items:center;justify-content:center}
   .modal-cobr-overlay.open{display:flex}
   .cobr-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(560px,92vw);max-height:88vh;overflow-y:auto}
   .cobr-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
@@ -13750,15 +13838,11 @@ window.cpRenderFixas=cpRenderFixas;
     modal.dataset.mensagem=mensagem||'';
     document.getElementById('cardLocDestLabel').textContent=ehLocador?'Locador':'Locatário';
     document.getElementById('cardLocNome').textContent=(ehLocador?(c.locador||''):(c.locatario||'')).toUpperCase();
+    // Logo abaixo do nome do destinatário, mostra só o nome da contraparte do contrato (sem
+    // aluguel/vencimento — o card é uma mensagem, não um informe financeiro).
+    document.getElementById('cardLocContraparte').textContent=ehLocador?('Locatário: '+(c.locatario||'-')):('Locador: '+(c.locador||'-'));
     document.getElementById('cardLocContrato').textContent='Contrato '+contrato;
     document.getElementById('cardLocEndereco').textContent=c.end||'';
-
-    var dadosLinhas=[];
-    dadosLinhas.push('Aluguel: '+BRL(c.aluguel||0));
-    if(c.tipoLocacao)dadosLinhas.push('Tipo: '+c.tipoLocacao+(c.tipoImovel?' — '+c.tipoImovel:''));
-    if(c.venc)dadosLinhas.push('Vencimento: dia '+c.venc);
-    dadosLinhas.push(ehLocador?'Locatário: '+(c.locatario||'-'):'Locador: '+(c.locador||'-'));
-    document.getElementById('cardLocDados').textContent=dadosLinhas.join('\n');
 
     var msgSection=document.getElementById('cardLocMensagemSection');
     if(mensagem){
@@ -13851,12 +13935,9 @@ window.cpRenderFixas=cpRenderFixas;
     var b=formatoWpp?'*':'',ib=formatoWpp?'_':'';
     var txt=b+'ATUALIZAÇÃO DE LOCAÇÃO'+b+'\n'+ib+'Escritório Adenilson Borges'+ib+'\n\n';
     txt+=b+(ehLocador?'LOCADOR':'LOCATÁRIO')+b+'\n'+(ehLocador?(c.locador||''):(c.locatario||''))+'\n';
+    txt+=(ehLocador?'Locatário: '+(c.locatario||'-'):'Locador: '+(c.locador||'-'))+'\n';
     txt+='Contrato '+contrato+'\n';
     if(c.end)txt+=c.end+'\n';
-    txt+='\n'+b+'DADOS DA LOCAÇÃO'+b+'\n';
-    txt+='Aluguel: '+BRL(c.aluguel||0)+'\n';
-    if(c.tipoLocacao)txt+='Tipo: '+c.tipoLocacao+(c.tipoImovel?' — '+c.tipoImovel:'')+'\n';
-    if(c.venc)txt+='Vencimento: dia '+c.venc+'\n';
     if(mensagem)txt+='\n'+b+'MENSAGEM'+b+'\n'+mensagem+'\n';
     txt+='\nDúvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
     return txt;
@@ -16586,7 +16667,7 @@ window.cpRenderFixas=cpRenderFixas;
 <!-- REORGANIZAÇÃO: Dashboard inicial + navegação + Contas separada -->
 <!-- ============================================================= -->
 <style>
-  .home-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:880;overflow-y:auto}
+  .home-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:var(--bg);z-index:880;overflow-y:auto}
   .home-overlay.open{display:block}
   .home-header{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--border);background:var(--surface)}
   .home-brand{display:flex;flex-direction:column}
