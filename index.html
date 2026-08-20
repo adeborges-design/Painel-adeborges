@@ -12944,7 +12944,7 @@ window.cpRenderFixas=cpRenderFixas;
     var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
     lstTodos.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
     var alug=0,taxa=0,repLiq=0,emCaixa=0;
-    var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0;
+    var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0,cMJPendente=0;
     lstTodos.forEach(function(l){
       alug+=l.aluguel;taxa+=l.taxa;
       var rep=effRep(l);
@@ -12953,6 +12953,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado')cAlAtras++;else cAlPend++;
       if(repassou){repLiq+=rep;cRepFeito++;}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
       if(recebeu&&!repassou)emCaixa+=rep;
+      if(locPrecisaDecidirMultaJuros_(l,contratosById[l.contrato]))cMJPendente++;
     });
     var ativos=DATA.contratos.filter(function(c){return c.ativo;}).length;
     function ativoCls(tipo){return locFiltroAtivo===tipo?' filtro-ativo':'';}
@@ -12964,6 +12965,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locChips').innerHTML=
       '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec,'al_recebido')+chip('pend','Pendentes',cAlPend,'al_pendente')+chip('atras','Atrasados',cAlAtras,'al_atrasado')+chip('ativos','Contratos ativos',ativos,null)+'</div>'+
       '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito,'rep_feito')+chip('pend','Pendentes',cRepPend,'rep_pendente')+chip('atras','Atrasados',cRepAtras,'rep_atrasado')+'</div>'+
+      (cMJPendente?'<div class="loc-chips-row"><span class="loc-chips-label">Multa/juros</span>'+chip('atras','Atraso ≥ 2 dias sem multa/juros lançados',cMJPendente,'mj_pendente')+'</div>':'')+
       (locFiltroAtivo!=='all'?'<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="locFiltrar(\''+locFiltroAtivo+'\')">✕ Limpar filtro</button></div>':'');
     // Alerta pulsante: aluguel/repasse ainda pendente em mês ANTERIOR ao selecionado — fácil
     // de passar batido porque a tela só mostra o mês escolhido no seletor.
@@ -13004,6 +13006,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(locFiltroAtivo==='rep_feito')return repassou;
       if(locFiltroAtivo==='rep_pendente')return !repassou&&l.statusRep!=='Atrasado';
       if(locFiltroAtivo==='rep_atrasado')return l.statusRep==='Atrasado';
+      if(locFiltroAtivo==='mj_pendente')return locPrecisaDecidirMultaJuros_(l,contratosById[l.contrato]);
       return true;
     });
     var banks=['Itau','Bradesco','Santander','Caixa','Banco do Brasil','Seguradora','Outro'];
@@ -13013,6 +13016,10 @@ window.cpRenderFixas=cpRenderFixas;
       var repDate=diaMes(c.rep,selMes);
       var atrasoRepasse=diasAtrasoFrom(repDate,repassou);
       var coprop=(DATA.desmembramento&&DATA.desmembramento[l.contrato])?' <span class="loc-num" title="Repasse dividido entre '+E(DATA.desmembramento[l.contrato].join(', '))+'">▸ '+DATA.desmembramento[l.contrato].length+' co-prop.</span>':'';
+      var diasAtrasoAluguel=inadLocEstaAtrasado_(l,c)?inadLocDiasAtraso_(l,c):0;
+      var alertaMJ=locPrecisaDecidirMultaJuros_(l,c)
+        ? ' <span class="loc-alerta-mj" title="Atraso de '+diasAtrasoAluguel+' dia(s) — multa e juros ainda não foram lançados neste mês. Clique para calcular e decidir se cobra." onclick="event.stopPropagation();abrirAlertaMultaJuros(\''+E(l.contrato)+'\')" style="cursor:pointer;color:#d9772f;font-weight:700">⚠️</span>'
+        : '';
       return '<tr>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
@@ -13022,7 +13029,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
-        '<td class="loc-money" style="cursor:pointer" title="Aluguel + multa/juros + encargos cobrados do inquilino + IPTU − desconto — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(valorCobradoOf(l))+' <span class="loc-num">✎</span></td>'+
+        '<td class="loc-money" style="cursor:pointer" title="Aluguel + multa/juros + encargos cobrados do inquilino + IPTU − desconto — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(valorCobradoOf(l))+' <span class="loc-num">✎</span>'+alertaMJ+'</td>'+
         '<td><span class="loc-row-money loc-row-money-fixo" title="Valor final do repasse (Aluguel + Multa + Juros − Taxa + Encargos) — não é editável aqui: por segurança, sempre coincide com o informe de repasse enviado ao locador.">🔒 '+BRL(rep)+'</span></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td>'+(l.statusAluguel!=='Recebido'?
@@ -13038,7 +13045,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(showResumoLocadores)renderResumoLocadores();
     locAtualizarAlertaVigencia();
     var origem=live?'<b>Sincronizado</b> com as abas <b>LOC_CONTRATOS</b> e <b>LOC_LANCAMENTOS</b> da sua planilha. As baixas são gravadas de volta na planilha (via Apps Script) e também guardadas localmente por segurança.':'<b>Modo local.</b> Configure a planilha em <b>Config</b> para sincronizar com LOC_CONTRATOS/LOC_LANCAMENTOS. Enquanto isso, as alterações ficam salvas neste navegador.';
-    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Valor Cobrado</b> (clique para editar) é o total que o locatário deve pagar no mês: Aluguel + Multa + Juros + condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), outras cobranças e IPTU, menos desconto (e menos o IRRF retido na fonte, quando o locatário for pessoa jurídica retentora) — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> não é editável: mostra sempre o valor final calculado (Aluguel + Multa + Juros − Taxa + Encargos), por segurança, pra sempre coincidir com o informe de repasse enviado ao locador. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores.';
+    document.getElementById('locNote').innerHTML=origem+' O <b>Status Aluguel</b> indica se o locatário já pagou o aluguel a você. O <b>Status Repasse</b> indica se você já repassou esse valor ao locador — são independentes, já que o repasse normalmente acontece depois do recebimento. A coluna <b>Valor Cobrado</b> (clique para editar) é o total que o locatário deve pagar no mês: Aluguel + Multa + Juros + condomínio detalhado (cota, água/gás privativos, água/gás/energia comuns, taxa de leitura, fundo de férias, 13º), outras cobranças e IPTU, menos desconto (e menos o IRRF retido na fonte, quando o locatário for pessoa jurídica retentora) — a Taxa de Administração incide só sobre Aluguel + Multa + Juros, e os encargos são repassados integralmente ao locador. A coluna <b>Repasse</b> não é editável: mostra sempre o valor final calculado (Aluguel + Multa + Juros − Taxa + Encargos), por segurança, pra sempre coincidir com o informe de repasse enviado ao locador. A coluna <b>Dia Repasse</b> vem do contrato (edite em <b>📋 Contratos</b>) e alimenta a <b>Atraso repasse</b>, que conta os dias após o previsto enquanto o Status Repasse não for <b>Repassado</b>. <b>Em caixa, aguardando repasse</b> é o valor que você já recebeu dos locatários mas ainda não repassou aos locadores. O ícone <b>⚠️</b> ao lado do Valor Cobrado aparece a partir de <b>2 dias de atraso</b> (vencimento já passado, aluguel ainda não recebido) enquanto multa e juros ainda não tiverem sido lançados no mês — clique nele pra abrir a calculadora já com os percentuais do contrato e decidir se cobra; some sozinho assim que multa ou juros forem preenchidos (calculados ou digitados).';
   };
   function card(cls,l,v,s){return '<div class="loc-stat '+cls+'"><div class="loc-stat-label">'+l+'</div><div class="loc-stat-value">'+v+'</div><div class="loc-stat-sub">'+s+'</div></div>';}
   function chip(cls,l,n,filtro){
@@ -13909,6 +13916,27 @@ window.cpRenderFixas=cpRenderFixas;
     var hoje=new Date();hoje.setHours(0,0,0,0);
     return Math.max(0,Math.round((hoje-venc)/86400000));
   }
+  // Alerta de multa/juros por atraso: dispara a partir de 2 dias de atraso (vencimento já
+  // passou por 2+ dias e o aluguel ainda não foi recebido) e só enquanto o lançamento ainda
+  // não tiver multa NEM juros lançados — assim que qualquer um dos dois for preenchido (seja
+  // pela calculadora ou digitado direto em Encargos), o alerta some sozinho, mesmo que o valor
+  // não seja exatamente o "correto" — a decisão já foi tomada pelo usuário, não cabe insistir.
+  function locPrecisaDecidirMultaJuros_(l,c){
+    if(!c||!l)return false;
+    if(!inadLocEstaAtrasado_(l,c))return false;
+    if(inadLocDiasAtraso_(l,c)<2)return false;
+    return !(l.multa)&&!(l.juros);
+  }
+  window.abrirAlertaMultaJuros=function(contrato){
+    // Reaproveita 100% a Calculadora de Multa e Juros já existente (mesma fórmula, mesmos
+    // percentuais do contrato, mesmo fluxo de "📐 calcular por dias de atraso" dentro de
+    // Encargos) — só que aqui abre os dois modais em sequência, na mesma chamada: primeiro
+    // Encargos (pra popular os campos #cobr-* dos quais a calculadora depende, como a base de
+    // cálculo), e a calculadora sobe imediatamente por cima, já com "Cobrar multa"/"Cobrar
+    // juros" pré-marcados — o usuário nunca chega a ver a tela de Encargos "pelada" no meio.
+    abrirModalCobrancas(contrato);
+    abrirCalcMultaJuros();
+  };
   window.relInadLocAbrir=function(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
