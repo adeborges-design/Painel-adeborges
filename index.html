@@ -15276,7 +15276,7 @@ window.cpRenderFixas=cpRenderFixas;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep};
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||''};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -15322,6 +15322,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(l.iptu?'<div>(+) IPTU: <strong>'+BRL(l.iptu)+'</strong></div>':'')
         +(l.desconto?'<div>(−) Desconto: <strong>-'+BRL(l.desconto)+'</strong></div>':'')
         +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
+        +(l.obsLocador?'<div style="margin-top:8px;padding:9px 12px;background:rgba(224,84,84,.16);border:2px solid var(--red);border-radius:8px;color:var(--red);font-weight:700;font-size:12.5px;line-height:1.5">📌 '+E(l.obsLocador)+'</div>':'')
         +'</div></div>';
     }).join('');
     var avulsosHtml=avulsos.length?
@@ -15380,6 +15381,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(l.iptu)txt+='(+) IPTU: '+BRL(l.iptu)+'\n';
       if(l.desconto)txt+='(−) Desconto: -'+BRL(l.desconto)+'\n';
       txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
+      if(l.obsLocador)txt+='📌 *'+l.obsLocador+'*\n';
       txt+='－－－－－－－－－－\n\n';
     });
     if(linhas.length&&avulsos.length)txt+='*Subtotal dos imóveis:* '+BRL(subtotalImoveis)+'\n\n';
