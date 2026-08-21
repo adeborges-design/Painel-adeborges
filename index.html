@@ -2721,26 +2721,27 @@
     <!-- COLUNA ESQUERDA: Resumo + Formulário -->
     <div class="hon-resumo">
 
-      <!-- STATS -->
-      <div class="hon-stat verde">
+      <!-- STATS (clicáveis: cada card filtra a lista de contratos abaixo por aquele critério —
+           mesmo padrão de Processos e Locações. Clique de novo no mesmo card pra limpar.) -->
+      <div class="hon-stat verde loc-stat-clicavel" style="cursor:pointer" data-honfiltro="recebido" onclick="honFiltrar('recebido')" title="Clique para ver só os contratos com algum valor já recebido">
         <div class="hon-stat-label">Total Recebido</div>
         <div class="hon-stat-value" id="honTotalRecebido">R$ 0,00</div>
         <div class="hon-stat-sub" id="honTotalLancamentos">0 lançamentos</div>
       </div>
 
-      <div class="hon-stat vermelho">
+      <div class="hon-stat vermelho loc-stat-clicavel" style="cursor:pointer" data-honfiltro="a_repassar" onclick="honFiltrar('a_repassar')" title="Clique para ver só os contratos com repasse pendente a parceiro">
         <div class="hon-stat-label">Repasses Pendentes</div>
         <div class="hon-stat-value" id="honRepassePendente">R$ 0,00</div>
         <div class="hon-stat-sub" id="honRepasseQtd">para parceiros</div>
       </div>
 
-      <div class="hon-stat azul">
+      <div class="hon-stat azul loc-stat-clicavel" style="cursor:pointer" data-honfiltro="via_parceiro" onclick="honFiltrar('via_parceiro')" title="Clique para ver só os contratos recebidos por um advogado parceiro">
         <div class="hon-stat-label">Recebido via Parceiro</div>
         <div class="hon-stat-value" id="honViaParceiro">R$ 0,00</div>
         <div class="hon-stat-sub">aguardando repasse</div>
       </div>
 
-      <div class="hon-stat roxo">
+      <div class="hon-stat roxo loc-stat-clicavel" style="cursor:pointer" data-honfiltro="exito" onclick="honFiltrar('exito')" title="Clique para ver só os contratos com honorários de êxito">
         <div class="hon-stat-label">Êxito Pendente</div>
         <div class="hon-stat-value" id="honExito">R$ 0,00</div>
         <div class="hon-stat-sub">honorários de êxito</div>
@@ -7200,7 +7201,21 @@ function accCalcularDatasParcelas(dataInicioStr, frequencia, numParcelas) {
   return datas;
 }
 function accCard(cls, l, v, s) { return '<div class="loc-stat ' + cls + '"><div class="loc-stat-label">' + l + '</div><div class="loc-stat-value">' + v + '</div><div class="loc-stat-sub">' + s + '</div></div>'; }
-function accChip(cls, l, n) { return '<div class="loc-chip ' + cls + '">' + l + ': <b>' + n + '</b></div>'; }
+// Card de resumo clicável (mesmo padrão de Locações): se "filtro" for passado, o card fica
+// clicável e filtra a tabela de lançamentos abaixo por aquele critério; clicar de novo no mesmo
+// card limpa o filtro. Sem "filtro", o card fica só informativo (ex.: "Honorários do mês", que é
+// uma soma sobre todos os lançamentos, não um subconjunto filtrável).
+function accCardClic(cls, l, v, s, filtro) {
+  if (!filtro) return '<div style="cursor:default">' + accCard(cls, l, v, s) + '</div>';
+  if (filtro === 'all') return '<div onclick="accFiltrar(\'all\')" style="cursor:pointer" title="Ver todos os lançamentos do mês">' + accCard(cls, l, v, s) + '</div>';
+  var ativo = window.accFiltroAtivo === filtro;
+  return '<div class="loc-stat-clicavel' + (ativo ? ' filtro-ativo' : '') + '" style="cursor:pointer" onclick="accFiltrar(\'' + filtro + '\')" title="Clique para filtrar a lista">' + accCard(cls, l, v, s) + '</div>';
+}
+function accChip(cls, l, n, filtro) {
+  if (!filtro) return '<div class="loc-chip ' + cls + '">' + l + ': <b>' + n + '</b></div>';
+  var ativo = window.accFiltroAtivo === filtro;
+  return '<div class="loc-chip ' + cls + (ativo ? ' filtro-ativo' : '') + '" style="cursor:pointer" onclick="accFiltrar(\'' + filtro + '\')" title="Clique para filtrar a lista">' + l + ': <b>' + n + '</b></div>';
+}
 
 window.accContratos = [];
 window.accLancamentos = [];
@@ -7553,6 +7568,11 @@ window.accIrParaPendenciaAnterior = function () {
 };
 
 // ---------- RENDER PRINCIPAL ----------
+// Filtro ativo dos cartões/chips de resumo de Acordos (mesmo padrão de locFiltrar em Locações):
+// clicar num card ou chip filtra a tabela de lançamentos abaixo por aquele critério; clicar de
+// novo no mesmo (ou usar "✕ Limpar filtro") volta a mostrar todos os lançamentos do mês.
+window.accFiltroAtivo = 'all';
+window.accFiltrar = function (tipo) { accFiltroAtivo = (accFiltroAtivo === tipo) ? 'all' : tipo; accRender(); };
 window.accRender = function () {
   var sel = document.getElementById('accMesSel');
   if (sel && sel.value) accSelMes = sel.value;
@@ -7578,13 +7598,14 @@ window.accRender = function () {
   });
 
   document.getElementById('accStats').innerHTML =
-    accCard('dourado', 'Parcelas do mês', accBRL(totalPrevisto), lista.length + ' lançamento(s)') +
-    accCard('azul', 'Honorários do mês', accBRL(totalHonorarios), 'sobre o que já foi recebido') +
-    accCard('roxo', 'Em caixa, aguardando repasse', accBRL(emCaixa), 'já recebido da parte contrária, falta repassar') +
-    accCard('verde', 'Já repassado aos clientes', accBRL(jaRepassado), 'repasses concluídos no mês');
+    accCardClic('dourado', 'Parcelas do mês', accBRL(totalPrevisto), lista.length + ' lançamento(s)', 'all') +
+    accCardClic('azul', 'Honorários do mês', accBRL(totalHonorarios), 'sobre o que já foi recebido') +
+    accCardClic('roxo', 'Em caixa, aguardando repasse', accBRL(emCaixa), 'já recebido da parte contrária, falta repassar', 'em_caixa') +
+    accCardClic('verde', 'Já repassado aos clientes', accBRL(jaRepassado), 'repasses concluídos no mês', 'ja_repassado');
   document.getElementById('accChips').innerHTML =
-    '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + accChip('pago', 'Recebidos', cRecRec) + accChip('pend', 'Pendentes', cRecPend) + accChip('atras', 'Atrasados', cRecAtras) + '</div>' +
-    '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao cliente</span>' + accChip('pago', 'Repassados', cRepFeito) + accChip('pend', 'Pendentes', cRepPend) + '</div>';
+    '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + accChip('pago', 'Recebidos', cRecRec, 'rec_recebido') + accChip('pend', 'Pendentes', cRecPend, 'rec_pendente') + accChip('atras', 'Atrasados', cRecAtras, 'rec_atrasado') + '</div>' +
+    '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao cliente</span>' + accChip('pago', 'Repassados', cRepFeito, 'ja_repassado') + accChip('pend', 'Pendentes', cRepPend, 'rep_pendente') + '</div>' +
+    (accFiltroAtivo !== 'all' ? '<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="accFiltrar(\'' + accFiltroAtivo + '\')">✕ Limpar filtro</button></div>' : '');
 
   // Alerta pulsante: parcela/repasse ainda pendente em mês ANTERIOR ao selecionado — mesma
   // lógica usada em Locações, pra não passar batido só porque a tela mostra outro mês.
@@ -7617,10 +7638,23 @@ window.accRender = function () {
   // Busca rápida: só filtra as linhas mostradas na tabela — os cards de total/chips acima
   // continuam refletindo o mês inteiro (mesmo comportamento já usado em Locações).
   var accTermoBusca = ((document.getElementById('accBusca') || {}).value || '').trim().toLowerCase();
-  var listaFiltrada = !accTermoBusca ? lista : lista.filter(function (l) {
-    var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
-    var alvo = [c['Nr Processo'], c['Cliente'], c['Parte Contraria']].filter(Boolean).join(' ').toLowerCase();
-    return alvo.indexOf(accTermoBusca) >= 0;
+  var listaFiltrada = (!accTermoBusca && accFiltroAtivo === 'all') ? lista : lista.filter(function (l) {
+    if (accTermoBusca) {
+      var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+      var alvo = [c['Nr Processo'], c['Cliente'], c['Parte Contraria']].filter(Boolean).join(' ').toLowerCase();
+      if (alvo.indexOf(accTermoBusca) < 0) return false;
+    }
+    if (accFiltroAtivo === 'all') return true;
+    var recebido = accNum(l['Valor Recebido']);
+    var statusRec = l['Status Recebimento'] || 'Pendente';
+    var repassou = l['Status Repasse'] === 'Repassado';
+    if (accFiltroAtivo === 'em_caixa') return recebido > 0 && !repassou;
+    if (accFiltroAtivo === 'ja_repassado') return repassou;
+    if (accFiltroAtivo === 'rec_recebido') return statusRec === 'Recebido';
+    if (accFiltroAtivo === 'rec_pendente') return statusRec === 'Pendente';
+    if (accFiltroAtivo === 'rec_atrasado') return statusRec === 'Atrasado';
+    if (accFiltroAtivo === 'rep_pendente') return !repassou;
+    return true;
   });
   tb.innerHTML = listaFiltrada.map(function (l) {
     var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
@@ -7673,7 +7707,9 @@ window.accRender = function () {
       + '</tr>';
   }).join('') || (accTermoBusca
     ? '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela encontrada para "' + accE(accTermoBusca) + '" neste mês.</td></tr>'
-    : '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>');
+    : (accFiltroAtivo !== 'all'
+      ? '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela encontrada para esse filtro. <button class="loc-btn" style="padding:4px 10px;font-size:12px;margin-left:6px" onclick="accFiltrar(\'' + accFiltroAtivo + '\')">✕ Limpar filtro</button></td></tr>'
+      : '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">Nenhuma parcela neste mês. Cadastre um acordo em "📋 Acordos cadastrados" e use "➕ Gerar mês seguinte".</td></tr>'));
 };
 
 function accAtualizarLancamento(id, campos) {
@@ -9499,10 +9535,31 @@ var css='.hv-sumwrap{margin-bottom:16px}'
 +'input[type="date"]::-webkit-calendar-picker-indicator:hover,input[type="time"]::-webkit-calendar-picker-indicator:hover{opacity:1;background:rgba(22,35,58,0.08)}'
 +'html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:1}'
 +'html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator:hover,html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator:hover{background:rgba(255,255,255,0.14)}'
-+'@media(max-width:900px){.hv-sumwrap .hv-sum{grid-template-columns:repeat(2,1fr)}}';
++'@media(max-width:900px){.hv-sumwrap .hv-sum{grid-template-columns:repeat(2,1fr)}}'
+// Cartões de resumo clicáveis (mesmo padrão de Processos/Locações: clicar num card filtra a
+// lista abaixo por aquele critério; clicar de novo no mesmo card limpa o filtro).
++'.hon-stat.loc-stat-clicavel.filtro-ativo{outline:2px solid var(--accent2)}'
++'.hv-sumwrap .hv-card.loc-stat-clicavel.filtro-ativo{outline:2px solid var(--accent2)}'
++'.hv-sumwrap .hv-card.loc-stat-clicavel{cursor:pointer}';
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 var honOpenState={};
 window.honToggleGroup=function(k,isOpen){honOpenState[String(k)]=!!isOpen;};
+// Filtro ativo dos cartões de resumo (Total Recebido / Repasses Pendentes / Recebido via
+// Parceiro / Êxito Pendente / Em atraso / A vencer / Saldo a receber / A repassar) — clicar
+// num card filtra a lista de contratos abaixo por aquele critério; clicar de novo no mesmo
+// card (ou usar "✕ Limpar filtro") volta a mostrar todos. Mesmo espírito de locFiltrar() em
+// Locações e filterBy() em Processos.
+var honFiltroAtivo='all';
+window.honFiltrar=function(tipo){
+  honFiltroAtivo=(honFiltroAtivo===tipo)?'all':tipo;
+  honAtualizarEstadoFiltros_();
+  if(typeof renderVencimentos==='function')renderVencimentos();
+};
+function honAtualizarEstadoFiltros_(){
+  document.querySelectorAll('.hon-stat[data-honfiltro]').forEach(function(el){
+    el.classList.toggle('filtro-ativo',honFiltroAtivo===el.getAttribute('data-honfiltro'));
+  });
+}
 // Aviso ao cliente sobre honorários em aberto — mesmo padrão visual do card de Locações/
 // Processos: abre um card com foto (cores do escritório) mostrando só a PARCELA EM ABERTO
 // específica que foi clicada (nunca o saldo total nem as demais parcelas — mais discreto) e os
@@ -9651,6 +9708,14 @@ function honMatchesFilters(rows,cliente,proc){
  if(filtroRepasse==='Pago'&&!rows.some(function(r){return r['Status Repasse']==='Pago';}))return false;
  if(filtroRepasse==='Eu'&&!rows.some(function(r){return r['Quem Recebeu']==='Eu';}))return false;
  if(filtroRepasse==='Parceiro'&&!rows.some(function(r){return r['Quem Recebeu']==='Parceiro';}))return false;
+ // Filtro ativo dos cartões de resumo clicáveis (honFiltrar) — os quatro critérios abaixo dão
+ // pra decidir só olhando os lançamentos (rows) deste contrato, sem precisar do cronograma
+ // completo de parcelas (isso fica no filtro "tardio" dentro de renderVencimentos, pra atraso/
+ // a vencer/saldo, que dependem do plano calculado por grupo).
+ if(honFiltroAtivo==='recebido'&&!rows.some(function(r){return nbr(r['Valor Recebido'])>0;}))return false;
+ if(honFiltroAtivo==='via_parceiro'&&!rows.some(function(r){return r['Quem Recebeu']==='Parceiro';}))return false;
+ if(honFiltroAtivo==='a_repassar'&&!rows.some(function(r){return r['Quem Recebeu']==='Parceiro'&&String(r['Status Repasse']||'').toLowerCase().indexOf('pend')===0;}))return false;
+ if(honFiltroAtivo==='exito'&&!rows.some(function(r){var pr=String(r['Parcela Referencia']||'').toLowerCase(),tc=String(r['Tipo Contrato']||'').toLowerCase();return pr.indexOf('exit')>=0||tc.indexOf('exit')>=0;}))return false;
  return true;
 }
 function nbr(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
@@ -9724,7 +9789,7 @@ window.renderVencimentos=function(){
   var usados=[];
   plano.forEach(function(p){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])===p.key;});if(m){p.pago=m;usados.push(m);}});
   plano.forEach(function(p){if(!p.pago){var m=pags.find(function(r){return usados.indexOf(r)<0&&refKey(r['Parcela Referencia'])==null;});if(m){p.pago=m;usados.push(m);}}});
-  var linhas='',atrasoCli=0;
+  var linhas='',atrasoCli=0,temVencer30=false;
   // Lista das parcelas em atraso deste contrato, na ordem em que aparecem no plano (ou seja, a
   // mais antiga primeiro) — cada ⚠️ de linha guarda seu próprio índice aqui, e o botão do
   // cabeçalho do card usa sempre o índice 0 (a parcela mais antiga em aberto).
@@ -9739,10 +9804,16 @@ window.renderVencimentos=function(){
      var idxAviso=window._honAvisoParcelas[k].length;
      window._honAvisoParcelas[k].push({ref:p.ref,venc:fdt(p.venc),valor:p.valor});
      stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span><span class="hon-alerta" title="Avisar cliente sobre esta parcela" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\','+idxAviso+')">⚠️</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
-    else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;}
-    else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30)tot30+=p.valor;}}
+    else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;temVencer30=true;}
+    else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30){tot30+=p.valor;temVencer30=true;}}}
    linhas+='<div class="hv-row"><span class="ref">'+esc(p.ref)+'</span><span class="dt">'+fdt(p.venc)+'</span><span class="vl">'+fmr(p.valor)+'</span><span class="st">'+stH+'</span>'+acoesH+'</div>';
   });
+  // Filtro "tardio" dos cartões de resumo clicáveis — só dá pra saber se este contrato tem
+  // parcela em atraso/a vencer/saldo depois de rodar o cronograma (plano) acima, então o
+  // corte acontece aqui (e não em honMatchesFilters, que só vê os lançamentos crus).
+  if(honFiltroAtivo==='atraso'&&!(atrasoCli>0))return;
+  if(honFiltroAtivo==='a_vencer'&&!temVencer30)return;
+  if(honFiltroAtivo==='saldo'&&!(saldo>0))return;
   var extras=pags.filter(function(r){return usados.indexOf(r)<0;});
   extras.forEach(function(r){linhas+='<div class="hv-row"><span class="ref">'+esc(r['Parcela Referencia']||'-')+'</span><span class="dt">'+esc(r['Data Pagamento']||'')+'</span><span class="vl">'+fmr(nbr(r['Valor Recebido']))+'</span><span class="st"><span class="hon-badge hv-badge-paga">PAGA</span></span>'+acoesFor(r['ID'])+'</div>';});
   if(!plano.length&&!extras.length)linhas='<div class="hv-row"><span style="color:var(--muted)">Sem dados do contrato - edite o lancamento e preencha valor total, numero de parcelas, valor da parcela e dia de vencimento.</span></div>';
@@ -9767,16 +9838,19 @@ window.renderVencimentos=function(){
  cards.sort(function(a,b){return a.ordem-b.ordem;});
  var contadorEl=document.getElementById('honContadorLanc');
  if(contadorEl)contadorEl.textContent=cards.length+' contrato(s)'+(cards.length!==totalGrupos?' (de '+totalGrupos+')':'');
+ honAtualizarEstadoFiltros_();
+ var limparFiltroBtn=honFiltroAtivo!=='all'?' <button class="btn-hon-avisar" style="background:var(--surface2);border-color:var(--border2);color:var(--muted)" onclick="honFiltrar(\''+honFiltroAtivo+'\')">✕ Limpar filtro</button>':'';
  if(!cards.length){
-  host.innerHTML=totalGrupos?'<div class="hon-empty">🔍 Nenhum contrato encontrado para esse filtro.</div>':'<div class="hon-empty">📂 Nenhum lançamento encontrado. Clique em "➕ Novo Lançamento" para começar.</div>';
+  host.innerHTML=(totalGrupos?'<div class="hon-empty">🔍 Nenhum contrato encontrado para esse filtro.'+limparFiltroBtn+'</div>':'<div class="hon-empty">📂 Nenhum lançamento encontrado. Clique em "➕ Novo Lançamento" para começar.</div>');
   return;
  }
- host.innerHTML='<div class="hv-sumwrap"><div class="hon-section-title">&#128197; Parcelas &amp; Vencimentos</div>'
+ function hvFiltroCls(tipo){return 'loc-stat-clicavel'+(honFiltroAtivo===tipo?' filtro-ativo':'');}
+ host.innerHTML='<div class="hv-sumwrap"><div class="hon-section-title">&#128197; Parcelas &amp; Vencimentos'+limparFiltroBtn+'</div>'
  +'<div class="hv-sum">'
- +'<div class="hv-card"><div class="l">Em atraso</div><div class="v" style="color:var(--red)">'+fmr(totAtraso)+'</div></div>'
- +'<div class="hv-card"><div class="l">A vencer (30 dias)</div><div class="v" style="color:var(--orange)">'+fmr(tot30)+'</div></div>'
- +'<div class="hv-card"><div class="l">Saldo a receber</div><div class="v" style="color:var(--accent2)">'+fmr(totSaldo)+'</div></div>'
- +'<div class="hv-card"><div class="l">A repassar</div><div class="v" style="color:var(--purple)">'+fmr(totRepasse)+'</div></div>'
+ +'<div class="hv-card '+hvFiltroCls('atraso')+'" onclick="honFiltrar(\'atraso\')" title="Clique para ver só os contratos com parcela em atraso"><div class="l">Em atraso</div><div class="v" style="color:var(--red)">'+fmr(totAtraso)+'</div></div>'
+ +'<div class="hv-card '+hvFiltroCls('a_vencer')+'" onclick="honFiltrar(\'a_vencer\')" title="Clique para ver só os contratos com parcela a vencer em até 30 dias"><div class="l">A vencer (30 dias)</div><div class="v" style="color:var(--orange)">'+fmr(tot30)+'</div></div>'
+ +'<div class="hv-card '+hvFiltroCls('saldo')+'" onclick="honFiltrar(\'saldo\')" title="Clique para ver só os contratos com saldo pendente"><div class="l">Saldo a receber</div><div class="v" style="color:var(--accent2)">'+fmr(totSaldo)+'</div></div>'
+ +'<div class="hv-card '+hvFiltroCls('a_repassar')+'" onclick="honFiltrar(\'a_repassar\')" title="Clique para ver só os contratos com repasse pendente a parceiro"><div class="l">A repassar</div><div class="v" style="color:var(--purple)">'+fmr(totRepasse)+'</div></div>'
  +'</div></div>'
  +cards.map(function(c){return c.html;}).join('')
  +'<div style="font-size:10.5px;color:var(--muted);margin:4px 2px 0">Datas estimadas a partir do 1o pagamento e do dia de vencimento informados no contrato. Clique no cabeçalho de um contrato para expandir/recolher as parcelas.</div>';
