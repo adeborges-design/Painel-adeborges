@@ -9409,6 +9409,13 @@ var css='.hv-sumwrap{margin-bottom:16px}'
 +'.hv-badge-fut{background:var(--surface2);color:var(--muted);border:1px solid var(--border2)}'
 +'.hv-repasse{padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--orange)}'
 +'.hv-repasse .btn-hon-parceiro{margin-left:6px}'
+// Ícone de alerta na própria linha da parcela vencida (mesmo padrão do ⚠️ de multa/juros em
+// Locações): clicável, chama avisarClienteHonorarios() direto da linha, sem precisar abrir o
+// contrato inteiro pra achar o botão.
++'.hon-alerta{cursor:pointer;margin-left:4px;font-size:12px;opacity:.85}'
++'.hon-alerta:hover{opacity:1}'
++'.btn-hon-avisar{background:rgba(224,84,84,.12);border:1px solid rgba(224,84,84,.35);border-radius:7px;color:var(--red);cursor:pointer;font-size:11.5px;padding:4px 10px;font-weight:600;white-space:nowrap}'
++'.btn-hon-avisar:hover{background:rgba(224,84,84,.2)}'
 // Ícone do calendário/relógio (o "abrir seletor" nos campos de data/hora) precisa de cor
 // diferente em cada tema: no claro, o ícone nativo (escuro) já é bem visível sobre o fundo
 // claro dos campos — não pode ser invertido, senão vira branco sobre claro e some (era
@@ -9422,6 +9429,24 @@ var css='.hv-sumwrap{margin-bottom:16px}'
 var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 var honOpenState={};
 window.honToggleGroup=function(k,isOpen){honOpenState[String(k)]=!!isOpen;};
+// Aviso ao cliente sobre honorários em atraso — mesmo espírito do alerta de multa/juros em
+// Locações: um clique (no botão do contrato ou no ⚠️ de uma parcela vencida específica) monta
+// uma mensagem padrão do escritório e já abre o WhatsApp com o telefone cadastrado no processo
+// (campo "Telefone" do cadastro do cliente). Não manda nada sozinho — só prepara a mensagem,
+// quem decide se envia é você.
+window.avisarClienteHonorarios=function(k){
+  var d=(window._honAvisoData||{})[k];
+  if(!d){alert('Não encontrei os dados deste contrato pra montar o aviso.');return;}
+  var msg='Olá, '+(d.cliente||'')+'! Aqui é do escritório Adenilson Borges.\n\n'
+   +'Este é um lembrete sobre os honorários referentes '+(d.proc?('ao processo '+d.proc):'ao seu contrato')+':\n'
+   +'Valor em atraso: '+fmr(d.atraso||0)+'\n'
+   +'Saldo total pendente: '+fmr(d.saldo||0)+'\n\n'
+   +'Poderia verificar a regularização assim que possível? Qualquer dúvida, estou à disposição.\n\n'
+   +'ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
+  var tel=String(d.telefone||'').replace(/[^\d]/g,'');
+  var url=tel?('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg)):('https://wa.me/?text='+encodeURIComponent(msg));
+  window.open(url,'_blank');
+};
 function honMatchesFilters(rows,cliente,proc){
  var busca=((document.getElementById('honBusca')?document.getElementById('honBusca').value:'')||'').toLowerCase().trim();
  var filtroForma=(document.getElementById('honFiltroForma')?document.getElementById('honFiltroForma').value:'')||'';
@@ -9447,10 +9472,17 @@ function pad2(n){return ('0'+n).slice(-2);}
 function refKey(s){s=String(s||'').toLowerCase().trim();if(!s)return null;if(s.indexOf('entr')===0)return 'E';if(s.indexOf('contrato')===0)return 'C';var m=s.match(/^([0-9]{1,2})/);return m?parseInt(m[1],10):null;}
 function numInput(v){v=String(v==null?'':v).trim();if(!v)return '';if(v.indexOf(',')>=0){v=v.replace(/[.]/g,'').replace(',','.');}var n=parseFloat(v);return isNaN(n)?'':String(n);}
 function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);return m?m[1]:'';}
-// Chave normalizada (trim + minusculas) para casar um lancamento real da aba HONORARIOS
-// com o processo correspondente, mesmo com pequenas diferencas de espaco/maiusculas
-// entre "Nr Processo" (gravado no lancamento) e "Numero do Processo" (no cadastro).
-function gkey(proc,nome){return String(proc||'').trim().toLowerCase()+'|'+String(nome||'').trim().toLowerCase();}
+// Normaliza um texto pra comparação "tolerante": tira acento, baixa caixa, e reduz espaços
+// duplos a um só. Sem isso, um cliente cadastrado como "Marcos Antônio" no Processo mas
+// lançado como "Marcos Antonio" (sem acento) na aba HONORARIOS — ou vice-versa — vira DUAS
+// chaves diferentes em gkey(), e o card de honorários aparece duplicado: um com os
+// lançamentos reais, outro "fantasma" (sem ID, sem lançamento pra excluir) gerado só porque
+// o sistema achou que esse processo ainda não tinha nenhuma parcela lançada.
+function normChave_(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');}
+// Chave normalizada (acento/espaço/maiúsculas tolerantes) para casar um lançamento real da
+// aba HONORARIOS com o processo correspondente, mesmo com pequenas diferenças de digitação
+// entre "Nr Processo"/"Cliente" (gravado no lançamento) e os mesmos campos no cadastro.
+function gkey(proc,nome){return normChave_(proc)+'|'+normChave_(nome);}
 window.renderVencimentos=function(){
  var host=document.getElementById('honLista');if(!host)return;
  var hoje=new Date();hoje.setHours(0,0,0,0);
@@ -9507,7 +9539,7 @@ window.renderVencimentos=function(){
    var stH,acoesH='';
    if(p.pago){stH='<span class="hon-badge hv-badge-paga">PAGA em '+esc(p.pago['Data Pagamento']||'')+'</span>';acoesH=acoesFor(p.pago['ID']);}
    else{var diff=Math.round((p.venc-hoje)/86400000);
-    if(diff<0){stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
+    if(diff<0){stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span><span class="hon-alerta" title="Avisar cliente sobre este atraso" onclick="event.stopPropagation();avisarClienteHonorarios(\''+escAttr(k)+'\')">⚠️</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
     else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;}
     else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30)tot30+=p.valor;}}
    linhas+='<div class="hv-row"><span class="ref">'+esc(p.ref)+'</span><span class="dt">'+fdt(p.venc)+'</span><span class="vl">'+fmr(p.valor)+'</span><span class="st">'+stH+'</span>'+acoesH+'</div>';
@@ -9519,8 +9551,15 @@ window.renderVencimentos=function(){
   var repH='';
   if(repRows.length){repH='<div class="hv-repasse">'+repRows.map(function(r){return '⚠️ A repassar a <b>'+esc(r['Parceiro']||'parceiro')+'</b>: '+fmr(nbr(r['Valor Repasse Parceiro']))+' <button class="btn-hon-parceiro" onclick="abrirCardRepasse(\''+escAttr(r['ID'])+'\')">Card repasse</button>';}).join('<br>')+'</div>';}
   var badgeTop=atrasoCli>0?'<span class="hon-badge hv-badge-atraso">EM ATRASO '+fmr(atrasoCli)+'</span>':(vTotal>0&&saldo<=0?'<span class="hon-badge hv-badge-paga">QUITADO</span>':'');
+  // Guarda os dados que o aviso ao cliente precisa (nome, telefone do cadastro do processo,
+  // processo, valor em atraso, saldo total) numa tabela acessível por k — tanto o botão do
+  // cabeçalho do contrato quanto o ⚠️ de cada parcela vencida chamam avisarClienteHonorarios(k)
+  // e buscam os dados aqui, sem precisar recalcular tudo de novo no clique.
+  window._honAvisoData=window._honAvisoData||{};
+  window._honAvisoData[k]={cliente:cliente,proc:proc,telefone:(procMatch&&procMatch.telefone)||'',atraso:atrasoCli,saldo:saldo,vTotal:vTotal};
+  var btnAvisar=atrasoCli>0?' <button class="btn-hon-avisar" onclick="event.stopPropagation();avisarClienteHonorarios(\''+escAttr(k)+'\')" title="Envia um aviso por WhatsApp sobre os honorários em atraso">📱 Avisar cliente</button>':'';
   var aberto=atrasoCli>0?true:(honOpenState[k]===true);
-  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop
+  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop+btnAvisar
    +(tipo?'<span class="hon-badge hv-badge-fut">'+esc(tipo)+'</span>':'')
    +(proc?'<span style="font-size:11px;color:var(--muted)">'+esc(proc)+'</span>':'')
    +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b>'+(formaPag?' | Forma: <b style="color:var(--text)">'+esc(formaPag)+'</b>':'')+'</span></summary>'
@@ -9574,7 +9613,11 @@ function pad2(n){return ('0'+n).slice(-2);}
 function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
 function refKey(s){s=String(s||'').toLowerCase().trim();if(!s)return null;if(s.indexOf('entr')===0)return 'E';if(s.indexOf('contrato')===0)return 'C';var m=s.match(/^([0-9]{1,2})/);return m?parseInt(m[1],10):null;}
 function diaOnly(v){var m=String(v==null?'':v).trim().match(/^([0-9]{1,2})/);return m?m[1]:'';}
-function gkey(proc,nome){return String(proc||'').trim().toLowerCase()+'|'+String(nome||'').trim().toLowerCase();}
+// Mesma normalização tolerante a acento/espaço do módulo de Vencimentos (cada módulo é sua
+// própria IIFE, então precisa da própria cópia — evita o mesmo bug de card duplicado nos
+// alertas do dashboard quando o nome do cliente tem grafia levemente diferente).
+function normChave_(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');}
+function gkey(proc,nome){return normChave_(proc)+'|'+normChave_(nome);}
 function calcAlertas(){
  var hoje=new Date();hoje.setHours(0,0,0,0);
  var groups={};(typeof allHonorarios!=='undefined'?allHonorarios:[]).forEach(function(h){var k=gkey(h['Nr Processo'],h['Cliente']);(groups[k]=groups[k]||[]).push(h);});
