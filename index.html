@@ -10494,13 +10494,54 @@ window.cpLancar=async function(){
   },1800);
  }catch(e){stEl.innerHTML='<span style="color:var(--red)">Erro: '+e.message+'</span>';}
 };
+// ---------- MODAL "DATA DO PAGAMENTO" (usado por cpPagar/cpPagarFatura) ----------
+// Sem isto, "marcar como paga" sempre gravava a data de HOJE — se o usuário esquecesse de
+// dar baixa numa conta paga no dia anterior (ou antes), a Data Pagamento ficava errada e só
+// dava pra corrigir editando a conta na mão depois. Aqui pergunta a data (já vem com hoje
+// sugerido) antes de gravar; cancelar não faz nada.
+function cpPagarEnsureModal_(){
+ if(document.getElementById('cpPagarOverlay'))return;
+ var ov=document.createElement('div');
+ ov.id='cpPagarOverlay';
+ ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+ ov.innerHTML='<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:380px;max-width:96vw;padding:20px 22px;margin:auto">'
+  +'<div style="font-weight:700;font-size:15px;margin-bottom:4px" id="cpPagarTitulo">Marcar como paga</div>'
+  +'<div style="color:var(--muted);font-size:13px;margin-bottom:14px" id="cpPagarValorTxt"></div>'
+  +'<div class="loc-cfield"><label>Data em que foi paga</label><input class="loc-cinput" id="cpPagarData" type="date"></div>'
+  +'<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">'
+  +'<button class="loc-btn" onclick="cpPagarCancelarData_()">Cancelar</button>'
+  +'<button class="loc-btn primary" onclick="cpPagarConfirmarData_()">✓ Confirmar</button>'
+  +'</div></div>';
+ ov.addEventListener('click',function(e){if(e.target===ov)cpPagarCancelarData_();});
+ document.body.appendChild(ov);
+}
+var _cpPagarResolve_=null;
+function cpPedirDataPagamento_(titulo,valorTxt){
+ cpPagarEnsureModal_();
+ document.getElementById('cpPagarTitulo').textContent=titulo;
+ document.getElementById('cpPagarValorTxt').textContent=valorTxt;
+ var hoje=new Date();
+ document.getElementById('cpPagarData').value=hoje.getFullYear()+'-'+('0'+(hoje.getMonth()+1)).slice(-2)+'-'+('0'+hoje.getDate()).slice(-2);
+ document.getElementById('cpPagarOverlay').style.display='flex';
+ return new Promise(function(resolve){_cpPagarResolve_=resolve;});
+}
+window.cpPagarConfirmarData_=function(){
+ var iso=document.getElementById('cpPagarData').value;
+ document.getElementById('cpPagarOverlay').style.display='none';
+ if(_cpPagarResolve_){var r=_cpPagarResolve_;_cpPagarResolve_=null;r(iso||null);}
+};
+window.cpPagarCancelarData_=function(){
+ document.getElementById('cpPagarOverlay').style.display='none';
+ if(_cpPagarResolve_){var r=_cpPagarResolve_;_cpPagarResolve_=null;r(null);}
+};
 // Nucleo do "marcar como paga" (sem confirm() e sem recarregar contas) - reaproveitado tanto pelo
 // pagamento individual (cpPagar) quanto pelo pagamento em lote da fatura inteira (cpPagarFatura),
 // pra nao abrir um confirm() por compra quando a fatura toda for paga de uma vez.
-async function cpPagarCore(id){
+async function cpPagarCore(id,dataPagIso){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
  var hoje=new Date();
- await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(hoje)}})});
+ var dataPag=dataPagIso?new Date(dataPagIso+'T00:00:00'):hoje;
+ await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(dataPag)}})});
  if(recNorm(c['Recorrencia'])==='mensal'){
   var dv=dbr(c['Data Vencimento'])||hoje;
   var prox=clampDay(dv.getFullYear(),dv.getMonth()+1,dv.getDate());
@@ -10526,8 +10567,9 @@ async function cpPagarCore(id){
 }
 window.cpPagar=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
- if(!confirm('Marcar "'+c['Descricao']+'" ('+fmr(nbr(c['Valor']))+') como PAGA hoje?'))return;
- await cpPagarCore(id);
+ var dataIso=await cpPedirDataPagamento_('Marcar como paga','"'+c['Descricao']+'" — '+fmr(nbr(c['Valor'])));
+ if(!dataIso)return;
+ await cpPagarCore(id,dataIso);
  var cartSync=c['Cartao']?cpNomeCartao(c['Cartao']):'';
  setTimeout(async function(){
   await carregarContas();
@@ -10552,9 +10594,10 @@ window.cpPagarFatura=async function(faturaId,nome){
   return xdv.getMonth()===mes&&xdv.getFullYear()===ano;
  });
  var totalCompras=compras.reduce(function(a,c){return a+nbr(c['Valor']);},0);
- if(!confirm('Marcar a fatura "'+esc(nome)+'" ('+fmr(nbr(fatura['Valor']))+') como PAGA?\n\nIsso vai dar baixa em '+compras.length+' compra(s) deste mês (soma R$ '+fmr(totalCompras)+') e já gerar sozinho as parcelas/mensalidades do mês seguinte.'))return;
- for(var i=0;i<compras.length;i++){await cpPagarCore(compras[i]['ID']);}
- await cpPagarCore(faturaId);
+ var dataIso=await cpPedirDataPagamento_('Marcar fatura como paga','"'+nome+'" ('+fmr(nbr(fatura['Valor']))+') — dá baixa em '+compras.length+' compra(s) deste mês (soma '+fmr(totalCompras)+') e já gera as parcelas/mensalidades do mês seguinte.');
+ if(!dataIso)return;
+ for(var i=0;i<compras.length;i++){await cpPagarCore(compras[i]['ID'],dataIso);}
+ await cpPagarCore(faturaId,dataIso);
  setTimeout(async function(){await carregarContas();try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},2200);
 };
 window.cpExcluir=async function(id){
@@ -11172,7 +11215,8 @@ window.cpRenderFixas=cpRenderFixas;
 
         <div class="loc-cfield full"><label>Endereço do imóvel *</label><input class="loc-cinput" id="lc-end" placeholder="Rua, número, complemento"></div>
         <div class="loc-cfield"><label>CEP</label><input class="loc-cinput" id="lc-cep" placeholder="00000-000" maxlength="9"></div>
-        <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date" onchange="locAutoSugerirSeVazio()"></div>
+        <div class="loc-cfield"><label>Vigência — início</label><input class="loc-cinput" id="lc-vig-inicio" type="date" onchange="locAutoSugerirSeVazio();locCalcVigFim()"></div>
+        <div class="loc-cfield"><label>Duração (meses) <span style="font-weight:400;color:#5c6f8a">(calcula a Vigência-fim)</span></label><input class="loc-cinput" id="lc-vig-meses" type="number" step="1" min="1" placeholder="Ex.: 12, 24, 30, 36" onchange="locCalcVigFim()"></div>
         <div class="loc-cfield"><label>Vigência — fim</label><input class="loc-cinput" id="lc-vig-fim" type="date"></div>
         <div class="loc-cfield"><label>Índice de reajuste do aluguel</label><select class="loc-cinput" id="lc-indice-reajuste">
           <option value="">Não definido</option>
@@ -13882,6 +13926,20 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- CALCULADORA DE IPTU (proporcional no ano de início + regime normal do carnê) ----------
   function calcIptuDiasNoAno(ano){return ((ano%4===0&&ano%100!==0)||ano%400===0)?366:365;}
   window.abrirCalcIptu=function(targetId){
+    // A calculadora é um modal único e global, reaproveitado pra qualquer lançamento — sem
+    // limpar os campos aqui, o valor anual/meses/parcelas digitados pro contrato ou mês
+    // anterior ficavam "grudados" e reapareciam (errados) na próxima vez que fosse aberta
+    // pra outro lançamento, mesmo depois de abrirModalCobrancas() já ter preenchido o campo
+    // de IPTU do formulário corretamente com o valor daquele mês.
+    ['calciptu-anual','calciptu-data','calciptu-meses','calciptu-anual2'].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.value='';
+    });
+    document.getElementById('calciptu-vencido').value='sim';
+    document.getElementById('calciptu-parcelas').value='10';
+    document.getElementById('calciptu-detalhe').textContent='';
+    document.getElementById('calciptu-resultado').textContent='R$ 0,00';
+    document.getElementById('calciptu-resultado2').textContent='R$ 0,00';
+    window._calcIptuValor=0;window._calcIptuValor2=0;
     document.getElementById('modalCalcIptu').setAttribute('data-alvo',targetId);
     document.getElementById('modalCalcIptu').classList.add('open');
   };
@@ -16062,7 +16120,7 @@ window.cpRenderFixas=cpRenderFixas;
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
@@ -16104,6 +16162,23 @@ window.cpRenderFixas=cpRenderFixas;
     var campo=document.getElementById('lc-contrato');
     if(campo&&!campo.value.trim())locSugerirNumeroContrato();
   };
+  // Calcula a Vigência-fim a partir da Vigência-início + quantidade de meses (ex.: início
+  // 01/01/2026 + 12 meses = fim 31/12/2026 — o dia anterior ao mesmo dia N meses depois,
+  // que é como se costuma contar prazo de locação). Só roda quando os dois campos (início e
+  // meses) estão preenchidos; o campo Vigência-fim continua um <input type="date"> normal,
+  // então o usuário pode reescrever a data calculada na mão a qualquer momento — este cálculo
+  // só entra de novo se ele mudar o início ou a quantidade de meses outra vez.
+  window.locCalcVigFim=function(){
+    var iniIso=document.getElementById('lc-vig-inicio').value;
+    var mesesStr=document.getElementById('lc-vig-meses').value;
+    var meses=parseInt(mesesStr,10);
+    if(!iniIso||!meses||meses<=0)return;
+    var p=iniIso.split('-');
+    var ini=new Date(+p[0],+p[1]-1,+p[2]);
+    var fim=new Date(ini.getFullYear(),ini.getMonth()+meses,ini.getDate());
+    fim.setDate(fim.getDate()-1);
+    document.getElementById('lc-vig-fim').value=fim.getFullYear()+'-'+('0'+(fim.getMonth()+1)).slice(-2)+'-'+('0'+fim.getDate()).slice(-2);
+  };
   // Mostra só o bloco de campos da garantia locatícia escolhida (mesmo mecanismo de
   // togglePessoaJuridica no módulo Processos: display none/'' por id, sem CSS extra).
   window.locToggleGarantia=function(){
@@ -16142,6 +16217,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-cep').value=c.cep||'';
     document.getElementById('lc-end').value=c.end||'';
     document.getElementById('lc-vig-inicio').value=locIsoFromBR(c.vigInicio);
+    document.getElementById('lc-vig-meses').value='';
     document.getElementById('lc-vig-fim').value=locIsoFromBR(c.vigFim);
     document.getElementById('lc-indice-reajuste').value=c.indiceReajuste||'';
     document.getElementById('lc-aluguel').value=num(c.aluguel)||'';
@@ -19479,6 +19555,21 @@ window.cpRenderFixas=cpRenderFixas;
   };
   document.addEventListener('keydown',function(e){
     if(!e.altKey||e.ctrlKey||e.metaKey)return;
+    // Alt + dígito do TECLADO NUMÉRICO é o jeito padrão do Windows de digitar caracteres
+    // especiais por código (ex.: Alt+0176 ou Alt+167 → °). Cada dígito da sequência chega
+    // aqui como um keydown separado com e.altKey=true, e como e.key também é '0'-'9' nesse
+    // caso, colidia com os atalhos de navegação Alt+1..9 — o preventDefault() abaixo
+    // impedia o Windows de completar o código e o caractere nunca era inserido em lugar
+    // nenhum do sistema. Ignorando quando o dígito vem do numpad (location 3), a digitação
+    // de código alt continua funcionando normalmente e os atalhos (linha de cima do
+    // teclado) continuam funcionando também.
+    if(e.location===3)return;
+    // Também não intercepta enquanto o foco está num campo de texto/editável — não faz
+    // sentido um atalho de navegação global roubar o Alt+dígito de quem está digitando
+    // (inclusive outras formas de composição de caracteres especiais que passam por ali).
+    var ativo=document.activeElement;
+    var tagAtivo=(ativo&&ativo.tagName)||'';
+    if(tagAtivo==='INPUT'||tagAtivo==='TEXTAREA'||tagAtivo==='SELECT'||(ativo&&ativo.isContentEditable))return;
     var label=VOICE_KEY_MAP[e.key];
     if(!label)return;
     var cmd=null;
