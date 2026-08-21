@@ -10073,6 +10073,9 @@ var css='#contasPagar{margin-top:30px}'
 +'#contasPagar .cp-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}'
 +'#contasPagar .cp-card .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'
 +'#contasPagar .cp-card .v{font-size:19px;font-weight:700;margin-top:4px}'
++'#contasPagar .cp-card.cp-card-clicavel{cursor:pointer;transition:transform .1s}'
++'#contasPagar .cp-card.cp-card-clicavel:hover{transform:translateY(-2px)}'
++'#contasPagar .cp-card.filtro-ativo{outline:2px solid var(--accent2)}'
 +'.cp-form{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}'
 +'.cp-field{display:flex;flex-direction:column;gap:5px;min-width:0}'
 +'.cp-field label{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-height:13px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
@@ -10143,12 +10146,53 @@ function cpTipoNorm(v){
  return 'pessoal';
 }
 var CP_TIPO_LABEL={pessoal:'👤 Pessoal',escritorio:'⚖️ Escritório',locacao:'🏠 Locações administradas (repasse)'};
+var CP_CAT_LABEL={vencidas:'Vencidas',avencer:'A vencer (30 dias)',pagasMes:'Pagas no mês',aberto:'Total em aberto'};
+// Cada um dos 4 cartões (Vencidas/A vencer/Pagas no mês/Total em aberto) de cada bloco
+// (Pessoal/Escritório/Locações administradas) é clicável e filtra a lista abaixo — mesmo
+// padrão já usado em Processos, Locações, Honorários e Acordos. O estado ativo/inativo é
+// reaplicado a cada renderContas() via cpAtualizarEstadoFiltrosCp_(), porque este HTML só é
+// gerado uma vez (na criação do host) — depois disso só os números e a classe filtro-ativo
+// são atualizados, sem recriar os elementos.
+function cpCardResumo_(key,cat,idSuf,label,color){
+ return '<div class="cp-card cp-card-clicavel" data-cptipo="'+key+'" data-cpcat="'+cat+'" onclick="cpFiltrar(\''+key+'\',\''+cat+'\')" title="Clique para filtrar a lista abaixo"><div class="l">'+label+'</div><div class="v" style="color:'+color+'" id="cp'+idSuf+'_'+key+'">R$ 0,00</div></div>';
+}
 function cpBlocoResumoHtml(key){
  return '<div style="font-size:12.5px;font-weight:700;color:var(--muted);margin:16px 0 6px">'+CP_TIPO_LABEL[key]+'</div>'
-  +'<div class="cp-sum"><div class="cp-card"><div class="l">Vencidas</div><div class="v" style="color:var(--red)" id="cpVencidas_'+key+'">R$ 0,00</div></div>'
-  +'<div class="cp-card"><div class="l">A vencer (30 dias)</div><div class="v" style="color:var(--orange)" id="cpAvencer_'+key+'">R$ 0,00</div></div>'
-  +'<div class="cp-card"><div class="l">Pagas no mês</div><div class="v" style="color:var(--green)" id="cpPagasMes_'+key+'">R$ 0,00</div></div>'
-  +'<div class="cp-card"><div class="l">Total em aberto</div><div class="v" style="color:var(--accent2)" id="cpAberto_'+key+'">R$ 0,00</div></div></div>';
+  +'<div class="cp-sum">'
+  +cpCardResumo_(key,'vencidas','Vencidas',CP_CAT_LABEL.vencidas,'var(--red)')
+  +cpCardResumo_(key,'avencer','Avencer',CP_CAT_LABEL.avencer,'var(--orange)')
+  +cpCardResumo_(key,'pagasMes','PagasMes',CP_CAT_LABEL.pagasMes,'var(--green)')
+  +cpCardResumo_(key,'aberto','Aberto',CP_CAT_LABEL.aberto,'var(--accent2)')
+  +'</div>';
+}
+// Filtro ativo dos cartões de resumo: {tipo: 'pessoal'|'escritorio'|'locacao', cat: 'vencidas'|
+// 'avencer'|'pagasMes'|'aberto'} ou null quando nenhum filtro está ativo. Clicar de novo no
+// mesmo cartão desliga o filtro (mesmo padrão de toggle já usado em Honorários/Acordos).
+window.cpFiltroTipo=null;window.cpFiltroCat=null;
+window.cpFiltrar=function(tipo,cat){
+ if(window.cpFiltroTipo===tipo&&window.cpFiltroCat===cat){window.cpFiltroTipo=null;window.cpFiltroCat=null;}
+ else{window.cpFiltroTipo=tipo;window.cpFiltroCat=cat;}
+ renderContas();
+};
+function cpAtualizarEstadoFiltrosCp_(){
+ document.querySelectorAll('#contasPagar .cp-card[data-cptipo]').forEach(function(el){
+  var ativo=window.cpFiltroTipo===el.getAttribute('data-cptipo')&&window.cpFiltroCat===el.getAttribute('data-cpcat');
+  el.classList.toggle('filtro-ativo',ativo);
+ });
+}
+// Decide se um lançamento passa no filtro ativo (quando não há filtro, tudo passa). "aberto"
+// mostra tudo que não está pago, independente da data de vencimento — mesmo critério usado
+// pra somar o card "Total em aberto".
+function cpPassaFiltro_(tipoNorm,paga,dv,diff,dp,hoje){
+ if(!window.cpFiltroTipo)return true;
+ if(tipoNorm!==window.cpFiltroTipo)return false;
+ switch(window.cpFiltroCat){
+  case 'vencidas':return !paga&&!!dv&&diff!=null&&diff<0;
+  case 'avencer':return !paga&&!!dv&&diff!=null&&diff>=0&&diff<=30;
+  case 'pagasMes':return paga&&!!dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear();
+  case 'aberto':return !paga;
+  default:return true;
+ }
 }
 window.allContas=[];
 window.carregarContas=async function(){
@@ -10216,7 +10260,8 @@ function renderContas(){
  }
  abertas.concat(pagas).forEach(function(c){
   var v=nbr(c['Valor']);var dv=dbr(c['Data Vencimento']);var paga=String(c['Status']).toLowerCase()==='paga';
-  var tk=tot[cpTipoNorm(c['Tipo de Conta'])];
+  var tipoNormAtual=cpTipoNorm(c['Tipo de Conta']);
+  var tk=tot[tipoNormAtual];
   // fatura consolidada do cartão (a conta que de fato sai do banco, ex.: "Cartão de Crédito - Itaú
   // Mastercard"): identificada pela Categoria = "Cartão de Crédito". Essa SEMPRE entra nos totais gerais.
   var isFaturaCartao=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
@@ -10227,9 +10272,9 @@ function renderContas(){
   // Compras individuais de cartão nao aparecem mais na lista geral (deixava a lista enorme) -
   // elas so aparecem dentro do proprio cartão (clique no card em Cartões de Crédito).
   if(isCartaoItem)return;
-  var diff=null,vencStatus='';
+  var diff=null,vencStatus='',dp=null;
   if(paga){
-   var dp=dbr(c['Data Pagamento']);
+   dp=dbr(c['Data Pagamento']);
    if(dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())tk.pagasMes+=v;
   }else{
    tk.aberto+=v;
@@ -10290,18 +10335,34 @@ function renderContas(){
    +'<td class="loc-money" style="white-space:nowrap;color:'+(paga?'var(--green)':(vencStatus==='venc'?'var(--red)':'var(--text)'))+'">'+fmr(v)+'</td>'
    +'<td style="text-align:center;white-space:nowrap">'+acoesH+'</td>'
    +'</tr>';
+  if(!cpPassaFiltro_(tipoNormAtual,paga,dv,diff,dp,hoje))return;
   if(!cpBateBusca(c))return;
   if(paga){htmlPagas+=linhaTr;qtdPagas++;}else{html+=linhaTr;}
  });
+ // Os cartões de resumo (Vencidas/A vencer/Pagas no mês/Total em aberto, em cada bloco) não
+ // eram atualizados aqui — ficavam sempre com o "R$ 0,00" inicial do HTML, mesmo com contas
+ // lançadas. Sem isso os cartões pareciam "quebrados" mesmo a soma (tot) já estando certa.
+ ['pessoal','escritorio','locacao'].forEach(function(k){
+  var t=tot[k];
+  var elV=document.getElementById('cpVencidas_'+k);if(elV)elV.textContent=fmr(t.vencidas);
+  var elA=document.getElementById('cpAvencer_'+k);if(elA)elA.textContent=fmr(t.avencer);
+  var elP=document.getElementById('cpPagasMes_'+k);if(elP)elP.textContent=fmr(t.pagasMes);
+  var elAb=document.getElementById('cpAberto_'+k);if(elAb)elAb.textContent=fmr(t.aberto);
+ });
+ cpAtualizarEstadoFiltrosCp_();
+ var filtroLabelCp=window.cpFiltroTipo?(CP_TIPO_LABEL[window.cpFiltroTipo]+' — '+CP_CAT_LABEL[window.cpFiltroCat]):null;
+ var filtroBannerCp=filtroLabelCp
+  ?('<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:var(--muted);flex-wrap:wrap">Filtro ativo: <strong style="color:var(--text)">'+esc(filtroLabelCp)+'</strong><button class="cp-btn" onclick="cpFiltrar(\''+window.cpFiltroTipo+'\',\''+window.cpFiltroCat+'\')">✕ Limpar filtro</button></div>')
+  :'';
  var theadCp='<tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th>Tipo</th><th>Forma / Banco</th><th>Recorrência</th><th>Status</th><th>Valor</th><th>Ações</th></tr>';
  var abertoHtmlCp=html
   ?('<div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+html+'</tbody></table></div>')
-  :('<div class="hon-empty">'+(cpTermoBusca?'Nenhuma conta encontrada para "'+esc(cpTermoBusca)+'".':'Nenhuma conta em aberto')+'</div>');
+  :('<div class="hon-empty">'+(cpTermoBusca?'Nenhuma conta encontrada para "'+esc(cpTermoBusca)+'".':(filtroLabelCp?'Nenhuma conta em aberto para o filtro "'+esc(filtroLabelCp)+'".':'Nenhuma conta em aberto'))+'</div>');
  var pagasHtmlCp=qtdPagas
   ?('<div class="cp-cartoes" style="margin-top:14px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpPagasWrap\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">✓ Contas já pagas ('+qtdPagas+') <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div>'
     +'<div id="cpPagasWrap" style="display:none;margin-top:10px"><div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+htmlPagas+'</tbody></table></div></div></div>')
   : '';
- document.getElementById('cpLista').innerHTML=abertoHtmlCp+pagasHtmlCp;
+ document.getElementById('cpLista').innerHTML=filtroBannerCp+abertoHtmlCp+pagasHtmlCp;
  try{cpRenderCartoes();}catch(e){}
  try{cpRenderFixas();}catch(e){}
  try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
@@ -17241,18 +17302,6 @@ window.cpRenderFixas=cpRenderFixas;
   .fc-legend{display:flex;gap:16px;font-size:11px;color:var(--muted)}
   .fc-legend span{display:inline-flex;align-items:center;gap:5px}
   .fc-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-  .fc-empty{font-size:12px;color:var(--muted);padding:10px 0}
-  .fc-bars{display:flex;align-items:flex-end;gap:14px;height:150px;padding-top:10px}
-  .fc-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
-  .fc-pair{display:flex;align-items:flex-end;gap:3px;height:100%;width:100%;justify-content:center}
-  .fc-bar{width:34%;max-width:22px;border-radius:4px 4px 0 0;min-height:2px;transition:height .3s}
-  .fc-bar.rec{background:var(--green,#4caf7d)}
-  .fc-bar.desp{background:var(--red,#e05454)}
-  .fc-mlabel{font-size:10.5px;color:var(--muted);font-family:'DM Mono',monospace}
-  .fc-saldo{font-size:10px;font-family:'DM Mono',monospace;margin-top:2px}
-  .fc-totais{display:flex;gap:28px;margin-top:18px;flex-wrap:wrap;border-top:1px solid var(--border2);padding-top:14px}
-  .fc-tot .v{font-family:'DM Serif Display',serif;font-size:20px}
-  .fc-tot .l{font-size:11px;color:var(--muted);margin-top:2px}
   .sb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
   .sb-card{background:var(--surface2,#f3f6fb);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
   .sb-badge{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;margin:0 auto 8px;letter-spacing:.01em}
@@ -17517,15 +17566,10 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
     <div class="fc-card">
       <div class="fc-head">
-        <div class="fc-title">📈 Fluxo de Caixa — últimos 6 meses</div>
-        <div class="fc-legend">
-          <span><span class="fc-dot" style="background:var(--green,#4caf7d)"></span>Receitas</span>
-          <span><span class="fc-dot" style="background:var(--red,#e05454)"></span>Despesas</span>
-        </div>
+        <div class="fc-title">📄 Relatório Mensal (PDF)</div>
       </div>
-      <div id="fcBody"></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;border-top:1px solid var(--border2);padding-top:14px;flex-wrap:wrap">
-        <label style="font-size:11px;color:var(--muted)">Relatório mensal:</label>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--muted)">Mês:</label>
         <input type="month" id="fcMesExport" class="cc-lim" style="width:150px">
         <button class="btn-sync" id="btnExportPdf" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
         <span id="fcExportStatus" style="font-size:11px;color:var(--muted)"></span>
@@ -18377,7 +18421,7 @@ window.cpRenderFixas=cpRenderFixas;
     e.preventDefault();
     if(typeof window.buscaGlobalAbrir==='function')window.buscaGlobalAbrir();
   });
-  window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}try{if(typeof renderFluxoCaixa==='function')renderFluxoCaixa();}catch(e){}};
+  window.openContas=function(){closeOverlays();document.getElementById('contasOverlay').classList.add('open');try{if(typeof carregarContas==='function')carregarContas();}catch(e){}try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}try{if(typeof renderSaldos==='function')renderSaldos();}catch(e){}};
   window.openHonorariosHome=function(){closeOverlays();try{abrirHonorarios();}catch(e){}};
   window.openAlugueisHome=function(){closeOverlays();try{abrirAlugueis();}catch(e){}};
   // Mesma lógica dos wrappers acima (openContas/openHonorariosHome/openAlugueisHome): fecha
@@ -18435,58 +18479,6 @@ window.cpRenderFixas=cpRenderFixas;
     }
     SB_BANCOS.forEach(function(b){tot+=nbr(s[b.id]);});
     var tEl=document.getElementById('sbTotal');if(tEl)tEl.textContent='Total: '+BRLf(tot);
-  }
-
-  // ---- Fluxo de Caixa: últimos 6 meses (receitas = honorários recebidos + taxa de administração
-  // das locações recebida; despesas = contas a pagar pagas do escritório, sem contar de novo as
-  // compras individuais de cartão já embutidas na fatura consolidada) ----
-  function ultimosMeses(n){
-    var out=[];var d=new Date();d.setDate(1);
-    for(var i=n-1;i>=0;i--){var dt=new Date(d.getFullYear(),d.getMonth()-i,1);out.push(('0'+(dt.getMonth()+1)).slice(-2)+'/'+dt.getFullYear());}
-    return out;
-  }
-  function mesLabel(m){var p=m.split('/');var nomes=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nomes[parseInt(p[0],10)-1]+'/'+p[1].slice(2);}
-  function renderFluxoCaixa(){
-    var body=document.getElementById('fcBody');if(!body)return;
-    var meses=ultimosMeses(6);
-    var ah=(typeof allHonorarios!=='undefined'&&allHonorarios)?allHonorarios:(window.allHonorarios||[]);
-    var ac=window.allContas||[];
-    var locMap={};try{(window.locFluxoMensal?window.locFluxoMensal(12):[]).forEach(function(r){locMap[r.mes]=r;});}catch(e){}
-    var dados=meses.map(function(m){
-      var p=m.split('/');var mesN=parseInt(p[0],10)-1,anoN=parseInt(p[1],10);
-      var receita=0,despesa=0;
-      ah.forEach(function(h){var d=dbr(h['Data Pagamento']);if(d&&d.getMonth()===mesN&&d.getFullYear()===anoN)receita+=nbr(h['Valor Recebido']);});
-      var lr=locMap[m];if(lr)receita+=lr.taxa;
-      ac.forEach(function(c){
-        if(String(c['Status']).toLowerCase()!=='paga')return;
-        var d=dbr(c['Data Pagamento']);if(!d||d.getMonth()!==mesN||d.getFullYear()!==anoN)return;
-        var ehFatura=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
-        var isCompraCartao=!!c['Cartao']&&!ehFatura;
-        if(isCompraCartao)return;
-        despesa+=nbr(c['Valor']);
-      });
-      return {mes:m,receita:receita,despesa:despesa,saldo:receita-despesa};
-    });
-    var totR=0,totD=0;dados.forEach(function(d){totR+=d.receita;totD+=d.despesa;});
-    if(!totR&&!totD){body.innerHTML='<div class="fc-empty">Sem lançamentos pagos/recebidos nos últimos 6 meses ainda.</div>';return;}
-    var max=Math.max(1,Math.max.apply(null,dados.map(function(d){return Math.max(d.receita,d.despesa);})));
-    var bars='<div class="fc-bars">'+dados.map(function(d){
-      var hr=d.receita>0?Math.max(Math.round(d.receita/max*100),2):0;
-      var hd=d.despesa>0?Math.max(Math.round(d.despesa/max*100),2):0;
-      var corSaldo=d.saldo>=0?'var(--green,#4caf7d)':'var(--red,#e05454)';
-      return '<div class="fc-col" title="'+E(mesLabel(d.mes))+' — receita '+BRLf(d.receita)+' · despesa '+BRLf(d.despesa)+'">'
-        +'<div class="fc-pair"><div class="fc-bar rec" style="height:'+hr+'%"></div><div class="fc-bar desp" style="height:'+hd+'%"></div></div>'
-        +'<div class="fc-mlabel">'+E(mesLabel(d.mes))+'</div>'
-        +'<div class="fc-saldo" style="color:'+corSaldo+'">'+(d.saldo>=0?'+':'')+BRLf(d.saldo)+'</div>'
-        +'</div>';
-    }).join('')+'</div>';
-    var saldoTot=totR-totD;
-    var totais='<div class="fc-totais">'
-      +'<div class="fc-tot"><div class="v" style="color:var(--green,#4caf7d)">'+BRLf(totR)+'</div><div class="l">receitas (6 meses)</div></div>'
-      +'<div class="fc-tot"><div class="v" style="color:var(--red,#e05454)">'+BRLf(totD)+'</div><div class="l">despesas (6 meses)</div></div>'
-      +'<div class="fc-tot"><div class="v" style="color:'+(saldoTot>=0?'var(--green,#4caf7d)':'var(--red,#e05454)')+'">'+(saldoTot>=0?'+':'')+BRLf(saldoTot)+'</div><div class="l">saldo do período</div></div>'
-      +'</div>';
-    body.innerHTML=bars+totais;
   }
 
   // ---- Relatório mensal em PDF ----
@@ -18599,7 +18591,6 @@ window.cpRenderFixas=cpRenderFixas;
   function homeRefresh(){
     try{var mi=document.getElementById('fcMesExport');if(mi&&!mi.value){var h=new Date();mi.value=h.getFullYear()+'-'+('0'+(h.getMonth()+1)).slice(-2);}}catch(e){}
     try{renderSaldos();}catch(e){console.error('saldos',e);}
-    try{renderFluxoCaixa();}catch(e){console.error('fluxoCaixa',e);}
     // Processos
     try{if(typeof allProcessos!=='undefined'){
       var pTotal=allProcessos.length||0,pCrit=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;
