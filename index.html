@@ -5719,12 +5719,19 @@ function clientesDoProcesso(p) {
   if (todas.length) return todas;
   return [p];
 }
-// Réus/parte contrária, para a qualificação da Petição. Sem partes cadastradas, cai no campo
-// texto único "outra" que já existia (comportamento antigo, preservado).
+// Réus/parte contrária, para a qualificação da Petição. Sem nenhuma parte cadastrada em "Partes
+// do processo", cai no campo texto único "outra" que já existia (comportamento antigo, preservado).
+// Quando HÁ réu(s) cadastrado(s) em "Partes do processo" mas o campo antigo "outra" ainda guarda um
+// nome diferente (caso comum: processo antigo, cadastrado antes de existir "Partes do processo",
+// e depois só a(s) ré(s) nova(s) foi(ram) adicionada(s) lá sem migrar a primeira) — junta os dois,
+// sem duplicar, em vez de simplesmente ignorar o campo antigo.
 function reusDoProcesso(p) {
   const reus = partesDoProcesso(p, 'Réu');
-  if (reus.length) return reus;
-  return p.outra ? [{ nome: p.outra }] : [];
+  const outraNome = String((p && p.outra) || '').trim();
+  if (!outraNome) return reus;
+  const jaListado = reus.some(function (x) { return String(x.nome || '').trim().toLowerCase() === outraNome.toLowerCase(); });
+  if (jaListado) return reus;
+  return reus.concat([{ nome: outraNome }]);
 }
 // Enumeração em português: "João", "João e Maria", "João, Maria e Pedro".
 function listaNomes(arr, upper) {
