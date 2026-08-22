@@ -10433,9 +10433,9 @@ function renderContas(){
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
   +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
   +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
-  +'<div class="cp-field"><label>Valor (R$) *</label><input id="cp-valor" type="text" inputmode="decimal" placeholder="0,00"></div>'
+  +'<div class="cp-field"><label id="cp-valor-label">Valor (R$) *</label><input id="cp-valor" type="text" inputmode="decimal" placeholder="0,00"><span id="cp-livre-hint" style="display:none;font-size:10px;color:var(--muted);margin-top:2px">Saldo total que falta pagar — vai diminuindo a cada pagamento.</span></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
-  +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option></select></div>'
+  +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option><option value="Livre">Saldo livre (pago aos poucos, sem regra)</option></select></div>'
   +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
   +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
   +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa 2355</option><option>Itaú Mastercard 6669</option><option>Leroy Merlin Elo 6823</option><option>XP Visa 7503</option><option>Sicredi Mastercard 8727</option><option>Mercado Pago Visa 9390</option></select></div>'
@@ -10481,23 +10481,32 @@ function renderContas(){
   // Compras individuais de cartão nao aparecem mais na lista geral (deixava a lista enorme) -
   // elas so aparecem dentro do proprio cartão (clique no card em Cartões de Crédito).
   if(isCartaoItem)return;
+  // "Livre": conta sem regra de pagamento (paga aos poucos, quando dá — sem parcela fixa nem
+  // data que manda). Enquanto tiver saldo, sempre mostra como "Saldo em aberto" (mesma cor de
+  // vencida, mas com selo/borda diferente pra não confundir com uma conta realmente vencida por
+  // data) — não entra em Vencidas/A vencer (não tem essa lógica), só em Total em aberto.
+  var ehLivre=recNorm(c['Recorrencia'])==='livre';
   var diff=null,vencStatus='',dp=null;
   if(paga){
    dp=dbr(c['Data Pagamento']);
    if(dp&&dp.getMonth()===hoje.getMonth()&&dp.getFullYear()===hoje.getFullYear())tk.pagasMes+=v;
   }else{
    tk.aberto+=v;
-   if(dv){
+   if(ehLivre){
+    // sem vencidas/a vencer pra esse tipo — só soma no "Total em aberto" acima.
+   }else if(dv){
     diff=Math.round((dv-hoje)/86400000);
     if(diff<0){tk.vencidas+=v;vencStatus='venc';}
     else if(diff===0){tk.avencer+=v;vencStatus='hoje';}
     else{if(diff<=30)tk.avencer+=v;}
    }
   }
-  var statusCls=paga?'st-pago':(vencStatus==='venc'?'st-atras':'st-pend');
-  var statusTxt=paga?'Paga':(vencStatus==='venc'?'Vencida':(vencStatus==='hoje'?'Vence hoje':'Pendente'));
+  var statusCls=paga?'st-pago':(ehLivre?'st-livre':(vencStatus==='venc'?'st-atras':'st-pend'));
+  var statusTxt=paga?'Paga':(ehLivre?'💳 Saldo em aberto':(vencStatus==='venc'?'Vencida':(vencStatus==='hoje'?'Vence hoje':'Pendente')));
   var vencSub='';
-  if(!paga&&dv){
+  if(!paga&&ehLivre&&dv){
+   vencSub='<div class="loc-atraso-ok">ref.: '+esc(c['Data Vencimento'])+'</div>';
+  }else if(!paga&&dv){
    if(diff<0)vencSub='<div class="loc-atraso">vencida há '+(-diff)+'d</div>';
    else if(diff===0)vencSub='<div class="loc-atraso">vence hoje</div>';
    else vencSub='<div class="loc-atraso-ok">vence em '+diff+'d</div>';
@@ -10525,7 +10534,8 @@ function renderContas(){
      ?(isFaturaCartao&&c['Cartao']
        ?'<button class="loc-send-btn" title="Estorna a fatura e as compras pagas junto" onclick="cpEstornarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">↩</button>'
        :'<button class="loc-send-btn" title="Desfazer esse pagamento" onclick="cpEstornar(\''+esc(c['ID'])+'\')">↩</button>')
-     :(isFaturaCartao&&c['Cartao']?'<button class="loc-send-btn" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓</button>':'<button class="loc-send-btn" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓</button>'))
+     :(ehLivre?'<button class="loc-send-btn" title="Registrar um pagamento (parcial ou total)" onclick="cpPagarLivre(\''+esc(c['ID'])+'\')">💲</button>'
+       :(isFaturaCartao&&c['Cartao']?'<button class="loc-send-btn" title="Paga a fatura inteira e da baixa em todas as compras do mes" onclick="cpPagarFatura(\''+esc(c['ID'])+'\',\''+esc(window.cpNomeCartao(c['Cartao']))+'\')">✓</button>':'<button class="loc-send-btn" title="Marcar como paga" onclick="cpPagar(\''+esc(c['ID'])+'\')">✓</button>')))
    +'<button class="loc-send-btn" title="Excluir" onclick="cpExcluir(\''+esc(c['ID'])+'\')">🗑️</button>';
   var obsTitle=c['Observacoes']?(' Obs.: '+String(c['Observacoes'])):'';
   var descFull=esc(String(c['Descricao']||'')+obsTitle);
@@ -10632,7 +10642,14 @@ function cpMigrarChaves(obj){
  return obj;
 }
 window.cpMigrarChaves=cpMigrarChaves;
-window.cpToggleParc=function(){var p=document.getElementById('cp-rec').value==='Parcelada';['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});};
+window.cpToggleParc=function(){
+ var rec=document.getElementById('cp-rec').value;
+ var p=rec==='Parcelada';
+ ['cpParc1','cpParc2'].forEach(function(i){var e=document.getElementById(i);if(e)e.style.display=p?'':'none';});
+ var livre=rec==='Livre';
+ var hint=document.getElementById('cp-livre-hint');if(hint)hint.style.display=livre?'':'none';
+ var lbl=document.getElementById('cp-valor-label');if(lbl)lbl.textContent=livre?'Valor total da dívida (R$) *':'Valor (R$) *';
+};
 function cpLimites(){var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){d={};}d=cpMigrarChaves(d);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(d));}catch(e){}return d;}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('limites_cartao',lim);cpRenderCartoes();};
 // Versao "silenciosa" (sem recriar o grid, so grava): usada no oninput, pra nao depender do onchange
@@ -10895,6 +10912,74 @@ window.cpPagarFatura=async function(faturaId,nome){
  await cpPagarCore(faturaId,dataIso);
  setTimeout(async function(){await carregarContas();try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},2200);
 };
+// ---------- MODAL "PAGAMENTO DE SALDO LIVRE" (usado por cpPagarLivre) ----------
+// Contas "Saldo livre" não têm parcela fixa nem data que manda — cada pagamento pode ser de
+// qualquer valor, feito quando der (um pouco por semana, uma vez por mês, etc.). Este modal
+// pergunta quanto foi pago agora e em que data, em vez de assumir "marcar tudo como pago".
+function cpPagarLivreEnsureModal_(){
+ if(document.getElementById('cpPagarLivreOverlay'))return;
+ var ov=document.createElement('div');
+ ov.id='cpPagarLivreOverlay';
+ ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+ ov.innerHTML='<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:380px;max-width:96vw;padding:20px 22px;margin:auto">'
+  +'<div style="font-weight:700;font-size:15px;margin-bottom:4px" id="cpPagarLivreTitulo">Registrar pagamento</div>'
+  +'<div style="color:var(--muted);font-size:13px;margin-bottom:14px" id="cpPagarLivreSaldoTxt"></div>'
+  +'<div class="loc-cfield"><label>Valor pago agora (R$)</label><input class="loc-cinput" id="cpPagarLivreValor" type="text" inputmode="decimal" placeholder="0,00"></div>'
+  +'<div class="loc-cfield" style="margin-top:10px"><label>Data do pagamento</label><input class="loc-cinput" id="cpPagarLivreData" type="date"></div>'
+  +'<div id="cpPagarLivreErro" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>'
+  +'<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">'
+  +'<button class="loc-btn" onclick="cpPagarLivreCancelar_()">Cancelar</button>'
+  +'<button class="loc-btn primary" onclick="cpPagarLivreConfirmar_()">✓ Registrar</button>'
+  +'</div></div>';
+ ov.addEventListener('click',function(e){if(e.target===ov)cpPagarLivreCancelar_();});
+ document.body.appendChild(ov);
+}
+var _cpPagarLivreResolve_=null;
+function cpPedirPagamentoLivre_(titulo,saldoTxt){
+ cpPagarLivreEnsureModal_();
+ document.getElementById('cpPagarLivreTitulo').textContent=titulo;
+ document.getElementById('cpPagarLivreSaldoTxt').textContent=saldoTxt;
+ document.getElementById('cpPagarLivreValor').value='';
+ document.getElementById('cpPagarLivreErro').style.display='none';
+ var hoje=new Date();
+ document.getElementById('cpPagarLivreData').value=hoje.getFullYear()+'-'+('0'+(hoje.getMonth()+1)).slice(-2)+'-'+('0'+hoje.getDate()).slice(-2);
+ document.getElementById('cpPagarLivreOverlay').style.display='flex';
+ return new Promise(function(resolve){_cpPagarLivreResolve_=resolve;});
+}
+window.cpPagarLivreConfirmar_=function(){
+ var v=numFlex(document.getElementById('cpPagarLivreValor').value);
+ var iso=document.getElementById('cpPagarLivreData').value;
+ var errEl=document.getElementById('cpPagarLivreErro');
+ if(!v||v<=0){errEl.textContent='Informe um valor maior que zero.';errEl.style.display='';return;}
+ if(!iso){errEl.textContent='Informe a data do pagamento.';errEl.style.display='';return;}
+ document.getElementById('cpPagarLivreOverlay').style.display='none';
+ if(_cpPagarLivreResolve_){var r=_cpPagarLivreResolve_;_cpPagarLivreResolve_=null;r({valor:v,dataIso:iso});}
+};
+window.cpPagarLivreCancelar_=function(){
+ document.getElementById('cpPagarLivreOverlay').style.display='none';
+ if(_cpPagarLivreResolve_){var r=_cpPagarLivreResolve_;_cpPagarLivreResolve_=null;r(null);}
+};
+// Registra um pagamento (parcial ou total) de uma conta "Saldo livre": marca ESTE lançamento como
+// pago com o valor realmente pago agora (fica no histórico de "Contas já pagas", com essa data, e
+// entra certinho no card "Pagas no mês") e, se ainda sobrar saldo, cria uma NOVA linha em aberto só
+// com o restante — sem mexer no vencimento (não existe "próximo mês" aqui, ao contrário de
+// "Parcelada", que segue calendário fixo).
+window.cpPagarLivre=async function(id){
+ var c=allContas.find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ var saldoAtual=nbr(c['Valor']);
+ var r=await cpPedirPagamentoLivre_('Registrar pagamento — "'+c['Descricao']+'"','Saldo em aberto: '+fmr(saldoAtual));
+ if(!r)return;
+ var valorPago=Math.min(r.valor,saldoAtual);
+ var dataPag=new Date(r.dataIso+'T00:00:00');
+ await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(dataPag),'Valor':valorPago.toFixed(2).replace('.',',')}})});
+ var restante=Math.max(Math.round((saldoAtual-valorPago)*100)/100,0);
+ if(restante>0.005){
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':restante.toFixed(2).replace('.',','),'Data Vencimento':c['Data Vencimento']||fdt(new Date()),'Recorrencia':'Livre','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
+ } else {
+  setTimeout(function(){alert('🎉 Dívida "'+c['Descricao']+'" quitada!');},500);
+ }
+ setTimeout(async function(){await carregarContas();try{renderContas();}catch(e){}},1800);
+};
 window.cpExcluir=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});
  if(!confirm('Excluir a conta "'+(c?c['Descricao']:id)+'"?'))return;
@@ -10916,7 +11001,20 @@ async function cpEstornarCore(id){
  var dv=dbr(c['Data Vencimento']);
  var campos={'Status':'Em aberto','Data Pagamento':''};
  var proxima=null;
- if(dv){
+ // "Livre" não avança pro mês seguinte (não tem calendário) — a linha gerada com o restante fica
+ // com o MESMO vencimento da linha paga, então a busca pela "próxima" tem que olhar o mesmo mês,
+ // não o mês seguinte como Mensal/Parcelada.
+ if(dv&&rec==='livre'){
+  proxima=(allContas||[]).find(function(x){
+   if(String(x['ID'])===String(id))return false;
+   if(String(x['Status']).toLowerCase()==='paga')return false;
+   if((x['Descricao']||'').trim().toLowerCase()!==(c['Descricao']||'').trim().toLowerCase())return false;
+   if((x['Fornecedor']||'').trim().toLowerCase()!==(c['Fornecedor']||'').trim().toLowerCase())return false;
+   if(recNorm(x['Recorrencia'])!=='livre')return false;
+   var xdv=dbr(x['Data Vencimento']);if(!xdv)return false;
+   return xdv.getMonth()===dv.getMonth()&&xdv.getFullYear()===dv.getFullYear();
+  });
+ }else if(dv){
   var alvoM=dv.getMonth()+1,alvoA=dv.getFullYear();
   if(alvoM>11){alvoM=0;alvoA++;}
   proxima=(allContas||[]).find(function(x){
@@ -10933,6 +11031,13 @@ async function cpEstornarCore(id){
   var saldoArmazenado=nbr(c['Saldo Devedor']);
   var saldoRestaurado=Math.round((saldoArmazenado+nbr(c['Valor']))*100)/100;
   campos['Saldo Devedor']=saldoRestaurado.toFixed(2).replace('.',',');
+ }
+ if(rec==='livre'){
+  // Restaura o saldo de antes desse pagamento: o que já tinha voltado pra "Valor" desta linha
+  // + o que sobrou na linha seguinte (se ela existir e for excluída abaixo).
+  var restanteProx=proxima?nbr(proxima['Valor']):0;
+  var valorRestaurado=Math.round((nbr(c['Valor'])+restanteProx)*100)/100;
+  campos['Valor']=valorRestaurado.toFixed(2).replace('.',',');
  }
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:campos})});
  if(proxima){
@@ -11285,6 +11390,10 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-status-badge.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d}
   .loc-status-badge.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f}
   .loc-status-badge.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red)}
+  /* Conta "Saldo livre" (sem regra de pagamento): mesma cor de vencida (é dívida em aberto, sem
+     empurrar pra debaixo do tapete), mas borda tracejada — pra não confundir com uma conta que
+     está vencida por causa da data, já que aqui não tem data que manda. */
+  .loc-status-badge.st-livre{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);border-style:dashed}
   .loc-status-badge .lock{opacity:.6;font-size:10px}
   .loc-atraso{color:var(--red);font-weight:700;font-family:'DM Mono',monospace;font-size:11px}
   .loc-atraso-ok{color:var(--muted);font-family:'DM Mono',monospace;font-size:11px}
