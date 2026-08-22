@@ -36,6 +36,17 @@
   .audiencia .label{color:var(--accent)}
   .rodape{text-align:center;margin-top:20px;font-size:11.5px;color:var(--muted);font-family:Arial,sans-serif}
   .rodape a{color:var(--accent)}
+  .login-form{font-family:Arial,sans-serif}
+  .login-form label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .login-form input{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;margin-bottom:14px;font-family:Arial,sans-serif}
+  .login-form button{width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}
+  .login-form button:disabled{opacity:.6;cursor:default}
+  .login-erro{color:var(--red);font-size:12.5px;margin-top:10px;font-family:Arial,sans-serif}
+  .lista-processos{font-family:Arial,sans-serif}
+  .lista-processos .item{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+  .lista-processos .item:hover{border-color:var(--accent)}
+  .lista-processos .item .nome{font-weight:700;font-size:14px}
+  .lista-processos .item .num{font-size:12px;color:var(--muted);font-family:'Courier New',monospace}
   @media(max-width:480px){body{padding:16px 12px 40px}.card{padding:18px 16px}}
 </style>
 </head>
@@ -54,9 +65,12 @@
     <div class="estado">⏳ Carregando informações...</div>
   </div>
 
-  <div class="rodape" id="rodape" style="display:none">
-    Escritório Dr. Adenilson Borges da Silva — OAB/SP 335.600<br>
-    Em caso de dúvida, entre em contato diretamente com o escritório.
+  <div id="rodape" style="display:none">
+    <div style="background:#fff3cd;border:2px solid #e6a700;border-radius:8px;padding:10px 14px;margin-top:16px;color:#664d03;font-weight:700;font-size:12.5px;line-height:1.45;font-family:Arial,sans-serif">⚠️ ATENÇÃO: cuidado com golpes e fraudes. Nunca faça pagamentos ou depósitos sem antes confirmar com o escritório.</div>
+    <div class="rodape">
+      Escritório Dr. Adenilson Borges da Silva — OAB/SP 335.600<br>
+      Em caso de dúvida, entre em contato diretamente com o escritório.
+    </div>
   </div>
 </div>
 
@@ -122,11 +136,87 @@ function renderErro(msg) {
   document.getElementById('corpo').innerHTML = '<div class="estado erro">⚠️ ' + escHtml(msg) + '</div>';
 }
 
+// Máscara simples de CPF/CNPJ no campo de login (mesmo padrão do sistema principal) — só pra
+// facilitar a digitação; a comparação no servidor ignora pontuação de qualquer forma.
+function mascararCpfCnpjPortal(el) {
+  var v = el.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1/$2');
+    v = v.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  el.value = v;
+}
+
+function renderLogin() {
+  var corpo = document.getElementById('corpo');
+  corpo.innerHTML =
+    '<div class="login-form">'
+    + '<div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px">Digite seu CPF/CNPJ e a senha que o escritório enviou pra você.</div>'
+    + '<label for="loginCpf">CPF/CNPJ</label>'
+    + '<input type="text" id="loginCpf" inputmode="numeric" placeholder="000.000.000-00" oninput="mascararCpfCnpjPortal(this)">'
+    + '<label for="loginSenha">Senha</label>'
+    + '<input type="text" id="loginSenha" inputmode="numeric" maxlength="6" placeholder="000000">'
+    + '<button type="button" id="loginBtn" onclick="tentarLogin()">Entrar</button>'
+    + '<div class="login-erro" id="loginErro" style="display:none"></div>'
+    + '</div>';
+  document.getElementById('rodape').style.display = '';
+}
+
+function renderListaProcessos(lista) {
+  var corpo = document.getElementById('corpo');
+  var html = '<div class="lista-processos"><div style="font-size:13px;color:var(--muted);margin-bottom:10px">Você tem mais de um processo. Selecione qual quer acompanhar:</div>';
+  lista.forEach(function (d, idx) {
+    html += '<div class="item" onclick="render(window._portalLista[' + idx + '])">'
+      + '<div class="nome">' + escHtml(d.nome || 'Cliente') + '</div>'
+      + '<div class="num">' + (d.processo ? escHtml(d.processo) : 'Número não informado') + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  corpo.innerHTML = html;
+  window._portalLista = lista;
+  document.getElementById('rodape').style.display = '';
+}
+
+function tentarLogin() {
+  var cpf = document.getElementById('loginCpf').value.trim();
+  var senha = document.getElementById('loginSenha').value.trim();
+  var btn = document.getElementById('loginBtn');
+  var erroEl = document.getElementById('loginErro');
+  erroEl.style.display = 'none';
+  if (!cpf || !senha) { erroEl.textContent = 'Preencha o CPF/CNPJ e a senha.'; erroEl.style.display = ''; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  fetch(URL_AS, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ acao: 'portal_login', cpfCnpj: cpf, senha: senha })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      btn.disabled = false; btn.textContent = 'Entrar';
+      if (!d || !d.ok) { erroEl.textContent = (d && d.error) || 'CPF/CNPJ ou senha inválidos.'; erroEl.style.display = ''; return; }
+      if (d.processos.length === 1) { render(d.processos[0]); return; }
+      renderListaProcessos(d.processos);
+    })
+    .catch(function () {
+      btn.disabled = false; btn.textContent = 'Entrar';
+      erroEl.textContent = 'Não foi possível entrar agora. Verifique sua conexão e tente novamente.';
+      erroEl.style.display = '';
+    });
+}
+window.tentarLogin = tentarLogin;
+window.mascararCpfCnpjPortal = mascararCpfCnpjPortal;
+window.render = render;
+
 (function () {
   var params = new URLSearchParams(location.search);
   var token = (params.get('token') || '').trim();
   if (!token) {
-    renderErro('Link inválido. Peça ao escritório para reenviar o link de acompanhamento.');
+    renderLogin();
     return;
   }
   fetch(URL_AS + '?acao=portal_processo&token=' + encodeURIComponent(token))

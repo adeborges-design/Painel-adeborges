@@ -2770,12 +2770,12 @@
 
           <div class="hon-field">
             <label>CPF/CNPJ do Pagador</label>
-            <input type="text" class="hon-input" id="hon-cpfPagador" placeholder="000.000.000-00">
+            <input type="text" class="hon-input" id="hon-cpfPagador" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
           </div>
 
           <div class="hon-field">
             <label>Telefone do Pagador</label>
-            <input type="text" class="hon-input" id="hon-telPagador" placeholder="(11) 99999-9999">
+            <input type="text" class="hon-input" id="hon-telPagador" placeholder="(11) 99999-9999" maxlength="15" oninput="mascararTelefone(this)">
           </div>
 
           <div class="hon-field">
@@ -3055,7 +3055,7 @@
           </div>
           <div class="form-field">
             <label id="ed-labelCpf">CPF / CNPJ</label>
-            <input type="text" id="ed-cpf" placeholder="000.000.000-00">
+            <input type="text" id="ed-cpf" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
           </div>
           <div class="form-field">
             <label>RG / Órgão emissor</label>
@@ -3092,7 +3092,7 @@
               </div>
               <div class="form-field">
                 <label>CPF do representante</label>
-                <input type="text" id="ed-repCpf" placeholder="000.000.000-00">
+                <input type="text" id="ed-repCpf" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
               </div>
               <div class="form-field">
                 <label>RG do representante</label>
@@ -3106,7 +3106,7 @@
           </div>
           <div class="form-field">
             <label>Telefone</label>
-            <input type="text" id="ed-telefone" placeholder="(11) 99999-9999">
+            <input type="text" id="ed-telefone" placeholder="(11) 99999-9999" maxlength="15" oninput="mascararTelefone(this)">
           </div>
           <div class="form-field">
             <label>E-mail</label>
@@ -3144,6 +3144,10 @@
           <div class="form-field form-full">
             <label>Número do Processo</label>
             <input type="text" id="ed-processo" placeholder="0000000-00.0000.0.00.0000">
+          </div>
+          <div class="form-field form-full">
+            <label>Chave de Acesso do Processo <span style="font-weight:400;color:var(--muted)">(chave de consulta do tribunal, quando houver)</span></label>
+            <input type="text" id="ed-chaveAcesso" placeholder="Chave de acesso emitida pelo tribunal para consulta do processo">
           </div>
           <div class="form-field form-full" style="position:relative">
             <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
@@ -3384,7 +3388,7 @@
           </div>
           <div class="form-field">
             <label id="cad-labelCpf">CPF / CNPJ</label>
-            <input type="text" id="cad-cpf" placeholder="000.000.000-00">
+            <input type="text" id="cad-cpf" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
           </div>
           <div class="form-field">
             <label>RG / Órgão emissor</label>
@@ -3421,7 +3425,7 @@
               </div>
               <div class="form-field">
                 <label>CPF do representante</label>
-                <input type="text" id="cad-repCpf" placeholder="000.000.000-00">
+                <input type="text" id="cad-repCpf" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
               </div>
               <div class="form-field">
                 <label>RG do representante</label>
@@ -3435,7 +3439,7 @@
           </div>
           <div class="form-field">
             <label>Telefone</label>
-            <input type="text" id="cad-telefone" placeholder="(11) 99999-9999">
+            <input type="text" id="cad-telefone" placeholder="(11) 99999-9999" maxlength="15" oninput="mascararTelefone(this)">
           </div>
           <div class="form-field">
             <label>E-mail</label>
@@ -3474,6 +3478,10 @@
           <div class="form-field form-full">
             <label>Número do Processo</label>
             <input type="text" id="cad-processo" placeholder="0000000-00.0000.0.00.0000">
+          </div>
+          <div class="form-field form-full">
+            <label>Chave de Acesso do Processo <span style="font-weight:400;color:var(--muted)">(chave de consulta do tribunal, quando houver)</span></label>
+            <input type="text" id="cad-chaveAcesso" placeholder="Chave de acesso emitida pelo tribunal para consulta do processo">
           </div>
           <div class="form-field form-full" style="position:relative">
             <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
@@ -3724,7 +3732,7 @@
         </div>
         <div class="recibo-field">
           <label class="recibo-label">CPF / CNPJ</label>
-          <input type="text" class="recibo-input" id="recCpfCnpj" placeholder="000.000.000-00">
+          <input type="text" class="recibo-input" id="recCpfCnpj" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
         </div>
       </div>
 
@@ -3735,7 +3743,7 @@
         </div>
         <div class="recibo-field">
           <label class="recibo-label">Telefone</label>
-          <input type="text" class="recibo-input" id="recTelefone" placeholder="(11) 00000-0000">
+          <input type="text" class="recibo-input" id="recTelefone" placeholder="(11) 00000-0000" maxlength="15" oninput="mascararTelefone(this)">
         </div>
       </div>
 
@@ -3857,6 +3865,7 @@
           </div>
         </div>
 
+        <div style="background:#fff3cd;border:2px solid #e6a700;border-radius:8px;padding:10px 14px;margin:12px 0 0;color:#664d03;font-weight:700;font-size:12.5px;line-height:1.45">⚠️ ATENÇÃO: cuidado com golpes e fraudes. Nunca faça pagamentos ou depósitos sem antes confirmar com o seu advogado.</div>
       </div>
       <div class="atend-footer">
         Dúvidas? Ligue ou envie mensagem.<br>
@@ -3930,6 +3939,12 @@
           </div>
         </div>
 
+        <div class="atend-section" id="cardHonSenhaSection" style="display:none">
+          <div class="atend-section-label">Código de Verificação</div>
+          <div class="atend-box" style="text-align:center;font-size:16px;font-weight:700;letter-spacing:2px" id="cardHonSenha"></div>
+        </div>
+
+        <div style="background:#fff3cd;border:2px solid #e6a700;border-radius:8px;padding:10px 14px;margin:12px 0 0;color:#664d03;font-weight:700;font-size:12.5px;line-height:1.45">⚠️ ATENÇÃO: cuidado com golpes e fraudes. Nunca faça pagamentos ou depósitos sem antes confirmar com o seu advogado.</div>
       </div>
       <div class="atend-footer">
         Dúvidas? Ligue ou envie mensagem.<br>
@@ -4001,7 +4016,7 @@
       <label class="form-label">DADOS DO ADVOGADO (usados em petições e documentos)</label>
       <input type="text" class="form-input" id="inputAdvNome" placeholder="Nome completo do advogado" style="margin-bottom:8px">
       <input type="text" class="form-input" id="inputAdvOab" placeholder="OAB — ex.: SP/335600" style="margin-bottom:8px">
-      <input type="text" class="form-input" id="inputAdvTelefone" placeholder="Telefone — ex.: (11) 99931-3712" style="margin-bottom:8px">
+      <input type="text" class="form-input" id="inputAdvTelefone" placeholder="Telefone — ex.: (11) 99931-3712" style="margin-bottom:8px" maxlength="15" oninput="mascararTelefone(this)">
       <input type="text" class="form-input" id="inputAdvEmail" placeholder="E-mail">
     </div>
 
@@ -4307,7 +4322,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cfield full" id="rasc-campo-nome"><label>Nome</label><input class="loc-cinput" id="rasc-nome" value="'+(d['Nome']?escHtml(d['Nome']):'')+'" placeholder="Nome do cliente/contato"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locador"><label>Locador (se já tiver)</label><input class="loc-cinput" id="rasc-locador" value="'+(d['Locador']?escHtml(d['Locador']):'')+'" placeholder="Dono do imóvel"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locatario"><label>Locatário (se já tiver)</label><input class="loc-cinput" id="rasc-locatario" value="'+(d['Locatario']?escHtml(d['Locatario']):'')+'" placeholder="Quem vai alugar"></div>'
-    +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="rasc-telefone" value="'+(d['Telefone']?escHtml(d['Telefone']):'')+'"></div>'
+    +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="rasc-telefone" maxlength="15" oninput="mascararTelefone(this)" value="'+(d['Telefone']?escHtml(d['Telefone']):'')+'"></div>'
     +'<div class="loc-cfield"><label>E-mail</label><input class="loc-cinput" id="rasc-email" value="'+(d['Email']?escHtml(d['Email']):'')+'"></div>'
     +'<div class="loc-cfield full"><label>Endereço</label><input class="loc-cinput" id="rasc-endereco" value="'+(d['Endereco']?escHtml(d['Endereco']):'')+'"></div>'
     +'<div class="loc-cfield"><label>Valor estimado (R$)</label><input class="loc-cinput" id="rasc-valor" type="text" inputmode="decimal" value="'+(d['Valor']?accNum(d['Valor']):'')+'"></div>'
@@ -4752,6 +4767,8 @@ function parseProcessos(rows) {
     const repCpf            = get(row, 'Representante CPF',  -1);
     const repRg             = get(row, 'Representante RG',   -1);
     const repCargo          = get(row, 'Representante Cargo', -1);
+    const chaveAcesso       = get(row, 'Chave de Acesso',    -1);
+    const senhaCliente      = get(row, 'Senha Cliente',      -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -4768,7 +4785,7 @@ function parseProcessos(rows) {
     allProcessos.push({
       nro: parseInt(nro),
       _uid: i,
-      nome, processo, sistema,
+      nome, processo, sistema, chaveAcesso, senhaCliente,
       vara, juiz, tribunal, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
       endereco, bairro, complemento, cep, cidade, estado,
       valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento, datasVencimento,
@@ -4989,7 +5006,7 @@ function renderProcessos() {
 
     // Busca textual
     if (q) {
-      const hay = [p.nome, p.processo, p.tipo, p.outra, p.ramo, p.ultima].join(' ').toLowerCase();
+      const hay = [p.nome, p.processo, p.tipo, p.outra, parteContrariaTexto(p), p.ramo, p.ultima].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
 
@@ -5105,6 +5122,7 @@ function renderCard(p, idx) {
           ${p.status === 'REVOGADO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Procuração Revogada</span>' : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
+        ${p.chaveAcesso ? `<div style="font-size:11px;color:var(--muted)">🔑 Chave de acesso: ${escHtml(p.chaveAcesso)}</div>` : ''}
         ${(() => {
           let html = '';
           if (p.processoPrincipal) {
@@ -5131,7 +5149,7 @@ function renderCard(p, idx) {
             </svg>
             ${escHtml(p.parte || '-')}
           </span>
-          ${p.outra ? `<span class="meta-item">vs ${escHtml(p.outra.substring(0,40))}${p.outra.length>40?'...':''}</span>` : ''}
+          ${parteContrariaTexto(p) ? `<span class="meta-item">vs ${escHtml(parteContrariaTexto(p).substring(0,40))}${parteContrariaTexto(p).length>40?'...':''}</span>` : ''}
           ${p.tipo ? `<span class="meta-item">${escHtml(p.tipo)}</span>` : ''}
           ${p.advParc ? `<span class="meta-item destaque">Parceiro: ${escHtml(p.advParc)}</span>` : ''}
         </div>
@@ -5148,7 +5166,7 @@ function renderCard(p, idx) {
             </div>
             <div class="detail-block">
               <div class="detail-label">Parte contrária</div>
-              <div class="detail-value">${escHtml(p.outra) || '-'}</div>
+              <div class="detail-value">${escHtml(parteContrariaTexto(p)) || '-'}</div>
             </div>
             <div class="detail-block">
               <div class="detail-label">Posicao processual</div>
@@ -5409,12 +5427,48 @@ async function lcCarregarOuGerar(p, forcarNovo) {
         <button class="btn-secondary" onclick="lcGerarNovo()" title="Invalida o link atual e cria outro">🔄 Gerar novo link</button>
       </div>
       <div style="margin-top:10px;font-size:11px;color:var(--muted)">${d.novo ? 'Link novo gerado agora.' : 'Este processo já tinha um link ativo — reaproveitado (o mesmo de antes).'}</div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+        <label class="form-label">SENHA DO CLIENTE <span style="font-weight:400;color:var(--muted)">(login no portal com CPF/CNPJ + senha, e código de verificação em pedidos de pagamento)</span></label>
+        ${p.senhaCliente ? `
+        <div style="font-size:20px;font-weight:700;letter-spacing:2px;color:var(--accent);margin:6px 0">${escHtml(p.senhaCliente)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center" target="_blank"
+             href="https://wa.me/?text=${encodeURIComponent('Olá, ' + (p.nome || '') + '! Aqui está o acesso ao acompanhamento do seu processo:\n\n' + link + '\n\nSua senha de identificação: ' + p.senhaCliente + '\n\nGuarde essa senha: ela confirma que qualquer cobrança ou pedido de pagamento vindo deste escritório é realmente nosso. Se alguém pedir um pagamento e não souber essa senha, desconfie e confirme comigo antes de pagar.')}">
+             WhatsApp (link + senha)
+          </a>
+        </div>
+        ` : `
+        <div style="font-size:12px;color:var(--muted);margin:6px 0">Este cliente ainda não tem senha (provavelmente cadastrado antes do CPF/CNPJ ser preenchido).</div>
+        <button class="btn-secondary" onclick="lcGerarSenhaAgora()">🔑 Gerar senha agora</button>
+        `}
+      </div>
     `;
     document.getElementById('lcBtnRevogar').style.display = '';
   } catch (e) {
     corpo.innerHTML = `<div style="color:var(--red);padding:10px 0">Erro: ${escHtml(e.message)}</div>`;
   }
 }
+
+async function lcGerarSenhaAgora() {
+  const p = allProcessos.find(x => x._uid === _lcUid);
+  if (!p) return;
+  if (!p.cpfCnpj) { alert('Preencha o CPF/CNPJ do cliente no cadastro antes de gerar a senha.'); return; }
+  const corpo = document.getElementById('lcCorpo');
+  const senha = gerarSenhaCliente();
+  try {
+    const r = await fetch(URL_AS, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Senha Cliente': senha } })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Falha ao gravar a senha.');
+    p.senhaCliente = senha;
+    await lcCarregarOuGerar(p, false);
+  } catch (e) {
+    corpo.innerHTML = `<div style="color:var(--red);padding:10px 0">Erro: ${escHtml(e.message)}</div>`;
+  }
+}
+window.lcGerarSenhaAgora = lcGerarSenhaAgora;
 
 function lcGerarNovo() {
   const p = allProcessos.find(x => x._uid === _lcUid);
@@ -5508,6 +5562,63 @@ function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/'/g,"\\'").replace(/"/g,'&quot;');
 }
+
+// --- AVISO ANTI-GOLPE (fixo em toda mensagem/comunicação enviada a cliente, locador ou
+// locatário) ------------------------------------------------------------------------------
+// Texto único e sempre igual, avisando pra nunca pagar/depositar nada sem confirmar direto com
+// o advogado antes. Uma versão HTML (fundo amarelo, pros cards) e uma versão texto puro (com
+// destaque de emojis/asteriscos, pro WhatsApp).
+const AVISO_GOLPE_TEXTO = '\n⚠️ *ATENÇÃO — CUIDADO COM GOLPES E FRAUDES* ⚠️\nNunca faça pagamentos ou depósitos sem antes confirmar diretamente com o seu advogado.\n';
+function avisoGolpeHtml() {
+  return '<div style="background:#fff3cd;border:2px solid #e6a700;border-radius:8px;padding:10px 14px;margin:10px 0;color:#664d03;font-weight:700;font-size:12.5px;line-height:1.45">⚠️ ATENÇÃO: cuidado com golpes e fraudes. Nunca faça pagamentos ou depósitos sem antes confirmar com o seu advogado.</div>';
+}
+window.avisoGolpeHtml = avisoGolpeHtml;
+window.AVISO_GOLPE_TEXTO = AVISO_GOLPE_TEXTO;
+
+// --- MÁSCARAS DE ENTRADA (CPF/CNPJ e Telefone) -----------------
+// Aplicadas via oninput em todo campo de CPF/CNPJ e telefone do sistema. Formata enquanto
+// digita, alternando automaticamente CPF/CNPJ pela quantidade de dígitos (até 11 = CPF, mais que
+// isso = CNPJ) e fixo/celular pela quantidade de dígitos (10 = fixo, 11 = celular). Pontos,
+// barra, parênteses e traços ficam fixos — só dígitos podem ser digitados/colados.
+function mascararCPFCNPJ(el) {
+  if (!el) return;
+  let v = el.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1/$2');
+    v = v.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  el.value = v;
+}
+
+function mascararTelefone(el) {
+  if (!el) return;
+  let v = el.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 10) {
+    v = v.replace(/(\d{2})(\d)/, '($1) $2');
+    v = v.replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '($1) $2');
+    v = v.replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+  }
+  el.value = v;
+}
+window.mascararCPFCNPJ = mascararCPFCNPJ;
+window.mascararTelefone = mascararTelefone;
+
+// --- SENHA DO CLIENTE (login no portal + código de verificação em pedidos de pagamento) -------
+// Gerada uma única vez, na primeira vez que o CPF/CNPJ do cliente do processo (ou do locador/
+// locatário) é cadastrado — nunca trocada automaticamente depois, pra não invalidar uma senha
+// que o cliente já recebeu. 6 dígitos: fácil de ler e digitar no celular.
+function gerarSenhaCliente() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+window.gerarSenhaCliente = gerarSenhaCliente;
 
 function formatDate(str) {
   if (!str) return '';
@@ -5622,6 +5733,12 @@ function listaNomes(arr, upper) {
   if (nomes.length === 1) return nomes[0];
   return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
 }
+// Texto de "parte contrária" pronto pra exibir (lista de nomes da(s) parte(s) Réu cadastradas em
+// "Partes do processo", com fallback pro campo texto único "outra" — mesma lógica de reusDoProcesso,
+// usada em toda tela/mensagem que mostra a parte contrária ao usuário ou ao cliente).
+function parteContrariaTexto(p) {
+  return listaNomes(reusDoProcesso(p));
+}
 // Bloco de qualificação numerado quando há 2+ partes (ex.: "CONTRATANTE 1:", "CONTRATANTE 2:"),
 // ou sem numeração quando há só uma — pra não mudar o texto de processos com um único cliente.
 function qualificacoesNumeradas(lista, rotulo) {
@@ -5688,19 +5805,24 @@ window.ptAdicionarLinha = function (dados) {
   const polo = dados['Polo'] || 'Autor';
   const nosso = String(dados['Nosso Cliente'] || (dados.ID ? 'Não' : 'Sim')).trim().toLowerCase() === 'sim';
   const tipoP = dados['Tipo de Pessoa'] || 'Física';
+  const jur = tipoP === 'Jurídica';
+  const dispPf = jur ? 'none' : 'contents';
+  const dispPj = jur ? '' : 'none';
   div.innerHTML =
     '<input type="hidden" class="pt-id" value="' + escHtml(dados.ID || '') + '">'
     + '<div class="loc-cform" style="padding:0;border:none;background:none">'
     + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo"><option value="Autor"' + (polo === 'Autor' ? ' selected' : '') + '>Autor</option><option value="Réu"' + (polo === 'Réu' ? ' selected' : '') + '>Réu</option></select></div>'
     + '<div class="loc-cfield"><label>Nosso cliente?</label><select class="loc-cinput pt-nosso"><option value="Sim"' + (nosso ? ' selected' : '') + '>Sim</option><option value="Não"' + (!nosso ? ' selected' : '') + '>Não</option></select></div>'
-    + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option></select></div>'
+    + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa" onchange="ptToggleTipoPessoa(this)"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option></select></div>'
     + '<div class="loc-cfield full"><label>Nome / Razão social</label><input class="loc-cinput pt-nome" value="' + escHtml(dados['Nome'] || '') + '"></div>'
-    + '<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput pt-cpf" value="' + escHtml(dados['CPF/CNPJ'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput pt-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="' + escHtml(dados['CPF/CNPJ'] || '') + '"></div>'
+    + '<div class="pt-pf-fields" style="display:' + dispPf + '">'
     + '<div class="loc-cfield"><label>RG / Órgão emissor</label><input class="loc-cinput pt-rg" value="' + escHtml(dados['RG/ Órgão emissor'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Estado civil</label><input class="loc-cinput pt-estadocivil" value="' + escHtml(dados['Estado civil'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Profissão</label><input class="loc-cinput pt-profissao" value="' + escHtml(dados['Profissão'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Data de nascimento</label><input class="loc-cinput pt-datanasc" value="' + escHtml(dados['Data de Nascimento'] || '') + '" placeholder="dd/mm/aaaa"></div>'
-    + '<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput pt-telefone" value="' + escHtml(dados['Telefone'] || '') + '"></div>'
+    + '</div>'
+    + '<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput pt-telefone" maxlength="15" oninput="mascararTelefone(this)" value="' + escHtml(dados['Telefone'] || '') + '"></div>'
     + '<div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput pt-email" value="' + escHtml(dados['e-mail'] || '') + '"></div>'
     + '<div class="loc-cfield full"><label>Endereço - Rua e Número</label><input class="loc-cinput pt-endereco" value="' + escHtml(dados['Endereço - Rua e Número'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Bairro</label><input class="loc-cinput pt-bairro" value="' + escHtml(dados['Bairro'] || '') + '"></div>'
@@ -5708,17 +5830,28 @@ window.ptAdicionarLinha = function (dados) {
     + '<div class="loc-cfield"><label>CEP</label><input class="loc-cinput pt-cep" value="' + escHtml(dados['CEP'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Cidade</label><input class="loc-cinput pt-cidade" value="' + escHtml(dados['Cidade'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Estado (UF)</label><input class="loc-cinput pt-estado" value="' + escHtml(dados['Estado (UF)'] || '') + '"></div>'
+    + '<div class="pt-pf-fields" style="display:' + dispPf + '">'
     + '<div class="loc-cfield"><label>Renda mensal (p/ hipossuf.)</label><input class="loc-cinput pt-renda" value="' + escHtml(dados['Renda Mensal'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>Nº dependentes (p/ hipossuf.)</label><input class="loc-cinput pt-dependentes" value="' + escHtml(dados['Numero Dependentes'] || '') + '"></div>'
+    + '</div>'
+    + '<div class="pt-pj-fields" style="display:' + dispPj + ';grid-column:1/-1">'
     + '<div class="loc-cfield full" style="border-top:1px dashed var(--border2);padding-top:10px;margin-top:2px"><label style="opacity:.8">Representante legal (só se Pessoa Jurídica)</label></div>'
     + '<div class="loc-cfield"><label>Nome do representante</label><input class="loc-cinput pt-repnome" value="' + escHtml(dados['Representante Nome'] || '') + '"></div>'
-    + '<div class="loc-cfield"><label>CPF do representante</label><input class="loc-cinput pt-repcpf" value="' + escHtml(dados['Representante CPF'] || '') + '"></div>'
+    + '<div class="loc-cfield"><label>CPF do representante</label><input class="loc-cinput pt-repcpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="' + escHtml(dados['Representante CPF'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>RG do representante</label><input class="loc-cinput pt-reprg" value="' + escHtml(dados['Representante RG'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>Cargo do representante</label><input class="loc-cinput pt-repcargo" value="' + escHtml(dados['Representante Cargo'] || '') + '"></div>'
-    + '<div class="loc-cfield"><label>Nº dependentes (p/ hipossuf.)</label><input class="loc-cinput pt-dependentes" value="' + escHtml(dados['Numero Dependentes'] || '') + '"></div>'
+    + '</div>'
     + '<div class="loc-cfield full"><label>Observações</label><input class="loc-cinput pt-obs" value="' + escHtml(dados['Observacoes'] || '') + '"></div>'
     + '</div>'
     + '<button type="button" class="loc-btn" style="margin-top:8px;color:var(--red);border-color:var(--red);padding:5px 12px;font-size:12px" onclick="ptRemoverLinha(\'' + uid + '\')">🗑️ remover esta parte</button>';
   lista.appendChild(div);
+};
+window.ptToggleTipoPessoa = function (selEl) {
+  const linha = selEl.closest('.pt-linha');
+  if (!linha) return;
+  const juridica = selEl.value === 'Jurídica';
+  linha.querySelectorAll('.pt-pf-fields').forEach(function (el) { el.style.display = juridica ? 'none' : 'contents'; });
+  linha.querySelectorAll('.pt-pj-fields').forEach(function (el) { el.style.display = juridica ? '' : 'none'; });
 };
 window.ptRemoverLinha = function (uid) {
   const div = document.getElementById(uid);
@@ -6347,7 +6480,7 @@ function abrirCardAtendimento(uid) {
   document.getElementById('cardProcesso').textContent = p.processo ? 'Processo nr. ' + p.processo : '';
   document.getElementById('cardTipo').textContent = p.tipo || '';
   document.getElementById('cardParte').textContent = p.parte ? 'Posicao: ' + p.parte : '';
-  document.getElementById('cardOutra').textContent = p.outra ? 'Parte contraria: ' + p.outra : '';
+  document.getElementById('cardOutra').textContent = parteContrariaTexto(p) ? 'Parte contraria: ' + parteContrariaTexto(p) : '';
 
   // Situacao atual (Última Atualizacao - col L)
   const situacao = p.ultima || '';
@@ -6521,7 +6654,7 @@ function shareWhatsApp() {
   if (p.processo) txt += 'Processo nr. ' + p.processo + '\n';
   if (p.tipo) txt += p.tipo + '\n';
   if (p.parte) txt += 'Posicao: ' + p.parte + '\n';
-  if (p.outra) txt += 'Parte contraria: ' + p.outra + '\n';
+  if (parteContrariaTexto(p)) txt += 'Parte contraria: ' + parteContrariaTexto(p) + '\n';
   if (p.ultima && p.ultima.length > 2) txt += '\n*SITUACAO ATUAL*\n' + p.ultima + '\n';
   if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\n*O QUE FAREMOS:*\n' + p.proximoPassoAdv + '\n';
   if (p.providCliente && p.providCliente.length > 2) txt += '\n*O QUE O CLIENTE PRECISA:*\n' + p.providCliente + '\n';
@@ -6531,6 +6664,7 @@ function shareWhatsApp() {
     if (p.localAudi) txt += '\nLocal: ' + p.localAudi;
     txt += '\n';
   }
+  txt += AVISO_GOLPE_TEXTO;
   txt += '\nDuvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
 
   const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
@@ -7298,7 +7432,7 @@ window.accPreencherDoProcesso = function () {
   var p = allProcessos.find(function (x) { return String(x._uid) === String(uid); });
   if (!p) return;
   document.getElementById('ac-cliente').value = p.nome || '';
-  document.getElementById('ac-parteContraria').value = p.outra || '';
+  document.getElementById('ac-parteContraria').value = parteContrariaTexto(p) || '';
 };
 
 window.accNovoContrato = function () {
@@ -7863,6 +7997,7 @@ window.accAbrirRecibo = function (lancamentoId) {
     + '<div class="parc-section"><div class="parc-section-label">Total Repassado</div><div class="parc-tarefa-box"><strong>' + accBRL(repasse) + '</strong>'
     + '<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao acordo de <strong>' + accE(l['Mes'] || '') + '</strong></div></div></div>'
     + '<div class="parc-section"><div class="parc-section-label">Dados Bancários do Cliente (Repasse)</div><div class="parc-box">' + contaHtml + '</div></div>'
+    + avisoGolpeHtml()
     + '</div>'
     + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
 
@@ -8420,7 +8555,7 @@ function atualizarCardParceiro() {
       <div class="parc-processo-nome">${escHtml(p.nome)}</div>
       <div class="parc-processo-num">${escHtml(p.processo) || '(sem número)'}</div>
       <div class="parc-processo-meta">
-        ${escHtml(p.tipo || '')}${p.outra ? ` - vs ${escHtml(p.outra)}` : ''}${p.parte ? ` - ${escHtml(p.parte)}` : ''}
+        ${escHtml(p.tipo || '')}${parteContrariaTexto(p) ? ` - vs ${escHtml(parteContrariaTexto(p))}` : ''}${p.parte ? ` - ${escHtml(p.parte)}` : ''}
       </div>
     </div>
 
@@ -8469,7 +8604,7 @@ function _parcTexto() {
   txt += '*PROCESSO:* ' + p.nome + '\n';
   if (p.processo) txt += 'Nr. ' + p.processo + '\n';
   if (p.tipo) txt += p.tipo;
-  if (p.outra) txt += ' vs ' + p.outra;
+  if (parteContrariaTexto(p)) txt += ' vs ' + parteContrariaTexto(p);
   if (p.parte) txt += ' - ' + p.parte;
   txt += '\n';
   if (p.ultima && p.ultima.length > 2) txt += '\n*SITUACAO ATUAL:*\n' + p.ultima + '\n';
@@ -8585,6 +8720,7 @@ function abrirEdicao(uid) {
 
   // Preencher campos - Dados do Processo
   document.getElementById('ed-processo').value = p.processo || '';
+  document.getElementById('ed-chaveAcesso').value = p.chaveAcesso || '';
   document.getElementById('ed-processoPrincipal').value = p.processoPrincipal || '';
   document.getElementById('ed-sistema').value = p.sistema || '';
   document.getElementById('ed-vara').value = p.vara || '';
@@ -8696,6 +8832,7 @@ async function salvarEdicao() {
     'Cidade': document.getElementById('ed-cidade').value,
     'Estado (UF)': document.getElementById('ed-estado').value,
     'Número do Processo': document.getElementById('ed-processo').value,
+    'Chave de Acesso': document.getElementById('ed-chaveAcesso').value,
     'Processo Principal': document.getElementById('ed-processoPrincipal').value,
     'Sistema': document.getElementById('ed-sistema').value,
     'Vara': document.getElementById('ed-vara').value,
@@ -8728,6 +8865,16 @@ async function salvarEdicao() {
     'Datas de Vencimentos': document.getElementById('ed-datasVenc').value,
     'Observacoes': document.getElementById('ed-obs').value,
   };
+
+  // Gera a senha do cliente na primeira vez que o CPF/CNPJ aparece cadastrado (nunca troca uma
+  // senha que já existe, pra não invalidar uma que o cliente já recebeu).
+  (function () {
+    const pAtual = allProcessos.find(function (x) { return (x._row + 1) === _edicaoLinha; });
+    const cpfAtual = document.getElementById('ed-cpf').value.trim();
+    if (cpfAtual && (!pAtual || !pAtual.senhaCliente)) {
+      campos['Senha Cliente'] = gerarSenhaCliente();
+    }
+  })();
 
   try {
     let colunasNaoEncontradas = [];
@@ -9299,6 +9446,7 @@ async function salvarCadastro() {
     'Cidade': document.getElementById('cad-cidade').value,
     'Estado (UF)': document.getElementById('cad-estado').value,
     'Número do Processo': document.getElementById('cad-processo').value,
+    'Chave de Acesso': document.getElementById('cad-chaveAcesso').value,
     'Processo Principal': document.getElementById('cad-processoPrincipal').value,
     'Sistema': document.getElementById('cad-sistema').value,
     'Vara': document.getElementById('cad-vara').value,
@@ -9324,6 +9472,11 @@ async function salvarCadastro() {
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
     'Datas de Vencimentos': document.getElementById('cad-datasVenc').value,
   };
+
+  // Cadastro novo: se já tem CPF/CNPJ, gera a senha do cliente de cara.
+  if (document.getElementById('cad-cpf').value.trim()) {
+    campos['Senha Cliente'] = gerarSenhaCliente();
+  }
 
   try {
     let colunasNaoEncontradas = [];
@@ -9585,6 +9738,9 @@ window.abrirCardHonorarios=function(k,idx){
   document.getElementById('cardHonParcelaVenc').textContent='Vencimento: '+(p.venc||'-');
   document.getElementById('cardHonParcelaValor').textContent=fmr(p.valor||0);
   document.getElementById('cardHonPreviewSub').textContent=(d.cliente||'')+' — pré-visualização';
+  var secSenha=document.getElementById('cardHonSenhaSection');
+  if(d.senhaCliente){secSenha.style.display='';document.getElementById('cardHonSenha').textContent=d.senhaCliente;}
+  else{secSenha.style.display='none';}
   modal.classList.add('open');
   _cardHonImgCache=null;_cardHonImgCacheKey=k+'|'+idx;
   var chaveAtual=_cardHonImgCacheKey;
@@ -9673,6 +9829,8 @@ function montarTextoCardHon_(formatoWpp){
   txt+='Banco: '+CONTA_ESCRITORIO_HON.banco+' | Agência: '+CONTA_ESCRITORIO_HON.agencia+' | Conta: '+CONTA_ESCRITORIO_HON.conta+'\n';
   txt+='Chave Pix: '+CONTA_ESCRITORIO_HON.pix+'\n';
   txt+='\nPoderia verificar a regularização assim que possível? Qualquer dúvida, estou à disposição.\n\n';
+  if(d.senhaCliente)txt+=b+'CÓDIGO DE VERIFICAÇÃO'+b+' (confirma que este pedido é mesmo do escritório): '+d.senhaCliente+'\n';
+  txt+=window.AVISO_GOLPE_TEXTO;
   txt+='ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
   return txt;
 }
@@ -9826,7 +9984,7 @@ window.renderVencimentos=function(){
   // cabeçalho do contrato quanto o ⚠️ de cada parcela vencida chamam avisarClienteHonorarios(k)
   // e buscam os dados aqui, sem precisar recalcular tudo de novo no clique.
   window._honAvisoData=window._honAvisoData||{};
-  window._honAvisoData[k]={cliente:cliente,proc:proc,telefone:(procMatch&&procMatch.telefone)||''};
+  window._honAvisoData[k]={cliente:cliente,proc:proc,telefone:(procMatch&&procMatch.telefone)||'',senhaCliente:(procMatch&&procMatch.senhaCliente)||''};
   var btnAvisar=atrasoCli>0?' <button class="btn-hon-avisar" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\',0)" title="Monta o card padrão do escritório com a parcela em aberto pra enviar por WhatsApp">📱 Avisar cliente</button>':'';
   var aberto=atrasoCli>0?true:(honOpenState[k]===true);
   cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop+btnAvisar
@@ -11200,14 +11358,21 @@ window.cpRenderFixas=cpRenderFixas;
         </select></div>
         <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" placeholder="Nome do dono do imóvel"></div>
         <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
-        <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00"></div>
-        <div class="loc-cfield half"><label>CPF/CNPJ do locatário</label><input class="loc-cinput" id="lc-cpf-locatario" placeholder="000.000.000-00"></div>
-        <div class="loc-cfield"><label>Telefone do locador (1)</label><input class="loc-cinput" id="lc-tel-locador-1" placeholder="(11) 90000-0000"></div>
-        <div class="loc-cfield"><label>Telefone do locador (2)</label><input class="loc-cinput" id="lc-tel-locador-2" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)"></div>
+        <div class="loc-cfield half"><label>CPF/CNPJ do locatário</label><input class="loc-cinput" id="lc-cpf-locatario" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)"></div>
+        <div class="loc-cfield full" id="lc-senhas-wrap" style="display:none;background:rgba(200,169,110,0.08);border-radius:8px;padding:8px 12px">
+          <label style="opacity:.8">Senha do locador/locatário <span style="font-weight:400;color:var(--muted)">(login no portal + código de verificação em pedidos de pagamento)</span></label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-top:4px">
+            <div id="lc-senha-locador-linha" style="display:none">Locador: <strong id="lc-senha-locador-txt"></strong> <a id="lc-senha-locador-wpp" href="#" target="_blank" style="margin-left:6px">enviar WhatsApp</a></div>
+            <div id="lc-senha-locatario-linha" style="display:none">Locatário: <strong id="lc-senha-locatario-txt"></strong> <a id="lc-senha-locatario-wpp" href="#" target="_blank" style="margin-left:6px">enviar WhatsApp</a></div>
+          </div>
+        </div>
+        <div class="loc-cfield"><label>Telefone do locador (1)</label><input class="loc-cinput" id="lc-tel-locador-1" placeholder="(11) 90000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
+        <div class="loc-cfield"><label>Telefone do locador (2)</label><input class="loc-cinput" id="lc-tel-locador-2" placeholder="(11) 90000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
         <div class="loc-cfield"><label>E-mail do locador (1)</label><input class="loc-cinput" id="lc-email-locador-1" placeholder="email@exemplo.com"></div>
         <div class="loc-cfield"><label>E-mail do locador (2)</label><input class="loc-cinput" id="lc-email-locador-2" placeholder="email@exemplo.com"></div>
-        <div class="loc-cfield"><label>Telefone do locatário (1)</label><input class="loc-cinput" id="lc-tel-locatario-1" placeholder="(11) 90000-0000"></div>
-        <div class="loc-cfield"><label>Telefone do locatário (2)</label><input class="loc-cinput" id="lc-tel-locatario-2" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield"><label>Telefone do locatário (1)</label><input class="loc-cinput" id="lc-tel-locatario-1" placeholder="(11) 90000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
+        <div class="loc-cfield"><label>Telefone do locatário (2)</label><input class="loc-cinput" id="lc-tel-locatario-2" placeholder="(11) 90000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
         <div class="loc-cfield"><label>E-mail do locatário (1)</label><input class="loc-cinput" id="lc-email-locatario-1" placeholder="email@exemplo.com"></div>
         <div class="loc-cfield"><label>E-mail do locatário (2)</label><input class="loc-cinput" id="lc-email-locatario-2" placeholder="email@exemplo.com"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários para pagamento e repasse</div>
@@ -11265,11 +11430,11 @@ window.cpRenderFixas=cpRenderFixas;
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Fiador 1</div>
             <div class="loc-cfield"><label>Nome</label><input class="loc-cinput" id="lc-fiador1-nome"></div>
-            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador1-telefone"></div>
+            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador1-telefone" maxlength="15" oninput="mascararTelefone(this)"></div>
             <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-fiador1-email"></div>
             <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Fiador 2 (se houver)</div>
             <div class="loc-cfield"><label>Nome</label><input class="loc-cinput" id="lc-fiador2-nome"></div>
-            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador2-telefone"></div>
+            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-fiador2-telefone" maxlength="15" oninput="mascararTelefone(this)"></div>
             <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-fiador2-email"></div>
           </div>
         </div>
@@ -11855,6 +12020,7 @@ window.cpRenderFixas=cpRenderFixas;
           <div class="atend-box destaque-adv" id="cardLocMensagem"></div>
         </div>
 
+        <div style="background:#fff3cd;border:2px solid #e6a700;border-radius:8px;padding:10px 14px;margin:12px 0 0;color:#664d03;font-weight:700;font-size:12.5px;line-height:1.45">⚠️ ATENÇÃO: cuidado com golpes e fraudes. Nunca faça pagamentos ou depósitos sem antes confirmar com o seu advogado.</div>
       </div>
       <div class="atend-footer">
         Dúvidas? Ligue ou envie mensagem.<br>
@@ -13119,7 +13285,8 @@ window.cpRenderFixas=cpRenderFixas;
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
-          fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email')
+          fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email'),
+          senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario')
         };
       });
       var ml=hidx(rl[0]);
@@ -13324,7 +13491,7 @@ window.cpRenderFixas=cpRenderFixas;
       '<input type="hidden" class="cp-id" value="'+E(dados.ID||'')+'">'
       +'<div class="loc-cform" style="padding:0;border:none;background:none">'
       +'<div class="loc-cfield"><label>Nome do proprietário</label><input class="loc-cinput cp-nome" value="'+E(dados.Nome||'')+'"></div>'
-      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cp-cpf" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
+      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cp-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
       +'<div class="loc-cfield"><label>Percentual (%)</label><input class="loc-cinput cp-pct" type="text" inputmode="decimal" value="'+E(dados.Percentual||'')+'" oninput="copropAtualizarSoma()"></div>'
       +'<div class="loc-cfield"><label>Banco</label><input class="loc-cinput cp-banco" value="'+E(dados.Banco||'')+'"></div>'
       +'<div class="loc-cfield"><label>Agência</label><input class="loc-cinput cp-agencia" value="'+E(dados.Agencia||'')+'"></div>'
@@ -13440,7 +13607,7 @@ window.cpRenderFixas=cpRenderFixas;
       '<input type="hidden" class="cl-id" value="'+E(dados.ID||'')+'">'
       +'<div class="loc-cform" style="padding:0;border:none;background:none">'
       +'<div class="loc-cfield half"><label>Nome do inquilino</label><input class="loc-cinput cl-nome" value="'+E(dados.Nome||'')+'"></div>'
-      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cl-cpf" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
+      +'<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput cl-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="'+E(dados.CPF_CNPJ||'')+'"></div>'
       +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput cl-telefone" value="'+E(dados.Telefone||'')+'"></div>'
       +'<div class="loc-cfield full"><label>E-mail</label><input class="loc-cinput cl-email" value="'+E(dados.Email||'')+'"></div>'
       +'<div class="loc-cfield full"><label>Observações</label><input class="loc-cinput cl-obs" value="'+E(dados.Observacoes||'')+'"></div>'
@@ -14461,6 +14628,7 @@ window.cpRenderFixas=cpRenderFixas;
     txt+='Contrato '+contrato+'\n';
     if(c.end)txt+=c.end+'\n';
     if(mensagem)txt+='\n'+b+'MENSAGEM'+b+'\n'+mensagem+'\n';
+    txt+=window.AVISO_GOLPE_TEXTO;
     txt+='\nDúvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
     return txt;
   }
@@ -15010,6 +15178,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
     txt+='\n*TOTAL ALUGUEL EM ABERTO:* '+BRL(d.totalGeral)+'\n';
     txt+='*TOTAL REPASSE EM ABERTO:* '+BRL(d.totalGeralRep)+'\n\n';
+    txt+=window.AVISO_GOLPE_TEXTO;
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
@@ -15521,6 +15690,9 @@ window.cpRenderFixas=cpRenderFixas;
       if(!contaTxtLoc.banco&&!contaTxtLoc.agencia&&!contaTxtLoc.conta&&!contaTxtLoc.pix)txt+='Conta não cadastrada.\n';
       txt+='\n';
     }
+    var senhaLoc=imoveis.map(function(im){return im.contrato.senhaLocador;}).filter(Boolean)[0];
+    if(senhaLoc)txt+='*CÓDIGO DE VERIFICAÇÃO* (confirma que este informe é mesmo do escritório): '+senhaLoc+'\n';
+    txt+=window.AVISO_GOLPE_TEXTO;
     txt+='Dr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
@@ -15796,6 +15968,7 @@ window.cpRenderFixas=cpRenderFixas;
     var txt='*'+def.label.toUpperCase()+'*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n\n';
     txt+=corpo;
+    txt+=window.AVISO_GOLPE_TEXTO;
     txt+='\n\nDr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
@@ -16014,6 +16187,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='\n*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
       txt+=contaTxt(reciboLocContaDestino(c));
       txt+='\nEste recibo/demonstrativo tem validade como comprovante de pagamento apenas após a efetiva quitação do valor acima.\n';
+      if(c.senhaLocatario)txt+='\n*CÓDIGO DE VERIFICAÇÃO* (confirma que este recibo é mesmo do escritório): '+c.senhaLocatario+'\n';
     } else {
       var rep=effRep(w);
       txt+='*INFORME DE REPASSE*\n';
@@ -16035,7 +16209,9 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.observacoesLocador)txt+='\n*OBSERVAÇÃO:* '+w.observacoesLocador+'\n';
       txt+='\n*DADOS BANCÁRIOS DO LOCADOR (REPASSE)*\n';
       txt+=contaTxt({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
+      if(c.senhaLocador)txt+='\n*CÓDIGO DE VERIFICAÇÃO* (confirma que este informe é mesmo do escritório): '+c.senhaLocador+'\n';
     }
+    txt+=window.AVISO_GOLPE_TEXTO;
     txt+='\nDr. Adenilson Borges — (11) 99931-3712';
     return txt;
   }
@@ -16177,10 +16353,38 @@ window.cpRenderFixas=cpRenderFixas;
       setTimeout(function(){carregarAlugueis();},1000);
     });
   };
+  // Mostra/atualiza o painel de senha do locador/locatário (login no portal + código de
+  // verificação em pedidos de pagamento) no formulário de contrato. Some por completo quando
+  // nenhum dos dois ainda tem senha (contrato novo, ou cadastrado antes do CPF/CNPJ existir).
+  function lcSenhasAtualizarPainel(c){
+    c=c||{};
+    var wrap=document.getElementById('lc-senhas-wrap');
+    var linL=document.getElementById('lc-senha-locador-linha'), linT=document.getElementById('lc-senha-locatario-linha');
+    var temL=!!c.senhaLocador, temT=!!c.senhaLocatario;
+    if(!temL&&!temT){wrap.style.display='none';return;}
+    wrap.style.display='';
+    linL.style.display=temL?'':'none';
+    linT.style.display=temT?'':'none';
+    if(temL){
+      document.getElementById('lc-senha-locador-txt').textContent=c.senhaLocador;
+      var telL=String(c.telLocador1||c.telLocador2||'').replace(/[^\d]/g,'');
+      var msgL='Olá, '+(c.locador||'')+'! Sua senha de identificação (login no portal e código de verificação em pedidos de pagamento/repasse): '+c.senhaLocador+'. Guarde essa senha: qualquer pedido de pagamento deste escritório que não souber essa senha deve ser confirmado comigo antes de pagar.';
+      document.getElementById('lc-senha-locador-wpp').href=(telL?('https://wa.me/55'+telL):'https://wa.me/')+'?text='+encodeURIComponent(msgL);
+    }
+    if(temT){
+      document.getElementById('lc-senha-locatario-txt').textContent=c.senhaLocatario;
+      var telT=String(c.telLocatario1||c.telLocatario2||'').replace(/[^\d]/g,'');
+      var msgT='Olá, '+(c.locatario||'')+'! Sua senha de identificação (login no portal e código de verificação em pedidos de pagamento): '+c.senhaLocatario+'. Guarde essa senha: qualquer pedido de pagamento deste escritório que não souber essa senha deve ser confirmado comigo antes de pagar.';
+      document.getElementById('lc-senha-locatario-wpp').href=(telT?('https://wa.me/55'+telT):'https://wa.me/')+'?text='+encodeURIComponent(msgT);
+    }
+  }
+  window.lcSenhasAtualizarPainel=lcSenhasAtualizarPainel;
+
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
+    lcSenhasAtualizarPainel(null);
     ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
@@ -16262,6 +16466,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locContratosSection').classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Editar contrato '+contrato;
+    lcSenhasAtualizarPainel(c);
     document.getElementById('lc-id').value=c.id||'';
     document.getElementById('lc-contrato').value=c.contrato||'';
     document.getElementById('lc-locador').value=c.locador||'';
@@ -16390,6 +16595,12 @@ window.cpRenderFixas=cpRenderFixas;
     // "Data Ultimo Reajuste" não é campo do formulário (é controlada pelo fluxo de Reajustes) —
     // preserva o valor do registro anterior pra não perder o histórico ao editar o contrato.
     novo.dataUltimoReajuste=antigo?antigo.dataUltimoReajuste:'';
+    // Senha do locador/locatário: gera na primeira vez que o CPF/CNPJ dele aparece preenchido —
+    // nunca troca uma senha que já existe, pra não invalidar uma que a pessoa já recebeu.
+    novo.senhaLocador=antigo?antigo.senhaLocador:'';
+    novo.senhaLocatario=antigo?antigo.senhaLocatario:'';
+    if(campos['CPF Locador']&&!novo.senhaLocador){novo.senhaLocador=gerarSenhaCliente();campos['Senha Locador']=novo.senhaLocador;}
+    if(campos['CPF Locatario']&&!novo.senhaLocatario){novo.senhaLocatario=gerarSenhaCliente();campos['Senha Locatario']=novo.senhaLocatario;}
     if(i>=0)DATA.contratos[i]=novo;else DATA.contratos.push(novo);
     indexContratos();
     if(antigo){
@@ -16408,6 +16619,7 @@ window.cpRenderFixas=cpRenderFixas;
     }else{
       msg.style.color='var(--yellow)';msg.textContent='Salvo apenas nesta sessão (configure a planilha em Config para gravar de forma permanente).';
     }
+    lcSenhasAtualizarPainel(novo);
     locRenderContratos();locRender();
   };
 
@@ -18943,7 +19155,7 @@ window.cpRenderFixas=cpRenderFixas;
 
     var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
     ap.forEach(function(p){
-      var hay=[p.nome,p.processo,p.tipo,p.outra,p.ramo].join(' ').toLowerCase();
+      var hay=[p.nome,p.processo,p.tipo,p.outra,parteContrariaTexto(p),p.ramo].join(' ').toLowerCase();
       if(hay.indexOf(termo)>=0){
         out.push({modulo:'Processos',icone:'⚖️',titulo:p.nome||'(sem nome)',sub:[p.processo,p.tipo].filter(Boolean).join(' — ')});
       }
@@ -19049,9 +19261,10 @@ window.cpRenderFixas=cpRenderFixas;
     var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
     ap.forEach(function(p){
       if(opts.excluirProcessoRow!=null&&p._row===opts.excluirProcessoRow)return;
-      var pn=radarNormalizar_(p.nome), po=radarNormalizar_(p.outra);
+      var pn=radarNormalizar_(p.nome);
+      var reusP=(typeof reusDoProcesso==='function'?reusDoProcesso(p):[]);
       if(contrariaN&&pn&&pn===contrariaN) achados.push('"'+nomeParteContraria+'" já é seu CLIENTE no processo de '+(p.nome||'-')+' ('+(p.processo||'sem nº')+').');
-      if(clienteN&&po&&po===clienteN) achados.push('"'+nomeCliente+'" já foi PARTE CONTRÁRIA no processo de '+(p.nome||'-')+' ('+(p.processo||'sem nº')+').');
+      if(clienteN&&reusP.some(function(r){return radarNormalizar_(r.nome)===clienteN;})) achados.push('"'+nomeCliente+'" já foi PARTE CONTRÁRIA no processo de '+(p.nome||'-')+' ('+(p.processo||'sem nº')+').');
     });
 
     var acc=window.accContratos||[];
