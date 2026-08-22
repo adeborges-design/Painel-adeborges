@@ -10436,8 +10436,9 @@ function renderContas(){
   +'<div class="cp-field"><label id="cp-valor-label">Valor (R$) *</label><input id="cp-valor" type="text" inputmode="decimal" placeholder="0,00"><span id="cp-livre-hint" style="display:none;font-size:10px;color:var(--muted);margin-top:2px">Saldo total que falta pagar — vai diminuindo a cada pagamento.</span></div>'
   +'<div class="cp-field"><label>Vencimento *</label><input id="cp-venc" type="date"></div>'
   +'<div class="cp-field"><label>Recorrência</label><select id="cp-rec" onchange="cpToggleParc()"><option>Única</option><option>Mensal</option><option>Parcelada</option><option value="Livre">Saldo livre (pago aos poucos, sem regra)</option></select></div>'
-  +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
+  +'<div class="cp-field"><label>Forma de Pagamento</label><select id="cp-forma" onchange="cpTogglePix()"><option value="">Selecionar</option><option>Débito em conta</option><option>Débito Automático</option><option>Boleto</option><option>PIX</option><option>Depósito</option><option>Cartão de crédito</option><option>Dinheiro</option></select></div>'
   +'<div class="cp-field"><label>Banco (saída do dinheiro)</label><select id="cp-banco"><option value="">Selecionar</option><option>Itaú</option><option>XP</option><option>Bradesco</option><option>Sicredi</option><option>Mercado Pago</option><option>Outro</option></select></div>'
+  +'<div class="cp-field" id="cpPixField" style="display:none"><label>Chave PIX (de quem vai receber)</label><input id="cp-pix" placeholder="CPF/CNPJ, celular, e-mail ou chave aleatória"></div>'
   +'<div class="cp-field"><label>Cartão (se for no cartão)</label><select id="cp-cartao"><option value="">— (não é cartão)</option><option>Itaú Visa 2355</option><option>Itaú Mastercard 6669</option><option>Leroy Merlin Elo 6823</option><option>XP Visa 7503</option><option>Sicredi Mastercard 8727</option><option>Mercado Pago Visa 9390</option></select></div>'
   +'<div class="cp-field"><label>Tipo de conta</label><select id="cp-tipoConta"><option value="Pessoal">Pessoal</option><option value="Escritório">Escritório</option><option value="Locação">Locação (repasse)</option></select></div>'
   +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
@@ -10527,6 +10528,12 @@ function renderContas(){
   else if(recNorm(c['Recorrencia'])==='parcelada')recTxt='📆 Parcelada'+(nbr(c['Saldo Devedor'])?' · saldo '+fmr(nbr(c['Saldo Devedor'])):'');
   var formaTxt=c['Forma Pagamento']?esc(c['Forma Pagamento'])+(c['Banco']?' · '+esc(c['Banco']):''):'-';
   if(isFaturaCartao&&c['Cartao'])formaTxt='🧾 '+esc(window.cpNomeCartao(c['Cartao']));
+  // Forma de pagamento PIX ganha um botão pra ver (e copiar) a chave PIX sem precisar abrir editar
+  // — usa o campo próprio "Chave Pix" quando preenchido, ou cai pra Observações como referência
+  // (contas antigas guardavam a chave ali, antes desse campo existir).
+  if(/^pix$/i.test(String(c['Forma Pagamento']||'').trim())){
+   formaTxt+=' <button type="button" title="Ver/copiar a chave PIX" onclick="event.stopPropagation();cpVerPix(\''+esc(c['ID'])+'\')" style="background:none;border:none;cursor:pointer;padding:0 0 0 3px;font-size:12px;vertical-align:middle;line-height:1">🔑</button>';
+  }
   var CP_TIPO_SHORT={pessoal:'👤 Pessoal',escritorio:'⚖️ Escritório',locacao:'🏠 Locação'};
   var tipoLbl=CP_TIPO_SHORT[cpTipoNorm(c['Tipo de Conta'])]||'';
   var acoesH='<button class="loc-send-btn" title="Editar" onclick="cpEditar(\''+esc(c['ID'])+'\')">✎</button>'
@@ -10650,6 +10657,12 @@ window.cpToggleParc=function(){
  var hint=document.getElementById('cp-livre-hint');if(hint)hint.style.display=livre?'':'none';
  var lbl=document.getElementById('cp-valor-label');if(lbl)lbl.textContent=livre?'Valor total da dívida (R$) *':'Valor (R$) *';
 };
+// Campo "Chave PIX" só aparece quando a Forma de Pagamento é PIX — pra dar pra ver/copiar a chave
+// depois direto na lista (botão 🔑 ao lado de "PIX"), sem precisar procurar em Observações.
+window.cpTogglePix=function(){
+ var ehPix=document.getElementById('cp-forma').value==='PIX';
+ var f=document.getElementById('cpPixField');if(f)f.style.display=ehPix?'':'none';
+};
 function cpLimites(){var d={};try{d=JSON.parse(localStorage.getItem('lexflow_cartoes_lim')||'{}');}catch(e){d={};}d=cpMigrarChaves(d);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(d));}catch(e){}return d;}
 window.cpSetLimite=function(el){var lim=cpLimites();lim[el.getAttribute('data-card')]=nbr(el.value);try{localStorage.setItem('lexflow_cartoes_lim',JSON.stringify(lim));}catch(e){}if(typeof window.persistConfigPainel==='function')window.persistConfigPainel('limites_cartao',lim);cpRenderCartoes();};
 // Versao "silenciosa" (sem recriar o grid, so grava): usada no oninput, pra nao depender do onchange
@@ -10754,10 +10767,12 @@ window.cpEditar=function(id){
  var fp=c['Forma Pagamento']||'',cart=cpNomeCartao(c['Cartao']||'');
  if(!cart&&CP_CARTOES.indexOf(fp)>=0){cart=fp;fp='Cartão de crédito';}
  if(fEl)fEl.value=fp;if(bEl)bEl.value=c['Banco']||'';if(cartEl)cartEl.value=cart;
+ var pixEl=document.getElementById('cp-pix');if(pixEl)pixEl.value=c['Chave Pix']||'';
  var tcEl=document.getElementById('cp-tipoConta');if(tcEl)tcEl.value=c['Tipo de Conta']||'Pessoal';
  var t1=document.getElementById('cp-totdiv');if(t1)t1.value=nbr(c['Valor Total Divida'])||'';
  var s1=document.getElementById('cp-saldodiv');if(s1)s1.value=nbr(c['Saldo Devedor'])||'';
  try{cpToggleParc();}catch(e){}
+ try{cpTogglePix();}catch(e){}
  document.getElementById('cp-obs').value=c['Observacoes']||'';
  var btn=document.getElementById('cpLancarBtn');if(btn)btn.textContent='💾 Salvar alteração';
  document.getElementById('cpStatus').innerHTML='<span style="color:var(--accent)">Editando conta #'+esc(id)+'…</span>';
@@ -10778,7 +10793,7 @@ window.cpLancar=async function(){
  var totd=numFlex((document.getElementById('cp-totdiv')||{}).value||'');
  var sald=numFlex((document.getElementById('cp-saldodiv')||{}).value||'');
  if(document.getElementById('cp-rec').value==='Parcelada'&&totd&&!sald)sald=totd;
- var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Observacoes':document.getElementById('cp-obs').value,'Forma Pagamento':forma,'Banco':(document.getElementById('cp-banco')||{}).value||'','Cartao':cart,'Valor Total Divida':totd,'Saldo Devedor':sald,'Tipo de Conta':(document.getElementById('cp-tipoConta')||{}).value||'Pessoal'};
+ var campos={'Descricao':d,'Categoria':document.getElementById('cp-cat').value,'Fornecedor':document.getElementById('cp-forn').value,'Valor':v,'Data Vencimento':dtBRfromInput(dv),'Recorrencia':document.getElementById('cp-rec').value,'Observacoes':document.getElementById('cp-obs').value,'Forma Pagamento':forma,'Banco':(document.getElementById('cp-banco')||{}).value||'','Cartao':cart,'Chave Pix':(document.getElementById('cp-pix')||{}).value||'','Valor Total Divida':totd,'Saldo Devedor':sald,'Tipo de Conta':(document.getElementById('cp-tipoConta')||{}).value||'Pessoal'};
  var payload;
  if(_cpEditId){payload={acao:'atualizar_conta',id:_cpEditId,campos:campos};}
  else{campos['Status']='Em aberto';payload={acao:'lancar_conta',campos:campos};}
@@ -10789,11 +10804,12 @@ window.cpLancar=async function(){
   // clique extra.
   setTimeout(function(){try{cpFecharForm();}catch(e){}},900);
   _cpEditId=null;var btn=document.getElementById('cpLancarBtn');if(btn)btn.textContent='💾 Lançar conta';
-  ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs','cp-totdiv','cp-saldodiv'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs','cp-totdiv','cp-saldodiv','cp-pix'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(cartEl)cartEl.value='';
   var fx=document.getElementById('cp-forma');if(fx)fx.value='';
   var bx=document.getElementById('cp-banco');if(bx)bx.value='';
   var tcx=document.getElementById('cp-tipoConta');if(tcx)tcx.value='Pessoal';
+  try{cpTogglePix();}catch(e){}
   // se essa conta foi lançada/editada com um Cartão (mesmo lançando por aqui, fora do "drill" do
   // cartão), a fatura consolidada daquele cartão precisa ser ressincronizada, senão o valor da fatura
   // fica desatualizado em relação à soma real das compras.
@@ -10857,14 +10873,14 @@ async function cpPagarCore(id,dataPagIso){
  if(recNorm(c['Recorrencia'])==='mensal'){
   var dv=dbr(c['Data Vencimento'])||hoje;
   var prox=clampDay(dv.getFullYear(),dv.getMonth()+1,dv.getDate());
-  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(prox),'Recorrencia':'Mensal','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Chave Pix':c['Chave Pix']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
  }
  if(recNorm(c['Recorrencia'])==='parcelada'){
   var saldoAtu=nbr(c['Saldo Devedor'])||nbr(c['Valor Total Divida']);
   if(saldoAtu<=0){
    var dvx=dbr(c['Data Vencimento'])||hoje;
    var proxx=clampDay(dvx.getFullYear(),dvx.getMonth()+1,dvx.getDate());
-   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxx),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
+   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxx),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Chave Pix':c['Chave Pix']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
    setTimeout(function(){alert('Parcela do mês seguinte criada. Atenção: preencha o Valor total da dívida e o Saldo devedor (botão ✎ editar) para o abatimento automático funcionar.');},500);
    return;
   }
@@ -10873,7 +10889,7 @@ async function cpPagarCore(id,dataPagIso){
   if(novoSaldo>0.005){
    var dvp=dbr(c['Data Vencimento'])||hoje;
    var proxp=clampDay(dvp.getFullYear(),dvp.getMonth()+1,dvp.getDate());
-   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxp),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Valor Total Divida':c['Valor Total Divida']||'','Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')  ,'Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
+   await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':c['Valor'],'Data Vencimento':fdt(proxp),'Recorrencia':'Parcelada','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Cartao':c['Cartao']||'','Chave Pix':c['Chave Pix']||'','Valor Total Divida':c['Valor Total Divida']||'','Saldo Devedor':novoSaldo.toFixed(2).replace('.',',')  ,'Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
   } else { setTimeout(function(){alert('🎉 Dívida "'+c['Descricao']+'" QUITADA!');},500); }
  }
 }
@@ -10974,11 +10990,58 @@ window.cpPagarLivre=async function(id){
  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_conta',id:id,campos:{'Status':'Paga','Data Pagamento':fdt(dataPag),'Valor':valorPago.toFixed(2).replace('.',',')}})});
  var restante=Math.max(Math.round((saldoAtual-valorPago)*100)/100,0);
  if(restante>0.005){
-  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':restante.toFixed(2).replace('.',','),'Data Vencimento':c['Data Vencimento']||fdt(new Date()),'Recorrencia':'Livre','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_conta',campos:{'Descricao':c['Descricao'],'Categoria':c['Categoria'],'Fornecedor':c['Fornecedor'],'Valor':restante.toFixed(2).replace('.',','),'Data Vencimento':c['Data Vencimento']||fdt(new Date()),'Recorrencia':'Livre','Status':'Em aberto','Observacoes':c['Observacoes'],'Forma Pagamento':c['Forma Pagamento']||'','Banco':c['Banco']||'','Chave Pix':c['Chave Pix']||'','Tipo de Conta':c['Tipo de Conta']||'Pessoal'}})});
  } else {
   setTimeout(function(){alert('🎉 Dívida "'+c['Descricao']+'" quitada!');},500);
  }
  setTimeout(async function(){await carregarContas();try{renderContas();}catch(e){}},1800);
+};
+// ---------- VER/COPIAR CHAVE PIX (botão 🔑 ao lado de "PIX" na lista) ----------
+function cpVerPixEnsureModal_(){
+ if(document.getElementById('cpPixOverlay'))return;
+ var ov=document.createElement('div');
+ ov.id='cpPixOverlay';
+ ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+ ov.innerHTML='<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:380px;max-width:96vw;padding:20px 22px;margin:auto">'
+  +'<div style="font-weight:700;font-size:15px;margin-bottom:2px">🔑 Chave PIX</div>'
+  +'<div style="color:var(--muted);font-size:12px;margin-bottom:12px" id="cpPixDescTxt"></div>'
+  +'<div id="cpPixTxt" style="font-family:\'DM Mono\',monospace;font-size:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;word-break:break-all;margin-bottom:6px"></div>'
+  +'<div id="cpPixCopiado" style="color:var(--green);font-size:12px;opacity:0;transition:opacity .3s;margin-bottom:4px">✓ Copiado!</div>'
+  +'<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">'
+  +'<button class="loc-btn" onclick="document.getElementById(\'cpPixOverlay\').style.display=\'none\'">Fechar</button>'
+  +'<button class="loc-btn primary" id="cpPixCopiarBtn" onclick="cpCopiarPix_()">📋 Copiar</button>'
+  +'</div></div>';
+ ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
+ document.body.appendChild(ov);
+}
+window.cpVerPix=function(id){
+ var c=(allContas||[]).find(function(x){return String(x['ID'])===String(id);});if(!c)return;
+ cpVerPixEnsureModal_();
+ document.getElementById('cpPixDescTxt').textContent=c['Descricao']||'';
+ var chave=String(c['Chave Pix']||'').trim();
+ var txtEl=document.getElementById('cpPixTxt');
+ var copiarBtn=document.getElementById('cpPixCopiarBtn');
+ if(chave){
+  txtEl.textContent=chave;
+  txtEl.dataset.copiavel=chave;
+  copiarBtn.style.display='';
+ }else{
+  // Contas antigas guardavam a chave só em Observações (antes desse campo existir) — mostra como
+  // referência, mas sem botão de copiar (o texto pode ter mais coisa junto, não só a chave).
+  txtEl.innerHTML=c['Observacoes']
+   ?'<span style="font-size:12px">Sem chave no campo próprio — texto em Observações (pode ter a chave junto):</span><br>'+esc(c['Observacoes'])
+   :'<span style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:var(--muted)">Nenhuma chave PIX cadastrada. Edite a conta (✎) e preencha "Chave PIX".</span>';
+  txtEl.dataset.copiavel='';
+  copiarBtn.style.display='none';
+ }
+ document.getElementById('cpPixCopiado').style.opacity='0';
+ document.getElementById('cpPixOverlay').style.display='flex';
+};
+window.cpCopiarPix_=function(){
+ var txt=(document.getElementById('cpPixTxt').dataset.copiavel||'').trim();if(!txt)return;
+ var avisar=function(){var m=document.getElementById('cpPixCopiado');m.style.opacity='1';setTimeout(function(){m.style.opacity='0';},1800);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(avisar).catch(function(){});}
+ else{try{var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);avisar();}catch(e){}}
 };
 window.cpExcluir=async function(id){
  var c=allContas.find(function(x){return String(x['ID'])===String(id);});
