@@ -10298,6 +10298,48 @@ function fdt(d){return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).sl
 window.recNorm=window.recNorm||function(v){return String(v||'').trim().toLowerCase();};
 function fmr(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2});}
 function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+// Espelha a barra de rolagem horizontal de uma tabela larga (.loc-table-wrap) numa tira fina bem
+// ACIMA da tabela, sincronizada com o scroll de verdade — sem isso, em tela menor, a única forma
+// de rolar pro lado é pegar a barra nativa lá embaixo da tabela, que pode estar fora da área
+// visível (lista comprida de contas), obrigando a rolar a página inteira até o fim só pra "pegar"
+// a barra, rolar pro lado, e depois subir de novo pra ver as contas.
+function cpTopScroll_(wrap){
+ if(!wrap)return;
+ var table=wrap.querySelector('table');if(!table)return;
+ var largura=table.scrollWidth;
+ if(!largura||largura<=wrap.clientWidth)return;
+ var bar=document.createElement('div');
+ bar.className='cp-topscroll';
+ bar.style.cssText='overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:-2px';
+ var spacer=document.createElement('div');
+ spacer.style.cssText='height:1px;width:'+largura+'px';
+ bar.appendChild(spacer);
+ wrap.parentNode.insertBefore(bar,wrap);
+ var lock=false;
+ bar.addEventListener('scroll',function(){if(lock)return;lock=true;wrap.scrollLeft=bar.scrollLeft;lock=false;});
+ wrap.addEventListener('scroll',function(){if(lock)return;lock=true;bar.scrollLeft=wrap.scrollLeft;lock=false;});
+}
+window.cpTopScroll_=cpTopScroll_;
+// Reconstrói a barra espelhada de um quadro recolhível (Contas Fixas / Contas já pagas) no momento
+// em que ele é aberto — enquanto está com display:none, a tabela mede largura 0, então a barra só
+// pode ser calculada certo depois de ficar visível de verdade.
+function cpTopScrollRefresh_(hostId){
+ var host=document.getElementById(hostId);if(!host)return;
+ var wrap=host.querySelector('.loc-table-wrap');if(!wrap)return;
+ var prevBar=wrap.previousElementSibling;
+ if(prevBar&&prevBar.classList&&prevBar.classList.contains('cp-topscroll'))prevBar.parentNode.removeChild(prevBar);
+ cpTopScroll_(wrap);
+}
+window.cpTopScrollRefresh_=cpTopScrollRefresh_;
+// Abre/fecha um quadro recolhível de Contas a Pagar (Contas Fixas / Contas já pagas) e, ao abrir,
+// atualiza a barra de rolagem espelhada (ver cpTopScrollRefresh_ acima).
+function cpToggleQuadro_(id){
+ var b=document.getElementById(id);if(!b)return;
+ var abrir=b.style.display==='none';
+ b.style.display=abrir?'':'none';
+ if(abrir){try{cpTopScrollRefresh_(id);}catch(e){}}
+}
+window.cpToggleQuadro_=cpToggleQuadro_;
 function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
 // Classificação Pessoal / Escritório / Locação (repasse) das contas — separa a real situação
 // financeira pessoal e do escritório das contas de imóveis administrados (IPTU, seguro fiança etc.)
@@ -10384,7 +10426,8 @@ function renderContas(){
   +cpBlocoResumoHtml('escritorio')
   +cpBlocoResumoHtml('locacao')
   +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
-  +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista" style="display:none"></div></div>'
+  +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="cpToggleQuadro_(\'cpFixasLista\')">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista" style="display:none"></div></div>'
+  +'<div id="cpPagasHost"></div>'
   +'<button class="btn-form-save" id="btnCpNovoLancamento" style="width:100%;margin-top:16px" onclick="cpAbrirForm()">➕ Novo Lançamento</button>'
   +'<div class="cp-form loc-hidden" id="cpFormWrap">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
@@ -10525,10 +10568,15 @@ function renderContas(){
   ?('<div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+html+'</tbody></table></div>')
   :('<div class="hon-empty">'+(cpTermoBusca?'Nenhuma conta encontrada para "'+esc(cpTermoBusca)+'".':(filtroLabelCp?'Nenhuma conta em aberto para o filtro "'+esc(filtroLabelCp)+'".':'Nenhuma conta em aberto'))+'</div>');
  var pagasHtmlCp=qtdPagas
-  ?('<div class="cp-cartoes" style="margin-top:14px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpPagasWrap\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">✓ Contas já pagas ('+qtdPagas+') <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div>'
+  ?('<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="cpToggleQuadro_(\'cpPagasWrap\')">✓ Contas já pagas ('+qtdPagas+') <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div>'
     +'<div id="cpPagasWrap" style="display:none;margin-top:10px"><div class="loc-table-wrap"><table class="loc-table"><thead>'+theadCp+'</thead><tbody>'+htmlPagas+'</tbody></table></div></div></div>')
   : '';
- document.getElementById('cpLista').innerHTML=filtroBannerCp+abertoHtmlCp+pagasHtmlCp;
+ document.getElementById('cpLista').innerHTML=filtroBannerCp+abertoHtmlCp;
+ // "Contas já pagas" fica junto de "Contas Fixas" lá em cima (perto dos Cartões de Crédito),
+ // não mais escondido depois de toda a lista de contas em aberto — senão, com muitas contas
+ // abertas, esse quadro só aparecia lá embaixo de tudo.
+ var pagasHost=document.getElementById('cpPagasHost');if(pagasHost)pagasHost.innerHTML=pagasHtmlCp;
+ try{cpTopScroll_(document.querySelector('#cpLista .loc-table-wrap'));}catch(e){}
  try{cpRenderCartoes();}catch(e){}
  try{cpRenderFixas();}catch(e){}
  try{var dl=document.getElementById('cpCatList');if(dl){var tem={};[].forEach.call(dl.options,function(o){tem[o.value]=1;});(allContas||[]).forEach(function(c){var k=String(c['Categoria']||'').trim();if(k&&!tem[k]){tem[k]=1;var o=document.createElement('option');o.value=k;dl.appendChild(o);}});}}catch(e){}
@@ -11111,10 +11159,16 @@ window.cpExcluirDrill=async function(id,nome){await cpExcluir(id);setTimeout(asy
 // Quadro "Contas Fixas": contas de recorrência Mensal que NAO sao compras de cartão nem a fatura
 // consolidada - pensado p/ contas fixas do escritorio (contador, aluguel, internet etc.), uma linha
 // por conta (deduplicado por Descricao+Fornecedor, priorizando o lançamento mais recente).
+// Só entram contas AINDA EM ABERTO: cada mês pago gera uma nova linha (cópia) pro mês seguinte, e
+// como não existe um vínculo direto entre elas (cada uma é um lançamento independente), renomear a
+// conta atual não muda o texto das linhas antigas já pagas — se elas entrassem aqui, o nome antigo
+// ficava "grudado" no quadro mesmo depois de renomear. Olhando só a(s) em aberto, o nome mostrado é
+// sempre o mais atual (a última editada).
 function cpRenderFixas(){
  var host=document.getElementById('cpFixasLista');if(!host)return;
  var lista=(allContas||[]).filter(function(c){
   if(recNorm(c['Recorrencia'])!=='mensal')return false;
+  if(String(c['Status']||'').trim().toLowerCase()==='paga')return false;
   var ehF=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
   if(ehF||c['Cartao'])return false;
   return true;
