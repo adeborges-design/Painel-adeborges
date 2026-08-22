@@ -10385,7 +10385,8 @@ function renderContas(){
   +cpBlocoResumoHtml('locacao')
   +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
   +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="var b=document.getElementById(\'cpFixasLista\');b.style.display=b.style.display===\'none\'?\'\':\'none\';">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista" style="display:none"></div></div>'
-  +'<div class="cp-form">'
+  +'<button class="btn-form-save" id="btnCpNovoLancamento" style="width:100%;margin-top:16px" onclick="cpAbrirForm()">➕ Novo Lançamento</button>'
+  +'<div class="cp-form loc-hidden" id="cpFormWrap">'
   +'<div class="cp-field cp-full"><label>Descrição *</label><input id="cp-desc" placeholder="Ex.: Aluguel do escritório"></div>'
   +'<div class="cp-field"><label>Categoria (digite ou escolha)</label><input id="cp-cat" list="cpCatList" placeholder="Ex.: Empréstimos"><datalist id="cpCatList"><option>Aluguel</option><option>Aluguéis a Pagar</option><option>Condomínio/Taxa de Conservação</option><option>Energia Elétrica</option><option>Água/Saneamento</option><option>Telefone / Internet</option><option>Software/Assinaturas</option><option>Softwares/Sistemas/Assinaturas</option><option>Anuidade/OAB</option><option>Contador</option><option>Custas processuais</option><option>Impostos</option><option>Salários/Estagiário</option><option>Empréstimos</option><option>Empréstimos Bancários</option><option>Financiamentos</option><option>Consórcio</option><option>Cartão de Crédito</option><option>Seguros</option><option>Título de Capitalização</option><option>Educação</option><option>Saúde</option><option>Veículos/Combustível</option><option>Outros</option></datalist></div>'
   +'<div class="cp-field"><label>Fornecedor / Credor</label><input id="cp-forn"></div>'
@@ -10399,7 +10400,7 @@ function renderContas(){
   +'<div class="cp-field" id="cpParc1" style="display:none"><label>Valor total da dívida (R$)</label><input id="cp-totdiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field" id="cpParc2" style="display:none"><label>Saldo devedor atual (R$)</label><input id="cp-saldodiv" type="text" inputmode="decimal" placeholder="0,00"></div>'
   +'<div class="cp-field cp-full"><label>Observações</label><input id="cp-obs"></div>'
-  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
+  +'<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="cpStatus" style="margin-right:auto;font-size:12px"></span><button type="button" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px" onclick="cpFecharForm()">✕ Fechar</button><button class="cp-btn" id="cpLancarBtn" onclick="cpLancar()" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Lançar conta</button></div>'
   +'</div>'
   +'<div style="margin:16px 0 6px"><input type="text" class="search-input" id="cpBusca" placeholder="Buscar por descrição, categoria, fornecedor ou observações... (atalho: /)" oninput="renderContas()" style="width:100%"></div>'
   +'<div id="cpLista"></div>';
@@ -10659,9 +10660,25 @@ function cpRenderCartoes(){
    +'</div>';
  }).join('');
 }
+// Formulário "Novo Lançamento" de Contas a Pagar: recolhido por padrão (mesmo padrão já usado em
+// Honorários), pra não atrapalhar a visão da lista/quadros de contas quando não se está lançando
+// nada novo. Abre sozinho ao editar uma conta existente (cpEditar) e fecha sozinho ao salvar.
+function cpAbrirForm(){
+ var w=document.getElementById('cpFormWrap');if(w)w.classList.remove('loc-hidden');
+ var b=document.getElementById('btnCpNovoLancamento');if(b)b.classList.add('loc-hidden');
+ if(w)w.scrollIntoView({behavior:'smooth',block:'start'});
+}
+window.cpAbrirForm=cpAbrirForm;
+function cpFecharForm(){
+ var w=document.getElementById('cpFormWrap');if(w)w.classList.add('loc-hidden');
+ var b=document.getElementById('btnCpNovoLancamento');if(b)b.classList.remove('loc-hidden');
+}
+window.cpFecharForm=cpFecharForm;
+
 window.cpEditar=function(id){
  var c=(allContas||[]).find(function(x){return String(x['ID'])===String(id);});if(!c)return;
  _cpEditId=id;
+ cpAbrirForm();
  document.getElementById('cp-desc').value=c['Descricao']||'';
  document.getElementById('cp-cat').value=c['Categoria']||'';
  document.getElementById('cp-forn').value=c['Fornecedor']||'';
@@ -10702,6 +10719,10 @@ window.cpLancar=async function(){
  else{campos['Status']='Em aberto';payload={acao:'lancar_conta',campos:campos};}
  try{await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
   stEl.innerHTML='<span style="color:var(--green)">'+(_cpEditId?'Alterado!':'Salvo!')+'</span>';
+  // Fecha o formulário sozinho depois de salvar (dá tempo do usuário ver a confirmação "Salvo!"
+  // antes de recolher), pra voltar a deixar a lista/quadros de contas visíveis sem precisar de
+  // clique extra.
+  setTimeout(function(){try{cpFecharForm();}catch(e){}},900);
   _cpEditId=null;var btn=document.getElementById('cpLancarBtn');if(btn)btn.textContent='💾 Lançar conta';
   ['cp-desc','cp-forn','cp-valor','cp-venc','cp-obs','cp-totdiv','cp-saldodiv'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(cartEl)cartEl.value='';
