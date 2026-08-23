@@ -4560,6 +4560,7 @@ function saveConfig() {
   try{if(typeof carregarContas==='function')carregarContas();}catch(e){}
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
+  try{if(typeof carregarComissoes==='function')carregarComissoes();}catch(e){}
   try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
   try{if(typeof carregarRascunhos==='function')carregarRascunhos();}catch(e){}
   try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
@@ -8149,6 +8150,807 @@ window.accAvisoGerarFollowup = function () {
   if (typeof window.rascunhosAbrirComSeed === 'function') window.rascunhosAbrirComSeed(seed);
 };
 
+// --- MÓDULO COMISSÕES IMOBILIÁRIAS ----------------------------
+// Controla a comissão da imobiliária sobre vendas (~6% do valor do imóvel) e locações (~100% do
+// primeiro aluguel), o repasse aos corretores cadastrados, e a geração das autorizações de venda/
+// locação e da proposta de compra. Cada "negócio" é um cadastro independente — não precisa estar
+// vinculado a um Processo — e o próprio imóvel é só texto (endereço/descrição): cadastro de imóveis
+// é um módulo futuro à parte. Mesmo padrão de fetch/CRUD/status-atraso já usado em Acordos (accE/
+// accNum/accRender/accAtualizarLancamento acima), só que com o prefixo "com".
+function comE(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+function comNum(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  var s = String(v).trim().replace(/[^\d,.\-]/g, '');
+  if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if (s.indexOf(',') >= 0) s = s.replace(',', '.');
+  var n = parseFloat(s); return isNaN(n) ? 0 : n;
+}
+function comBRL(v) { return 'R$ ' + comNum(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function comFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+function comDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function comIsoFromBR(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  if (s.indexOf('/') >= 0) {
+    var p = s.split('/');
+    if (p.length !== 3) return '';
+    var dd = ('0' + p[0]).slice(-2), mm = ('0' + p[1]).slice(-2), aaaa = p[2];
+    if (aaaa.length !== 4 || isNaN(parseInt(dd)) || isNaN(parseInt(mm))) return '';
+    return aaaa + '-' + mm + '-' + dd;
+  }
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  return '';
+}
+function comCard(cls, l, v, s) { return '<div class="loc-stat ' + cls + '"><div class="loc-stat-label">' + l + '</div><div class="loc-stat-value">' + v + '</div><div class="loc-stat-sub">' + s + '</div></div>'; }
+function comCardClic(cls, l, v, s, filtro) {
+  if (!filtro) return '<div style="cursor:default">' + comCard(cls, l, v, s) + '</div>';
+  var ativo = window.comFiltroAtivo === filtro;
+  return '<div class="loc-stat-clicavel' + (ativo ? ' filtro-ativo' : '') + '" style="cursor:pointer" onclick="comFiltrar(\'' + filtro + '\')" title="Clique para filtrar a lista">' + comCard(cls, l, v, s) + '</div>';
+}
+function comChip(cls, l, n, filtro) {
+  var ativo = window.comFiltroAtivo === filtro;
+  return '<div class="loc-chip ' + cls + (ativo ? ' filtro-ativo' : '') + '" style="cursor:pointer" onclick="comFiltrar(\'' + filtro + '\')" title="Clique para filtrar a lista">' + l + ': <b>' + n + '</b></div>';
+}
+
+window.comNegocios = [];
+window.comCorretores = [];
+window.comPropostas = [];
+window.comFiltroAtivo = 'all';
+window.comFiltrar = function (tipo) { window.comFiltroAtivo = (window.comFiltroAtivo === tipo) ? 'all' : tipo; comRender(); };
+
+window.abrirComissoes = function () {
+  document.getElementById('comOverlay').classList.add('open');
+  carregarComissoes();
+};
+
+window.carregarComissoes = async function () {
+  var dot = document.getElementById('comSyncDot'), txt = document.getElementById('comSyncTxt');
+  var c = getConfig();
+  if (!c || !c.apiKey || !c.sheetId) {
+    window.comNegocios = []; window.comCorretores = []; window.comPropostas = []; window.comLive = false;
+    if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'planilha não configurada';
+    comRenderCorretores(); comPreencherSelectCorretor(); comRender(); return;
+  }
+  if (dot) dot.className = 'dot load'; if (txt) txt.textContent = 'sincronizando…';
+  try {
+    var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
+    var k = '?key=' + c.apiKey;
+    var r1 = await fetch(base + encodeURIComponent('COM_NEGOCIOS!A1:Z2000') + k);
+    var r2 = await fetch(base + encodeURIComponent('COM_CORRETORES!A1:Z500') + k);
+    var r3 = await fetch(base + encodeURIComponent('COM_PROPOSTAS!A1:Z2000') + k);
+    var d1 = r1.ok ? await r1.json() : { values: [] };
+    var d2 = r2.ok ? await r2.json() : { values: [] };
+    var d3 = r3.ok ? await r3.json() : { values: [] };
+    var rn = d1.values || [], rc = d2.values || [], rp = d3.values || [];
+    window.comNegocios = rn.length < 2 ? [] : rn.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rn[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    window.comCorretores = rc.length < 2 ? [] : rc.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rc[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    window.comPropostas = rp.length < 2 ? [] : rp.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rp[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    window.comLive = true;
+    var now = new Date();
+    if (dot) dot.className = 'dot live'; if (txt) txt.textContent = 'sincronizado às ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+  } catch (e) {
+    window.comNegocios = []; window.comCorretores = []; window.comPropostas = []; window.comLive = false;
+    if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'falha ao ler a planilha: ' + e.message;
+  }
+  comRenderCorretores();
+  comPreencherSelectCorretor();
+  comRender();
+};
+
+// ---------- CORRETORES CADASTRADOS ----------
+window.comToggleCorretores = function () {
+  var s = document.getElementById('comCorretoresSection');
+  var hide = !s.classList.contains('loc-hidden');
+  s.classList.toggle('loc-hidden', hide);
+  document.getElementById('btnComCorretores').classList.toggle('active', !hide);
+};
+
+window.comCorretorNovo = function () {
+  document.getElementById('cor-id').value = '';
+  ['cor-nome', 'cor-cpf', 'cor-creci', 'cor-telefone', 'cor-email', 'cor-banco', 'cor-agencia', 'cor-conta', 'cor-pix', 'cor-obs'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('cor-ativo').value = 'Sim';
+  document.getElementById('comCorretorFormTitle').textContent = 'Novo corretor';
+  document.getElementById('cor-msg').textContent = '';
+  document.getElementById('comCorretoresSection').classList.remove('loc-hidden');
+  document.getElementById('btnComCorretores').classList.add('active');
+};
+
+window.comCorretorEditar = function (id) {
+  var c = (window.comCorretores || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (!c) return;
+  document.getElementById('cor-id').value = c['ID'];
+  document.getElementById('cor-nome').value = c['Nome'] || '';
+  document.getElementById('cor-cpf').value = c['CPF'] || '';
+  document.getElementById('cor-creci').value = c['CRECI'] || '';
+  document.getElementById('cor-telefone').value = c['Telefone'] || '';
+  document.getElementById('cor-email').value = c['Email'] || '';
+  document.getElementById('cor-banco').value = c['Banco'] || '';
+  document.getElementById('cor-agencia').value = c['Agencia'] || '';
+  document.getElementById('cor-conta').value = c['Conta'] || '';
+  document.getElementById('cor-pix').value = c['Pix'] || '';
+  document.getElementById('cor-ativo').value = c['Ativo'] || 'Sim';
+  document.getElementById('cor-obs').value = c['Observacoes'] || '';
+  document.getElementById('comCorretorFormTitle').textContent = 'Editar corretor';
+  document.getElementById('cor-msg').textContent = '';
+  document.getElementById('comCorretoresSection').classList.remove('loc-hidden');
+  document.getElementById('btnComCorretores').classList.add('active');
+};
+
+window.comCorretorSalvar = function () {
+  var id = document.getElementById('cor-id').value;
+  var nome = document.getElementById('cor-nome').value.trim();
+  var creci = document.getElementById('cor-creci').value.trim();
+  var msgEl = document.getElementById('cor-msg');
+  if (!nome) { msgEl.textContent = 'Informe o nome do corretor.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!creci) { msgEl.textContent = 'Informe o CRECI do corretor.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  var campos = {
+    'Nome': nome, 'CPF': document.getElementById('cor-cpf').value.trim(), 'CRECI': creci,
+    'Telefone': document.getElementById('cor-telefone').value.trim(), 'Email': document.getElementById('cor-email').value.trim(),
+    'Banco': document.getElementById('cor-banco').value.trim(), 'Agencia': document.getElementById('cor-agencia').value.trim(),
+    'Conta': document.getElementById('cor-conta').value.trim(), 'Pix': document.getElementById('cor-pix').value.trim(),
+    'Ativo': document.getElementById('cor-ativo').value, 'Observacoes': document.getElementById('cor-obs').value
+  };
+  msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
+  var body = { acao: id ? 'atualizar_corretor' : 'lancar_corretor', campos: campos }; if (id) body.id = id;
+  (async function () {
+    var resp = null, erroRede = null;
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      resp = await r.json();
+    } catch (e2) { erroRede = e2; }
+    if (erroRede) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
+    } else if (!resp || !resp.ok) {
+      msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
+      msgEl.style.color = 'var(--red)'; return;
+    } else {
+      msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+    }
+    setTimeout(function () { carregarComissoes(); }, 1000);
+  })();
+};
+
+window.comCorretorExcluir = function (id) {
+  if (!confirm('Excluir este corretor? Negócios já vinculados a ele não são alterados.')) return;
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_corretor', id: id }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'não foi possível excluir');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_corretor', id: id }) }); }
+      catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
+    }
+    setTimeout(function () { carregarComissoes(); }, 800);
+  })();
+};
+
+function comRenderCorretores() {
+  var tb = document.getElementById('comCorretoresTbody');
+  if (!tb) return;
+  tb.innerHTML = (window.comCorretores || []).map(function (c) {
+    return '<tr>'
+      + '<td>' + comE(c['Nome']) + '</td>'
+      + '<td>' + comE(c['CRECI']) + '</td>'
+      + '<td>' + comE(c['Telefone']) + '</td>'
+      + '<td>' + comE(c['Pix']) + '</td>'
+      + '<td style="text-align:center">' + comE(c['Ativo']) + '</td>'
+      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="comCorretorEditar(\'' + comE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comCorretorExcluir(\'' + comE(c['ID']) + '\')">🗑️</button></td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Nenhum corretor cadastrado.</td></tr>';
+}
+
+function comPreencherSelectCorretor() {
+  var sel = document.getElementById('cm-corretor');
+  if (!sel) return;
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Sem corretor vinculado</option>' +
+    (window.comCorretores || []).filter(function (c) { return String(c['Ativo'] || 'Sim').toLowerCase() !== 'não' && String(c['Ativo'] || 'Sim').toLowerCase() !== 'nao'; })
+      .map(function (c) { return '<option value="' + comE(c['Nome']) + '">' + comE(c['Nome']) + (c['CRECI'] ? ' — ' + comE(c['CRECI']) : '') + '</option>'; }).join('');
+  if (atual) sel.value = atual;
+}
+
+// ---------- CADASTRO DE NEGÓCIO ----------
+window.comToggleForm = function (forceHide) {
+  var s = document.getElementById('comFormSection');
+  var hide = (forceHide === undefined) ? !s.classList.contains('loc-hidden') : !!forceHide;
+  s.classList.toggle('loc-hidden', hide);
+};
+
+// Sugestão automática do percentual de comissão conforme o tipo de negócio (venda ~6%, locação
+// ~100% do 1º aluguel) — "em torno de", conforme pedido: o campo continua editável na sequência.
+window.comAutoPercentual = function () {
+  var tipo = document.getElementById('cm-tipo').value;
+  var pctEl = document.getElementById('cm-percentualComissao');
+  var lbl = document.getElementById('cm-lblValorNegocio');
+  if (tipo === 'Locação') { pctEl.value = 100; if (lbl) lbl.textContent = 'Valor do 1º Aluguel (R$) *'; }
+  else { pctEl.value = 6; if (lbl) lbl.textContent = 'Valor do Imóvel (R$) *'; }
+  comAtualizarPreview();
+};
+
+window.comAtualizarPreview = function () {
+  var valorNegocio = comNum(document.getElementById('cm-valorNegocio').value);
+  var pctComissao = comNum(document.getElementById('cm-percentualComissao').value);
+  var valorComissao = Math.round(valorNegocio * pctComissao / 100 * 100) / 100;
+  document.getElementById('cm-valorComissaoPreview').value = valorComissao ? valorComissao.toFixed(2) : '';
+  var pctRepasse = comNum(document.getElementById('cm-percentualRepasse').value);
+  var valorRepasse = Math.round(valorComissao * pctRepasse / 100 * 100) / 100;
+  document.getElementById('cm-valorRepassePreview').value = valorRepasse ? valorRepasse.toFixed(2) : '';
+};
+
+window.comNovoNegocio = function () {
+  document.getElementById('cm-id').value = '';
+  ['cm-dataFechamento', 'cm-cliente', 'cm-cpfCliente', 'cm-telefoneCliente', 'cm-emailCliente', 'cm-endereco', 'cm-descricao',
+    'cm-valorNegocio', 'cm-percentualComissao', 'cm-valorComissaoPreview', 'cm-percentualRepasse', 'cm-valorRepassePreview',
+    'cm-dataPrevRecebimento', 'cm-dataRecebimento', 'cm-dataPrevPagamento', 'cm-dataPagamento', 'cm-dataAutorizacao', 'cm-validadeAutorizacao', 'cm-obs'
+  ].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cm-tipo').value = 'Venda';
+  document.getElementById('cm-statusNegocio').value = 'Em andamento';
+  document.getElementById('cm-corretor').value = '';
+  document.getElementById('cm-statusRecebimento').value = 'Pendente';
+  document.getElementById('cm-statusPagamento').value = 'Pendente';
+  document.getElementById('cm-autorizaPlaca').value = 'Sim';
+  document.getElementById('cm-autorizaAnunciar').value = 'Sim';
+  comAutoPercentual();
+  document.getElementById('comFormTitle').textContent = 'Novo negócio';
+  document.getElementById('cm-msg').textContent = '';
+  comToggleForm(false);
+};
+
+window.comEditarNegocio = function (id) {
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (!n) return;
+  document.getElementById('cm-id').value = n['ID'];
+  document.getElementById('cm-tipo').value = n['Tipo'] || 'Venda';
+  document.getElementById('cm-statusNegocio').value = n['Status Negocio'] || 'Em andamento';
+  document.getElementById('cm-dataFechamento').value = comIsoFromBR(n['Data Fechamento']);
+  document.getElementById('cm-cliente').value = n['Cliente Proprietario'] || '';
+  document.getElementById('cm-telefoneCliente').value = n['Telefone Cliente'] || '';
+  document.getElementById('cm-emailCliente').value = n['Email Cliente'] || '';
+  document.getElementById('cm-cpfCliente').value = n['CPF_CNPJ Cliente'] || '';
+  document.getElementById('cm-endereco').value = n['Endereco Imovel'] || '';
+  document.getElementById('cm-descricao').value = n['Descricao Imovel'] || '';
+  document.getElementById('cm-valorNegocio').value = comNum(n['Valor Negocio']) || '';
+  document.getElementById('cm-percentualComissao').value = n['Percentual Comissao'] || '';
+  document.getElementById('cm-corretor').value = n['Corretor'] || '';
+  document.getElementById('cm-percentualRepasse').value = n['Percentual Repasse Corretor'] || '';
+  document.getElementById('cm-dataPrevRecebimento').value = comIsoFromBR(n['Data Prevista Recebimento']);
+  document.getElementById('cm-dataRecebimento').value = comIsoFromBR(n['Data Recebimento']);
+  document.getElementById('cm-statusRecebimento').value = n['Status Recebimento'] || 'Pendente';
+  document.getElementById('cm-dataPrevPagamento').value = comIsoFromBR(n['Data Prevista Pagamento Corretor']);
+  document.getElementById('cm-dataPagamento').value = comIsoFromBR(n['Data Pagamento Corretor']);
+  document.getElementById('cm-statusPagamento').value = n['Status Pagamento Corretor'] || 'Pendente';
+  document.getElementById('cm-autorizaPlaca').value = n['Autoriza Placa'] || 'Sim';
+  document.getElementById('cm-autorizaAnunciar').value = n['Autoriza Anunciar'] || 'Sim';
+  document.getElementById('cm-dataAutorizacao').value = comIsoFromBR(n['Data Autorizacao']);
+  document.getElementById('cm-validadeAutorizacao').value = comIsoFromBR(n['Validade Autorizacao']);
+  document.getElementById('cm-obs').value = n['Observacoes'] || '';
+  var lbl = document.getElementById('cm-lblValorNegocio');
+  if (lbl) lbl.textContent = (n['Tipo'] === 'Locação') ? 'Valor do 1º Aluguel (R$) *' : 'Valor do Imóvel (R$) *';
+  comAtualizarPreview();
+  document.getElementById('comFormTitle').textContent = 'Editar negócio';
+  document.getElementById('cm-msg').textContent = '';
+  comToggleForm(false);
+};
+
+window.comSalvarNegocio = function () {
+  var id = document.getElementById('cm-id').value;
+  var cliente = document.getElementById('cm-cliente').value.trim();
+  var endereco = document.getElementById('cm-endereco').value.trim();
+  var valorNegocio = comNum(document.getElementById('cm-valorNegocio').value);
+  var pctComissao = comNum(document.getElementById('cm-percentualComissao').value);
+  var pctRepasse = comNum(document.getElementById('cm-percentualRepasse').value);
+  var msgEl = document.getElementById('cm-msg');
+  if (!cliente) { msgEl.textContent = 'Informe o cliente proprietário.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!endereco) { msgEl.textContent = 'Informe o endereço do imóvel.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!valorNegocio) { msgEl.textContent = 'Informe o valor do negócio.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  var valorComissao = Math.round(valorNegocio * pctComissao / 100 * 100) / 100;
+  var valorRepasse = Math.round(valorComissao * pctRepasse / 100 * 100) / 100;
+  var campos = {
+    'Tipo': document.getElementById('cm-tipo').value,
+    'Status Negocio': document.getElementById('cm-statusNegocio').value,
+    'Data Fechamento': comDtBRfromInput(document.getElementById('cm-dataFechamento').value),
+    'Cliente Proprietario': cliente,
+    'Telefone Cliente': document.getElementById('cm-telefoneCliente').value.trim(),
+    'Email Cliente': document.getElementById('cm-emailCliente').value.trim(),
+    'CPF_CNPJ Cliente': document.getElementById('cm-cpfCliente').value.trim(),
+    'Endereco Imovel': endereco,
+    'Descricao Imovel': document.getElementById('cm-descricao').value.trim(),
+    'Valor Negocio': valorNegocio, 'Percentual Comissao': pctComissao, 'Valor Comissao': valorComissao,
+    'Corretor': document.getElementById('cm-corretor').value,
+    'Percentual Repasse Corretor': pctRepasse, 'Valor Repasse Corretor': valorRepasse,
+    'Data Prevista Recebimento': comDtBRfromInput(document.getElementById('cm-dataPrevRecebimento').value),
+    'Data Recebimento': comDtBRfromInput(document.getElementById('cm-dataRecebimento').value),
+    'Status Recebimento': document.getElementById('cm-statusRecebimento').value,
+    'Data Prevista Pagamento Corretor': comDtBRfromInput(document.getElementById('cm-dataPrevPagamento').value),
+    'Data Pagamento Corretor': comDtBRfromInput(document.getElementById('cm-dataPagamento').value),
+    'Status Pagamento Corretor': document.getElementById('cm-statusPagamento').value,
+    'Autoriza Placa': document.getElementById('cm-autorizaPlaca').value,
+    'Autoriza Anunciar': document.getElementById('cm-autorizaAnunciar').value,
+    'Data Autorizacao': comDtBRfromInput(document.getElementById('cm-dataAutorizacao').value),
+    'Validade Autorizacao': comDtBRfromInput(document.getElementById('cm-validadeAutorizacao').value),
+    'Observacoes': document.getElementById('cm-obs').value
+  };
+  msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
+  var body = { acao: id ? 'atualizar_com' : 'lancar_com', campos: campos }; if (id) body.id = id;
+  (async function () {
+    var resp = null, erroRede = null;
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      resp = await r.json();
+    } catch (e2) { erroRede = e2; }
+    if (erroRede) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
+    } else if (!resp || !resp.ok) {
+      msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
+      msgEl.style.color = 'var(--red)'; return;
+    } else {
+      msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+    }
+    setTimeout(function () { carregarComissoes(); }, 1000);
+  })();
+};
+
+window.comExcluirNegocio = function (id) {
+  if (!confirm('Excluir este negócio? Propostas de compra vinculadas a ele não são apagadas automaticamente.')) return;
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_com', id: id }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'não foi possível excluir');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_com', id: id }) }); }
+      catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
+    }
+    setTimeout(function () { carregarComissoes(); }, 800);
+  })();
+};
+
+// Atualiza um campo do negócio na tela e persiste no Apps Script — mesmo padrão de
+// accAtualizarLancamento, usado nos selects/inputs de status direto na linha da tabela.
+function comAtualizarNegocio(id, campos) {
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (n) Object.keys(campos).forEach(function (k) { n[k] = campos[k]; });
+  comRender();
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_com', id: id, campos: campos }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'recusado');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_com', id: id, campos: campos }) }); }
+      catch (e2) {
+        var txt = document.getElementById('comSyncTxt');
+        if (txt) { txt.textContent = '⚠️ falha ao salvar — confira o Apps Script'; txt.style.color = 'var(--red)'; }
+      }
+    }
+  })();
+}
+window.comSetStatusRecebimento = function (id, val) {
+  var campos = { 'Status Recebimento': val };
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (val === 'Recebido' && n && !n['Data Recebimento']) campos['Data Recebimento'] = comFdt(new Date());
+  comAtualizarNegocio(id, campos);
+};
+window.comSetStatusPagamento = function (id, val) {
+  var campos = { 'Status Pagamento Corretor': val };
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (val === 'Recebido' && n && !n['Data Pagamento Corretor']) campos['Data Pagamento Corretor'] = comFdt(new Date());
+  comAtualizarNegocio(id, campos);
+};
+
+window.comExportCSV = function () {
+  var lista = window.comNegocios || [];
+  var linhas = [['Cliente', 'Imovel', 'Tipo', 'Valor Negocio', 'Percentual Comissao', 'Valor Comissao', 'Corretor', 'Valor Repasse Corretor', 'Status Recebimento', 'Status Pagamento Corretor']];
+  lista.forEach(function (n) {
+    linhas.push([n['Cliente Proprietario'], n['Endereco Imovel'], n['Tipo'], comNum(n['Valor Negocio']), n['Percentual Comissao'], comNum(n['Valor Comissao']), n['Corretor'], comNum(n['Valor Repasse Corretor']), n['Status Recebimento'], n['Status Pagamento Corretor']]);
+  });
+  var csv = linhas.map(function (r) { return r.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
+  var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'comissoes-imobiliarias.csv'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ---------- RENDER PRINCIPAL ----------
+window.comRender = function () {
+  var lista = (window.comNegocios || []).slice();
+
+  var comHojeMs = new Date().setHours(0, 0, 0, 0);
+  var comAutoAtrasoRecJaAplicado = window.comAutoAtrasoRecJaAplicado || (window.comAutoAtrasoRecJaAplicado = {});
+  var comAutoAtrasoPagJaAplicado = window.comAutoAtrasoPagJaAplicado || (window.comAutoAtrasoPagJaAplicado = {});
+  function comParseDataBRms(s) { var p = String(s || '').split('/'); if (p.length !== 3) return null; return new Date(+p[2], +p[1] - 1, +p[0]).getTime(); }
+
+  // Regra padrão do sistema: se ainda está Pendente e a data prevista já passou, vira Atrasado
+  // sozinho (mesmo critério em Acordos/Locações/Contas a Pagar) — recalculado a cada render, mas
+  // só chama o servidor uma vez por registro (comAutoAtraso*JaAplicado evita repetir o POST).
+  lista.forEach(function (n) {
+    if ((n['Status Recebimento'] || 'Pendente') === 'Pendente') {
+      var dpRec = comParseDataBRms(n['Data Prevista Recebimento']);
+      if (dpRec && dpRec < comHojeMs) {
+        n['Status Recebimento'] = 'Atrasado';
+        if (!comAutoAtrasoRecJaAplicado[n['ID']]) { comAutoAtrasoRecJaAplicado[n['ID']] = true; comAtualizarNegocio(n['ID'], { 'Status Recebimento': 'Atrasado' }); }
+      }
+    }
+    if ((n['Status Pagamento Corretor'] || 'Pendente') === 'Pendente') {
+      var dpPag = comParseDataBRms(n['Data Prevista Pagamento Corretor']);
+      if (dpPag && dpPag < comHojeMs) {
+        n['Status Pagamento Corretor'] = 'Atrasado';
+        if (!comAutoAtrasoPagJaAplicado[n['ID']]) { comAutoAtrasoPagJaAplicado[n['ID']] = true; comAtualizarNegocio(n['ID'], { 'Status Pagamento Corretor': 'Atrasado' }); }
+      }
+    }
+  });
+
+  var totalReceber = 0, totalRepassar = 0, emAberto = 0, atrasados = 0;
+  var cRecRec = 0, cRecPend = 0, cRecAtras = 0, cPagRec = 0, cPagPend = 0, cPagAtras = 0;
+  lista.forEach(function (n) {
+    var statusNeg = n['Status Negocio'] || 'Em andamento';
+    if (statusNeg !== 'Concluído' && statusNeg !== 'Cancelado') emAberto++;
+    var statusRec = n['Status Recebimento'] || 'Pendente';
+    var statusPag = n['Status Pagamento Corretor'] || 'Pendente';
+    if (statusRec !== 'Recebido') totalReceber += comNum(n['Valor Comissao']);
+    if (statusRec === 'Recebido' && statusPag !== 'Recebido') totalRepassar += comNum(n['Valor Repasse Corretor']);
+    if (statusRec === 'Atrasado' || statusPag === 'Atrasado') atrasados++;
+    if (statusRec === 'Recebido') cRecRec++; else if (statusRec === 'Atrasado') cRecAtras++; else cRecPend++;
+    if (statusPag === 'Recebido') cPagRec++; else if (statusPag === 'Atrasado') cPagAtras++; else cPagPend++;
+  });
+
+  document.getElementById('comStats').innerHTML =
+    comCardClic('verde', 'A receber (comissão)', comBRL(totalReceber), 'negócios com recebimento pendente/atrasado', 'a_receber') +
+    comCardClic('azul', 'A repassar aos corretores', comBRL(totalRepassar), 'já recebido, aguardando repasse', 'a_repassar') +
+    comCardClic('dourado', 'Negócios em aberto', emAberto, 'ainda não concluídos/cancelados', 'em_aberto') +
+    comCardClic('vermelho', 'Atrasados', atrasados, 'recebimento ou repasse fora do prazo', 'atrasados');
+  document.getElementById('comChips').innerHTML =
+    '<div class="loc-chips-row"><span class="loc-chips-label">Recebimento</span>' + comChip('pago', 'Recebidos', cRecRec, 'rec_recebido') + comChip('pend', 'Pendentes', cRecPend, 'rec_pendente') + comChip('atras', 'Atrasados', cRecAtras, 'rec_atrasado') + '</div>' +
+    '<div class="loc-chips-row"><span class="loc-chips-label">Repasse ao corretor</span>' + comChip('pago', 'Repassados', cPagRec, 'pag_recebido') + comChip('pend', 'Pendentes', cPagPend, 'pag_pendente') + comChip('atras', 'Atrasados', cPagAtras, 'pag_atrasado') + '</div>' +
+    (window.comFiltroAtivo !== 'all' ? '<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="comFiltrar(\'' + window.comFiltroAtivo + '\')">✕ Limpar filtro</button></div>' : '');
+
+  var comTermoBusca = ((document.getElementById('comBusca') || {}).value || '').trim().toLowerCase();
+  var filtroTipo = ((document.getElementById('comFiltroTipo') || {}).value || '');
+  var filtroStatus = ((document.getElementById('comFiltroStatus') || {}).value || '');
+  var listaFiltrada = lista.filter(function (n) {
+    if (comTermoBusca) {
+      var alvo = [n['Cliente Proprietario'], n['Endereco Imovel'], n['Corretor']].filter(Boolean).join(' ').toLowerCase();
+      if (alvo.indexOf(comTermoBusca) < 0) return false;
+    }
+    if (filtroTipo && n['Tipo'] !== filtroTipo) return false;
+    if (filtroStatus && (n['Status Negocio'] || 'Em andamento') !== filtroStatus) return false;
+    var statusRec = n['Status Recebimento'] || 'Pendente';
+    var statusPag = n['Status Pagamento Corretor'] || 'Pendente';
+    var fa = window.comFiltroAtivo;
+    if (fa === 'all') return true;
+    if (fa === 'a_receber') return statusRec !== 'Recebido';
+    if (fa === 'a_repassar') return statusRec === 'Recebido' && statusPag !== 'Recebido';
+    if (fa === 'em_aberto') return (n['Status Negocio'] || 'Em andamento') !== 'Concluído' && (n['Status Negocio'] || 'Em andamento') !== 'Cancelado';
+    if (fa === 'atrasados') return statusRec === 'Atrasado' || statusPag === 'Atrasado';
+    if (fa === 'rec_recebido') return statusRec === 'Recebido';
+    if (fa === 'rec_pendente') return statusRec === 'Pendente';
+    if (fa === 'rec_atrasado') return statusRec === 'Atrasado';
+    if (fa === 'pag_recebido') return statusPag === 'Recebido';
+    if (fa === 'pag_pendente') return statusPag === 'Pendente';
+    if (fa === 'pag_atrasado') return statusPag === 'Atrasado';
+    return true;
+  });
+
+  var tb = document.getElementById('comTbody');
+  tb.innerHTML = listaFiltrada.map(function (n) {
+    var statusRec = n['Status Recebimento'] || 'Pendente';
+    var statusPag = n['Status Pagamento Corretor'] || 'Pendente';
+    var classeRec = statusRec === 'Recebido' ? 'st-pago' : statusRec === 'Atrasado' ? 'st-atras' : 'st-pend';
+    var classePag = statusPag === 'Recebido' ? 'st-pago' : statusPag === 'Atrasado' ? 'st-atras' : 'st-pend';
+    var tipo = n['Tipo'] || 'Venda';
+    var temVenda = tipo === 'Venda' || tipo === 'Venda e Locação';
+    var docBtn = '';
+    if (tipo === 'Venda') docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Venda" onclick="comAbrirDoc(\'autorizacao_venda\',\'' + comE(n['ID']) + '\')">📄 Venda</button> ';
+    else if (tipo === 'Locação') docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Locação" onclick="comAbrirDoc(\'autorizacao_locacao\',\'' + comE(n['ID']) + '\')">📄 Locação</button> ';
+    else docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Venda e Locação" onclick="comAbrirDoc(\'autorizacao_venda_locacao\',\'' + comE(n['ID']) + '\')">📄 Venda/Locação</button> ';
+    var propBtn = temVenda ? '<button class="loc-send-btn" title="Proposta de compra" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝 Proposta</button> ' : '';
+    return '<tr>'
+      + '<td>' + comE(n['Cliente Proprietario']) + '</td>'
+      + '<td>' + comE(n['Endereco Imovel']) + '</td>'
+      + '<td style="text-align:center">' + comE(tipo) + '</td>'
+      + '<td class="loc-money">' + comBRL(n['Valor Negocio']) + '</td>'
+      + '<td class="loc-money">' + comBRL(n['Valor Comissao']) + '<br><span style="color:var(--muted);font-size:11px">' + comE(n['Percentual Comissao'] || 0) + '%</span></td>'
+      + '<td>' + comE(n['Corretor'] || '-') + '</td>'
+      + '<td class="loc-money">' + comBRL(n['Valor Repasse Corretor']) + '</td>'
+      + '<td><select class="loc-row-select ' + classeRec + '" onchange="comSetStatusRecebimento(\'' + comE(n['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td><select class="loc-row-select ' + classePag + '" onchange="comSetStatusPagamento(\'' + comE(n['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusPag ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
+      + '<td style="text-align:center;white-space:nowrap">'
+      + '<button class="loc-btn-edit" onclick="comEditarNegocio(\'' + comE(n['ID']) + '\')">✎</button> '
+      + docBtn + propBtn
+      + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comExcluirNegocio(\'' + comE(n['ID']) + '\')">🗑️</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('') || (comTermoBusca
+    ? '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum negócio encontrado para "' + comE(comTermoBusca) + '".</td></tr>'
+    : (window.comFiltroAtivo !== 'all'
+      ? '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum negócio encontrado para esse filtro. <button class="loc-btn" style="padding:4px 10px;font-size:12px;margin-left:6px" onclick="comFiltrar(\'' + window.comFiltroAtivo + '\')">✕ Limpar filtro</button></td></tr>'
+      : '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum negócio cadastrado. Clique em "🤝 Novo negócio" para começar.</td></tr>'));
+};
+
+// ---------- PROPOSTAS DE COMPRA ----------
+window.comPropostaAbrir = function (negocioId) {
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); }) || {};
+  document.getElementById('prop-negocioId').value = negocioId;
+  document.getElementById('comPropostaNegocioInfo').innerHTML =
+    '<strong>' + comE(n['Cliente Proprietario'] || '-') + '</strong> — ' + comE(n['Endereco Imovel'] || '-') + '<br><span style="color:var(--muted);font-size:12px">Valor do negócio: ' + comBRL(n['Valor Negocio']) + '</span>';
+  comPropostaRenderLista(negocioId);
+  comPropostaLimpar();
+  document.getElementById('modalComProposta').classList.add('open');
+};
+
+function comPropostaRenderLista(negocioId) {
+  var el = document.getElementById('comPropostasLista');
+  if (!el) return;
+  var props = (window.comPropostas || []).filter(function (p) { return String(p['Negocio']) === String(negocioId); });
+  if (!props.length) { el.innerHTML = '<div class="loc-note">Nenhuma proposta registrada ainda para este negócio.</div>'; return; }
+  el.innerHTML = '<div class="loc-section-title" style="margin-top:0">Propostas já registradas</div>' + props.map(function (p) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div><strong>' + comE(p['Nome Proponente']) + '</strong> — ' + comBRL(p['Valor Proposta']) + ' <span style="color:var(--muted);font-size:11px">(' + comE(p['Status'] || 'Em análise') + ')</span></div>'
+      + '<div style="white-space:nowrap">'
+      + '<button class="loc-btn-edit" onclick="comPropostaEditar(\'' + comE(p['ID']) + '\')">✎</button> '
+      + '<button class="loc-btn-edit" title="Gerar documento de Proposta de Compra" onclick="comAbrirDoc(\'proposta_compra\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄</button> '
+      + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comPropostaExcluir(\'' + comE(p['ID']) + '\',\'' + comE(negocioId) + '\')">🗑️</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+window.comPropostaLimpar = function () {
+  var negId = document.getElementById('prop-negocioId').value;
+  document.getElementById('prop-id').value = '';
+  ['prop-nome', 'prop-cpf', 'prop-telefone', 'prop-email', 'prop-valor', 'prop-formaPagamento', 'prop-valorSinal', 'prop-prazoValidade', 'prop-condicoes', 'prop-obs'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('prop-dataProposta').value = new Date().toISOString().split('T')[0];
+  document.getElementById('prop-status').value = 'Em análise';
+  document.getElementById('prop-negocioId').value = negId;
+  document.getElementById('comPropostaFormTitle').textContent = 'Nova proposta';
+  document.getElementById('prop-msg').textContent = '';
+};
+
+window.comPropostaEditar = function (id) {
+  var p = (window.comPropostas || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (!p) return;
+  document.getElementById('prop-id').value = p['ID'];
+  document.getElementById('prop-negocioId').value = p['Negocio'];
+  document.getElementById('prop-nome').value = p['Nome Proponente'] || '';
+  document.getElementById('prop-cpf').value = p['CPF_CNPJ Proponente'] || '';
+  document.getElementById('prop-telefone').value = p['Telefone Proponente'] || '';
+  document.getElementById('prop-email').value = p['Email Proponente'] || '';
+  document.getElementById('prop-valor').value = comNum(p['Valor Proposta']) || '';
+  document.getElementById('prop-formaPagamento').value = p['Forma Pagamento'] || '';
+  document.getElementById('prop-valorSinal').value = comNum(p['Valor Sinal']) || '';
+  document.getElementById('prop-prazoValidade').value = comIsoFromBR(p['Prazo Validade']);
+  document.getElementById('prop-dataProposta').value = comIsoFromBR(p['Data Proposta']);
+  document.getElementById('prop-condicoes').value = p['Condicoes'] || '';
+  document.getElementById('prop-status').value = p['Status'] || 'Em análise';
+  document.getElementById('prop-obs').value = p['Observacoes'] || '';
+  document.getElementById('comPropostaFormTitle').textContent = 'Editar proposta';
+  document.getElementById('prop-msg').textContent = '';
+};
+
+window.comPropostaSalvar = function () {
+  var id = document.getElementById('prop-id').value;
+  var negocioId = document.getElementById('prop-negocioId').value;
+  var nome = document.getElementById('prop-nome').value.trim();
+  var valor = comNum(document.getElementById('prop-valor').value);
+  var msgEl = document.getElementById('prop-msg');
+  if (!negocioId) { msgEl.textContent = 'Negócio não identificado.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!nome) { msgEl.textContent = 'Informe o nome do proponente.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!valor) { msgEl.textContent = 'Informe o valor da proposta.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  var campos = {
+    'Negocio': negocioId, 'Nome Proponente': nome,
+    'CPF_CNPJ Proponente': document.getElementById('prop-cpf').value.trim(),
+    'Telefone Proponente': document.getElementById('prop-telefone').value.trim(),
+    'Email Proponente': document.getElementById('prop-email').value.trim(),
+    'Valor Proposta': valor, 'Forma Pagamento': document.getElementById('prop-formaPagamento').value.trim(),
+    'Valor Sinal': comNum(document.getElementById('prop-valorSinal').value),
+    'Prazo Validade': comDtBRfromInput(document.getElementById('prop-prazoValidade').value),
+    'Data Proposta': comDtBRfromInput(document.getElementById('prop-dataProposta').value),
+    'Condicoes': document.getElementById('prop-condicoes').value.trim(),
+    'Status': document.getElementById('prop-status').value,
+    'Observacoes': document.getElementById('prop-obs').value.trim()
+  };
+  msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
+  var body = { acao: id ? 'atualizar_proposta' : 'lancar_proposta', campos: campos }; if (id) body.id = id;
+  (async function () {
+    var resp = null, erroRede = null;
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      resp = await r.json();
+    } catch (e2) { erroRede = e2; }
+    if (erroRede) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
+    } else if (!resp || !resp.ok) {
+      msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
+      msgEl.style.color = 'var(--red)'; return;
+    } else {
+      msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+    }
+    setTimeout(function () { carregarComissoes().then(function () { comPropostaRenderLista(negocioId); }); }, 1000);
+  })();
+};
+
+window.comPropostaExcluir = function (id, negocioId) {
+  if (!confirm('Excluir esta proposta?')) return;
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_proposta', id: id }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'não foi possível excluir');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_proposta', id: id }) }); }
+      catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
+    }
+    setTimeout(function () { carregarComissoes().then(function () { comPropostaRenderLista(negocioId); }); }, 800);
+  })();
+};
+
+// ---------- GERAÇÃO DE DOCUMENTOS (reaproveita #modalDoc / imprimirDoc(), mesmo padrão de abrirDoc) ----------
+// tipo: 'autorizacao_venda' | 'autorizacao_locacao' | 'autorizacao_venda_locacao' | 'proposta_compra'
+window.comAbrirDoc = function (tipo, negocioId, propostaId) {
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); });
+  if (!n) return;
+  var titulo = '', html = '';
+  if (tipo === 'autorizacao_venda') { titulo = 'Autorização de Venda'; html = comGerarAutorizacao(n, 'venda'); }
+  else if (tipo === 'autorizacao_locacao') { titulo = 'Autorização de Locação'; html = comGerarAutorizacao(n, 'locacao'); }
+  else if (tipo === 'autorizacao_venda_locacao') { titulo = 'Autorização de Venda e Locação'; html = comGerarAutorizacao(n, 'venda_locacao'); }
+  else if (tipo === 'proposta_compra') {
+    titulo = 'Proposta de Compra';
+    var prop = propostaId
+      ? (window.comPropostas || []).find(function (x) { return String(x['ID']) === String(propostaId); })
+      : (window.comPropostas || []).filter(function (x) { return String(x['Negocio']) === String(negocioId); }).sort(function (a, b) { return comNum(b['ID']) - comNum(a['ID']); })[0];
+    if (!prop) { alert('Nenhuma proposta cadastrada para este negócio ainda. Cadastre uma proposta primeiro (📝 Proposta).'); return; }
+    html = comGerarPropostaCompra(n, prop);
+  } else return;
+
+  document.getElementById('docToolbarTitle').textContent = titulo;
+  document.getElementById('docToolbarTitle').title = titulo;
+  var docBody = document.getElementById('docBody');
+  docBody.innerHTML = html;
+  docBody.contentEditable = 'true';
+  docBody.spellcheck = false;
+  docBody.style.outline = 'none';
+  document.getElementById('modalDoc').classList.add('open');
+  setTimeout(function () { docBody.focus(); }, 300);
+};
+
+// Qualificação simplificada do proprietário/cliente do negócio (não usa qualificacaoParte porque
+// o cadastro de negócio não tem RG/estado civil/profissão — só os campos de contato disponíveis).
+function comQualificacaoCliente(n) {
+  var partes = ['<strong>' + escHtml(n['Cliente Proprietario'] || '[PROPRIETÁRIO]') + '</strong>'];
+  if (n['CPF_CNPJ Cliente']) partes.push('portador(a) do CPF/CNPJ nr. ' + escHtml(n['CPF_CNPJ Cliente']));
+  if (n['Telefone Cliente']) partes.push('telefone: ' + escHtml(n['Telefone Cliente']));
+  if (n['Email Cliente']) partes.push('e-mail: ' + escHtml(n['Email Cliente']));
+  return partes.join(', ');
+}
+
+function comGerarAutorizacao(n, modo) {
+  var adv = (typeof getAdvogadoInfo === 'function') ? getAdvogadoInfo() : {};
+  var advNome = adv.nome || 'Adenilson Borges da Silva';
+  var advOab = adv.oab || 'SP/335600';
+  var oabPartes = advOab.split('/');
+  var advOabUf = oabPartes.length === 2 ? oabPartes[0] : 'SP';
+  var advOabNum = oabPartes.length === 2 ? oabPartes[1] : advOab;
+  var pctComissao = comNum(n['Percentual Comissao']) || (n['Tipo'] === 'Locação' ? 100 : 6);
+  var placa = (n['Autoriza Placa'] || 'Sim');
+  var anunciar = (n['Autoriza Anunciar'] || 'Sim');
+  var validade = n['Validade Autorizacao'] ? escHtml(n['Validade Autorizacao']) : '90 (noventa) dias, prorrogável por igual período mediante acordo entre as partes';
+
+  var objetoTexto, tituloDoc, baseComissao, refLegal;
+  if (modo === 'venda') {
+    tituloDoc = 'Autorização de Venda de Imóvel';
+    objetoTexto = 'a intermediação para a <strong>VENDA</strong> do imóvel abaixo descrito';
+    baseComissao = 'sobre o valor efetivamente realizado na venda';
+    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária';
+  } else if (modo === 'locacao') {
+    tituloDoc = 'Autorização de Locação de Imóvel';
+    objetoTexto = 'a intermediação para a <strong>LOCAÇÃO</strong> do imóvel abaixo descrito';
+    baseComissao = 'correspondente ao primeiro aluguel ajustado no contrato de locação';
+    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária e, no que couber, a Lei do Inquilinato (Lei nº 8.245/91)';
+  } else {
+    tituloDoc = 'Autorização de Venda e Locação de Imóvel';
+    objetoTexto = 'a intermediação para a <strong>VENDA e/ou LOCAÇÃO</strong> do imóvel abaixo descrito, o que primeiro se realizar';
+    baseComissao = 'sobre o valor da venda ou correspondente ao primeiro aluguel, conforme o negócio que vier a se concretizar';
+    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária e, quando se tratar de locação, no que couber, a Lei do Inquilinato (Lei nº 8.245/91)';
+  }
+
+  return '<div class="doc-cabecalho">'
+    + '<div class="doc-titulo">' + tituloDoc + '</div>'
+    + '<div class="doc-subtitulo">Instrumento particular de autorização de intermediação imobiliária</div>'
+    + '</div>'
+
+    + '<p class="doc-texto"><strong>PROPRIETÁRIO(A)/AUTORIZANTE:</strong> ' + comQualificacaoCliente(n) + '.</p>'
+
+    + '<p class="doc-texto"><strong>IMOBILIÁRIA/AUTORIZADA:</strong> escritório de <strong>' + escHtml(advNome) + '</strong>, '
+    + 'advogado inscrito na OAB/' + escHtml(advOabUf) + ' sob o nr. ' + escHtml(advOabNum) + ', '
+    + 'com escritório na Rua Engenheiro Pegado, 945, Conjunto 1304, Carrão, São Paulo/SP, CEP 03430-003'
+    + (n['Corretor'] ? ', por intermédio do(a) corretor(a) responsável <strong>' + escHtml(n['Corretor']) + '</strong>' : '') + '.</p>'
+
+    + '<p class="doc-texto"><strong>DO IMÓVEL:</strong> imóvel situado em ' + escHtml(n['Endereco Imovel'] || '[endereço do imóvel]') + '.'
+    + (n['Descricao Imovel'] ? ' Descrição/características: ' + escHtml(n['Descricao Imovel']) + '.' : '') + '</p>'
+
+    + '<p class="doc-texto"><strong>DO OBJETO:</strong> Pelo presente instrumento, o(a) Proprietário(a)/Autorizante outorga à Imobiliária/Autorizada '
+    + objetoTexto + ', com exclusividade de intermediação enquanto vigorar a presente autorização, ' + refLegal + '.</p>'
+
+    + '<p class="doc-texto"><strong>DA COMISSÃO:</strong> Pelos serviços de intermediação, é devida à Imobiliária/Autorizada comissão de <strong>' + comE(pctComissao) + '% (' + comE(pctComissao) + ' por cento)</strong> '
+    + baseComissao + (comNum(n['Valor Negocio']) ? ', estimada em <strong>' + comBRL(n['Valor Comissao']) + '</strong> sobre o valor de referência de ' + comBRL(n['Valor Negocio']) : '') + '.</p>'
+
+    + '<p class="doc-texto"><strong>AUTORIZAÇÃO DE PLACA:</strong> O(A) Proprietário(a) '
+    + (String(placa).toLowerCase() === 'sim' ? '<strong>AUTORIZA</strong>' : '<strong>NÃO AUTORIZA</strong>') + ' a colocação de placa indicativa de venda/locação no imóvel.</p>'
+
+    + '<p class="doc-texto"><strong>AUTORIZAÇÃO DE ANÚNCIO/DIVULGAÇÃO:</strong> O(A) Proprietário(a) '
+    + (String(anunciar).toLowerCase() === 'sim' ? '<strong>AUTORIZA</strong>' : '<strong>NÃO AUTORIZA</strong>') + ' a divulgação/anúncio do imóvel pela Imobiliária/Autorizada, por quaisquer meios usuais de publicidade imobiliária (internet, portais, redes sociais e material impresso).</p>'
+
+    + '<p class="doc-texto"><strong>DA VIGÊNCIA:</strong> A presente autorização vigora pelo prazo de ' + validade + ', contado a partir de ' + (n['Data Autorizacao'] ? escHtml(n['Data Autorizacao']) : 'da data de assinatura') + ', podendo ser revogada por qualquer das partes mediante comunicação por escrito, resguardado o direito à comissão em negócios já concretizados ou em fase avançada de negociação por intermédio da Imobiliária/Autorizada durante a vigência.</p>'
+
+    + '<div class="doc-local-data">' + dataExtenso() + '</div>'
+
+    + '<div class="doc-assinaturas">'
+    + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Autorizante</small></div>'
+    + '<div class="doc-assinatura-linha">' + escHtml(n['Corretor'] || advNome) + '<br><small>Imobiliária/Autorizada' + (n['Corretor'] ? ' — Corretor(a) responsável' : '') + '</small></div>'
+    + '</div>';
+}
+
+function comGerarPropostaCompra(n, prop) {
+  var valorSinalTxt = comNum(prop['Valor Sinal']) ? comBRL(prop['Valor Sinal']) : 'não há sinal previsto nesta proposta';
+  return '<div class="doc-cabecalho">'
+    + '<div class="doc-titulo">Proposta de Compra</div>'
+    + '<div class="doc-subtitulo">Instrumento particular de proposta de compra de imóvel — sujeita às normas do CRECI</div>'
+    + '</div>'
+
+    + '<p class="doc-texto"><strong>PROPONENTE (COMPRADOR):</strong> <strong>' + escHtml(prop['Nome Proponente'] || '[PROPONENTE]') + '</strong>'
+    + (prop['CPF_CNPJ Proponente'] ? ', portador(a) do CPF/CNPJ nr. ' + escHtml(prop['CPF_CNPJ Proponente']) : '')
+    + (prop['Telefone Proponente'] ? ', telefone: ' + escHtml(prop['Telefone Proponente']) : '')
+    + (prop['Email Proponente'] ? ', e-mail: ' + escHtml(prop['Email Proponente']) : '') + '.</p>'
+
+    + '<p class="doc-texto"><strong>PROPRIETÁRIO(A) (VENDEDOR):</strong> ' + comQualificacaoCliente(n) + '.</p>'
+
+    + '<p class="doc-texto"><strong>DO IMÓVEL:</strong> imóvel situado em ' + escHtml(n['Endereco Imovel'] || '[endereço do imóvel]') + '.'
+    + (n['Descricao Imovel'] ? ' Descrição/características: ' + escHtml(n['Descricao Imovel']) + '.' : '') + '</p>'
+
+    + '<p class="doc-texto"><strong>DA PROPOSTA:</strong> O(A) Proponente acima qualificado(a) apresenta, por meio desta, proposta irrevogável e irretratável '
+    + 'de compra do imóvel descrito, pelo valor de <strong>' + comBRL(prop['Valor Proposta']) + '</strong>, a ser pago da seguinte forma: '
+    + escHtml(prop['Forma Pagamento'] || 'a combinar entre as partes') + '.</p>'
+
+    + '<p class="doc-texto"><strong>DO SINAL:</strong> ' + (comNum(prop['Valor Sinal']) ? 'Como sinal e princípio de pagamento, o Proponente oferece o valor de <strong>' + valorSinalTxt + '</strong>, a ser depositado/entregue na forma que vier a ser acordada entre as partes.' : 'Não há valor de sinal previsto nesta proposta.') + '</p>'
+
+    + '<p class="doc-texto"><strong>DO PRAZO DE VALIDADE:</strong> Esta proposta é válida até ' + (prop['Prazo Validade'] ? '<strong>' + escHtml(prop['Prazo Validade']) + '</strong>' : 'a data a ser definida entre as partes') + ', após o que perderá automaticamente seus efeitos caso não seja aceita expressamente pelo(a) Proprietário(a).</p>'
+
+    + (prop['Condicoes'] ? '<p class="doc-texto"><strong>CONDIÇÕES ESPECÍFICAS:</strong> ' + escHtml(prop['Condicoes']) + '</p>' : '')
+
+    + '<p class="doc-texto"><strong>DAS CONDIÇÕES GERAIS:</strong> (i) A presente proposta está sujeita à aceitação expressa do(a) Proprietário(a), não gerando, por si só, qualquer obrigação de venda ou de compra até a assinatura do instrumento próprio (contrato particular de compra e venda ou escritura pública, conforme o caso); '
+    + '(ii) salvo disposição em contrário entre as partes, as despesas cartorárias, de registro e o Imposto sobre Transmissão de Bens Imóveis (ITBI) correm por conta do(a) comprador(a); '
+    + '(iii) a presente intermediação observa as normas do CRECI aplicáveis à corretagem imobiliária; '
+    + '(iv) eventual comissão de corretagem devida à imobiliária, conforme autorização de venda em vigor, não é objeto deste instrumento e será tratada em separado entre a Imobiliária e o(a) Proprietário(a).</p>'
+
+    + '<div class="doc-local-data">' + dataExtenso() + '</div>'
+
+    + '<div class="doc-assinaturas">'
+    + '<div class="doc-assinatura-linha">' + escHtml(prop['Nome Proponente'] || '') + '<br><small>Proponente/Comprador(a)</small></div>'
+    + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Vendedor(a) — ciente da proposta</small></div>'
+    + '</div>';
+}
+
 // --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
 let _honEditId = null;
@@ -10485,9 +11287,43 @@ function topScrollVarrer_(raiz){
  });
 }
 window.topScrollVarrer_=topScrollVarrer_;
+// A tela de Processos (dentro de .main) não usa .loc-table-wrap — é uma lista de cards, não
+// tabela. O que estoura a largura ali é a fileira de botões de ação de cada processo (Editar,
+// Partes, Nota interna, Recibo...), que "vaza" pra .main inteiro (a área de conteúdo toda), cujo
+// scroll horizontal nativo fica lá embaixo, no fim da lista de processos — bem longe de alcançar.
+// Em vez de uma barrinha por card (ficaria repetitivo, um processo tem muitas ações), fixa UMA
+// barra espelhada grudada logo abaixo do cabeçalho (position:fixed, não rola nem na vertical nem
+// na horizontal junto com a lista), que só aparece quando .main realmente estoura na horizontal.
+function mainTopScrollVarrer_(){
+ var main=document.querySelector('.main');
+ if(!main)return;
+ var existente=document.getElementById('mainTopScroll');
+ var estoura=main.scrollWidth>main.clientWidth+1;
+ if(!estoura){ if(existente)existente.remove(); return; }
+ if(existente){
+  var spacerAtual=existente.firstElementChild;
+  var larguraAtual=spacerAtual?(parseInt(spacerAtual.style.width)||0):0;
+  if(larguraAtual===main.scrollWidth)return; // já tá certa - não mexe (evita loop de mutação)
+  existente.remove();
+ }
+ var sidebarEl=document.querySelector('.sidebar');
+ var esquerda=sidebarEl?sidebarEl.getBoundingClientRect().right:0;
+ var bar=document.createElement('div');
+ bar.id='mainTopScroll';
+ bar.className='cp-topscroll';
+ bar.style.cssText='position:fixed;left:'+esquerda+'px;right:0;top:64px;height:12px;overflow-x:auto;overflow-y:hidden;z-index:80;background:var(--bg);border-bottom:1px solid var(--border)';
+ var spacer=document.createElement('div');
+ spacer.style.cssText='height:1px;width:'+main.scrollWidth+'px';
+ bar.appendChild(spacer);
+ document.body.appendChild(bar);
+ var lock=false;
+ bar.addEventListener('scroll',function(){if(lock)return;lock=true;main.scrollLeft=bar.scrollLeft;lock=false;});
+ main.addEventListener('scroll',function(){if(lock)return;lock=true;bar.scrollLeft=main.scrollLeft;lock=false;});
+}
+window.mainTopScrollVarrer_=mainTopScrollVarrer_;
 (function(){
  var pend=null;
- function agendar(){ if(pend)return; pend=setTimeout(function(){pend=null;try{topScrollVarrer_(document);}catch(e){}},300); }
+ function agendar(){ if(pend)return; pend=setTimeout(function(){pend=null;try{topScrollVarrer_(document);mainTopScrollVarrer_();}catch(e){}},300); }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',agendar);else agendar();
  var mo=new MutationObserver(agendar);
  mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
@@ -12071,6 +12907,208 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-table-wrap">
         <table class="loc-table"><thead><tr><th>Processo</th><th>Cliente</th><th>Parte Contrária</th><th style="text-align:right">Valor Total</th><th style="text-align:center">Parcelas</th><th style="text-align:center">Honorários (%)</th><th style="text-align:right">Recebido</th><th style="text-align:right">Repassado</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
         <tbody id="accContratosTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMISSÕES IMOBILIÁRIAS — módulo próprio (venda ~6%, locação ~100% do 1º aluguel, repasse a corretores) -->
+<div class="loc-overlay" id="comOverlay">
+  <div class="loc-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskCom"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskCom)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Comissões</span>
+    </div>
+    <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
+    <div class="loc-title">🤝 Comissões Imobiliárias</div>
+    <div class="loc-sync"><span class="dot" id="comSyncDot"></span><span id="comSyncTxt">—</span></div>
+    <button class="loc-btn" onclick="carregarComissoes()">🔄 Atualizar</button>
+    <span class="user-menu-slot"></span>
+    <button class="loc-btn" onclick="document.getElementById('comOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+  <div class="loc-body">
+    <div class="loc-stats" id="comStats"></div>
+    <div class="loc-chips" id="comChips"></div>
+    <div style="margin:10px 0"><input type="text" class="search-input" id="comBusca" placeholder="Buscar por cliente, imóvel ou corretor... (atalho: /)" oninput="comRender()" style="width:100%"></div>
+    <div class="loc-toolbar">
+      <div class="loc-mes-wrap">
+        <label>Tipo</label>
+        <select class="loc-select" id="comFiltroTipo" onchange="comRender()">
+          <option value="">Todos</option>
+          <option value="Venda">Venda</option>
+          <option value="Locação">Locação</option>
+          <option value="Venda e Locação">Venda e Locação</option>
+        </select>
+      </div>
+      <div class="loc-mes-wrap">
+        <label>Status Negócio</label>
+        <select class="loc-select" id="comFiltroStatus" onchange="comRender()">
+          <option value="">Todos</option>
+          <option value="Em andamento">Em andamento</option>
+          <option value="Concluído">Concluído</option>
+          <option value="Cancelado">Cancelado</option>
+        </select>
+      </div>
+      <button class="loc-btn primary" onclick="comNovoNegocio()">🤝 Novo negócio</button>
+      <button class="loc-btn" id="btnComCorretores" onclick="comToggleCorretores()">🧑‍💼 Corretores cadastrados</button>
+      <button class="loc-btn" onclick="comExportCSV()">⬇️ Exportar CSV</button>
+    </div>
+
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('comNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
+      <div class="loc-note lf-tip-content" id="comNote">
+        Cada <strong>negócio</strong> é uma venda ou locação de imóvel (cadastro independente, não precisa de processo jurídico vinculado). Na venda a comissão sugerida é 6% do valor do imóvel; na locação, 100% do primeiro aluguel — os dois percentuais são só sugestões, editáveis livremente. Cadastre os corretores em "🧑‍💼 Corretores cadastrados" (com dados bancários/Pix) antes de vincular um negócio a eles, para poder calcular o repasse. Gere a Autorização de Venda/Locação e a Proposta de Compra direto na linha do negócio, na coluna Ações.
+      </div>
+    </div>
+
+    <!-- CADASTRO DE NEGÓCIO (form colapsável, abre em "Novo negócio" ou "Editar") -->
+    <div id="comFormSection" class="loc-hidden">
+      <div class="loc-section-title" id="comFormTitle">Novo negócio</div>
+      <div class="loc-cform">
+        <input type="hidden" id="cm-id">
+        <div class="loc-cfield"><label>Tipo *</label>
+          <select class="loc-cinput" id="cm-tipo" onchange="comAutoPercentual()">
+            <option value="Venda">Venda</option>
+            <option value="Locação">Locação</option>
+            <option value="Venda e Locação">Venda e Locação</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Status do Negócio</label>
+          <select class="loc-cinput" id="cm-statusNegocio">
+            <option value="Em andamento">Em andamento</option>
+            <option value="Concluído">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Data de Fechamento</label><input class="loc-cinput" id="cm-dataFechamento" type="date"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Proprietário / Cliente</div>
+        <div class="loc-cfield half"><label>Cliente Proprietário *</label><input class="loc-cinput" id="cm-cliente" placeholder="Nome do proprietário do imóvel"></div>
+        <div class="loc-cfield half"><label>CPF/CNPJ do Cliente</label><input class="loc-cinput" id="cm-cpfCliente" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
+        <div class="loc-cfield half"><label>Telefone do Cliente</label><input class="loc-cinput" id="cm-telefoneCliente" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>E-mail do Cliente</label><input class="loc-cinput" id="cm-emailCliente" type="email" placeholder="cliente@email.com"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Imóvel (cadastro de imóveis é um módulo futuro — aqui é só texto)</div>
+        <div class="loc-cfield full"><label>Endereço do Imóvel *</label><input class="loc-cinput" id="cm-endereco" placeholder="Rua, número, bairro, cidade/UF"></div>
+        <div class="loc-cfield full"><label>Descrição do Imóvel</label><input class="loc-cinput" id="cm-descricao" placeholder="Ex.: apartamento 2 dorms, 65m², vaga de garagem"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Valores e comissão</div>
+        <div class="loc-cfield"><label id="cm-lblValorNegocio">Valor do Negócio (R$) *</label><input class="loc-cinput" id="cm-valorNegocio" type="text" inputmode="decimal" placeholder="0,00" oninput="comAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>% Comissão da Imobiliária</label><input class="loc-cinput" id="cm-percentualComissao" type="text" inputmode="decimal" placeholder="Ex.: 6" oninput="comAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Valor da Comissão (R$)</label><input class="loc-cinput" id="cm-valorComissaoPreview" type="text" readonly style="opacity:.8" placeholder="0,00"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Corretor responsável e repasse</div>
+        <div class="loc-cfield half"><label>Corretor</label>
+          <select class="loc-cinput" id="cm-corretor"><option value="">Sem corretor vinculado</option></select>
+        </div>
+        <div class="loc-cfield"><label>% Repasse ao Corretor</label><input class="loc-cinput" id="cm-percentualRepasse" type="text" inputmode="decimal" placeholder="Ex.: 50" oninput="comAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Valor do Repasse (R$)</label><input class="loc-cinput" id="cm-valorRepassePreview" type="text" readonly style="opacity:.8" placeholder="0,00"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Datas e status — recebimento da comissão</div>
+        <div class="loc-cfield"><label>Data Prevista de Recebimento</label><input class="loc-cinput" id="cm-dataPrevRecebimento" type="date"></div>
+        <div class="loc-cfield"><label>Data de Recebimento</label><input class="loc-cinput" id="cm-dataRecebimento" type="date"></div>
+        <div class="loc-cfield"><label>Status Recebimento</label>
+          <select class="loc-cinput" id="cm-statusRecebimento"><option>Pendente</option><option>Recebido</option><option>Atrasado</option></select>
+        </div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Datas e status — repasse ao corretor</div>
+        <div class="loc-cfield"><label>Data Prevista de Pagamento ao Corretor</label><input class="loc-cinput" id="cm-dataPrevPagamento" type="date"></div>
+        <div class="loc-cfield"><label>Data de Pagamento ao Corretor</label><input class="loc-cinput" id="cm-dataPagamento" type="date"></div>
+        <div class="loc-cfield"><label>Status Pagamento Corretor</label>
+          <select class="loc-cinput" id="cm-statusPagamento"><option>Pendente</option><option>Recebido</option><option>Atrasado</option></select>
+        </div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Autorização do proprietário</div>
+        <div class="loc-cfield"><label>Autoriza colocação de placa?</label><select class="loc-cinput" id="cm-autorizaPlaca"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Autoriza anunciar/divulgar?</label><select class="loc-cinput" id="cm-autorizaAnunciar"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Data da Autorização</label><input class="loc-cinput" id="cm-dataAutorizacao" type="date"></div>
+        <div class="loc-cfield"><label>Validade da Autorização</label><input class="loc-cinput" id="cm-validadeAutorizacao" type="date"></div>
+        <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="cm-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="cm-msg"></span>
+          <button class="loc-btn" onclick="comToggleForm(true)">Cancelar</button>
+          <button class="loc-btn primary" onclick="comSalvarNegocio()">💾 Salvar negócio</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTA DE NEGÓCIOS -->
+    <div class="loc-section-title">Negócios — comissão a receber e repasse ao corretor</div>
+    <div class="loc-table-wrap">
+      <table class="loc-table">
+        <thead><tr>
+          <th>Cliente</th><th>Imóvel</th><th>Tipo</th>
+          <th style="text-align:right">Valor Negócio</th>
+          <th style="text-align:right">Comissão</th>
+          <th>Corretor</th>
+          <th style="text-align:right">Repasse</th>
+          <th>Status Recebimento</th>
+          <th>Status Repasse</th>
+          <th style="text-align:center">Ações</th>
+        </tr></thead>
+        <tbody id="comTbody"></tbody>
+      </table>
+    </div>
+    <div class="loc-note" id="comListaNote"></div>
+
+    <!-- CORRETORES CADASTRADOS -->
+    <div id="comCorretoresSection" class="loc-hidden">
+      <div class="loc-section-title" id="comCorretorFormTitle">Novo corretor</div>
+      <div class="loc-cform">
+        <input type="hidden" id="cor-id">
+        <div class="loc-cfield half"><label>Nome *</label><input class="loc-cinput" id="cor-nome" placeholder="Nome completo do corretor"></div>
+        <div class="loc-cfield half"><label>CPF</label><input class="loc-cinput" id="cor-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
+        <div class="loc-cfield half"><label>CRECI *</label><input class="loc-cinput" id="cor-creci" placeholder="Ex.: CRECI/SP 123456"></div>
+        <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="cor-ativo"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="cor-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="cor-email" type="email" placeholder="corretor@email.com"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários (para o repasse)</div>
+        <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="cor-banco" placeholder="Ex.: Itaú"></div>
+        <div class="loc-cfield half"><label>Agência</label><input class="loc-cinput" id="cor-agencia" placeholder="0000"></div>
+        <div class="loc-cfield half"><label>Conta</label><input class="loc-cinput" id="cor-conta" placeholder="00000-0"></div>
+        <div class="loc-cfield half"><label>Chave Pix</label><input class="loc-cinput" id="cor-pix" placeholder="CPF/CNPJ, e-mail, telefone ou aleatória"></div>
+        <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="cor-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="cor-msg"></span>
+          <button class="loc-btn" onclick="comCorretorNovo()">Limpar</button>
+          <button class="loc-btn primary" onclick="comCorretorSalvar()">💾 Salvar corretor</button>
+        </div>
+      </div>
+      <div class="loc-table-wrap">
+        <table class="loc-table"><thead><tr><th>Nome</th><th>CRECI</th><th>Telefone</th><th>Pix</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
+        <tbody id="comCorretoresTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROPOSTA DE COMPRA — cadastro + histórico de propostas de um negócio -->
+<div class="modal-repasse-overlay" id="modalComProposta">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📝 Propostas de Compra</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalComProposta').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div class="loc-note" id="comPropostaNegocioInfo" style="margin-bottom:12px"></div>
+      <div id="comPropostasLista" style="margin-bottom:16px"></div>
+      <div class="loc-section-title" id="comPropostaFormTitle">Nova proposta</div>
+      <div class="loc-cform">
+        <input type="hidden" id="prop-id">
+        <input type="hidden" id="prop-negocioId">
+        <div class="loc-cfield half"><label>Nome do Proponente *</label><input class="loc-cinput" id="prop-nome" placeholder="Nome do interessado na compra"></div>
+        <div class="loc-cfield half"><label>CPF/CNPJ do Proponente</label><input class="loc-cinput" id="prop-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
+        <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="prop-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="prop-email" type="email" placeholder="proponente@email.com"></div>
+        <div class="loc-cfield"><label>Valor da Proposta (R$) *</label><input class="loc-cinput" id="prop-valor" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Forma de Pagamento</label><input class="loc-cinput" id="prop-formaPagamento" placeholder="Ex.: à vista, financiamento"></div>
+        <div class="loc-cfield"><label>Valor do Sinal (R$)</label><input class="loc-cinput" id="prop-valorSinal" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Prazo de Validade</label><input class="loc-cinput" id="prop-prazoValidade" type="date"></div>
+        <div class="loc-cfield"><label>Data da Proposta</label><input class="loc-cinput" id="prop-dataProposta" type="date"></div>
+        <div class="loc-cfield"><label>Status</label>
+          <select class="loc-cinput" id="prop-status"><option>Em análise</option><option>Aceita</option><option>Recusada</option><option>Expirada</option></select>
+        </div>
+        <div class="loc-cfield full"><label>Condições</label><input class="loc-cinput" id="prop-condicoes" placeholder="Condições gerais da proposta"></div>
+        <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="prop-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="prop-msg"></span>
+          <button class="loc-btn" onclick="comPropostaLimpar()">Limpar</button>
+          <button class="loc-btn primary" onclick="comPropostaSalvar()">💾 Salvar proposta</button>
+        </div>
       </div>
     </div>
   </div>
@@ -17883,7 +18921,8 @@ window.cpRenderFixas=cpRenderFixas;
   .home-card.loc .ic{background:rgba(91,141,238,.15);color:var(--blue)}
   .home-card.cont .ic{background:rgba(224,124,58,.15);color:var(--orange)}
   .home-card.hon .ic{background:rgba(76,175,125,.15);color:var(--green)}
-  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)}
+  .home-card.com .ic{background:rgba(125,92,214,.15);color:var(--purple)}
+  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)} .home-card.com:hover{border-color:var(--purple)}
   .cnum{position:relative;padding:2px 4px;margin:-2px -4px;border-radius:8px;transition:background .15s}
   .cnum.cnum-clickable{cursor:pointer}
   .cnum.cnum-clickable:hover{background:rgba(255,255,255,.06)}
@@ -18140,6 +19179,20 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-alertas" id="homeAlertAcc"></div>
       </div>
       <div class="home-module">
+        <div class="home-card com" onclick="openComissoesHome()">
+          <div class="arrow">→</div>
+          <div class="ic">🤝</div>
+          <div class="ctitle">Comissões Imobiliárias</div>
+          <div class="cdesc">Vendas, locações e repasse aos corretores</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openComissoesHome()" title="Comissão a receber dos negócios em aberto"><div class="v" id="hc-com-receber" style="color:var(--green)">—</div><div class="l">a receber</div><span class="cnum-spark-wrap" id="spark-com-receber"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openComissoesHome()" title="Repasse pendente aos corretores"><div class="v" id="hc-com-repassar" style="color:var(--blue)">—</div><div class="l">a repassar</div><span class="cnum-spark-wrap" id="spark-com-repassar"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openComissoesHome()" title="Negócios com recebimento ou repasse atrasado"><div class="v" id="hc-com-atrasados" style="color:var(--red)">—</div><div class="l">atrasados</div><span class="cnum-spark-wrap" id="spark-com-atrasados"></span></div>
+          </div>
+        </div>
+        <div class="home-alertas" id="homeAlertCom"></div>
+      </div>
+      <div class="home-module">
         <div class="home-card hon" onclick="openHonorariosHome()">
           <div class="arrow">→</div>
           <div class="ic">💰</div>
@@ -18250,7 +19303,7 @@ window.cpRenderFixas=cpRenderFixas;
   function renderNotifBell(){
     var badge=document.getElementById('notifBadge');var panel=document.getElementById('notifPanelBody');
     if(!badge||!panel)return;
-    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertAcc','homeAlertas','homeAlertCartoes'];
+    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertAcc','homeAlertCom','homeAlertas','homeAlertCartoes'];
     var reg=window.__notifReg||{};
     var itens=ordem.map(function(id){return reg[id];}).filter(Boolean);
     if(!itens.length){
@@ -18269,7 +19322,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.renderNotifBell=renderNotifBell;
 
-  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
@@ -19042,7 +20095,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Descobre o campo de busca do painel que estiver aberto no momento (o primeiro da lista que
   // bater tem prioridade, caso mais de um overlay esteja aberto por algum motivo).
   function focoBuscaAtiva_(){
-    var mapa=[['locOverlay','locSearchInput'],['honOverlay','honBusca'],['contasOverlay','cpBusca'],['acordosOverlay','accBusca']];
+    var mapa=[['locOverlay','locSearchInput'],['honOverlay','honBusca'],['contasOverlay','cpBusca'],['acordosOverlay','accBusca'],['comOverlay','comBusca']];
     for(var i=0;i<mapa.length;i++){
       var ov=document.getElementById(mapa[i][0]);
       if(ov&&ov.classList.contains('open'))return mapa[i][1];
@@ -19074,6 +20127,8 @@ window.cpRenderFixas=cpRenderFixas;
   // qualquer overlay já aberto ANTES de abrir o de Acordos — sem isto, navegar direto de outra
   // tela (ex.: Locações) pro menu "Acordos" empilhava as duas telas uma sobre a outra.
   window.openAcordosHome=function(){closeOverlays();try{abrirAcordos();}catch(e){}};
+  // Mesmo padrão dos wrappers acima, pro módulo "Comissões Imobiliárias".
+  window.openComissoesHome=function(){closeOverlays();try{abrirComissoes();}catch(e){}};
 
   // ---- Contas a Pagar: relocar para o overlay próprio (tirar de Honorários) ----
   function relocateContas(){var host=document.getElementById('contasPagar');var dest=document.getElementById('contasHostBody');if(host&&dest&&host.parentNode!==dest)dest.appendChild(host);}
@@ -19331,6 +20386,49 @@ window.cpRenderFixas=cpRenderFixas;
         setAlertBox('homeAlertAcc','💰 '+totalAlertas+' pendência(s) em Acordos','var(--red)',ha,'abrir Acordos','abrirAcordos()');
       }
     }catch(e){}
+    // Comissões Imobiliárias
+    try{
+      var comLista=window.comNegocios||[];
+      var comReceber=0,comRepassar=0,comAtrasados=0;
+      function comParseDataBRhome(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+      var comHojeMsHome=new Date().setHours(0,0,0,0);
+      var comAtrasadosRec=[],comAtrasadosPag=[];
+      comLista.forEach(function(n){
+        var statusRec=n['Status Recebimento']||'Pendente';
+        var statusPag=n['Status Pagamento Corretor']||'Pendente';
+        if(statusRec!=='Recebido')comReceber+=nbr(n['Valor Comissao']);
+        if(statusRec==='Recebido'&&statusPag!=='Recebido')comRepassar+=nbr(n['Valor Repasse Corretor']);
+        var recAtrasado=statusRec==='Atrasado'||(statusRec==='Pendente'&&(function(){var d=comParseDataBRhome(n['Data Prevista Recebimento']);return d&&d<comHojeMsHome;})());
+        var pagAtrasado=statusPag==='Atrasado'||(statusPag==='Pendente'&&(function(){var d=comParseDataBRhome(n['Data Prevista Pagamento Corretor']);return d&&d<comHojeMsHome;})());
+        if(recAtrasado)comAtrasadosRec.push(n);
+        if(pagAtrasado)comAtrasadosPag.push(n);
+      });
+      comAtrasados=comAtrasadosRec.length+comAtrasadosPag.length;
+      document.getElementById('hc-com-receber').textContent=BRLf(comReceber);
+      document.getElementById('hc-com-repassar').textContent=BRLf(comRepassar);
+      document.getElementById('hc-com-atrasados').textContent=comAtrasados;
+      renderSpark('spark-com-receber','com-receber',comReceber,'var(--green)');
+      renderSpark('spark-com-repassar','com-repassar',comRepassar,'var(--blue)');
+      renderSpark('spark-com-atrasados','com-atrasados',comAtrasados,'var(--red)');
+      setCritActive('hc-com-atrasados',comAtrasados>0);
+      if(!comAtrasadosRec.length&&!comAtrasadosPag.length){setAlertBox('homeAlertCom',null);}
+      else{
+        var hCom='';
+        if(comAtrasadosRec.length){
+          hCom+='<div class="ha-tit venc">🤝 '+comAtrasadosRec.length+' comissão(ões) de negócio atrasada(s)</div>'
+            +comAtrasadosRec.slice(0,8).map(function(n){
+              return '<div class="ha-item"><b>'+E(n['Cliente Proprietario']||'-')+'</b> — '+BRLf(nbr(n['Valor Comissao']))+' — '+E(n['Endereco Imovel']||'-')+'</div>';
+            }).join('');
+        }
+        if(comAtrasadosPag.length){
+          hCom+='<div class="ha-tit venc">🧑‍💼 '+comAtrasadosPag.length+' repasse(s) a corretor atrasado(s)</div>'
+            +comAtrasadosPag.slice(0,8).map(function(n){
+              return '<div class="ha-item"><b>'+E(n['Corretor']||'-')+'</b> — '+BRLf(nbr(n['Valor Repasse Corretor']))+' — '+E(n['Endereco Imovel']||'-')+'</div>';
+            }).join('');
+        }
+        setAlertBox('homeAlertCom','🤝 '+comAtrasados+' pendência(s) em Comissões Imobiliárias','var(--red)',hCom,'abrir Comissões Imobiliárias','openComissoesHome()');
+      }
+    }catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
     try{
       var ap=(typeof allProcessos!=='undefined'&&allProcessos)?allProcessos:(window.allProcessos||[]);
@@ -19466,7 +20564,7 @@ window.cpRenderFixas=cpRenderFixas;
   // total geral. Não inventa nenhuma regra nova de "o que é atraso": segue o que o resto do
   // sistema já considera atrasado/pendente em cada módulo.
   function painelInadimplenciaColetar_(){
-    var out={locacoes:[],honorarios:[],honorariosRepasse:[],acordos:[],acordosRepasse:[]};
+    var out={locacoes:[],honorarios:[],honorariosRepasse:[],acordos:[],acordosRepasse:[],comissoes:[],comissoesRepasse:[]};
 
     // Locações — reaproveita window.locAvisos() (mesma fonte do card da tela inicial)
     try{
@@ -19533,6 +20631,31 @@ window.cpRenderFixas=cpRenderFixas;
       });
     }catch(e){}
 
+    // Comissões Imobiliárias — mesma lógica de flip usada em comRender (Pendente + data prevista
+    // já passada = Atrasado), tanto do lado do recebimento quanto do repasse ao corretor.
+    try{
+      var hojeMsCom=new Date().setHours(0,0,0,0);
+      function comParseDataBRpainel(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
+      var comAtrasadosRecPainel=(window.comNegocios||[]).filter(function(n){
+        if((n['Status Recebimento']||'Pendente')==='Recebido')return false;
+        if(n['Status Recebimento']==='Atrasado')return true;
+        var d=comParseDataBRpainel(n['Data Prevista Recebimento']);
+        return d&&d<hojeMsCom;
+      });
+      out.comissoes=comAtrasadosRecPainel.map(function(n){
+        return {nome:n['Cliente Proprietario']||'-',valor:nbr(n['Valor Comissao']),ref:n['Endereco Imovel']||'-'};
+      });
+      var comAtrasadosPagPainel=(window.comNegocios||[]).filter(function(n){
+        if((n['Status Pagamento Corretor']||'Pendente')==='Recebido')return false;
+        if(n['Status Pagamento Corretor']==='Atrasado')return true;
+        var d=comParseDataBRpainel(n['Data Prevista Pagamento Corretor']);
+        return d&&d<hojeMsCom;
+      });
+      out.comissoesRepasse=comAtrasadosPagPainel.map(function(n){
+        return {nome:n['Corretor']||'-',valor:nbr(n['Valor Repasse Corretor']),ref:n['Endereco Imovel']||'-'};
+      });
+    }catch(e){}
+
     return out;
   }
   window.painelInadimplenciaColetar_=painelInadimplenciaColetar_;
@@ -19555,10 +20678,10 @@ window.cpRenderFixas=cpRenderFixas;
     var el=document.getElementById('painelInadimplenciaCorpo');
     if(!el)return;
     var d=painelInadimplenciaColetar_();
-    var totalGeral=[].concat(d.locacoes,d.honorarios,d.honorariosRepasse,d.acordos,d.acordosRepasse).reduce(function(a,i){return a+(i.valor||0);},0);
-    var qtdGeral=d.locacoes.length+d.honorarios.length+d.honorariosRepasse.length+d.acordos.length+d.acordosRepasse.length;
+    var totalGeral=[].concat(d.locacoes,d.honorarios,d.honorariosRepasse,d.acordos,d.acordosRepasse,d.comissoes,d.comissoesRepasse).reduce(function(a,i){return a+(i.valor||0);},0);
+    var qtdGeral=d.locacoes.length+d.honorarios.length+d.honorariosRepasse.length+d.acordos.length+d.acordosRepasse.length+d.comissoes.length+d.comissoesRepasse.length;
     var topo='<div style="background:var(--surface2);border-radius:10px;padding:14px 18px;margin-bottom:18px;text-align:center">'
-      +'<div style="font-size:12px;color:var(--muted)">Total em aberto (aluguéis, honorários e acordos em atraso/pendentes)</div>'
+      +'<div style="font-size:12px;color:var(--muted)">Total em aberto (aluguéis, honorários, acordos e comissões imobiliárias em atraso/pendentes)</div>'
       +'<div style="font-size:26px;font-weight:700;color:var(--red)">'+BRLf(totalGeral)+'</div>'
       +'<div style="font-size:12px;color:var(--muted)">'+qtdGeral+' item(ns) no total</div>'
       +'</div>';
@@ -19567,7 +20690,9 @@ window.cpRenderFixas=cpRenderFixas;
       +painelInadimplenciaSecao_('💵 Honorários a vencer/atrasados','var(--orange)',d.honorarios,'abrir Honorários','openHonorariosHome()')
       +painelInadimplenciaSecao_('🤝 Repasses a parceiro pendentes','var(--purple)',d.honorariosRepasse,'abrir Honorários','openHonorariosHome()')
       +painelInadimplenciaSecao_('⚖️ Parcelas de acordo atrasadas','var(--red)',d.acordos,'abrir Acordos','abrirAcordos()')
-      +painelInadimplenciaSecao_('👤 Repasses ao cliente (acordos) atrasados','var(--purple)',d.acordosRepasse,'abrir Acordos','abrirAcordos()');
+      +painelInadimplenciaSecao_('👤 Repasses ao cliente (acordos) atrasados','var(--purple)',d.acordosRepasse,'abrir Acordos','abrirAcordos()')
+      +painelInadimplenciaSecao_('🏘️ Comissões de negócios atrasadas','var(--red)',d.comissoes,'abrir Comissões Imobiliárias','openComissoesHome()')
+      +painelInadimplenciaSecao_('🧑‍💼 Repasses a corretores atrasados','var(--purple)',d.comissoesRepasse,'abrir Comissões Imobiliárias','openComissoesHome()');
     if(!qtdGeral) corpo='<div style="text-align:center;color:var(--muted);padding:24px">Nada em atraso ou pendente no momento. 🎉</div>';
     el.innerHTML=topo+corpo;
   };
@@ -20000,7 +21125,7 @@ window.cpRenderFixas=cpRenderFixas;
   function voiceGetSR(){ return window.SpeechRecognition||window.webkitSpeechRecognition||null; }
 
   function voiceCloseAllOverlays(){
-    ['honOverlay','locOverlay','contasOverlay','homeOverlay','acordosOverlay'].forEach(function(id){
+    ['honOverlay','locOverlay','contasOverlay','homeOverlay','acordosOverlay','comOverlay'].forEach(function(id){
       var e=document.getElementById(id); if(e)e.classList.remove('open');
     });
   }
@@ -20018,6 +21143,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['honorarios'],label:'Honorários',run:function(){voiceCloseAllOverlays();if(typeof abrirHonorarios==='function')abrirHonorarios();}},
     {kw:['locacoes','locacao','alugueis','aluguel'],label:'Locações',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
     {kw:['acordos','acordo'],label:'Acordos',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
+    {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
     {kw:['processos','processo'],label:'Processos',run:function(){voiceCloseAllOverlays();}},
     {kw:['inicio','pagina inicial','tela inicial','dashboard','home'],label:'Início',run:function(){voiceCloseAllOverlays();if(typeof window.goHome==='function')window.goHome();}},
     {kw:['manual','ajuda','como usar'],label:'Manual',run:function(){if(typeof window.abrirManual==='function')window.abrirManual();}},
@@ -20222,7 +21348,7 @@ window.cpRenderFixas=cpRenderFixas;
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
-    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();}}catch(e){}},800);
+    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();}}catch(e){}},800);
     // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
     setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
