@@ -4314,7 +4314,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
     +'<div class="loc-cfield"><label>Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico','Negociação de Locação','Acompanhamento de Locação','Outro'].map(function(t){return '<option'+(d['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
+    +['Atendimento Jurídico','Negociação de Locação','Acompanhamento de Locação','Cobrança de Acordo','Outro'].map(function(t){return '<option'+(d['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
     +'</select></div>'
     +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="rasc-status">'
     +['Em andamento','Convertido','Descartado'].map(function(s){return '<option'+(d['Status']===s?' selected':(!d['Status']&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
@@ -7440,12 +7440,17 @@ window.accPreencherDoProcesso = function () {
   if (!p) return;
   document.getElementById('ac-cliente').value = p.nome || '';
   document.getElementById('ac-parteContraria').value = parteContrariaTexto(p) || '';
+  // Se a parte Réu estiver cadastrada em "Partes do processo" (não só no campo texto legado
+  // "outra"), já vem com telefone — evita ter que redigitar o contato do devedor.
+  var reus = (typeof reusDoProcesso === 'function') ? reusDoProcesso(p) : [];
+  var telEl = document.getElementById('ac-telefoneParte');
+  if (telEl) telEl.value = (reus[0] && reus[0].telefone) || '';
 };
 
 window.accNovoContrato = function () {
   document.getElementById('ac-id').value = '';
   document.getElementById('ac-processo').value = '';
-  ['ac-cliente', 'ac-parteContraria', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-dataInicio', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-parceiroNome', 'ac-parceiroPct', 'ac-parceiroBanco', 'ac-parceiroAgencia', 'ac-parceiroConta', 'ac-parceiroPix', 'ac-obs'].forEach(function (id) {
+  ['ac-cliente', 'ac-parteContraria', 'ac-telefoneParte', 'ac-valorTotal', 'ac-numParcelas', 'ac-percentual', 'ac-dataInicio', 'ac-diaVenc', 'ac-diaRep', 'ac-banco', 'ac-agencia', 'ac-conta', 'ac-pix', 'ac-parceiroNome', 'ac-parceiroPct', 'ac-parceiroBanco', 'ac-parceiroAgencia', 'ac-parceiroConta', 'ac-parceiroPix', 'ac-obs'].forEach(function (id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('ac-frequencia').value = 'mensal';
@@ -7464,6 +7469,7 @@ window.accEditarContrato = function (id) {
   sel.value = p ? p._uid : '';
   document.getElementById('ac-cliente').value = c['Cliente'] || '';
   document.getElementById('ac-parteContraria').value = c['Parte Contraria'] || '';
+  document.getElementById('ac-telefoneParte').value = c['Telefone Parte Contraria'] || '';
   document.getElementById('ac-ativo').value = c['Ativo'] || 'Sim';
   document.getElementById('ac-valorTotal').value = accNum(c['Valor Total Acordo']) || '';
   document.getElementById('ac-numParcelas').value = c['Numero Parcelas'] || '';
@@ -7509,6 +7515,7 @@ window.accSalvarContrato = function () {
   var campos = {
     'Nr Processo': p ? (p.processo || '') : '',
     'Cliente': cliente, 'Parte Contraria': parteContraria,
+    'Telefone Parte Contraria': document.getElementById('ac-telefoneParte').value.trim(),
     'Valor Total Acordo': valorTotal, 'Numero Parcelas': numParcelas, 'Percentual Honorarios': percentual,
     'Data Inicio': accDtBRfromInput(document.getElementById('ac-dataInicio').value), 'Frequencia': document.getElementById('ac-frequencia').value,
     'Dia Vencimento': document.getElementById('ac-diaVenc').value, 'Dia Repasse': document.getElementById('ac-diaRep').value,
@@ -7842,7 +7849,9 @@ window.accRender = function () {
           ? '<span class="loc-status-badge ' + classeRep + '" title="Segue o Status Recebimento automaticamente. Só pode ser alterado depois que a parcela for marcada como Recebida.">' + statusRep + ' <span class="lock">🔒</span></span>'
           : '<select class="loc-row-select ' + classeRep + '" onchange="accSetStatusRepasse(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Repassado', 'Atrasado'].map(function (s) { return '<option' + (s === statusRep ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>'
         ) + '</td>'
-      + '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
+      + '<td style="text-align:center;white-space:nowrap">'
+      + (statusRec === 'Atrasado' ? '<button class="loc-send-btn" style="color:var(--red);border-color:var(--red)" title="Enviar aviso de cobrança à parte contrária (devedor) e gerar follow-up" onclick="accAvisoAbrir(\'' + accE(l['ID']) + '\')">📢</button> ' : '')
+      + '<button class="loc-send-btn" title="Ver/imprimir informe de repasse ao cliente" onclick="accAbrirRecibo(\'' + accE(l['ID']) + '\')">🖨️</button>'
       + (c['Advogado Parceiro'] ? ' <button class="loc-send-btn" title="Ver/imprimir informe ao advogado parceiro" onclick="accAbrirReciboParceiro(\'' + accE(l['ID']) + '\')">👤</button>' : '')
       + '</td>'
       + '</tr>';
@@ -8050,6 +8059,94 @@ window.accExportCSV = function () {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a'); a.href = url; a.download = 'acordos-' + mes.replace('/', '-') + '.csv'; a.click();
   URL.revokeObjectURL(url);
+};
+
+// ---------- AVISO DE COBRANÇA (parte contrária/devedor) + GERAR FOLLOW-UP — parcela atrasada ----------
+var _accAvisoLancamentoId = null;
+window.accAvisoAbrir = function (lancamentoId) {
+  var l = (window.accLancamentos || []).find(function (x) { return String(x['ID']) === String(lancamentoId); });
+  if (!l) { alert('Lançamento não encontrado.'); return; }
+  _accAvisoLancamentoId = lancamentoId;
+  accAvisoRenderCard_();
+  document.getElementById('modalAvisoAcc').classList.add('open');
+};
+function accAvisoRenderCard_() {
+  var l = (window.accLancamentos || []).find(function (x) { return String(x['ID']) === String(_accAvisoLancamentoId); });
+  var host = document.getElementById('accAvisoCard');
+  if (!l || !host) return;
+  var c = (window.accContratos || []).find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+  var parte = c['Parte Contraria'] || 'Parte Contrária';
+  var paragrafos = [
+    'Prezado(a) ' + parte + ',',
+    'Verificamos que a parcela do acordo referente ao processo nº ' + (c['Nr Processo'] || '(sem número)') + ', com vencimento em ' + (l['Data Prevista'] || '—') + ', no valor de ' + accBRL(l['Valor Previsto']) + ', ainda não consta como paga em nossos registros.',
+    'Solicitamos a regularização o quanto antes, sob pena de adoção das medidas cabíveis para a cobrança do valor em aberto.',
+    'Caso o pagamento já tenha sido efetuado, favor desconsiderar este aviso e nos encaminhar o comprovante para conferência.'
+  ];
+  var corpoHtml = paragrafos.map(function (p) { return '<div style="margin-bottom:8px">' + accE(p) + '</div>'; }).join('');
+  host.innerHTML =
+    '<div class="parc-header">'
+    + '<div><div class="parc-header-title">Aviso de Cobrança — Parcela de Acordo</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
+    + '</div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-section-label">Processo</div><div class="parc-processo-nome">' + accE(c['Cliente'] || '—') + '</div><div class="parc-processo-num">Processo nº ' + accE(c['Nr Processo'] || '(sem número)') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Parte Contrária (devedor)</div><div class="parc-box">' + accE(parte) + (c['Telefone Parte Contraria'] ? '<br><span style="font-size:11.5px;color:var(--muted)">' + accE(c['Telefone Parte Contraria']) + '</span>' : '') + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Parcela vencida</div><div class="parc-box">Venc. ' + accE(l['Data Prevista'] || '—') + ' — ' + accBRL(l['Valor Previsto']) + '</div></div>'
+    + '<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="accAvisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text">' + corpoHtml + '</div></div>'
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+}
+function accAvisoMontarTexto_() {
+  var box = document.getElementById('accAvisoMensagemBox');
+  if (!box) return '';
+  var corpo = box.innerText.trim();
+  var txt = '*AVISO DE COBRANÇA — PARCELA DE ACORDO*\n';
+  txt += 'Escritório Adenilson Borges — OAB/SP 335.600\n\n';
+  txt += corpo;
+  txt += window.AVISO_GOLPE_TEXTO;
+  txt += '\n\nDr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
+  return txt;
+}
+window.accAvisoCopiarTexto = function () {
+  var texto = accAvisoMontarTexto_();
+  if (!texto) { alert('Abra o aviso de uma parcela primeiro.'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(function () { alert('Texto copiado!'); }).catch(function () { alert('Não consegui copiar. Selecione o texto na tela.'); });
+  } else { alert('Selecione o texto na tela e copie manualmente.'); }
+};
+window.accAvisoEnviarWhats = function () {
+  var texto = accAvisoMontarTexto_();
+  if (!texto) { alert('Abra o aviso de uma parcela primeiro.'); return; }
+  var l = (window.accLancamentos || []).find(function (x) { return String(x['ID']) === String(_accAvisoLancamentoId); });
+  var c = l ? ((window.accContratos || []).find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {}) : {};
+  var tel = String(c['Telefone Parte Contraria'] || '').replace(/\D/g, '');
+  var link = tel ? ('https://wa.me/55' + tel + '?text=' + encodeURIComponent(texto)) : ('https://wa.me/?text=' + encodeURIComponent(texto));
+  window.open(link, '_blank');
+};
+window.accAvisoEnviarEmail = function () {
+  var texto = accAvisoMontarTexto_();
+  if (!texto) { alert('Abra o aviso de uma parcela primeiro.'); return; }
+  var l = (window.accLancamentos || []).find(function (x) { return String(x['ID']) === String(_accAvisoLancamentoId); });
+  var c = l ? ((window.accContratos || []).find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {}) : {};
+  abrirEmailFlex('Aviso de Cobrança — Acordo' + (c['Nr Processo'] ? ' — ' + c['Nr Processo'] : ''), texto);
+};
+function accConstruirSeedFollowup_(lancamentoId) {
+  var l = (window.accLancamentos || []).find(function (x) { return String(x['ID']) === String(lancamentoId); }) || {};
+  var c = (window.accContratos || []).find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+  var parte = c['Parte Contraria'] || 'Parte Contrária';
+  return {
+    Tipo: 'Cobrança de Acordo',
+    Titulo: 'Cobrança — ' + parte + (c['Nr Processo'] ? ' (Proc. ' + c['Nr Processo'] + ')' : ''),
+    Nome: parte,
+    Telefone: c['Telefone Parte Contraria'] || '',
+    Valor: accNum(l['Valor Previsto']),
+    Notas: 'Parcela de acordo vencida em ' + (l['Data Prevista'] || '—') + ', valor ' + accBRL(l['Valor Previsto']) + '. Cliente do acordo: ' + (c['Cliente'] || '—') + '.',
+    Status: 'Em andamento'
+  };
+}
+window.accAvisoGerarFollowup = function () {
+  if (!_accAvisoLancamentoId) return;
+  var seed = accConstruirSeedFollowup_(_accAvisoLancamentoId);
+  if (typeof window.rascunhosAbrirComSeed === 'function') window.rascunhosAbrirComSeed(seed);
 };
 
 // --- MÓDULO HONORÁRIOS ---------------------------------------
@@ -11880,6 +11977,7 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="loc-cfield half"><label>Cliente *</label><input class="loc-cinput" id="ac-cliente" placeholder="Nome do cliente"></div>
         <div class="loc-cfield half"><label>Parte Contrária *</label><input class="loc-cinput" id="ac-parteContraria" placeholder="Nome de quem paga o acordo"></div>
+        <div class="loc-cfield half"><label>Telefone da Parte Contrária <span style="font-weight:400;color:var(--muted)">— pra enviar aviso de cobrança quando atrasar</span></label><input class="loc-cinput" id="ac-telefoneParte" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="ac-ativo"><option>Sim</option><option>Não</option></select></div>
         <div class="loc-cfield"><label>Valor Total do Acordo (R$) *</label><input class="loc-cinput" id="ac-valorTotal" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Número de Parcelas *</label><input class="loc-cinput" id="ac-numParcelas" type="number" min="1" placeholder="Ex.: 12"></div>
@@ -11937,6 +12035,23 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="btn-parc-img" onclick="accReciboEnviarImagem()">📸 Foto</button>
         <button class="btn-recibo-print" style="flex:none" onclick="accReciboImprimir()">🖨 Imprimir/PDF</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AVISO DE COBRANÇA — ACORDO (parcela vencida da parte contrária) -->
+<div class="modal-repasse-overlay" id="modalAvisoAcc">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📢 Aviso de Cobrança — Acordo</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalAvisoAcc').classList.remove('open')">✕</button>
+    </div>
+    <div id="accAvisoCard" class="entr-no-print" style="padding:20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="accAvisoEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="accAvisoEnviarEmail()">✉️ E-mail</button>
+      <button class="loc-btn" onclick="accAvisoCopiarTexto()">📋 Copiar texto</button>
+      <button class="loc-btn" style="border-color:var(--accent2);color:var(--accent2)" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar o retorno" onclick="accAvisoGerarFollowup()">🗂️ Gerar follow-up</button>
     </div>
   </div>
 </div>
