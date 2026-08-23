@@ -8346,12 +8346,58 @@ function comRenderCorretores() {
       + '<td>' + comE(c['Nome']) + '</td>'
       + '<td>' + comE(c['CRECI']) + '</td>'
       + '<td>' + comE(c['Telefone']) + '</td>'
-      + '<td>' + comE(c['Pix']) + '</td>'
+      + '<td>' + comE(c['Pix']) + (c['Pix'] ? ' <button type="button" title="Ver/copiar a chave PIX" onclick="event.stopPropagation();comVerPix(\'' + comE(c['ID']) + '\')" style="background:none;border:none;cursor:pointer;padding:0 0 0 3px;font-size:12px;vertical-align:middle;line-height:1">🔑</button>' : '') + '</td>'
       + '<td style="text-align:center">' + comE(c['Ativo']) + '</td>'
       + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="comCorretorEditar(\'' + comE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comCorretorExcluir(\'' + comE(c['ID']) + '\')">🗑️</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Nenhum corretor cadastrado.</td></tr>';
 }
+
+// ---------- VER/COPIAR CHAVE PIX DO CORRETOR (mesmo padrão de cpVerPix/cpCopiarPix_, em Contas a
+// Pagar, só que lendo de window.comCorretores em vez de allContas) ----------
+function comVerPixEnsureModal_() {
+  if (document.getElementById('comPixOverlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'comPixOverlay';
+  ov.style.cssText = 'display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:380px;max-width:96vw;padding:20px 22px;margin:auto">'
+    + '<div style="font-weight:700;font-size:15px;margin-bottom:2px">🔑 Chave PIX</div>'
+    + '<div style="color:var(--muted);font-size:12px;margin-bottom:12px" id="comPixDescTxt"></div>'
+    + '<div id="comPixTxt" style="font-family:\'DM Mono\',monospace;font-size:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;word-break:break-all;margin-bottom:6px"></div>'
+    + '<div id="comPixCopiado" style="color:var(--green);font-size:12px;opacity:0;transition:opacity .3s;margin-bottom:4px">✓ Copiado!</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">'
+    + '<button class="loc-btn" onclick="document.getElementById(\'comPixOverlay\').style.display=\'none\'">Fechar</button>'
+    + '<button class="loc-btn primary" id="comPixCopiarBtn" onclick="comCopiarPix_()">📋 Copiar</button>'
+    + '</div></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
+  document.body.appendChild(ov);
+}
+window.comVerPix = function (id) {
+  var c = (window.comCorretores || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (!c) return;
+  comVerPixEnsureModal_();
+  document.getElementById('comPixDescTxt').textContent = c['Nome'] || '';
+  var chave = String(c['Pix'] || '').trim();
+  var txtEl = document.getElementById('comPixTxt');
+  var copiarBtn = document.getElementById('comPixCopiarBtn');
+  if (chave) {
+    txtEl.textContent = chave;
+    txtEl.dataset.copiavel = chave;
+    copiarBtn.style.display = '';
+  } else {
+    txtEl.innerHTML = '<span style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:var(--muted)">Nenhuma chave PIX cadastrada. Edite o corretor (✎ editar) e preencha "Chave Pix".</span>';
+    txtEl.dataset.copiavel = '';
+    copiarBtn.style.display = 'none';
+  }
+  document.getElementById('comPixCopiado').style.opacity = '0';
+  document.getElementById('comPixOverlay').style.display = 'flex';
+};
+window.comCopiarPix_ = function () {
+  var txt = (document.getElementById('comPixTxt').dataset.copiavel || '').trim(); if (!txt) return;
+  var avisar = function () { var m = document.getElementById('comPixCopiado'); m.style.opacity = '1'; setTimeout(function () { m.style.opacity = '0'; }, 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(avisar).catch(function () {}); }
+  else { try { var ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); avisar(); } catch (e) {} }
+};
 
 function comPreencherSelectCorretor() {
   var sel = document.getElementById('cm-corretor');
@@ -8395,15 +8441,13 @@ window.comNovoNegocio = function () {
   document.getElementById('cm-id').value = '';
   ['cm-dataFechamento', 'cm-cliente', 'cm-cpfCliente', 'cm-telefoneCliente', 'cm-emailCliente', 'cm-endereco', 'cm-descricao',
     'cm-valorNegocio', 'cm-percentualComissao', 'cm-valorComissaoPreview', 'cm-percentualRepasse', 'cm-valorRepassePreview',
-    'cm-dataPrevRecebimento', 'cm-dataRecebimento', 'cm-dataPrevPagamento', 'cm-dataPagamento', 'cm-dataAutorizacao', 'cm-validadeAutorizacao', 'cm-obs'
+    'cm-dataPrevRecebimento', 'cm-dataRecebimento', 'cm-dataPrevPagamento', 'cm-dataPagamento', 'cm-obs'
   ].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('cm-tipo').value = 'Venda';
   document.getElementById('cm-statusNegocio').value = 'Em andamento';
   document.getElementById('cm-corretor').value = '';
   document.getElementById('cm-statusRecebimento').value = 'Pendente';
   document.getElementById('cm-statusPagamento').value = 'Pendente';
-  document.getElementById('cm-autorizaPlaca').value = 'Sim';
-  document.getElementById('cm-autorizaAnunciar').value = 'Sim';
   comAutoPercentual();
   document.getElementById('comFormTitle').textContent = 'Novo negócio';
   document.getElementById('cm-msg').textContent = '';
@@ -8433,10 +8477,6 @@ window.comEditarNegocio = function (id) {
   document.getElementById('cm-dataPrevPagamento').value = comIsoFromBR(n['Data Prevista Pagamento Corretor']);
   document.getElementById('cm-dataPagamento').value = comIsoFromBR(n['Data Pagamento Corretor']);
   document.getElementById('cm-statusPagamento').value = n['Status Pagamento Corretor'] || 'Pendente';
-  document.getElementById('cm-autorizaPlaca').value = n['Autoriza Placa'] || 'Sim';
-  document.getElementById('cm-autorizaAnunciar').value = n['Autoriza Anunciar'] || 'Sim';
-  document.getElementById('cm-dataAutorizacao').value = comIsoFromBR(n['Data Autorizacao']);
-  document.getElementById('cm-validadeAutorizacao').value = comIsoFromBR(n['Validade Autorizacao']);
   document.getElementById('cm-obs').value = n['Observacoes'] || '';
   var lbl = document.getElementById('cm-lblValorNegocio');
   if (lbl) lbl.textContent = (n['Tipo'] === 'Locação') ? 'Valor do 1º Aluguel (R$) *' : 'Valor do Imóvel (R$) *';
@@ -8479,10 +8519,6 @@ window.comSalvarNegocio = function () {
     'Data Prevista Pagamento Corretor': comDtBRfromInput(document.getElementById('cm-dataPrevPagamento').value),
     'Data Pagamento Corretor': comDtBRfromInput(document.getElementById('cm-dataPagamento').value),
     'Status Pagamento Corretor': document.getElementById('cm-statusPagamento').value,
-    'Autoriza Placa': document.getElementById('cm-autorizaPlaca').value,
-    'Autoriza Anunciar': document.getElementById('cm-autorizaAnunciar').value,
-    'Data Autorizacao': comDtBRfromInput(document.getElementById('cm-dataAutorizacao').value),
-    'Validade Autorizacao': comDtBRfromInput(document.getElementById('cm-validadeAutorizacao').value),
     'Observacoes': document.getElementById('cm-obs').value
   };
   msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
@@ -8655,12 +8691,13 @@ window.comRender = function () {
     var classeRec = statusRec === 'Recebido' ? 'st-pago' : statusRec === 'Atrasado' ? 'st-atras' : 'st-pend';
     var classePag = statusPag === 'Recebido' ? 'st-pago' : statusPag === 'Atrasado' ? 'st-atras' : 'st-pend';
     var tipo = n['Tipo'] || 'Venda';
-    var temVenda = tipo === 'Venda' || tipo === 'Venda e Locação';
-    var docBtn = '';
-    if (tipo === 'Venda') docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Venda" onclick="comAbrirDoc(\'autorizacao_venda\',\'' + comE(n['ID']) + '\')">📄 Venda</button> ';
-    else if (tipo === 'Locação') docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Locação" onclick="comAbrirDoc(\'autorizacao_locacao\',\'' + comE(n['ID']) + '\')">📄 Locação</button> ';
-    else docBtn = '<button class="loc-send-btn" title="Gerar Autorização de Venda e Locação" onclick="comAbrirDoc(\'autorizacao_venda_locacao\',\'' + comE(n['ID']) + '\')">📄 Venda/Locação</button> ';
-    var propBtn = temVenda ? '<button class="loc-send-btn" title="Proposta de compra" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝 Proposta</button> ' : '';
+    // Botão de proposta (cadastro/histórico — o mesmo modal/tabela COM_PROPOSTAS serve tanto pra
+    // proposta de compra (Venda) quanto de locação: o rótulo do documento gerado dentro do modal
+    // é que muda conforme o Tipo do negócio, ver comPropostaAbrir/comAbrirDoc). Os botões de
+    // documento de autorização (venda/locação) foram retirados daqui — dependem de um cadastro
+    // formal de imóvel/proprietário, que só existirá no módulo de cadastro de imóveis (futuro).
+    var propTituloBtn = tipo === 'Locação' ? 'Proposta de locação' : (tipo === 'Venda e Locação' ? 'Propostas (compra/locação)' : 'Proposta de compra');
+    var propBtn = '<button class="loc-send-btn" title="' + propTituloBtn + '" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝 Proposta</button> ';
     return '<tr>'
       + '<td>' + comE(n['Cliente Proprietario']) + '</td>'
       + '<td>' + comE(n['Endereco Imovel']) + '</td>'
@@ -8673,7 +8710,7 @@ window.comRender = function () {
       + '<td><select class="loc-row-select ' + classePag + '" onchange="comSetStatusPagamento(\'' + comE(n['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusPag ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
       + '<td style="text-align:center;white-space:nowrap">'
       + '<button class="loc-btn-edit" onclick="comEditarNegocio(\'' + comE(n['ID']) + '\')">✎</button> '
-      + docBtn + propBtn
+      + propBtn
       + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comExcluirNegocio(\'' + comE(n['ID']) + '\')">🗑️</button>'
       + '</td>'
       + '</tr>';
@@ -8684,12 +8721,21 @@ window.comRender = function () {
       : '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum negócio cadastrado. Clique em "🤝 Novo negócio" para começar.</td></tr>'));
 };
 
-// ---------- PROPOSTAS DE COMPRA ----------
+// ---------- PROPOSTAS (de compra, na Venda, ou de locação, na Locação) ----------
+// Reaproveita a MESMA tabela COM_PROPOSTAS/modal #modalComProposta pros dois casos — os campos já
+// são genéricos o bastante (valor/forma de pagamento/sinal/validade/condições). O que muda é só o
+// rótulo mostrado aqui e o tipo de documento gerado (comAbrirDoc), conforme o Tipo do negócio.
 window.comPropostaAbrir = function (negocioId) {
   var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); }) || {};
+  var tipo = n['Tipo'] || 'Venda';
+  var ehLocacao = tipo === 'Locação';
   document.getElementById('prop-negocioId').value = negocioId;
   document.getElementById('comPropostaNegocioInfo').innerHTML =
     '<strong>' + comE(n['Cliente Proprietario'] || '-') + '</strong> — ' + comE(n['Endereco Imovel'] || '-') + '<br><span style="color:var(--muted);font-size:12px">Valor do negócio: ' + comBRL(n['Valor Negocio']) + '</span>';
+  var tituloModal = document.querySelector('#modalComProposta .parceiro-toolbar-title');
+  if (tituloModal) tituloModal.textContent = ehLocacao ? '📝 Proposta de Locação' : (tipo === 'Venda e Locação' ? '📝 Proposta de Compra/Locação' : '📝 Proposta de Compra');
+  var lblValor = document.getElementById('prop-lblValor');
+  if (lblValor) lblValor.textContent = ehLocacao ? 'Valor do Aluguel Proposto (R$) *' : 'Valor da Proposta (R$) *';
   comPropostaRenderLista(negocioId);
   comPropostaLimpar();
   document.getElementById('modalComProposta').classList.add('open');
@@ -8698,14 +8744,21 @@ window.comPropostaAbrir = function (negocioId) {
 function comPropostaRenderLista(negocioId) {
   var el = document.getElementById('comPropostasLista');
   if (!el) return;
+  var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); }) || {};
+  var tipo = n['Tipo'] || 'Venda';
   var props = (window.comPropostas || []).filter(function (p) { return String(p['Negocio']) === String(negocioId); });
   if (!props.length) { el.innerHTML = '<div class="loc-note">Nenhuma proposta registrada ainda para este negócio.</div>'; return; }
   el.innerHTML = '<div class="loc-section-title" style="margin-top:0">Propostas já registradas</div>' + props.map(function (p) {
+    // Botão(ões) de gerar documento: conforme o Tipo do negócio — "Venda e Locação" mostra os dois,
+    // já que a mesma proposta cadastrada pode virar tanto um documento de compra quanto de locação.
+    var docBtns = '';
+    if (tipo === 'Venda' || tipo === 'Venda e Locação') docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Compra" onclick="comAbrirDoc(\'proposta_compra\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Compra</button> ';
+    if (tipo === 'Locação' || tipo === 'Venda e Locação') docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Locação" onclick="comAbrirDoc(\'proposta_locacao\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Locação</button> ';
     return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
       + '<div><strong>' + comE(p['Nome Proponente']) + '</strong> — ' + comBRL(p['Valor Proposta']) + ' <span style="color:var(--muted);font-size:11px">(' + comE(p['Status'] || 'Em análise') + ')</span></div>'
       + '<div style="white-space:nowrap">'
       + '<button class="loc-btn-edit" onclick="comPropostaEditar(\'' + comE(p['ID']) + '\')">✎</button> '
-      + '<button class="loc-btn-edit" title="Gerar documento de Proposta de Compra" onclick="comAbrirDoc(\'proposta_compra\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄</button> '
+      + docBtns
       + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="comPropostaExcluir(\'' + comE(p['ID']) + '\',\'' + comE(negocioId) + '\')">🗑️</button>'
       + '</div></div>';
   }).join('');
@@ -8806,21 +8859,20 @@ window.comPropostaExcluir = function (id, negocioId) {
 };
 
 // ---------- GERAÇÃO DE DOCUMENTOS (reaproveita #modalDoc / imprimirDoc(), mesmo padrão de abrirDoc) ----------
-// tipo: 'autorizacao_venda' | 'autorizacao_locacao' | 'autorizacao_venda_locacao' | 'proposta_compra'
+// tipo: 'proposta_compra' | 'proposta_locacao'
+// (Os documentos de autorização de venda/locação foram retirados: dependem de um cadastro formal
+// de imóvel/proprietário, que só existirá no módulo de cadastro de imóveis, ainda futuro.)
 window.comAbrirDoc = function (tipo, negocioId, propostaId) {
   var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); });
   if (!n) return;
   var titulo = '', html = '';
-  if (tipo === 'autorizacao_venda') { titulo = 'Autorização de Venda'; html = comGerarAutorizacao(n, 'venda'); }
-  else if (tipo === 'autorizacao_locacao') { titulo = 'Autorização de Locação'; html = comGerarAutorizacao(n, 'locacao'); }
-  else if (tipo === 'autorizacao_venda_locacao') { titulo = 'Autorização de Venda e Locação'; html = comGerarAutorizacao(n, 'venda_locacao'); }
-  else if (tipo === 'proposta_compra') {
-    titulo = 'Proposta de Compra';
+  if (tipo === 'proposta_compra' || tipo === 'proposta_locacao') {
+    titulo = tipo === 'proposta_locacao' ? 'Proposta de Locação' : 'Proposta de Compra';
     var prop = propostaId
       ? (window.comPropostas || []).find(function (x) { return String(x['ID']) === String(propostaId); })
       : (window.comPropostas || []).filter(function (x) { return String(x['Negocio']) === String(negocioId); }).sort(function (a, b) { return comNum(b['ID']) - comNum(a['ID']); })[0];
     if (!prop) { alert('Nenhuma proposta cadastrada para este negócio ainda. Cadastre uma proposta primeiro (📝 Proposta).'); return; }
-    html = comGerarPropostaCompra(n, prop);
+    html = tipo === 'proposta_locacao' ? comGerarPropostaLocacao_(n, prop) : comGerarPropostaCompra(n, prop);
   } else return;
 
   document.getElementById('docToolbarTitle').textContent = titulo;
@@ -8842,73 +8894,6 @@ function comQualificacaoCliente(n) {
   if (n['Telefone Cliente']) partes.push('telefone: ' + escHtml(n['Telefone Cliente']));
   if (n['Email Cliente']) partes.push('e-mail: ' + escHtml(n['Email Cliente']));
   return partes.join(', ');
-}
-
-function comGerarAutorizacao(n, modo) {
-  var adv = (typeof getAdvogadoInfo === 'function') ? getAdvogadoInfo() : {};
-  var advNome = adv.nome || 'Adenilson Borges da Silva';
-  var advOab = adv.oab || 'SP/335600';
-  var oabPartes = advOab.split('/');
-  var advOabUf = oabPartes.length === 2 ? oabPartes[0] : 'SP';
-  var advOabNum = oabPartes.length === 2 ? oabPartes[1] : advOab;
-  var pctComissao = comNum(n['Percentual Comissao']) || (n['Tipo'] === 'Locação' ? 100 : 6);
-  var placa = (n['Autoriza Placa'] || 'Sim');
-  var anunciar = (n['Autoriza Anunciar'] || 'Sim');
-  var validade = n['Validade Autorizacao'] ? escHtml(n['Validade Autorizacao']) : '90 (noventa) dias, prorrogável por igual período mediante acordo entre as partes';
-
-  var objetoTexto, tituloDoc, baseComissao, refLegal;
-  if (modo === 'venda') {
-    tituloDoc = 'Autorização de Venda de Imóvel';
-    objetoTexto = 'a intermediação para a <strong>VENDA</strong> do imóvel abaixo descrito';
-    baseComissao = 'sobre o valor efetivamente realizado na venda';
-    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária';
-  } else if (modo === 'locacao') {
-    tituloDoc = 'Autorização de Locação de Imóvel';
-    objetoTexto = 'a intermediação para a <strong>LOCAÇÃO</strong> do imóvel abaixo descrito';
-    baseComissao = 'correspondente ao primeiro aluguel ajustado no contrato de locação';
-    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária e, no que couber, a Lei do Inquilinato (Lei nº 8.245/91)';
-  } else {
-    tituloDoc = 'Autorização de Venda e Locação de Imóvel';
-    objetoTexto = 'a intermediação para a <strong>VENDA e/ou LOCAÇÃO</strong> do imóvel abaixo descrito, o que primeiro se realizar';
-    baseComissao = 'sobre o valor da venda ou correspondente ao primeiro aluguel, conforme o negócio que vier a se concretizar';
-    refLegal = 'conforme as normas do CRECI aplicáveis à intermediação imobiliária e, quando se tratar de locação, no que couber, a Lei do Inquilinato (Lei nº 8.245/91)';
-  }
-
-  return '<div class="doc-cabecalho">'
-    + '<div class="doc-titulo">' + tituloDoc + '</div>'
-    + '<div class="doc-subtitulo">Instrumento particular de autorização de intermediação imobiliária</div>'
-    + '</div>'
-
-    + '<p class="doc-texto"><strong>PROPRIETÁRIO(A)/AUTORIZANTE:</strong> ' + comQualificacaoCliente(n) + '.</p>'
-
-    + '<p class="doc-texto"><strong>IMOBILIÁRIA/AUTORIZADA:</strong> escritório de <strong>' + escHtml(advNome) + '</strong>, '
-    + 'advogado inscrito na OAB/' + escHtml(advOabUf) + ' sob o nr. ' + escHtml(advOabNum) + ', '
-    + 'com escritório na Rua Engenheiro Pegado, 945, Conjunto 1304, Carrão, São Paulo/SP, CEP 03430-003'
-    + (n['Corretor'] ? ', por intermédio do(a) corretor(a) responsável <strong>' + escHtml(n['Corretor']) + '</strong>' : '') + '.</p>'
-
-    + '<p class="doc-texto"><strong>DO IMÓVEL:</strong> imóvel situado em ' + escHtml(n['Endereco Imovel'] || '[endereço do imóvel]') + '.'
-    + (n['Descricao Imovel'] ? ' Descrição/características: ' + escHtml(n['Descricao Imovel']) + '.' : '') + '</p>'
-
-    + '<p class="doc-texto"><strong>DO OBJETO:</strong> Pelo presente instrumento, o(a) Proprietário(a)/Autorizante outorga à Imobiliária/Autorizada '
-    + objetoTexto + ', com exclusividade de intermediação enquanto vigorar a presente autorização, ' + refLegal + '.</p>'
-
-    + '<p class="doc-texto"><strong>DA COMISSÃO:</strong> Pelos serviços de intermediação, é devida à Imobiliária/Autorizada comissão de <strong>' + comE(pctComissao) + '% (' + comE(pctComissao) + ' por cento)</strong> '
-    + baseComissao + (comNum(n['Valor Negocio']) ? ', estimada em <strong>' + comBRL(n['Valor Comissao']) + '</strong> sobre o valor de referência de ' + comBRL(n['Valor Negocio']) : '') + '.</p>'
-
-    + '<p class="doc-texto"><strong>AUTORIZAÇÃO DE PLACA:</strong> O(A) Proprietário(a) '
-    + (String(placa).toLowerCase() === 'sim' ? '<strong>AUTORIZA</strong>' : '<strong>NÃO AUTORIZA</strong>') + ' a colocação de placa indicativa de venda/locação no imóvel.</p>'
-
-    + '<p class="doc-texto"><strong>AUTORIZAÇÃO DE ANÚNCIO/DIVULGAÇÃO:</strong> O(A) Proprietário(a) '
-    + (String(anunciar).toLowerCase() === 'sim' ? '<strong>AUTORIZA</strong>' : '<strong>NÃO AUTORIZA</strong>') + ' a divulgação/anúncio do imóvel pela Imobiliária/Autorizada, por quaisquer meios usuais de publicidade imobiliária (internet, portais, redes sociais e material impresso).</p>'
-
-    + '<p class="doc-texto"><strong>DA VIGÊNCIA:</strong> A presente autorização vigora pelo prazo de ' + validade + ', contado a partir de ' + (n['Data Autorizacao'] ? escHtml(n['Data Autorizacao']) : 'da data de assinatura') + ', podendo ser revogada por qualquer das partes mediante comunicação por escrito, resguardado o direito à comissão em negócios já concretizados ou em fase avançada de negociação por intermédio da Imobiliária/Autorizada durante a vigência.</p>'
-
-    + '<div class="doc-local-data">' + dataExtenso() + '</div>'
-
-    + '<div class="doc-assinaturas">'
-    + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Autorizante</small></div>'
-    + '<div class="doc-assinatura-linha">' + escHtml(n['Corretor'] || advNome) + '<br><small>Imobiliária/Autorizada' + (n['Corretor'] ? ' — Corretor(a) responsável' : '') + '</small></div>'
-    + '</div>';
 }
 
 function comGerarPropostaCompra(n, prop) {
@@ -8941,13 +8926,55 @@ function comGerarPropostaCompra(n, prop) {
     + '<p class="doc-texto"><strong>DAS CONDIÇÕES GERAIS:</strong> (i) A presente proposta está sujeita à aceitação expressa do(a) Proprietário(a), não gerando, por si só, qualquer obrigação de venda ou de compra até a assinatura do instrumento próprio (contrato particular de compra e venda ou escritura pública, conforme o caso); '
     + '(ii) salvo disposição em contrário entre as partes, as despesas cartorárias, de registro e o Imposto sobre Transmissão de Bens Imóveis (ITBI) correm por conta do(a) comprador(a); '
     + '(iii) a presente intermediação observa as normas do CRECI aplicáveis à corretagem imobiliária; '
-    + '(iv) eventual comissão de corretagem devida à imobiliária, conforme autorização de venda em vigor, não é objeto deste instrumento e será tratada em separado entre a Imobiliária e o(a) Proprietário(a).</p>'
+    + '(iv) eventual comissão de corretagem devida à imobiliária é ajustada em separado entre a Imobiliária e o(a) Proprietário(a), não sendo objeto deste instrumento.</p>'
 
     + '<div class="doc-local-data">' + dataExtenso() + '</div>'
 
     + '<div class="doc-assinaturas">'
     + '<div class="doc-assinatura-linha">' + escHtml(prop['Nome Proponente'] || '') + '<br><small>Proponente/Comprador(a)</small></div>'
     + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Vendedor(a) — ciente da proposta</small></div>'
+    + '</div>';
+}
+
+// Proposta de LOCAÇÃO (aluguel) do imóvel — mesmo espírito/estrutura da proposta de compra acima,
+// mas adaptada aos termos próprios de locação (Lei do Inquilinato) em vez de compra e venda.
+function comGerarPropostaLocacao_(n, prop) {
+  var valorSinalTxt = comNum(prop['Valor Sinal']) ? comBRL(prop['Valor Sinal']) : 'não há valor de caução/sinal previsto nesta proposta';
+  return '<div class="doc-cabecalho">'
+    + '<div class="doc-titulo">Proposta de Locação</div>'
+    + '<div class="doc-subtitulo">Instrumento particular de proposta de locação de imóvel — sujeita às normas do CRECI e à Lei do Inquilinato (Lei nº 8.245/91)</div>'
+    + '</div>'
+
+    + '<p class="doc-texto"><strong>PROPONENTE (PRETENDENTE À LOCAÇÃO):</strong> <strong>' + escHtml(prop['Nome Proponente'] || '[PROPONENTE]') + '</strong>'
+    + (prop['CPF_CNPJ Proponente'] ? ', portador(a) do CPF/CNPJ nr. ' + escHtml(prop['CPF_CNPJ Proponente']) : '')
+    + (prop['Telefone Proponente'] ? ', telefone: ' + escHtml(prop['Telefone Proponente']) : '')
+    + (prop['Email Proponente'] ? ', e-mail: ' + escHtml(prop['Email Proponente']) : '') + '.</p>'
+
+    + '<p class="doc-texto"><strong>PROPRIETÁRIO(A) (LOCADOR):</strong> ' + comQualificacaoCliente(n) + '.</p>'
+
+    + '<p class="doc-texto"><strong>DO IMÓVEL:</strong> imóvel situado em ' + escHtml(n['Endereco Imovel'] || '[endereço do imóvel]') + '.'
+    + (n['Descricao Imovel'] ? ' Descrição/características: ' + escHtml(n['Descricao Imovel']) + '.' : '') + '</p>'
+
+    + '<p class="doc-texto"><strong>DA PROPOSTA:</strong> O(A) Proponente acima qualificado(a) apresenta, por meio desta, proposta de locação do imóvel descrito, '
+    + 'pelo valor mensal de aluguel de <strong>' + comBRL(prop['Valor Proposta']) + '</strong>, a ser pago da seguinte forma: '
+    + escHtml(prop['Forma Pagamento'] || 'a combinar entre as partes') + '.</p>'
+
+    + '<p class="doc-texto"><strong>DO SINAL/CAUÇÃO:</strong> ' + (comNum(prop['Valor Sinal']) ? 'Como sinal e/ou caução, o Proponente oferece o valor de <strong>' + valorSinalTxt + '</strong>, a ser depositado/entregue na forma que vier a ser acordada entre as partes.' : 'Não há valor de sinal/caução previsto nesta proposta.') + '</p>'
+
+    + '<p class="doc-texto"><strong>DO PRAZO DE VALIDADE:</strong> Esta proposta é válida até ' + (prop['Prazo Validade'] ? '<strong>' + escHtml(prop['Prazo Validade']) + '</strong>' : 'a data a ser definida entre as partes') + ', após o que perderá automaticamente seus efeitos caso não seja aceita expressamente pelo(a) Proprietário(a)/Locador(a).</p>'
+
+    + (prop['Condicoes'] ? '<p class="doc-texto"><strong>CONDIÇÕES ESPECÍFICAS:</strong> ' + escHtml(prop['Condicoes']) + '</p>' : '')
+
+    + '<p class="doc-texto"><strong>DAS CONDIÇÕES GERAIS:</strong> (i) A presente proposta está sujeita à aceitação expressa do(a) Proprietário(a)/Locador(a), não gerando, por si só, qualquer obrigação de locar ou de alugar até a formalização do contrato de locação próprio, nos termos da Lei do Inquilinato (Lei nº 8.245/91); '
+    + '(ii) a garantia locatícia (caução, fiança, seguro-fiança ou outra modalidade admitida em lei) e a documentação exigida do(a) locatário(a) serão definidas e combinadas entre as partes por ocasião da formalização do contrato; '
+    + '(iii) a presente intermediação observa as normas do CRECI aplicáveis à corretagem imobiliária; '
+    + '(iv) eventual comissão de corretagem devida à imobiliária (via de regra correspondente ao primeiro aluguel) é ajustada em separado entre a Imobiliária e o(a) Proprietário(a)/Locador(a), não sendo objeto deste instrumento.</p>'
+
+    + '<div class="doc-local-data">' + dataExtenso() + '</div>'
+
+    + '<div class="doc-assinaturas">'
+    + '<div class="doc-assinatura-linha">' + escHtml(prop['Nome Proponente'] || '') + '<br><small>Proponente/Pretendente à locação</small></div>'
+    + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Locador(a) — ciente da proposta</small></div>'
     + '</div>';
 }
 
@@ -10225,6 +10252,9 @@ document.addEventListener('DOMContentLoaded', function() {
   adicionarBotoesCopiarCampos('#modalCadastro', '.form-field');
   adicionarBotoesCopiarCampos('#modalEdicao', '.form-field');
   adicionarBotoesCopiarCampos('#locCFormWrap', '.loc-cfield');
+  adicionarBotoesCopiarCampos('#comFormSection', '.loc-cfield');
+  adicionarBotoesCopiarCampos('#comCorretoresSection', '.loc-cfield');
+  adicionarBotoesCopiarCampos('#modalComProposta', '.loc-cfield');
 });
 
 // ---------- "COPIAR P/ PETIÇÃO" (cadastro do cliente em Processos) ----------
@@ -12478,7 +12508,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
       <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskLoc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskLoc)"/></svg></span>O</span>
       <span class="eixo-sep"></span>
-      <span class="eixo-mod">Locações</span>
+      <span class="eixo-mod">Locações e Repasses</span>
     </div>
     <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     <div class="loc-title">🏠 Controle de Aluguéis</div>
@@ -12958,7 +12988,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="lf-tip-wrap">
       <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('comNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
       <div class="loc-note lf-tip-content" id="comNote">
-        Cada <strong>negócio</strong> é uma venda ou locação de imóvel (cadastro independente, não precisa de processo jurídico vinculado). Na venda a comissão sugerida é 6% do valor do imóvel; na locação, 100% do primeiro aluguel — os dois percentuais são só sugestões, editáveis livremente. Cadastre os corretores em "🧑‍💼 Corretores cadastrados" (com dados bancários/Pix) antes de vincular um negócio a eles, para poder calcular o repasse. Gere a Autorização de Venda/Locação e a Proposta de Compra direto na linha do negócio, na coluna Ações.
+        Cada <strong>negócio</strong> é uma venda ou locação de imóvel (cadastro independente, não precisa de processo jurídico vinculado). Na venda a comissão sugerida é 6% do valor do imóvel; na locação, 100% do primeiro aluguel — os dois percentuais são só sugestões, editáveis livremente. Cadastre os corretores em "🧑‍💼 Corretores cadastrados" (com dados bancários/Pix) antes de vincular um negócio a eles, para poder calcular o repasse. Gere a Proposta de Compra (venda) ou de Locação direto na linha do negócio, na coluna Ações.
       </div>
     </div>
 
@@ -13012,11 +13042,6 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Status Pagamento Corretor</label>
           <select class="loc-cinput" id="cm-statusPagamento"><option>Pendente</option><option>Recebido</option><option>Atrasado</option></select>
         </div>
-        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Autorização do proprietário</div>
-        <div class="loc-cfield"><label>Autoriza colocação de placa?</label><select class="loc-cinput" id="cm-autorizaPlaca"><option>Sim</option><option>Não</option></select></div>
-        <div class="loc-cfield"><label>Autoriza anunciar/divulgar?</label><select class="loc-cinput" id="cm-autorizaAnunciar"><option>Sim</option><option>Não</option></select></div>
-        <div class="loc-cfield"><label>Data da Autorização</label><input class="loc-cinput" id="cm-dataAutorizacao" type="date"></div>
-        <div class="loc-cfield"><label>Validade da Autorização</label><input class="loc-cinput" id="cm-validadeAutorizacao" type="date"></div>
         <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="cm-obs"></div>
         <div class="loc-cform-actions">
           <span class="msg" id="cm-msg"></span>
@@ -13080,7 +13105,7 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="modal-repasse-overlay" id="modalComProposta">
   <div class="repasse-wrap" style="max-width:720px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">📝 Propostas de Compra</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📝 Propostas</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalComProposta').classList.remove('open')">✕</button>
     </div>
     <div style="padding:20px">
@@ -13094,7 +13119,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>CPF/CNPJ do Proponente</label><input class="loc-cinput" id="prop-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
         <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="prop-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
         <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="prop-email" type="email" placeholder="proponente@email.com"></div>
-        <div class="loc-cfield"><label>Valor da Proposta (R$) *</label><input class="loc-cinput" id="prop-valor" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label id="prop-lblValor">Valor da Proposta (R$) *</label><input class="loc-cinput" id="prop-valor" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Forma de Pagamento</label><input class="loc-cinput" id="prop-formaPagamento" placeholder="Ex.: à vista, financiamento"></div>
         <div class="loc-cfield"><label>Valor do Sinal (R$)</label><input class="loc-cinput" id="prop-valorSinal" type="text" inputmode="decimal" placeholder="0,00"></div>
         <div class="loc-cfield"><label>Prazo de Validade</label><input class="loc-cinput" id="prop-prazoValidade" type="date"></div>
@@ -13611,7 +13636,7 @@ window.cpRenderFixas=cpRenderFixas;
         <option value="atendimentos">5. 📞 Atendimentos</option>
         <option value="entregas">6. 📦 Entregas</option>
         <option value="acordos">7. 🤝 Acordos com a Parte Contrária</option>
-        <option value="locacoes">8. 🏘️ Locações</option>
+        <option value="locacoes">8. 🏘️ Gestão de Locações e Repasses</option>
         <option value="rascunhos">9. 🗂️ Tarefas &amp; Rascunhos</option>
         <option value="glossario">10. 📘 Glossário</option>
       </select>
@@ -19079,7 +19104,7 @@ window.cpRenderFixas=cpRenderFixas;
         </button>
         <button class="home-user-item" onclick="openAlugueisHome();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Locações
+          Gestão de Locações e Repasses
         </button>
         <div class="home-user-divider"></div>
         <button class="home-user-item" onclick="painelInadimplenciaAbrir();document.getElementById('homeUserMenu').classList.remove('open')">
@@ -19154,7 +19179,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-card loc" onclick="openAlugueisHome()">
           <div class="arrow">→</div>
           <div class="ic">🏠</div>
-          <div class="ctitle">Locações</div>
+          <div class="ctitle">Gestão de Locações e Repasses</div>
           <div class="cdesc">Aluguéis, repasses e contratos</div>
           <div class="cnums">
             <div class="cnum cnum-clickable" onclick="event.stopPropagation();openAlugueisHome()" title="Ver aluguéis do mês"><div class="v" id="hc-loc-alug" style="color:var(--blue)">—</div><div class="l">aluguéis do mês</div><span class="cnum-spark-wrap" id="spark-loc-alug"></span></div>
@@ -19363,7 +19388,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="openProcessos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Processos</button>'+
         '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
-        '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Locações</button>'+
+        '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Gestão de Locações e Repasses</button>'+
         '<button class="home-user-item" onclick="openAcordosHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="painelInadimplenciaAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">💰 &nbsp;Inadimplência (tudo junto)</button>'+
@@ -19393,6 +19418,30 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '23/ago/2026 (8)', itens: [
+      'Corrigido: este Histórico de atualizações estava parado desde 14/ago — as entregas mais recentes não tinham sido registradas aqui (é uma lista mantida manualmente a cada versão, e ficou pra trás). Atualizado com tudo que faltava, e agora mostra só as 2 versões mais recentes na tela (antes mostrava as 5 últimas).'
+    ]},
+    { data: '23/ago/2026 (7)', itens: [
+      'Módulo "Locações" renomeado para "Gestão de Locações e Repasses", pra deixar claro que ele cuida da administração dos contratos já ativos (cobrança de aluguel + repasse ao locador) — diferente do módulo Comissões Imobiliárias, que cuida do fechamento de negócios novos (venda/locação) e da comissão do corretor.'
+    ]},
+    { data: '23/ago/2026 (6)', itens: [
+      'Ajustes no módulo Comissões Imobiliárias: removida a parte de autorização do proprietário (fica pro módulo futuro de cadastro de imóveis, que vai formalizar isso direito); adicionada a opção de gerar Proposta de Locação (antes só existia Proposta de Compra); botão de copiar (📋) em todos os campos possíveis dos formulários do módulo; botão de copiar (🔑) a chave Pix direto na lista de corretores cadastrados.'
+    ]},
+    { data: '23/ago/2026 (5)', itens: [
+      'Novo módulo: 🤝 Comissões Imobiliárias — controla comissões a receber (da venda ou locação de um imóvel) e o repasse aos corretores. Cadastro de corretores (dados pessoais, bancários e Pix). Cadastro de negócios (venda ou locação, independente de processo jurídico vinculado) com cálculo automático da comissão (sugestão de 6% na venda e 100% do primeiro aluguel na locação, os dois percentuais editáveis), controle separado das datas/status de recebimento da comissão e de repasse ao corretor (com atraso automático, mesmo padrão já usado em Acordos/Locações), e geração de Propostas (de compra ou de locação) reaproveitando a mesma ferramenta de documentos já usada em Processos. Alerta de atraso integrado ao painel geral de inadimplência e à tela inicial.'
+    ]},
+    { data: '23/ago/2026 (4)', itens: [
+      'Processos também ganhou a barra de rolagem espelhada no topo da tela — faltava nesse módulo (a lista de cards já tinha, mas a fileira de botões de ação de um card aberto, que em telas estreitas estourava a largura, ficava sem jeito de rolar sem descer até o fim da lista pra achar a barra nativa).'
+    ]},
+    { data: '23/ago/2026 (3)', itens: [
+      'Corrigido bug no relatório "Imóveis do Locador": quando o locador principal do contrato também estava cadastrado como um dos proprietários (coproprietário), ele aparecia com 100% do valor do aluguel em vez da fatia real (ex.: 50%) — os demais coproprietários já apareciam certos. Corrigido: agora todo mundo aparece com o percentual real cadastrado.'
+    ]},
+    { data: '23/ago/2026 (2)', itens: [
+      'Corrigida a barra de rolagem espelhada (a que aparece no topo de tabelas largas, sem precisar rolar até o fim da tela pra achar a barra nativa): antes só existia em Contas a Pagar, agora foi generalizada e aparece automaticamente em qualquer tabela larga de qualquer módulo (Locações, Acordos, Contas a Pagar), inclusive nas telas onde quem rola de verdade é a tela inteira, não só a tabela.'
+    ]},
+    { data: '23/ago/2026', itens: [
+      'Novo em Acordos: o sistema agora identifica o pagador (devedor) do acordo, e assim que uma parcela vence sem ter sido recebida, aparece um alerta igual ao de aluguéis atrasados em Locações — com um botão 📢 pra montar e enviar (WhatsApp ou e-mail) um aviso de cobrança pronto (com aviso antigolpe padrão do escritório), e outro botão pra gerar um follow-up em Tarefas & Rascunhos, do mesmo jeito que já existia em Locações. É preciso cadastrar o telefone da parte contrária no acordo pra habilitar o envio por WhatsApp.'
+    ]},
     { data: '14/ago/2026 (2)', itens: [
       'Corrigido de vez o cálculo da taxa com desconto: a correção anterior só afetava o campo único "Desconto", mas descontos de verdade (como parcelas de desconto de aluguel) são lançados em "Outras Cobranças" — que agora se chama "Outras Cobranças e Descontos". Cada item dessa lista ganhou a opção "Este valor entra na base de cálculo da taxa de administração" — marque num desconto parcelado e a taxa passa a incidir sobre o aluguel já líquido dele. Testado com o cenário real (aluguel 1.500, desconto 200 parcelado, marcado "incide na taxa"): taxa saiu em R$130,00 (10% de 1.300), confirmado certo. Continua aparecendo certinho no recibo do inquilino também.'
     ]},
@@ -19719,9 +19768,9 @@ window.cpRenderFixas=cpRenderFixas;
   function renderLfChangelog(){
     var box=document.getElementById('lfChangelogBox');
     if(!box)return;
-    // Mostra só as 5 atualizações mais recentes (a lista completa fica registrada no código,
+    // Mostra só as 2 atualizações mais recentes (a lista completa fica registrada no código,
     // pra não crescer sem limite na tela).
-    box.innerHTML=LF_CHANGELOG.slice(0,5).map(function(v){
+    box.innerHTML=LF_CHANGELOG.slice(0,2).map(function(v){
       return '<div class="lf-changelog-versao"><div class="lf-changelog-data">'+v.data+'</div><ul>'+v.itens.map(function(it){return '<li>'+it+'</li>';}).join('')+'</ul></div>';
     }).join('');
   }
@@ -19744,7 +19793,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'atendimentos', titulo:'Atendimentos'},
     {key:'entregas',      titulo:'Entregas'},
     {key:'acordos',       titulo:'Acordos com a Parte Contrária'},
-    {key:'locacoes',      titulo:'Locações'},
+    {key:'locacoes',      titulo:'Gestão de Locações e Repasses'},
     {key:'rascunhos',     titulo:'Tarefas & Rascunhos'},
     {key:'glossario',     titulo:'Glossário'}
   ];
@@ -20732,7 +20781,7 @@ window.cpRenderFixas=cpRenderFixas;
     contratosLoc.forEach(function(c){
       var hay=[c.locador,c.locatario,c.end,c.contrato].join(' ').toLowerCase();
       if(hay.indexOf(termo)>=0){
-        out.push({modulo:'Locações',icone:'🏠',titulo:c.locatario||c.locador||'(sem nome)',sub:['Contrato '+(c.contrato||''),c.end].filter(Boolean).join(' — ')});
+        out.push({modulo:'Locações e Repasses',icone:'🏠',titulo:c.locatario||c.locador||'(sem nome)',sub:['Contrato '+(c.contrato||''),c.end].filter(Boolean).join(' — ')});
       }
     });
 
@@ -20756,7 +20805,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(termo.length<2){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Digite ao menos 2 letras…</div>';return;}
     var res=window.buscaGlobalColetar_(termo);
     if(!res.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Nada encontrado para "'+E(termo)+'".</div>';return;}
-    var COR_MOD={'Processos':'var(--purple)','Honorários':'var(--orange)','Locações':'var(--accent)','Acordos':'var(--accent2)'};
+    var COR_MOD={'Processos':'var(--purple)','Honorários':'var(--orange)','Locações e Repasses':'var(--accent)','Acordos':'var(--accent2)'};
     el.innerHTML=res.map(function(r,i){
       var cor=COR_MOD[r.modulo]||'var(--accent)';
       return '<div class="busca-global-item" onclick="buscaGlobalIrPara('+i+')" style="padding:10px 6px;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;gap:10px;align-items:flex-start">'
@@ -20781,7 +20830,7 @@ window.cpRenderFixas=cpRenderFixas;
     } else if(r.modulo==='Honorários'){
       openHonorariosHome();
       setTimeout(function(){var el=document.getElementById('honBusca');if(el){el.value=termo;renderHonorarios();}},50);
-    } else if(r.modulo==='Locações'){
+    } else if(r.modulo==='Locações e Repasses'){
       openAlugueisHome();
       setTimeout(function(){var el=document.getElementById('locSearchInput');if(el){el.value=termo;if(typeof locRender==='function')locRender();}},50);
     } else if(r.modulo==='Acordos'){
@@ -21141,7 +21190,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['tarefas e rascunhos','tarefas','rascunhos'],label:'Tarefas & Rascunhos',run:function(){if(typeof window.rascunhosAbrir==='function')window.rascunhosAbrir();}},
     {kw:['notas rapidas','nota rapida','notas'],label:'Notas Rápidas',run:function(){if(typeof window.notasAbrir==='function')window.notasAbrir();}},
     {kw:['honorarios'],label:'Honorários',run:function(){voiceCloseAllOverlays();if(typeof abrirHonorarios==='function')abrirHonorarios();}},
-    {kw:['locacoes','locacao','alugueis','aluguel'],label:'Locações',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
+    {kw:['locacoes','locacao','alugueis','aluguel'],label:'Gestão de Locações e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
     {kw:['acordos','acordo'],label:'Acordos',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
     {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
     {kw:['processos','processo'],label:'Processos',run:function(){voiceCloseAllOverlays();}},
@@ -21314,7 +21363,7 @@ window.cpRenderFixas=cpRenderFixas;
   // microfone. Reaproveita os mesmos alvos de VOICE_COMMANDS (por label), pra não
   // duplicar a lógica de qual botão abre o quê.
   var VOICE_KEY_MAP={
-    '1':'Processos','2':'Locações','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
+    '1':'Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
     '6':'Notas Rápidas','7':'Tarefas & Rascunhos','8':'Início','9':'Busca'
   };
   document.addEventListener('keydown',function(e){
