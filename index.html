@@ -4223,6 +4223,17 @@ function setAdvogadoInfo(v){
   try{localStorage.setItem('lexflow_advogado',JSON.stringify(v));}catch(e){}
 }
 
+// Dados da imobiliária (nome/razão social, CNPJ, CRECI-PJ) usados na cláusula de comissão de
+// corretagem gerada nos documentos de Proposta do módulo Comissões Imobiliárias (comAbrirDoc)
+// — mesmo espírito de getAdvogadoInfo/setAdvogadoInfo acima, só que específico deste módulo e
+// guardado numa chave separada (não é CRUD/planilha, é só configuração local do navegador).
+function getImobiliariaInfo(){
+  try{return JSON.parse(localStorage.getItem('lexflow_imobiliaria')||'{}');}catch(e){return {};}
+}
+function setImobiliariaInfo(v){
+  try{localStorage.setItem('lexflow_imobiliaria',JSON.stringify(v));}catch(e){}
+}
+
 // ---------- NOTAS RÁPIDAS (estilo Keep Note — lembretes soltos, sem lançar nada sozinho) ----------
 window.notasCache = [];
 window.carregarNotas = async function(){
@@ -8743,7 +8754,7 @@ window.comRender = function () {
     // é que muda conforme o Tipo do negócio, ver comPropostaAbrir/comAbrirDoc). Os botões de
     // documento de autorização (venda/locação) foram retirados daqui — dependem de um cadastro
     // formal de imóvel/proprietário, que só existirá no módulo de cadastro de imóveis (futuro).
-    var propTituloBtn = tipo === 'Locação' ? 'Proposta de locação' : (tipo === 'Venda e Locação' ? 'Propostas (compra/locação)' : 'Proposta de compra');
+    var propTituloBtn = tipo === 'Locação' ? 'Proposta de locação' : 'Proposta de compra';
     var propBtn = '<button class="loc-btn-edit" title="' + propTituloBtn + '" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝</button> ';
     return '<tr>'
       + '<td>' + comE(n['Cliente Proprietario']) + '</td>'
@@ -8780,7 +8791,7 @@ window.comPropostaAbrir = function (negocioId) {
   document.getElementById('comPropostaNegocioInfo').innerHTML =
     '<strong>' + comE(n['Cliente Proprietario'] || '-') + '</strong> — ' + comE(n['Endereco Imovel'] || '-') + '<br><span style="color:var(--muted);font-size:12px">Valor do negócio: ' + comBRL(n['Valor Negocio']) + '</span>';
   var tituloModal = document.querySelector('#modalComProposta .parceiro-toolbar-title');
-  if (tituloModal) tituloModal.textContent = ehLocacao ? '📝 Proposta de Locação' : (tipo === 'Venda e Locação' ? '📝 Proposta de Compra/Locação' : '📝 Proposta de Compra');
+  if (tituloModal) tituloModal.textContent = ehLocacao ? '📝 Proposta de Locação' : '📝 Proposta de Compra';
   var lblValor = document.getElementById('prop-lblValor');
   if (lblValor) lblValor.textContent = ehLocacao ? 'Valor do Aluguel Proposto (R$) *' : 'Valor da Proposta (R$) *';
   comPropostaRenderLista(negocioId);
@@ -8796,11 +8807,11 @@ function comPropostaRenderLista(negocioId) {
   var props = (window.comPropostas || []).filter(function (p) { return String(p['Negocio']) === String(negocioId); });
   if (!props.length) { el.innerHTML = '<div class="loc-note">Nenhuma proposta registrada ainda para este negócio.</div>'; return; }
   el.innerHTML = '<div class="loc-section-title" style="margin-top:0">Propostas já registradas</div>' + props.map(function (p) {
-    // Botão(ões) de gerar documento: conforme o Tipo do negócio — "Venda e Locação" mostra os dois,
-    // já que a mesma proposta cadastrada pode virar tanto um documento de compra quanto de locação.
+    // Botão de gerar documento: conforme o Tipo do negócio (Venda -> Proposta de Compra, Locação ->
+    // Proposta de Locação).
     var docBtns = '';
-    if (tipo === 'Venda' || tipo === 'Venda e Locação') docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Compra" onclick="comAbrirDoc(\'proposta_compra\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Compra</button> ';
-    if (tipo === 'Locação' || tipo === 'Venda e Locação') docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Locação" onclick="comAbrirDoc(\'proposta_locacao\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Locação</button> ';
+    if (tipo === 'Locação') docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Locação" onclick="comAbrirDoc(\'proposta_locacao\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Locação</button> ';
+    else docBtns += '<button class="loc-btn-edit" title="Gerar documento de Proposta de Compra" onclick="comAbrirDoc(\'proposta_compra\',\'' + comE(negocioId) + '\',\'' + comE(p['ID']) + '\')">📄 Compra</button> ';
     return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
       + '<div><strong>' + comE(p['Nome Proponente']) + '</strong> — ' + comBRL(p['Valor Proposta']) + ' <span style="color:var(--muted);font-size:11px">(' + comE(p['Status'] || 'Em análise') + ')</span></div>'
       + '<div style="white-space:nowrap">'
@@ -8988,6 +8999,47 @@ window.comDocSalvarImagem = function () {
   });
 };
 
+// ---------- DADOS DA IMOBILIÁRIA (configuração local, ver getImobiliariaInfo/setImobiliariaInfo
+// lá em cima, mesmo espírito de getAdvogadoInfo/setAdvogadoInfo) ----------
+window.comImobiliariaAbrir = function () {
+  var v = getImobiliariaInfo();
+  document.getElementById('comImob-nome').value = v.nome || '';
+  document.getElementById('comImob-cnpj').value = v.cnpj || '';
+  document.getElementById('comImob-creciPJ').value = v.creciPJ || '';
+  document.getElementById('comImob-msg').textContent = '';
+  document.getElementById('modalComImobiliaria').classList.add('open');
+};
+window.comImobiliariaSalvar = function () {
+  setImobiliariaInfo({
+    nome: document.getElementById('comImob-nome').value.trim(),
+    cnpj: document.getElementById('comImob-cnpj').value.trim(),
+    creciPJ: document.getElementById('comImob-creciPJ').value.trim()
+  });
+  var msg = document.getElementById('comImob-msg');
+  msg.textContent = '✓ Salvo!'; msg.style.color = 'var(--green)';
+  setTimeout(function () { document.getElementById('modalComImobiliaria').classList.remove('open'); }, 600);
+};
+
+// Cláusula de comissão de corretagem — identifica a imobiliária (getImobiliariaInfo, com fallback
+// pro nome do escritório do advogado se ainda não preenchido) + o corretor responsável pelo
+// negócio (buscado em window.comCorretores pelo nome salvo em n['Corretor'], pra pegar o CRECI
+// individual dele) + o percentual pactuado (n['Percentual Comissao']). Usada como item adicional,
+// numerado em sequência, dentro de "DAS CONDIÇÕES GERAIS" nos dois geradores de proposta abaixo —
+// sem reescrever as cláusulas (i)-(iv) já existentes.
+function comClausulaComissao_(n) {
+  var imob = getImobiliariaInfo();
+  var nomeImob = (imob.nome || '').trim() || (getAdvogadoInfo().nome || '').trim() || '[IMOBILIÁRIA]';
+  var creciPJ = (imob.creciPJ || '').trim();
+  var pct = comNum(n['Percentual Comissao']);
+  var nomeCorretor = String(n['Corretor'] || '').trim();
+  var corretor = nomeCorretor ? (window.comCorretores || []).find(function (c) { return String(c['Nome'] || '').trim() === nomeCorretor; }) : null;
+  var txt = 'a intermediação deste negócio é de responsabilidade de ' + escHtml(nomeImob) + (creciPJ ? ', CRECI-PJ ' + escHtml(creciPJ) : '');
+  if (nomeCorretor) txt += ', por meio do(a) corretor(a) ' + escHtml(nomeCorretor) + (corretor && corretor['CRECI'] ? ', CRECI ' + escHtml(corretor['CRECI']) : '');
+  txt += (pct ? ', fazendo jus à comissão de ' + pct.toLocaleString('pt-BR') + '% sobre o valor do negócio' : ', fazendo jus à comissão de corretagem pactuada entre as partes')
+    + ', nos termos do art. 722 e seguintes do Código Civil (contrato de corretagem), devida independentemente da forma de conclusão do negócio, uma vez comprovado o nexo causal entre a aproximação promovida pela imobiliária e a celebração do contrato definitivo';
+  return txt;
+}
+
 // Qualificação simplificada do proprietário/cliente do negócio (não usa qualificacaoParte porque
 // o cadastro de negócio não tem RG/estado civil/profissão — só os campos de contato disponíveis).
 function comQualificacaoCliente(n) {
@@ -9028,7 +9080,8 @@ function comGerarPropostaCompra(n, prop) {
     + '<p class="doc-texto"><strong>DAS CONDIÇÕES GERAIS:</strong> (i) A presente proposta está sujeita à aceitação expressa do(a) Proprietário(a), não gerando, por si só, qualquer obrigação de venda ou de compra até a assinatura do instrumento próprio (contrato particular de compra e venda ou escritura pública, conforme o caso); '
     + '(ii) salvo disposição em contrário entre as partes, as despesas cartorárias, de registro e o Imposto sobre Transmissão de Bens Imóveis (ITBI) correm por conta do(a) comprador(a); '
     + '(iii) a presente intermediação observa as normas do CRECI aplicáveis à corretagem imobiliária; '
-    + '(iv) eventual comissão de corretagem devida à imobiliária é ajustada em separado entre a Imobiliária e o(a) Proprietário(a), não sendo objeto deste instrumento.</p>'
+    + '(iv) eventual comissão de corretagem devida à imobiliária é ajustada em separado entre a Imobiliária e o(a) Proprietário(a), não sendo objeto deste instrumento; '
+    + '(v) ' + comClausulaComissao_(n) + '.</p>'
 
     + '<div class="doc-local-data">' + dataExtenso() + '</div>'
 
@@ -9070,7 +9123,8 @@ function comGerarPropostaLocacao_(n, prop) {
     + '<p class="doc-texto"><strong>DAS CONDIÇÕES GERAIS:</strong> (i) A presente proposta está sujeita à aceitação expressa do(a) Proprietário(a)/Locador(a), não gerando, por si só, qualquer obrigação de locar ou de alugar até a formalização do contrato de locação próprio, nos termos da Lei do Inquilinato (Lei nº 8.245/91); '
     + '(ii) a garantia locatícia (caução, fiança, seguro-fiança ou outra modalidade admitida em lei) e a documentação exigida do(a) locatário(a) serão definidas e combinadas entre as partes por ocasião da formalização do contrato; '
     + '(iii) a presente intermediação observa as normas do CRECI aplicáveis à corretagem imobiliária; '
-    + '(iv) eventual comissão de corretagem devida à imobiliária (via de regra correspondente ao primeiro aluguel) é ajustada em separado entre a Imobiliária e o(a) Proprietário(a)/Locador(a), não sendo objeto deste instrumento.</p>'
+    + '(iv) eventual comissão de corretagem devida à imobiliária (via de regra correspondente ao primeiro aluguel) é ajustada em separado entre a Imobiliária e o(a) Proprietário(a)/Locador(a), não sendo objeto deste instrumento; '
+    + '(v) ' + comClausulaComissao_(n) + '.</p>'
 
     + '<div class="doc-local-data">' + dataExtenso() + '</div>'
 
@@ -9164,8 +9218,8 @@ function comRelVendasOuLocacoesGerar_(chave, titulo, iconeTitulo, tiposAceitos) 
     + '</div>'
     + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
 }
-window.comRelVendasGerar = function () { comRelVendasOuLocacoesGerar_('vendas', 'Vendas Realizadas', '🏠', ['Venda', 'Venda e Locação']); };
-window.comRelLocacoesGerar = function () { comRelVendasOuLocacoesGerar_('locacoes', 'Locações Realizadas', '🔑', ['Locação', 'Venda e Locação']); };
+window.comRelVendasGerar = function () { comRelVendasOuLocacoesGerar_('vendas', 'Vendas Realizadas', '🏠', ['Venda']); };
+window.comRelLocacoesGerar = function () { comRelVendasOuLocacoesGerar_('locacoes', 'Locações Realizadas', '🔑', ['Locação']); };
 
 // ---- Comissões Pagas aos Corretores (Status Pagamento Corretor = Recebido, por Data Pagamento
 // Corretor, agrupado por corretor com subtotal) ----
@@ -9202,37 +9256,109 @@ window.comRelPagasGerar = function () {
     + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
 };
 
+// Formata os dados bancários de um corretor (Banco/Agência/Conta/Pix), pro relatório de Comissões
+// a Pagar — mesmo espírito de reciboLocContaHtml (Locações), reescrito com o prefixo/estilo comX
+// já usado neste módulo.
+function comRelDadosBancariosHtml_(corretor) {
+  if (!corretor) return '<div style="color:var(--muted)">Corretor não encontrado no cadastro (🧑‍💼 Corretores cadastrados).</div>';
+  if (!corretor['Banco'] && !corretor['Agencia'] && !corretor['Conta'] && !corretor['Pix']) {
+    return '<div style="color:var(--muted)">Dados bancários não cadastrados — edite em 🧑‍💼 Corretores cadastrados.</div>';
+  }
+  return (corretor['Banco'] ? '<div>Banco: <strong>' + comE(corretor['Banco']) + '</strong></div>' : '')
+    + (corretor['Agencia'] ? '<div>Agência: <strong>' + comE(corretor['Agencia']) + '</strong></div>' : '')
+    + (corretor['Conta'] ? '<div>Conta: <strong>' + comE(corretor['Conta']) + '</strong></div>' : '')
+    + (corretor['Pix'] ? '<div>Chave Pix: <strong>' + comE(corretor['Pix']) + '</strong></div>' : '');
+}
+
 // ---- Comissões a Pagar aos Corretores (Status Pagamento Corretor != Recebido — Pendente ou
-// Atrasado — SEM filtro de período: é dívida em aberto, não faz sentido limitar por data) ----
+// Atrasado — SEM filtro de período: é dívida em aberto, não faz sentido limitar por data). Agrupado
+// por corretor (mesmo espírito de comRelPagasGerar acima), com dados bancários de cada um e um
+// botão pra avisar o corretor direto (comRelAvisarCorretor/comRelAvisarCorretorEmail). ----
 window.comRelAPagarGerar = function () {
   comRelAbrirModal_('apagar', 'Comissões a Pagar aos Corretores', false);
   var lista = (window.comNegocios || []).filter(function (n) {
     return (n['Status Pagamento Corretor'] || 'Pendente') !== 'Recebido';
-  }).sort(function (a, b) {
-    var da = comIsoFromBR(a['Data Prevista Pagamento Corretor']) || '9999-99-99';
-    var db = comIsoFromBR(b['Data Prevista Pagamento Corretor']) || '9999-99-99';
-    return da.localeCompare(db);
   });
-  var total = 0;
-  var linhasHtml = lista.map(function (n) {
+  var grupos = {}, ordem = [], total = 0;
+  lista.forEach(function (n) {
+    var cor = comRelNomeCorretor_(n['Corretor']);
+    if (!grupos[cor]) { grupos[cor] = { itens: [], sub: 0 }; ordem.push(cor); }
+    grupos[cor].itens.push(n);
+    grupos[cor].sub += comNum(n['Valor Repasse Corretor']);
     total += comNum(n['Valor Repasse Corretor']);
-    var status = n['Status Pagamento Corretor'] || 'Pendente';
-    var cor = status === 'Atrasado' ? 'var(--red)' : 'var(--yellow)';
-    return '<div class="parc-section" style="padding:10px 0;border-bottom:1px solid var(--border2)">'
-      + '<div style="display:flex;justify-content:space-between;gap:10px"><strong>' + comE(comRelNomeCorretor_(n['Corretor'])) + '</strong><span style="color:' + cor + ';font-weight:700;font-size:11.5px;white-space:nowrap">● ' + comE(status) + '</span></div>'
-      + '<div style="color:var(--muted);font-size:12px;margin:2px 0">' + comE(n['Cliente Proprietario']) + ' — ' + comE(n['Endereco Imovel']) + '</div>'
-      + '<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;flex-wrap:wrap;gap:6px"><span>Repasse: <strong>' + comBRL(n['Valor Repasse Corretor']) + '</strong></span><span style="color:var(--muted)">Previsto: ' + comE(n['Data Prevista Pagamento Corretor'] || '—') + '</span></div>'
-      + '</div>';
+  });
+  ordem.sort(function (a, b) { return grupos[b].sub - grupos[a].sub; }); // maior dívida primeiro
+  ordem.forEach(function (cor) {
+    grupos[cor].itens.sort(function (a, b) {
+      var da = comIsoFromBR(a['Data Prevista Pagamento Corretor']) || '9999-99-99';
+      var db = comIsoFromBR(b['Data Prevista Pagamento Corretor']) || '9999-99-99';
+      return da.localeCompare(db);
+    });
+  });
+  var gruposHtml = ordem.map(function (cor) {
+    var g = grupos[cor];
+    var corretorObj = (window.comCorretores || []).find(function (c) { return String(c['Nome'] || '').trim() === cor; });
+    var corParam = encodeURIComponent(cor);
+    var itensHtml = g.itens.map(function (n) {
+      var status = n['Status Pagamento Corretor'] || 'Pendente';
+      var corStatus = status === 'Atrasado' ? 'var(--red)' : 'var(--yellow)';
+      return '<div style="padding:6px 0;border-top:1px dashed var(--border2)">'
+        + '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px"><span>' + comE(n['Cliente Proprietario']) + ' — ' + comE(n['Endereco Imovel']) + '</span><span style="color:' + corStatus + ';font-weight:700;white-space:nowrap">● ' + comE(status) + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:2px"><span>Previsto: ' + comE(n['Data Prevista Pagamento Corretor'] || '—') + '</span><strong>' + comBRL(n['Valor Repasse Corretor']) + '</strong></div>'
+        + '</div>';
+    }).join('');
+    var botaoEmail = (corretorObj && corretorObj['Email']) ? ' <button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="comRelAvisarCorretorEmail(decodeURIComponent(\'' + corParam + '\'))">✉️ E-mail</button>' : '';
+    return '<div class="parc-section"><div class="parc-box">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-weight:700;color:var(--accent2)"><span>🧑‍💼 ' + comE(cor) + '</span><span>' + comBRL(g.sub) + '</span></div>'
+      + '<div style="margin-top:6px;font-size:12.5px">' + comRelDadosBancariosHtml_(corretorObj) + '</div>'
+      + itensHtml
+      + '<div style="margin-top:8px">'
+      + '<button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="comRelAvisarCorretor(decodeURIComponent(\'' + corParam + '\'))">📱 Avisar ' + comE(cor) + '</button>'
+      + botaoEmail
+      + '</div>'
+      + '</div></div>';
   }).join('');
   var card = document.getElementById('comRelCard');
   card.innerHTML =
     '<div class="parc-header"><div><div class="parc-header-title">⏳ Comissões a Pagar aos Corretores</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
     + '<div class="parc-body">'
-    + '<div class="parc-section"><div class="parc-processo-num">' + lista.length + ' repasse(s) em aberto (pendente ou atrasado) — sem filtro de período, é dívida em aberto</div></div>'
-    + (lista.length ? linhasHtml : '<div class="loc-note">Nenhum repasse pendente ou atrasado.</div>')
+    + '<div class="parc-section"><div class="parc-processo-num">' + lista.length + ' repasse(s) em aberto (pendente ou atrasado), ' + ordem.length + ' corretor(es) — sem filtro de período, é dívida em aberto</div></div>'
+    + (lista.length ? gruposHtml : '<div class="loc-note">Nenhum repasse pendente ou atrasado.</div>')
     + (lista.length ? '<div class="parc-section"><div class="parc-section-label">Total a Pagar</div><div class="parc-tarefa-box"><strong>' + comBRL(total) + '</strong></div></div>' : '')
     + '</div>'
     + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+};
+
+// Monta o texto de aviso (comissão em aberto) pra um corretor específico — negócios com Status
+// Pagamento Corretor != Recebido vinculados a ele, valor total e a lista de imóveis/clientes que
+// compõem esse total. Compartilhado pelos dois canais de envio (WhatsApp/E-mail) abaixo.
+function comRelMontarAvisoCorretor_(nomeCorretor) {
+  var alvo = String(nomeCorretor || '').trim();
+  var negocios = (window.comNegocios || []).filter(function (n) {
+    return String(n['Corretor'] || '').trim() === alvo && (n['Status Pagamento Corretor'] || 'Pendente') !== 'Recebido';
+  });
+  if (!negocios.length) return null;
+  var total = negocios.reduce(function (s, n) { return s + comNum(n['Valor Repasse Corretor']); }, 0);
+  var itensTxt = negocios.map(function (n) { return '- ' + (n['Cliente Proprietario'] || '(sem nome)') + ' — ' + (n['Endereco Imovel'] || '') + ': ' + comBRL(n['Valor Repasse Corretor']); }).join('\n');
+  var texto = 'Olá, ' + alvo + '! Você tem ' + (negocios.length > 1 ? 'comissões' : 'uma comissão') + ' a receber, no total de ' + comBRL(total) + ':\n\n'
+    + itensTxt
+    + '\n\nQualquer dúvida, fico à disposição.\nDr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712';
+  return { texto: texto, total: total, negocios: negocios };
+}
+window.comRelAvisarCorretor = function (nomeCorretor) {
+  var aviso = comRelMontarAvisoCorretor_(nomeCorretor);
+  if (!aviso) { alert('Nenhuma comissão em aberto encontrada para ' + nomeCorretor + '.'); return; }
+  var corretor = (window.comCorretores || []).find(function (c) { return String(c['Nome'] || '').trim() === String(nomeCorretor || '').trim(); });
+  var tel = String((corretor && corretor['Telefone']) || '').replace(/\D/g, '');
+  if (!tel) { alert('Este corretor não tem telefone cadastrado. Cadastre o telefone em "🧑‍💼 Corretores cadastrados" antes de avisar por WhatsApp.'); return; }
+  window.open('https://wa.me/55' + tel + '?text=' + encodeURIComponent(aviso.texto), '_blank');
+};
+window.comRelAvisarCorretorEmail = function (nomeCorretor) {
+  var corretor = (window.comCorretores || []).find(function (c) { return String(c['Nome'] || '').trim() === String(nomeCorretor || '').trim(); });
+  if (!corretor || !corretor['Email']) { alert('Este corretor não tem e-mail cadastrado. Cadastre o e-mail em "🧑‍💼 Corretores cadastrados" antes de avisar por e-mail.'); return; }
+  var aviso = comRelMontarAvisoCorretor_(nomeCorretor);
+  if (!aviso) { alert('Nenhuma comissão em aberto encontrada para ' + nomeCorretor + '.'); return; }
+  abrirEmailFlex('Comissão a receber', aviso.texto);
 };
 
 // ---- Ranking de Corretores (agrupa TODOS os negócios com corretor vinculado, período opcional
@@ -13304,7 +13430,6 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="">Todos</option>
           <option value="Venda">Venda</option>
           <option value="Locação">Locação</option>
-          <option value="Venda e Locação">Venda e Locação</option>
         </select>
       </div>
       <div class="loc-mes-wrap">
@@ -13318,6 +13443,7 @@ window.cpRenderFixas=cpRenderFixas;
       </div>
       <button class="loc-btn primary" onclick="comNovoNegocio()">🤝 Novo negócio</button>
       <button class="loc-btn" id="btnComCorretores" onclick="comToggleCorretores()">🧑‍💼 Corretores cadastrados</button>
+      <button class="loc-btn" onclick="comImobiliariaAbrir()">⚙️ Dados da Imobiliária</button>
       <button class="loc-btn" onclick="comExportCSV()">⬇️ Exportar CSV</button>
       <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
         <button class="loc-btn" onclick="locToggleMenu(event,'comMenuRelatorios')">📊 Relatórios ▾</button>
@@ -13347,7 +13473,6 @@ window.cpRenderFixas=cpRenderFixas;
           <select class="loc-cinput" id="cm-tipo" onchange="comAutoPercentual()">
             <option value="Venda">Venda</option>
             <option value="Locação">Locação</option>
-            <option value="Venda e Locação">Venda e Locação</option>
           </select>
         </div>
         <div class="loc-cfield"><label>Status do Negócio</label>
@@ -13442,6 +13567,30 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-table-wrap">
         <table class="loc-table"><thead><tr><th>Nome</th><th>CRECI</th><th>Telefone</th><th>Pix</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
         <tbody id="comCorretoresTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DADOS DA IMOBILIÁRIA — configuração local (localStorage), usada na cláusula de comissão
+     de corretagem gerada nas Propostas (comAbrirDoc). Não é CRUD/planilha, mesmo nível de
+     "configuração local" de getAdvogadoInfo/setAdvogadoInfo. -->
+<div class="modal-repasse-overlay" id="modalComImobiliaria">
+  <div class="repasse-wrap" style="max-width:460px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">⚙️ Dados da Imobiliária</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalComImobiliaria').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div class="loc-note" style="margin-bottom:14px">Usados na cláusula de comissão de corretagem que aparece nas Propostas de Compra/Locação geradas — identifica a imobiliária responsável e garante o percentual pactuado por escrito.</div>
+      <div class="loc-cform" style="padding:0;border:none;background:none">
+        <div class="loc-cfield full"><label>Nome/Razão Social da Imobiliária</label><input class="loc-cinput" id="comImob-nome" placeholder="Ex.: Adenilson Borges Imóveis"></div>
+        <div class="loc-cfield full"><label>CNPJ</label><input class="loc-cinput" id="comImob-cnpj" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="00.000.000/0000-00"></div>
+        <div class="loc-cfield full"><label>CRECI Pessoa Jurídica (CRECI-PJ)</label><input class="loc-cinput" id="comImob-creciPJ" placeholder="Ex.: CRECI/SP 12345-J"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="comImob-msg"></span>
+          <button class="loc-btn primary" onclick="comImobiliariaSalvar()">💾 Salvar</button>
+        </div>
       </div>
     </div>
   </div>
