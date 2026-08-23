@@ -15318,8 +15318,17 @@ window.cpRenderFixas=cpRenderFixas;
   }
   function relLocadorImoveis(nome){
     var imoveis=[];
+    // Contratos que já têm "Proprietários do imóvel" cadastrados (múltiplos donos, cada um com
+    // seu percentual) — nesses, a fatia de CADA proprietário vem sempre dessa lista, mesmo a do
+    // locador principal do contrato (campo "Locador"), quando ele também estiver cadastrado lá.
+    // Sem essa checagem, quem for ao mesmo tempo "Locador" do contrato E um dos proprietários
+    // cadastrados (comum: é o locador principal, mas só dono de uma fração do imóvel) entrava
+    // pelo primeiro laço com 100% e o segundo laço pulava ele por "já estar listado" — nunca
+    // aplicando o percentual real (ex.: 50% em vez de 100%).
+    var contratosComCoprop={};
+    (window.locCoprop||[]).forEach(function(o){ if(o.Contrato)contratosComCoprop[o.Contrato]=true; });
     DATA.contratos.forEach(function(c){
-      if(c.locador&&c.locador.trim()===nome){
+      if(c.locador&&c.locador.trim()===nome&&!contratosComCoprop[c.contrato]){
         imoveis.push({contrato:c,pct:100,viaCoprop:false});
       }
     });
@@ -15327,7 +15336,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(!o.Nome||o.Nome.trim()!==nome)return;
       var c=contratosById[o.Contrato];
       if(!c)return;
-      if(imoveis.find(function(i){return i.contrato.contrato===c.contrato;}))return; // já listado como locador principal
+      if(imoveis.find(function(i){return i.contrato.contrato===c.contrato;}))return; // evita duplicar
       imoveis.push({contrato:c,pct:num(o.Percentual),viaCoprop:true});
     });
     return imoveis;
