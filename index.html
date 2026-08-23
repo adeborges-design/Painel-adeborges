@@ -3647,6 +3647,11 @@
         </svg>
         Clique no texto para editar
       </div>
+      <div id="docToolbarComExtra" style="display:none;gap:10px">
+        <button class="btn-parc-wpp" onclick="comDocEnviarWhats()">📱 WhatsApp</button>
+        <button class="btn-parc-email" onclick="comDocEnviarEmail()">✉️ E-mail</button>
+        <button class="btn-parc-img" onclick="comDocSalvarImagem()">💾 Salvar</button>
+      </div>
       <button class="btn-recibo-print" onclick="imprimirDoc()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
@@ -5940,6 +5945,7 @@ window.ptSalvarTodas = async function () {
 };
 
 function abrirDoc(tipo, uid) {
+  document.getElementById('docToolbarComExtra').style.display = 'none';
   const p = allProcessos.find(x => x._uid === parseInt(uid));
   if (!p) return;
 
@@ -8287,6 +8293,8 @@ window.comCorretorEditar = function (id) {
 };
 
 window.comCorretorSalvar = function () {
+  var btn = document.getElementById('comCorretorSalvarBtn');
+  if (btn && btn.disabled) return; // trava contra clique duplo (o mesmo corretor sendo salvo 2x)
   var id = document.getElementById('cor-id').value;
   var nome = document.getElementById('cor-nome').value.trim();
   var creci = document.getElementById('cor-creci').value.trim();
@@ -8294,6 +8302,7 @@ window.comCorretorSalvar = function () {
   if (!nome) { msgEl.textContent = 'Informe o nome do corretor.'; msgEl.style.color = 'var(--red)'; return; }
   if (!creci) { msgEl.textContent = 'Informe o CRECI do corretor.'; msgEl.style.color = 'var(--red)'; return; }
   if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  if (btn) btn.disabled = true;
   var campos = {
     'Nome': nome, 'CPF': document.getElementById('cor-cpf').value.trim(), 'CRECI': creci,
     'Telefone': document.getElementById('cor-telefone').value.trim(), 'Email': document.getElementById('cor-email').value.trim(),
@@ -8311,14 +8320,35 @@ window.comCorretorSalvar = function () {
     } catch (e2) { erroRede = e2; }
     if (erroRede) {
       try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
-      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return; }
       msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
     } else if (!resp || !resp.ok) {
       msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
-      msgEl.style.color = 'var(--red)'; return;
+      msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return;
     } else {
       msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+      // Se foi uma criação (não tinha ID ainda), grava o ID devolvido pelo backend no campo
+      // oculto — assim, se o clique duplicar por engano antes da tela fechar, o segundo envio
+      // vira uma ATUALIZAÇÃO do mesmo registro, não um corretor duplicado novo.
+      if (!id && resp.id) document.getElementById('cor-id').value = resp.id;
     }
+    // Fecha a tela de cadastro ao salvar com sucesso — evita o corretor ficar com o formulário
+    // aberto "sem saber se salvou" e clicar de novo em "Salvar", duplicando o cadastro. Fica um
+    // instante curto mostrando "✓ Salvo!" antes de fechar, só pra dar tempo de ler a confirmação.
+    // O recarregamento da planilha (carregarComissoes) continua no mesmo tempo de sempre (1s) —
+    // separado do fechamento, pra não competir/atrasar um com o outro.
+    var idFechado = document.getElementById('cor-id').value;
+    setTimeout(function () {
+      // Só fecha se a tela ainda estiver mostrando ESTE MESMO cadastro — se enquanto isso o
+      // usuário já clicou em "Novo corretor" ou abriu outro pra editar, o campo oculto de ID já
+      // mudou, e fechar aqui derrubaria o formulário novo dele por baixo dos pés.
+      if (document.getElementById('cor-id').value === idFechado) {
+        window.comCorretorNovo();
+        document.getElementById('comCorretoresSection').classList.add('loc-hidden');
+        document.getElementById('btnComCorretores').classList.remove('active');
+      }
+      if (btn) btn.disabled = false;
+    }, 500);
     setTimeout(function () { carregarComissoes(); }, 1000);
   })();
 };
@@ -8487,6 +8517,8 @@ window.comEditarNegocio = function (id) {
 };
 
 window.comSalvarNegocio = function () {
+  var btn = document.getElementById('comSalvarNegocioBtn');
+  if (btn && btn.disabled) return; // trava contra clique duplo (o mesmo negócio sendo salvo 2x)
   var id = document.getElementById('cm-id').value;
   var cliente = document.getElementById('cm-cliente').value.trim();
   var endereco = document.getElementById('cm-endereco').value.trim();
@@ -8498,6 +8530,7 @@ window.comSalvarNegocio = function () {
   if (!endereco) { msgEl.textContent = 'Informe o endereço do imóvel.'; msgEl.style.color = 'var(--red)'; return; }
   if (!valorNegocio) { msgEl.textContent = 'Informe o valor do negócio.'; msgEl.style.color = 'var(--red)'; return; }
   if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  if (btn) btn.disabled = true;
   var valorComissao = Math.round(valorNegocio * pctComissao / 100 * 100) / 100;
   var valorRepasse = Math.round(valorComissao * pctRepasse / 100 * 100) / 100;
   var campos = {
@@ -8531,14 +8564,28 @@ window.comSalvarNegocio = function () {
     } catch (e2) { erroRede = e2; }
     if (erroRede) {
       try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
-      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return; }
       msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
     } else if (!resp || !resp.ok) {
       msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
-      msgEl.style.color = 'var(--red)'; return;
+      msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return;
     } else {
       msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+      // Grava o ID devolvido pelo backend (numa criação) — se o clique duplicar antes da tela
+      // fechar, o segundo envio vira ATUALIZAÇÃO do mesmo negócio, não um registro duplicado.
+      if (!id && resp.id) document.getElementById('cm-id').value = resp.id;
     }
+    // Fecha o formulário ao salvar com sucesso — evita ficar com a tela aberta "sem saber se
+    // salvou" e clicar de novo em "Salvar negócio", duplicando o cadastro. O recarregamento da
+    // planilha continua no mesmo tempo de sempre (1s), separado do fechamento da tela.
+    var idFechadoNeg = document.getElementById('cm-id').value;
+    setTimeout(function () {
+      // Mesma trava do cadastro de corretor: só fecha se o formulário ainda for deste mesmo
+      // negócio — se o usuário já começou outro (Novo negócio/Editar outro) nesse meio-tempo, o
+      // campo oculto de ID mudou, e não se deve fechar o formulário novo dele por baixo.
+      if (document.getElementById('cm-id').value === idFechadoNeg) window.comToggleForm(true);
+      if (btn) btn.disabled = false;
+    }, 500);
     setTimeout(function () { carregarComissoes(); }, 1000);
   })();
 };
@@ -8697,7 +8744,7 @@ window.comRender = function () {
     // documento de autorização (venda/locação) foram retirados daqui — dependem de um cadastro
     // formal de imóvel/proprietário, que só existirá no módulo de cadastro de imóveis (futuro).
     var propTituloBtn = tipo === 'Locação' ? 'Proposta de locação' : (tipo === 'Venda e Locação' ? 'Propostas (compra/locação)' : 'Proposta de compra');
-    var propBtn = '<button class="loc-send-btn" title="' + propTituloBtn + '" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝 Proposta</button> ';
+    var propBtn = '<button class="loc-btn-edit" title="' + propTituloBtn + '" onclick="comPropostaAbrir(\'' + comE(n['ID']) + '\')">📝</button> ';
     return '<tr>'
       + '<td>' + comE(n['Cliente Proprietario']) + '</td>'
       + '<td>' + comE(n['Endereco Imovel']) + '</td>'
@@ -8799,6 +8846,8 @@ window.comPropostaEditar = function (id) {
 };
 
 window.comPropostaSalvar = function () {
+  var btn = document.getElementById('comPropostaSalvarBtn');
+  if (btn && btn.disabled) return; // trava contra clique duplo (a mesma proposta sendo salva 2x)
   var id = document.getElementById('prop-id').value;
   var negocioId = document.getElementById('prop-negocioId').value;
   var nome = document.getElementById('prop-nome').value.trim();
@@ -8808,6 +8857,7 @@ window.comPropostaSalvar = function () {
   if (!nome) { msgEl.textContent = 'Informe o nome do proponente.'; msgEl.style.color = 'var(--red)'; return; }
   if (!valor) { msgEl.textContent = 'Informe o valor da proposta.'; msgEl.style.color = 'var(--red)'; return; }
   if (!window.comLive) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  if (btn) btn.disabled = true;
   var campos = {
     'Negocio': negocioId, 'Nome Proponente': nome,
     'CPF_CNPJ Proponente': document.getElementById('prop-cpf').value.trim(),
@@ -8831,15 +8881,28 @@ window.comPropostaSalvar = function () {
     } catch (e2) { erroRede = e2; }
     if (erroRede) {
       try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
-      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; return; }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return; }
       msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
     } else if (!resp || !resp.ok) {
       msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
-      msgEl.style.color = 'var(--red)'; return;
+      msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return;
     } else {
       msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+      // Grava o ID devolvido pelo backend (numa criação) — se o clique duplicar antes da lista
+      // atualizar, o segundo envio vira ATUALIZAÇÃO da mesma proposta, não uma duplicata.
+      if (!id && resp.id) document.getElementById('prop-id').value = resp.id;
     }
-    setTimeout(function () { carregarComissoes().then(function () { comPropostaRenderLista(negocioId); }); }, 1000);
+    // Aqui NÃO fecha o modal inteiro (diferente de corretor/negócio): depois de cadastrar a
+    // proposta, o próximo passo natural costuma ser gerar o documento dela na mesma tela — mas
+    // limpa o sub-formulário (volta pra "Nova proposta") e atualiza a lista de propostas já
+    // cadastradas na hora, pra ficar óbvio que salvou (sem precisar clicar em Salvar de novo).
+    setTimeout(function () {
+      carregarComissoes().then(function () {
+        comPropostaRenderLista(negocioId);
+        window.comPropostaLimpar();
+      });
+      if (btn) btn.disabled = false;
+    }, 1000);
   })();
 };
 
@@ -8863,6 +8926,7 @@ window.comPropostaExcluir = function (id, negocioId) {
 // (Os documentos de autorização de venda/locação foram retirados: dependem de um cadastro formal
 // de imóvel/proprietário, que só existirá no módulo de cadastro de imóveis, ainda futuro.)
 window.comAbrirDoc = function (tipo, negocioId, propostaId) {
+  document.getElementById('docToolbarComExtra').style.display = 'flex';
   var n = (window.comNegocios || []).find(function (x) { return String(x['ID']) === String(negocioId); });
   if (!n) return;
   var titulo = '', html = '';
@@ -8873,6 +8937,12 @@ window.comAbrirDoc = function (tipo, negocioId, propostaId) {
       : (window.comPropostas || []).filter(function (x) { return String(x['Negocio']) === String(negocioId); }).sort(function (a, b) { return comNum(b['ID']) - comNum(a['ID']); })[0];
     if (!prop) { alert('Nenhuma proposta cadastrada para este negócio ainda. Cadastre uma proposta primeiro (📝 Proposta).'); return; }
     html = tipo === 'proposta_locacao' ? comGerarPropostaLocacao_(n, prop) : comGerarPropostaCompra(n, prop);
+    // Guardados pra uso pelos botões novos de WhatsApp/E-mail/Salvar (comDocEnviarWhats/
+    // comDocEnviarEmail/comDocSalvarImagem, logo abaixo) — mesmo espírito de accAvisoEnviarWhats:
+    // usa o telefone do proponente quando cadastrado, cai pro link genérico quando não tem.
+    window._comDocTelefone = prop['Telefone Proponente'] || '';
+    window._comDocEmail = prop['Email Proponente'] || '';
+    window._comDocTipo = tipo;
   } else return;
 
   document.getElementById('docToolbarTitle').textContent = titulo;
@@ -8884,6 +8954,38 @@ window.comAbrirDoc = function (tipo, negocioId, propostaId) {
   docBody.style.outline = 'none';
   document.getElementById('modalDoc').classList.add('open');
   setTimeout(function () { docBody.focus(); }, 300);
+};
+
+// ---- Botões do #docToolbarComExtra (só visíveis quando o documento foi aberto via comAbrirDoc,
+// ver toggle de display em comAbrirDoc/abrirDoc) — mesmo padrão de accReciboEnviarWhats/
+// accReciboEnviarEmail/accReciboEnviarImagem, adaptado pra ler o #docBody genérico do #modalDoc. ----
+window.comDocEnviarWhats = function () {
+  var texto = document.getElementById('docBody').innerText;
+  var tel = String(window._comDocTelefone || '').replace(/\D/g, '');
+  var link = tel ? ('https://wa.me/55' + tel + '?text=' + encodeURIComponent(texto)) : ('https://wa.me/?text=' + encodeURIComponent(texto));
+  window.open(link, '_blank');
+};
+window.comDocEnviarEmail = function () {
+  var texto = document.getElementById('docBody').innerText;
+  var titulo = document.getElementById('docToolbarTitle').textContent || 'Documento';
+  abrirEmailFlex(titulo, texto);
+};
+window.comDocSalvarImagem = function () {
+  var docBody = document.getElementById('docBody');
+  var nomeArq = 'proposta-' + (window._comDocTipo === 'proposta_locacao' ? 'locacao' : 'compra') + '.png';
+  var titulo = document.getElementById('docToolbarTitle').textContent || 'Documento';
+  html2canvas(docBody, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(function (canvas) {
+    canvas.toBlob(function (blob) {
+      var file = new File([blob], nomeArq, { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: titulo });
+      } else {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = nomeArq; a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+  });
 };
 
 // Qualificação simplificada do proprietário/cliente do negócio (não usa qualificacaoParte porque
@@ -8977,6 +9079,228 @@ function comGerarPropostaLocacao_(n, prop) {
     + '<div class="doc-assinatura-linha">' + escHtml(n['Cliente Proprietario'] || '') + '<br><small>Proprietário(a)/Locador(a) — ciente da proposta</small></div>'
     + '</div>';
 }
+
+// ---------- RELATÓRIOS DO MÓDULO (Vendas Realizadas / Locações Realizadas / Comissões Pagas /
+// Comissões a Pagar / Ranking de Corretores) — modal único reaproveitável #modalRelCom, mesmo
+// espírito de #modalDoc (um modal genérico só, o conteúdo de #comRelCard muda conforme qual
+// relatório foi pedido). Os 4 botões de ação (WhatsApp/E-mail/Imprimir/Copiar texto) ficam fixos
+// no modal e sempre leem o texto do card atual (mesmo padrão de relMensalCopiarTexto). Todos
+// derivados de window.comNegocios/comCorretores já carregados — não precisa de nenhuma chamada
+// nova ao servidor.
+window.comRelTipoAtual = '';
+function comRelPeriodo_() {
+  return {
+    de: (document.getElementById('comRelDe') || {}).value || '',
+    ate: (document.getElementById('comRelAte') || {}).value || ''
+  };
+}
+// Compara a data BR do negócio (dd/mm/aaaa) contra o período (strings ISO aaaa-mm-dd dos campos
+// <input type=date>, que já comparam certo como texto). Sem "de" nem "até" = aceita tudo, mesmo
+// sem data preenchida; com filtro, negócio sem data preenchida fica de fora (não dá pra saber se
+// está dentro do período ou não).
+function comRelDentroPeriodo_(dataBR, de, ate) {
+  if (!de && !ate) return true;
+  var iso = comIsoFromBR(dataBR);
+  if (!iso) return false;
+  if (de && iso < de) return false;
+  if (ate && iso > ate) return false;
+  return true;
+}
+function comRelNomeCorretor_(nome) {
+  return (nome && String(nome).trim()) ? String(nome).trim() : '(sem corretor vinculado)';
+}
+function comRelPeriodoTexto_(per) {
+  if (!per.de && !per.ate) return ' — todos os períodos';
+  var deTxt = per.de ? comFdt(new Date(per.de + 'T00:00:00')) : '(início)';
+  var ateTxt = per.ate ? comFdt(new Date(per.ate + 'T00:00:00')) : '(hoje)';
+  return ' — período de ' + deTxt + ' até ' + ateTxt;
+}
+// Abre o modal já com o título certo e mostra/esconde o seletor de período (Comissões a Pagar não
+// usa período — é dívida em aberto, não faz sentido limitar por data).
+function comRelAbrirModal_(tipo, titulo, mostraPeriodo) {
+  window.comRelTipoAtual = tipo;
+  document.getElementById('comRelTitulo').textContent = '📊 ' + titulo;
+  document.getElementById('comRelPeriodoWrap').style.display = mostraPeriodo ? '' : 'none';
+  document.getElementById('modalRelCom').classList.add('open');
+}
+// Chamado ao trocar o período (onchange dos campos De/Até) — refaz o relatório que já estava
+// aberto, sem precisar reabrir o menu.
+window.comRelGerarAtual = function () {
+  var tipo = window.comRelTipoAtual;
+  if (tipo === 'vendas') window.comRelVendasGerar();
+  else if (tipo === 'locacoes') window.comRelLocacoesGerar();
+  else if (tipo === 'pagas') window.comRelPagasGerar();
+  else if (tipo === 'apagar') window.comRelAPagarGerar();
+  else if (tipo === 'ranking') window.comRelRankingGerar();
+};
+
+// ---- Vendas Realizadas / Locações Realizadas (mesma lógica, só muda o Tipo aceito) ----
+function comRelVendasOuLocacoesGerar_(chave, titulo, iconeTitulo, tiposAceitos) {
+  comRelAbrirModal_(chave, titulo, true);
+  var per = comRelPeriodo_();
+  var lista = (window.comNegocios || []).filter(function (n) {
+    if (tiposAceitos.indexOf(n['Tipo']) < 0) return false;
+    if ((n['Status Negocio'] || '') !== 'Concluído') return false;
+    return comRelDentroPeriodo_(n['Data Fechamento'], per.de, per.ate);
+  }).sort(function (a, b) { return (comIsoFromBR(a['Data Fechamento']) || '').localeCompare(comIsoFromBR(b['Data Fechamento']) || ''); });
+  var totalValor = 0, totalComissao = 0;
+  var linhasHtml = lista.map(function (n) {
+    totalValor += comNum(n['Valor Negocio']);
+    totalComissao += comNum(n['Valor Comissao']);
+    return '<div class="parc-section" style="padding:10px 0;border-bottom:1px solid var(--border2)">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px"><strong>' + comE(n['Cliente Proprietario']) + '</strong><span style="color:var(--muted);font-size:11.5px;white-space:nowrap">' + comE(n['Data Fechamento'] || '—') + '</span></div>'
+      + '<div style="color:var(--muted);font-size:12px;margin:2px 0">' + comE(n['Endereco Imovel']) + '</div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;flex-wrap:wrap;gap:6px"><span>Valor do negócio: <strong>' + comBRL(n['Valor Negocio']) + '</strong></span><span>Comissão: <strong style="color:var(--green)">' + comBRL(n['Valor Comissao']) + '</strong></span></div>'
+      + '<div style="font-size:12px;color:var(--muted)">Corretor: ' + comE(comRelNomeCorretor_(n['Corretor'])) + '</div>'
+      + '</div>';
+  }).join('');
+  var card = document.getElementById('comRelCard');
+  card.innerHTML =
+    '<div class="parc-header"><div><div class="parc-header-title">' + iconeTitulo + ' ' + comE(titulo) + '</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-processo-num">' + lista.length + ' negócio(s) concluído(s)' + comRelPeriodoTexto_(per) + '</div></div>'
+    + (lista.length ? linhasHtml : '<div class="loc-note">Nenhum negócio concluído encontrado no período.</div>')
+    + (lista.length ? '<div class="parc-section"><div class="parc-section-label">Totais</div><div class="parc-tarefa-box"><div style="display:flex;justify-content:space-between"><span>Valor total dos negócios</span><strong>' + comBRL(totalValor) + '</strong></div><div style="display:flex;justify-content:space-between;margin-top:4px"><span>Comissão total</span><strong>' + comBRL(totalComissao) + '</strong></div></div></div>' : '')
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+}
+window.comRelVendasGerar = function () { comRelVendasOuLocacoesGerar_('vendas', 'Vendas Realizadas', '🏠', ['Venda', 'Venda e Locação']); };
+window.comRelLocacoesGerar = function () { comRelVendasOuLocacoesGerar_('locacoes', 'Locações Realizadas', '🔑', ['Locação', 'Venda e Locação']); };
+
+// ---- Comissões Pagas aos Corretores (Status Pagamento Corretor = Recebido, por Data Pagamento
+// Corretor, agrupado por corretor com subtotal) ----
+window.comRelPagasGerar = function () {
+  comRelAbrirModal_('pagas', 'Comissões Pagas aos Corretores', true);
+  var per = comRelPeriodo_();
+  var lista = (window.comNegocios || []).filter(function (n) {
+    if ((n['Status Pagamento Corretor'] || '') !== 'Recebido') return false;
+    return comRelDentroPeriodo_(n['Data Pagamento Corretor'], per.de, per.ate);
+  }).sort(function (a, b) { return (comIsoFromBR(a['Data Pagamento Corretor']) || '').localeCompare(comIsoFromBR(b['Data Pagamento Corretor']) || ''); });
+  var grupos = {}, ordem = [], total = 0;
+  lista.forEach(function (n) {
+    var cor = comRelNomeCorretor_(n['Corretor']);
+    if (!grupos[cor]) { grupos[cor] = { itens: [], sub: 0 }; ordem.push(cor); }
+    grupos[cor].itens.push(n);
+    grupos[cor].sub += comNum(n['Valor Repasse Corretor']);
+    total += comNum(n['Valor Repasse Corretor']);
+  });
+  var gruposHtml = ordem.map(function (cor) {
+    var g = grupos[cor];
+    var itensHtml = g.itens.map(function (n) {
+      return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:6px 0;border-top:1px dashed var(--border2)"><span>' + comE(n['Cliente Proprietario']) + ' — ' + comE(n['Endereco Imovel']) + '<br><span style="color:var(--muted);font-size:11px">Pago em ' + comE(n['Data Pagamento Corretor'] || '—') + '</span></span><strong style="white-space:nowrap">' + comBRL(n['Valor Repasse Corretor']) + '</strong></div>';
+    }).join('');
+    return '<div class="parc-section"><div class="parc-box"><div style="display:flex;justify-content:space-between;font-weight:700;color:var(--accent2)"><span>🧑‍💼 ' + comE(cor) + '</span><span>' + comBRL(g.sub) + '</span></div>' + itensHtml + '</div></div>';
+  }).join('');
+  var card = document.getElementById('comRelCard');
+  card.innerHTML =
+    '<div class="parc-header"><div><div class="parc-header-title">💰 Comissões Pagas aos Corretores</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-processo-num">' + lista.length + ' repasse(s) pago(s)' + comRelPeriodoTexto_(per) + '</div></div>'
+    + (lista.length ? gruposHtml : '<div class="loc-note">Nenhum repasse pago encontrado no período.</div>')
+    + (lista.length ? '<div class="parc-section"><div class="parc-section-label">Total Pago</div><div class="parc-tarefa-box"><strong>' + comBRL(total) + '</strong></div></div>' : '')
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+};
+
+// ---- Comissões a Pagar aos Corretores (Status Pagamento Corretor != Recebido — Pendente ou
+// Atrasado — SEM filtro de período: é dívida em aberto, não faz sentido limitar por data) ----
+window.comRelAPagarGerar = function () {
+  comRelAbrirModal_('apagar', 'Comissões a Pagar aos Corretores', false);
+  var lista = (window.comNegocios || []).filter(function (n) {
+    return (n['Status Pagamento Corretor'] || 'Pendente') !== 'Recebido';
+  }).sort(function (a, b) {
+    var da = comIsoFromBR(a['Data Prevista Pagamento Corretor']) || '9999-99-99';
+    var db = comIsoFromBR(b['Data Prevista Pagamento Corretor']) || '9999-99-99';
+    return da.localeCompare(db);
+  });
+  var total = 0;
+  var linhasHtml = lista.map(function (n) {
+    total += comNum(n['Valor Repasse Corretor']);
+    var status = n['Status Pagamento Corretor'] || 'Pendente';
+    var cor = status === 'Atrasado' ? 'var(--red)' : 'var(--yellow)';
+    return '<div class="parc-section" style="padding:10px 0;border-bottom:1px solid var(--border2)">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px"><strong>' + comE(comRelNomeCorretor_(n['Corretor'])) + '</strong><span style="color:' + cor + ';font-weight:700;font-size:11.5px;white-space:nowrap">● ' + comE(status) + '</span></div>'
+      + '<div style="color:var(--muted);font-size:12px;margin:2px 0">' + comE(n['Cliente Proprietario']) + ' — ' + comE(n['Endereco Imovel']) + '</div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;flex-wrap:wrap;gap:6px"><span>Repasse: <strong>' + comBRL(n['Valor Repasse Corretor']) + '</strong></span><span style="color:var(--muted)">Previsto: ' + comE(n['Data Prevista Pagamento Corretor'] || '—') + '</span></div>'
+      + '</div>';
+  }).join('');
+  var card = document.getElementById('comRelCard');
+  card.innerHTML =
+    '<div class="parc-header"><div><div class="parc-header-title">⏳ Comissões a Pagar aos Corretores</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-processo-num">' + lista.length + ' repasse(s) em aberto (pendente ou atrasado) — sem filtro de período, é dívida em aberto</div></div>'
+    + (lista.length ? linhasHtml : '<div class="loc-note">Nenhum repasse pendente ou atrasado.</div>')
+    + (lista.length ? '<div class="parc-section"><div class="parc-section-label">Total a Pagar</div><div class="parc-tarefa-box"><strong>' + comBRL(total) + '</strong></div></div>' : '')
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+};
+
+// ---- Ranking de Corretores (agrupa TODOS os negócios com corretor vinculado, período opcional
+// por Data Fechamento — o "toque vitrine" pedido: mini-dashboard de performance, ordenado do
+// maior pro menor, com barra de proporção visual) ----
+window.comRelRankingGerar = function () {
+  comRelAbrirModal_('ranking', 'Ranking de Corretores', true);
+  var per = comRelPeriodo_();
+  var lista = (window.comNegocios || []).filter(function (n) {
+    if (!String(n['Corretor'] || '').trim()) return false;
+    return comRelDentroPeriodo_(n['Data Fechamento'], per.de, per.ate);
+  });
+  var grupos = {}, ordem = [];
+  lista.forEach(function (n) {
+    var cor = String(n['Corretor']).trim();
+    if (!grupos[cor]) { grupos[cor] = { comissao: 0, repasse: 0, qtd: 0 }; ordem.push(cor); }
+    grupos[cor].comissao += comNum(n['Valor Comissao']);
+    grupos[cor].repasse += comNum(n['Valor Repasse Corretor']);
+    grupos[cor].qtd++;
+  });
+  ordem.sort(function (a, b) { return grupos[b].comissao - grupos[a].comissao; });
+  var maxComissao = ordem.length ? grupos[ordem[0]].comissao : 0;
+  var linhasHtml = ordem.map(function (cor, idx) {
+    var g = grupos[cor];
+    var pct = maxComissao > 0 ? Math.max(4, Math.round(g.comissao / maxComissao * 100)) : 0;
+    var medalha = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1) + '.';
+    return '<div class="parc-section" style="padding:10px 0;border-bottom:1px solid var(--border2)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><strong>' + medalha + ' ' + comE(cor) + '</strong><span style="font-size:11.5px;color:var(--muted);white-space:nowrap">' + g.qtd + ' negócio(s)</span></div>'
+      + '<div style="background:var(--border2);border-radius:5px;height:10px;margin:6px 0;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:var(--accent2);border-radius:5px"></div></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:6px"><span>Comissão gerada: <strong style="color:var(--green)">' + comBRL(g.comissao) + '</strong></span><span>Repasse ao corretor: <strong>' + comBRL(g.repasse) + '</strong></span></div>'
+      + '</div>';
+  }).join('');
+  var card = document.getElementById('comRelCard');
+  card.innerHTML =
+    '<div class="parc-header"><div><div class="parc-header-title">🏆 Ranking de Corretores</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div></div>'
+    + '<div class="parc-body">'
+    + '<div class="parc-section"><div class="parc-processo-num">' + ordem.length + ' corretor(es) com negócio vinculado' + comRelPeriodoTexto_(per) + '</div></div>'
+    + (ordem.length ? linhasHtml : '<div class="loc-note">Nenhum negócio com corretor vinculado encontrado no período.</div>')
+    + '</div>'
+    + '<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+};
+
+// ---- Botões de ação fixos do #modalRelCom (mesmo padrão de relMensalEnviarWhats/relMensalEnviarEmail/
+// relMensalImprimir/relMensalCopiarTexto) — sempre leem o texto do #comRelCard já renderizado. ----
+window.comRelImprimir = function () {
+  imprimirComClasse_('printing-rel-com', 200);
+};
+window.comRelCopiarTexto = function () {
+  var card = document.getElementById('comRelCard');
+  var texto = card ? card.innerText : '';
+  if (!texto) { alert('Gere um relatório primeiro.'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(function () { alert('Texto copiado!'); }).catch(function () { alert('Não consegui copiar. Selecione o texto na tela.'); });
+  } else { alert('Selecione o texto na tela e copie manualmente.'); }
+};
+window.comRelEnviarWhats = function () {
+  var card = document.getElementById('comRelCard');
+  var texto = card ? card.innerText : '';
+  if (!texto) { alert('Gere um relatório primeiro.'); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+};
+window.comRelEnviarEmail = function () {
+  var card = document.getElementById('comRelCard');
+  var texto = card ? card.innerText : '';
+  if (!texto) { alert('Gere um relatório primeiro.'); return; }
+  var titulo = (document.getElementById('comRelTitulo') || {}).textContent || 'Relatório';
+  abrirEmailFlex(titulo, texto);
+};
 
 // --- MÓDULO HONORÁRIOS ---------------------------------------
 let allHonorarios = [];
@@ -12501,6 +12825,18 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-btn-edit:hover{border-color:var(--accent);color:var(--accent)}
   @media(max-width:900px){.loc-stats{grid-template-columns:repeat(2,1fr)}.loc-endereco{max-width:140px}.loc-cform{grid-template-columns:repeat(2,1fr)}.loc-cform .half{grid-column:span 1}}
   @media(max-width:640px){.loc-stats{grid-template-columns:1fr}.loc-body{padding:16px 12px 60px}.loc-cform{grid-template-columns:1fr}.loc-cform .half,.loc-cform .full{grid-column:1/-1}}
+  /* O formulário de Proposta (dentro do modal #modalComProposta, não da tela cheia do módulo)
+     ficava espremido: ".loc-cform" por padrão só encolhe pra menos colunas quando a LARGURA DA
+     TELA (viewport) diminui — mas aqui quem é pequeno é o MODAL (a ".repasse-wrap" de baixo tinha
+     só 560px de largura), então em qualquer tela de desktop/tablet normal (viewport bem maior que
+     900px) o formulário continuava tentando caber em 4 colunas dentro de um modal estreito,
+     sobrepondo campo em cima de campo. Corrigido fixando 2 colunas SEMPRE neste modal (não depende
+     da largura da tela) e alargando o modal em si.  */
+  #comPropostaWrap{width:760px;max-width:96vw}
+  #modalComProposta .loc-cform{grid-template-columns:repeat(2,1fr)}
+  #modalComProposta .loc-cform .half{grid-column:span 1}
+  #modalComProposta .loc-cform .full{grid-column:1/-1}
+  @media(max-width:520px){#modalComProposta .loc-cform{grid-template-columns:1fr}#modalComProposta .loc-cform .half{grid-column:1/-1}}
 </style>
 
 <div class="loc-overlay" id="locOverlay">
@@ -12983,6 +13319,16 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn primary" onclick="comNovoNegocio()">🤝 Novo negócio</button>
       <button class="loc-btn" id="btnComCorretores" onclick="comToggleCorretores()">🧑‍💼 Corretores cadastrados</button>
       <button class="loc-btn" onclick="comExportCSV()">⬇️ Exportar CSV</button>
+      <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
+        <button class="loc-btn" onclick="locToggleMenu(event,'comMenuRelatorios')">📊 Relatórios ▾</button>
+        <div id="comMenuRelatorios" class="loc-menu-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;min-width:280px;overflow:hidden">
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px" onclick="document.getElementById('comMenuRelatorios').style.display='none';comRelVendasGerar()">🏠 Vendas Realizadas</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('comMenuRelatorios').style.display='none';comRelLocacoesGerar()">🔑 Locações Realizadas</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('comMenuRelatorios').style.display='none';comRelPagasGerar()">💰 Comissões Pagas aos Corretores</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('comMenuRelatorios').style.display='none';comRelAPagarGerar()">⏳ Comissões a Pagar aos Corretores</button>
+          <button class="loc-btn" style="display:block;width:100%;text-align:left;border:none;border-radius:0;padding:10px 14px;border-top:1px solid var(--border2)" onclick="document.getElementById('comMenuRelatorios').style.display='none';comRelRankingGerar()">🏆 Ranking de Corretores</button>
+        </div>
+      </div>
     </div>
 
     <div class="lf-tip-wrap">
@@ -13046,7 +13392,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cform-actions">
           <span class="msg" id="cm-msg"></span>
           <button class="loc-btn" onclick="comToggleForm(true)">Cancelar</button>
-          <button class="loc-btn primary" onclick="comSalvarNegocio()">💾 Salvar negócio</button>
+          <button class="loc-btn primary" id="comSalvarNegocioBtn" onclick="comSalvarNegocio()">💾 Salvar negócio</button>
         </div>
       </div>
     </div>
@@ -13090,7 +13436,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cform-actions">
           <span class="msg" id="cor-msg"></span>
           <button class="loc-btn" onclick="comCorretorNovo()">Limpar</button>
-          <button class="loc-btn primary" onclick="comCorretorSalvar()">💾 Salvar corretor</button>
+          <button class="loc-btn primary" id="comCorretorSalvarBtn" onclick="comCorretorSalvar()">💾 Salvar corretor</button>
         </div>
       </div>
       <div class="loc-table-wrap">
@@ -13103,7 +13449,7 @@ window.cpRenderFixas=cpRenderFixas;
 
 <!-- MODAL PROPOSTA DE COMPRA — cadastro + histórico de propostas de um negócio -->
 <div class="modal-repasse-overlay" id="modalComProposta">
-  <div class="repasse-wrap" style="max-width:720px">
+  <div class="repasse-wrap" id="comPropostaWrap">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
       <div class="parceiro-toolbar-title" style="color:var(--accent)">📝 Propostas</div>
       <button class="btn-form-cancel" onclick="document.getElementById('modalComProposta').classList.remove('open')">✕</button>
@@ -13132,7 +13478,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cform-actions">
           <span class="msg" id="prop-msg"></span>
           <button class="loc-btn" onclick="comPropostaLimpar()">Limpar</button>
-          <button class="loc-btn primary" onclick="comPropostaSalvar()">💾 Salvar proposta</button>
+          <button class="loc-btn primary" id="comPropostaSalvarBtn" onclick="comPropostaSalvar()">💾 Salvar proposta</button>
         </div>
       </div>
     </div>
@@ -13312,6 +13658,23 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-informes-lote .rel-imovel-bloco,
   body.printing-informes-lote .parc-header,
   body.printing-informes-lote .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body.printing-rel-com * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-rel-com html, body.printing-rel-com body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-rel-com > * { display:none !important; }
+  body.printing-rel-com #modalRelCom {
+    display:block !important; position:static !important; top:auto !important; left:auto !important; width:100% !important;
+    background:#fff !important; padding:24px 0 !important; z-index:auto !important;
+    overflow:visible !important; height:auto !important; max-height:none !important; top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
+  }
+  body.printing-rel-com #modalRelCom .repasse-wrap {
+    overflow:visible !important; width:100% !important; max-width:100% !important; height:auto !important; max-height:none !important;
+    background:transparent !important; box-shadow:none !important; border:none !important;
+  }
+  body.printing-rel-com .parceiro-toolbar,
+  body.printing-rel-com .entr-no-print { display:none !important; }
+  body.printing-rel-com .parc-section,
+  body.printing-rel-com .parc-header,
+  body.printing-rel-com .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-aviso-loc html, body.printing-aviso-loc body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-aviso-loc > * { display:none !important; }
   body.printing-aviso-loc #modalAvisoLoc {
@@ -13781,6 +14144,34 @@ window.cpRenderFixas=cpRenderFixas;
     <div id="informesLoteCards" style="padding:0 20px 20px"></div>
     <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
       <button class="btn-recibo-print" onclick="informesLoteImprimir()">🖨 Imprimir/PDF (todos)</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIOS DE COMISSÕES — genérico (mesmo espírito de #modalDoc): um único modal, o
+     conteúdo de #comRelCard muda conforme qual dos 5 relatórios foi pedido (comRelVendasGerar/
+     comRelLocacoesGerar/comRelPagasGerar/comRelAPagarGerar/comRelRankingGerar), sem duplicar os
+     4 botões de ação (WhatsApp/E-mail/Imprimir/Copiar texto) uma vez por relatório. -->
+<div class="modal-repasse-overlay" id="modalRelCom">
+  <div class="repasse-wrap" style="max-width:720px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" id="comRelTitulo" style="color:var(--accent)">📊 Relatório</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalRelCom').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px" class="entr-no-print" id="comRelPeriodoWrap">
+      <div class="loc-note" style="margin-bottom:14px">Filtra pelo período abaixo (deixe em branco pra incluir todos os períodos).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:130px"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">De</label><input class="loc-cinput" type="date" id="comRelDe" onchange="comRelGerarAtual()"></div>
+        <div style="flex:1;min-width:130px"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Até</label><input class="loc-cinput" type="date" id="comRelAte" onchange="comRelGerarAtual()"></div>
+        <button class="loc-btn" onclick="document.getElementById('comRelDe').value='';document.getElementById('comRelAte').value='';comRelGerarAtual()">Todos os períodos</button>
+      </div>
+    </div>
+    <div id="comRelCard" style="padding:0 20px 20px"></div>
+    <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="btn-parc-wpp" onclick="comRelEnviarWhats()">📱 WhatsApp</button>
+      <button class="btn-parc-email" onclick="comRelEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-recibo-print" onclick="comRelImprimir()">🖨 Imprimir/PDF</button>
+      <button class="loc-btn" onclick="comRelCopiarTexto()">📋 Copiar texto</button>
     </div>
   </div>
 </div>
