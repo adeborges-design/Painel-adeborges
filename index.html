@@ -10400,11 +10400,28 @@ function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return
 // de rolar pro lado é pegar a barra nativa lá embaixo da tabela, que pode estar fora da área
 // visível (lista comprida de contas), obrigando a rolar a página inteira até o fim só pra "pegar"
 // a barra, rolar pro lado, e depois subir de novo pra ver as contas.
+//
+// Quem rola de verdade na horizontal nem sempre é o próprio wrap: em algumas telas (ex.: Locações
+// — "Lançamentos do mês" e "Contratos cadastrados") o wrap é propositalmente overflow-x:visible,
+// pra deixar o cabeçalho "sticky" grudado na tela toda em vez de só na tabela — nesses casos quem
+// rola é o .loc-overlay (a tela inteira), por uma regrinha do CSS: overflow-x vira 'auto' sozinho
+// quando overflow-y já é 'auto', mesmo sem declarar isso explicitamente. Por isso o alvo da
+// rolagem é sempre CALCULADO, subindo pelos pais até achar quem realmente estoura.
+function acharAlvoRolagemHorizontal_(wrap){
+ var el=wrap;
+ while(el&&el!==document.body){
+  var cs=getComputedStyle(el);
+  if((cs.overflowX==='auto'||cs.overflowX==='scroll')&&el.scrollWidth>el.clientWidth+1)return el;
+  el=el.parentElement;
+ }
+ return null;
+}
+window.acharAlvoRolagemHorizontal_=acharAlvoRolagemHorizontal_;
 function cpTopScroll_(wrap){
  if(!wrap)return;
- var table=wrap.querySelector('table');if(!table)return;
- var largura=table.scrollWidth;
- if(!largura||largura<=wrap.clientWidth)return;
+ var alvo=acharAlvoRolagemHorizontal_(wrap);
+ if(!alvo)return; // tabela cabe na tela (ou está escondida) - não tem o que rolar
+ var largura=alvo.scrollWidth;
  var bar=document.createElement('div');
  bar.className='cp-topscroll';
  bar.style.cssText='overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:-2px';
@@ -10413,8 +10430,8 @@ function cpTopScroll_(wrap){
  bar.appendChild(spacer);
  wrap.parentNode.insertBefore(bar,wrap);
  var lock=false;
- bar.addEventListener('scroll',function(){if(lock)return;lock=true;wrap.scrollLeft=bar.scrollLeft;lock=false;});
- wrap.addEventListener('scroll',function(){if(lock)return;lock=true;bar.scrollLeft=wrap.scrollLeft;lock=false;});
+ bar.addEventListener('scroll',function(){if(lock)return;lock=true;alvo.scrollLeft=bar.scrollLeft;lock=false;});
+ alvo.addEventListener('scroll',function(){if(lock)return;lock=true;bar.scrollLeft=alvo.scrollLeft;lock=false;});
 }
 window.cpTopScroll_=cpTopScroll_;
 // Reconstrói a barra espelhada de um quadro recolhível (Contas Fixas / Contas já pagas) no momento
@@ -10437,6 +10454,45 @@ function cpToggleQuadro_(id){
  if(abrir){try{cpTopScrollRefresh_(id);}catch(e){}}
 }
 window.cpToggleQuadro_=cpToggleQuadro_;
+
+// ---------- BARRA DE ROLAGEM ESPELHADA — EM TODOS OS MÓDULOS, AUTOMATICAMENTE ----------
+// A barra acima (cpTopScroll_) nasceu só pra Contas a Pagar, instalada manualmente depois de cada
+// renderização daquela tela. Em vez de repetir isso módulo por módulo (Locações, Acordos, e
+// qualquer tela nova que vier a ter tabela larga), este observador cobre a tela inteira: sempre
+// que algo muda no HTML (nova renderização, busca, filtro, abrir/fechar um quadro, trocar de
+// tela), reagenda uma varredura (com uma pequena espera, pra não recalcular a cada tecla digitada)
+// que instala essa barra em toda ".loc-table-wrap" visível que realmente tenha conteúdo pra rolar
+// — e não mexe nas que já estão com a barra certa (evita ficar recriando DOM à toa a cada varredura).
+function topScrollVarrer_(raiz){
+ (raiz||document).querySelectorAll('.loc-table-wrap').forEach(function(wrap){
+  var prev=wrap.previousElementSibling;
+  var temBarra=!!(prev&&prev.classList&&prev.classList.contains('cp-topscroll'));
+  if(wrap.offsetParent===null){
+   // escondido (quadro recolhido, tela fechada etc.) - tira barra "fantasma" de um estado antigo
+   if(temBarra)prev.parentNode.removeChild(prev);
+   return;
+  }
+  var alvo=acharAlvoRolagemHorizontal_(wrap);
+  if(temBarra){
+   var spacer=prev.firstElementChild;
+   var larguraAtual=spacer?(parseInt(spacer.style.width)||0):0;
+   var larguraAlvo=alvo?alvo.scrollWidth:0;
+   if(!alvo){prev.parentNode.removeChild(prev);return;}
+   if(larguraAtual===larguraAlvo)return; // já tá do jeito certo - não mexe (evita loop de mutação)
+   prev.parentNode.removeChild(prev);
+  }
+  if(alvo)cpTopScroll_(wrap);
+ });
+}
+window.topScrollVarrer_=topScrollVarrer_;
+(function(){
+ var pend=null;
+ function agendar(){ if(pend)return; pend=setTimeout(function(){pend=null;try{topScrollVarrer_(document);}catch(e){}},300); }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',agendar);else agendar();
+ var mo=new MutationObserver(agendar);
+ mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+ window.addEventListener('resize',agendar);
+})();
 function clampDay(y,m,d){var last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(Math.max(d,1),last));}
 // Classificação Pessoal / Escritório / Locação (repasse) das contas — separa a real situação
 // financeira pessoal e do escritório das contas de imóveis administrados (IPTU, seguro fiança etc.)
