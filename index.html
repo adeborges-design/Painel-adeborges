@@ -4578,6 +4578,7 @@ function saveConfig() {
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
   try{if(typeof carregarComissoes==='function')carregarComissoes();}catch(e){}
   try{if(typeof carregarImoveis==='function')carregarImoveis();}catch(e){}
+  try{if(typeof carregarImovInteressados==='function')carregarImovInteressados();}catch(e){}
   try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
   try{if(typeof carregarRascunhos==='function')carregarRascunhos();}catch(e){}
   try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
@@ -22652,7 +22653,7 @@ window.cpRenderFixas=cpRenderFixas;
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
-    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();if(typeof carregarImoveis==='function')carregarImoveis();}}catch(e){}},800);
+    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();if(typeof carregarImoveis==='function')carregarImoveis();if(typeof carregarImovInteressados==='function')carregarImovInteressados();}}catch(e){}},800);
     // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
     setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
@@ -22787,6 +22788,8 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half"><label>CPF/CNPJ</label><input class="loc-cinput" id="im-propCpf" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
         <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="im-propTelefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
         <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="im-propEmail" type="email"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Corretor responsável</div>
+        <div class="loc-cfield full"><label>Corretor Responsável</label><select class="loc-cinput" id="im-corretor"><option value="">Sem corretor vinculado</option></select></div>
         <div class="loc-cfield full"><label>Observações internas</label><input class="loc-cinput" id="im-obs"></div>
         <div class="loc-cform-actions">
           <span class="msg" id="im-msg"></span>
@@ -22797,8 +22800,42 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
 
     <div class="loc-table-wrap">
-      <table class="loc-table"><thead><tr><th>Endereço</th><th>Bairro/Cidade</th><th>Finalidade</th><th style="text-align:right">Valor</th><th style="text-align:center">Status</th><th></th></tr></thead>
+      <table class="loc-table"><thead><tr><th>Endereço</th><th>Bairro/Cidade</th><th>Finalidade</th><th>Corretor</th><th style="text-align:right">Valor</th><th style="text-align:center">Status</th><th></th></tr></thead>
       <tbody id="imovTbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- INTERESSADOS num imóvel (leads registrados pela equipe — não é formulário público, ver
+     Codigo.gs / resumo_projeto.md). Mesmo padrão de #modalComProposta. -->
+<div class="modal-repasse-overlay" id="modalImovInteressados">
+  <div class="repasse-wrap" id="imovIntWrap">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">👥 Interessados neste imóvel</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalImovInteressados').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input type="hidden" id="imovInt-imovelId">
+      <div class="loc-note" id="imovIntImovelInfo" style="margin-bottom:12px"></div>
+      <div id="imovIntLista" style="margin-bottom:16px"></div>
+      <div class="loc-section-title" id="imovIntFormTitle">Novo interessado</div>
+      <div class="loc-cform">
+        <input type="hidden" id="ii-id">
+        <div class="loc-cfield half"><label>Nome *</label><input class="loc-cinput" id="ii-nome" placeholder="Nome do interessado"></div>
+        <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="ii-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="ii-email" type="email"></div>
+        <div class="loc-cfield half"><label>Corretor que atende</label><select class="loc-cinput" id="ii-corretor"><option value="">Sem corretor vinculado</option></select></div>
+        <div class="loc-cfield"><label>Status</label>
+          <select class="loc-cinput" id="ii-status"><option>Novo contato</option><option>Em negociação</option><option>Sem interesse</option><option>Fechado</option></select>
+        </div>
+        <div class="loc-cfield"><label>Data do Contato</label><input class="loc-cinput" id="ii-dataContato" type="date"></div>
+        <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="ii-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="ii-msg"></span>
+          <button class="loc-btn" onclick="imovIntLimpar()">Limpar</button>
+          <button class="loc-btn primary" onclick="imovIntSalvar()">💾 Salvar interessado</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -22816,6 +22853,30 @@ window.imovAtualizarCamposValor = function () {
   var fin = document.getElementById('im-finalidade').value;
   document.getElementById('im-campoValorVenda').style.display = (fin === 'Venda' || fin === 'Ambos') ? '' : 'none';
   document.getElementById('im-campoValorLocacao').style.display = (fin === 'Locação' || fin === 'Ambos') ? '' : 'none';
+};
+
+// Reaproveita o cadastro de corretores já existente no módulo de Comissões (window.comCorretores)
+// — não criamos um cadastro de corretores novo, é o mesmo usado lá.
+function imovPreencherSelectCorretor() {
+  var sel = document.getElementById('im-corretor');
+  if (!sel) return;
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Sem corretor vinculado</option>' +
+    (window.comCorretores || []).filter(function (c) { return String(c['Ativo'] || 'Sim').toLowerCase() !== 'não' && String(c['Ativo'] || 'Sim').toLowerCase() !== 'nao'; })
+      .map(function (c) { return '<option value="' + comE(c['Nome']) + '">' + comE(c['Nome']) + (c['CRECI'] ? ' — ' + comE(c['CRECI']) : '') + '</option>'; }).join('');
+  if (atual) sel.value = atual;
+}
+
+// Link da vitrine pública para um imóvel específico — pra mandar direto pro pretendente.
+// catalogo.html precisa estar publicado na mesma pasta do index.html (mesmo padrão de portal.html).
+window.imovCopiarLink = function (id) {
+  var link = location.href.replace(/index\.html.*$/i, '') + 'catalogo.html?id=' + encodeURIComponent(id);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(function () { alert('Link copiado:\n' + link); })
+      .catch(function () { prompt('Copie o link abaixo:', link); });
+  } else {
+    prompt('Copie o link abaixo:', link);
+  }
 };
 
 window.carregarImoveis = async function () {
@@ -22842,6 +22903,7 @@ window.carregarImoveis = async function () {
   }
   imovRender();
   imovAtualizarNumerosHome_();
+  imovPreencherSelectCorretor();
 };
 
 // Atualiza os números do card "Imóveis Disponíveis" na tela inicial, se ela já estiver
@@ -22884,7 +22946,7 @@ window.imovRender = function () {
 
   var tbody = document.getElementById('imovTbody');
   if (!tbody) return;
-  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Nenhum imóvel encontrado.</td></tr>'; return; }
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Nenhum imóvel encontrado.</td></tr>'; return; }
   tbody.innerHTML = lista.map(function (n) {
     var valor = '';
     if (n['Finalidade'] === 'Venda') valor = comBRL(n['Valor Venda']);
@@ -22894,10 +22956,13 @@ window.imovRender = function () {
       + '<td>' + comE(n['Endereco']) + '</td>'
       + '<td>' + comE(n['Bairro']) + (n['Cidade'] ? ' — ' + comE(n['Cidade']) : '') + '</td>'
       + '<td>' + comE(n['Finalidade']) + '</td>'
+      + '<td>' + comE(n['Corretor Responsavel'] || '-') + '</td>'
       + '<td style="text-align:right">' + valor + '</td>'
       + '<td style="text-align:center"><span style="color:' + imovStatusCor_(n['Status']) + ';font-weight:700">● ' + comE(n['Status']) + '</span></td>'
       + '<td style="white-space:nowrap">'
       + '<button class="loc-btn" onclick="imovEditar(\'' + n['ID'] + '\')" title="Editar">✏️</button> '
+      + '<button class="loc-btn" onclick="imovCopiarLink(\'' + n['ID'] + '\')" title="Copiar link do imóvel para enviar ao pretendente">🔗</button> '
+      + '<button class="loc-btn" onclick="imovInteressadosAbrir(\'' + n['ID'] + '\')" title="Interessados neste imóvel">👥</button> '
       + '<button class="loc-btn" onclick="imovExcluir(\'' + n['ID'] + '\')" title="Excluir">🗑️</button>'
       + '</td></tr>';
   }).join('');
@@ -22913,6 +22978,8 @@ window.imovNovo = function () {
   document.getElementById('im-finalidade').value = 'Venda';
   document.getElementById('im-status').value = 'Disponível';
   document.getElementById('im-tipoImovel').value = 'Apartamento';
+  imovPreencherSelectCorretor();
+  document.getElementById('im-corretor').value = '';
   imovAtualizarCamposValor();
   document.getElementById('imovFormTitle').textContent = 'Novo imóvel';
   document.getElementById('imovFormSection').classList.remove('loc-hidden');
@@ -22949,6 +23016,8 @@ window.imovEditar = function (id) {
   document.getElementById('im-propTelefone').value = n['Proprietario Telefone'] || '';
   document.getElementById('im-propEmail').value = n['Proprietario Email'] || '';
   document.getElementById('im-obs').value = n['Observacoes'] || '';
+  imovPreencherSelectCorretor();
+  document.getElementById('im-corretor').value = n['Corretor Responsavel'] || '';
   imovAtualizarCamposValor();
   document.getElementById('imovFormTitle').textContent = 'Editar imóvel';
   document.getElementById('imovFormSection').classList.remove('loc-hidden');
@@ -22989,6 +23058,7 @@ window.imovSalvar = function () {
     'Proprietario CPF_CNPJ': document.getElementById('im-propCpf').value.trim(),
     'Proprietario Telefone': document.getElementById('im-propTelefone').value.trim(),
     'Proprietario Email': document.getElementById('im-propEmail').value.trim(),
+    'Corretor Responsavel': document.getElementById('im-corretor').value,
     'Observacoes': document.getElementById('im-obs').value.trim()
   };
   if (!id) campos['Data Cadastro'] = new Date().toLocaleDateString('pt-BR');
@@ -23011,6 +23081,124 @@ window.imovExcluir = function (id) {
     body: JSON.stringify({ acao: 'excluir_imov', id: id })
   }).then(function (r) { return r.json(); }).then(function () {
     setTimeout(function () { carregarImoveis(); }, 800);
+  });
+};
+
+// ---------- INTERESSADOS (leads por imóvel — cadastro feito PELA EQUIPE) ----------
+window.imovInteressados = [];
+
+window.carregarImovInteressados = async function () {
+  var c = getConfig();
+  if (!c || !c.apiKey || !c.sheetId) { window.imovInteressados = []; return; }
+  try {
+    var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
+    var r1 = await fetch(base + encodeURIComponent('IMOV_INTERESSADOS!A1:Z2000') + '?key=' + c.apiKey);
+    var d1 = r1.ok ? await r1.json() : { values: [] };
+    var rn = d1.values || [];
+    window.imovInteressados = rn.length < 2 ? [] : rn.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rn[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+  } catch (e) { /* silencioso — a lista some vazia, o usuário pode tentar de novo abrindo o modal */ }
+};
+
+function imovIntPreencherSelectCorretor() {
+  var sel = document.getElementById('ii-corretor');
+  if (!sel) return;
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Sem corretor vinculado</option>' +
+    (window.comCorretores || []).filter(function (c) { return String(c['Ativo'] || 'Sim').toLowerCase() !== 'não' && String(c['Ativo'] || 'Sim').toLowerCase() !== 'nao'; })
+      .map(function (c) { return '<option value="' + comE(c['Nome']) + '">' + comE(c['Nome']) + '</option>'; }).join('');
+  if (atual) sel.value = atual;
+}
+
+window.imovInteressadosAbrir = async function (imovelId) {
+  var n = (window.imoveis || []).find(function (x) { return String(x['ID']) === String(imovelId); }) || {};
+  document.getElementById('imovInt-imovelId').value = imovelId;
+  document.getElementById('imovIntImovelInfo').innerHTML =
+    '<strong>' + comE(n['Endereco'] || '-') + '</strong> — ' + comE(n['Bairro'] || '') + '<br><span style="color:var(--muted);font-size:12px">Corretor responsável pelo cadastro: ' + comE(n['Corretor Responsavel'] || '-') + '</span>';
+  await carregarImovInteressados();
+  imovIntPreencherSelectCorretor();
+  imovIntRenderLista(imovelId);
+  imovIntLimpar();
+  document.getElementById('ii-corretor').value = n['Corretor Responsavel'] || '';
+  document.getElementById('modalImovInteressados').classList.add('open');
+};
+
+window.imovIntRenderLista = function (imovelId) {
+  var el = document.getElementById('imovIntLista');
+  if (!el) return;
+  var lista = (window.imovInteressados || []).filter(function (x) { return String(x['Imovel']) === String(imovelId); });
+  if (!lista.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Nenhum interessado registrado ainda.</div>'; return; }
+  el.innerHTML = lista.map(function (x) {
+    var cor = x['Status'] === 'Fechado' ? 'var(--green)' : (x['Status'] === 'Sem interesse' ? 'var(--muted)' : 'var(--orange)');
+    return '<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<div><strong>' + comE(x['Nome']) + '</strong> — ' + comE(x['Telefone'] || x['Email'] || '') + '<br><span style="font-size:12px;color:var(--muted)">Corretor: ' + comE(x['Corretor'] || '-') + (x['Data Contato'] ? ' · ' + comE(x['Data Contato']) : '') + '</span></div>'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<span style="color:' + cor + ';font-weight:700;font-size:12.5px">● ' + comE(x['Status'] || '-') + '</span>'
+      + '<button class="loc-btn" onclick="imovIntEditar(\'' + x['ID'] + '\')" title="Editar">✏️</button>'
+      + '<button class="loc-btn" onclick="imovIntExcluir(\'' + x['ID'] + '\')" title="Excluir">🗑️</button>'
+      + '</div></div>';
+  }).join('');
+};
+
+window.imovIntLimpar = function () {
+  document.getElementById('ii-id').value = '';
+  ['ii-nome','ii-telefone','ii-email','ii-dataContato','ii-obs'].forEach(function (id) { document.getElementById(id).value = ''; });
+  document.getElementById('ii-status').value = 'Novo contato';
+  document.getElementById('imovIntFormTitle').textContent = 'Novo interessado';
+  var msg = document.getElementById('ii-msg'); if (msg) msg.textContent = '';
+};
+
+window.imovIntEditar = function (id) {
+  var x = (window.imovInteressados || []).find(function (v) { return String(v['ID']) === String(id); });
+  if (!x) return;
+  document.getElementById('ii-id').value = x['ID'];
+  document.getElementById('ii-nome').value = x['Nome'] || '';
+  document.getElementById('ii-telefone').value = x['Telefone'] || '';
+  document.getElementById('ii-email').value = x['Email'] || '';
+  document.getElementById('ii-corretor').value = x['Corretor'] || '';
+  document.getElementById('ii-status').value = x['Status'] || 'Novo contato';
+  document.getElementById('ii-dataContato').value = x['Data Contato'] || '';
+  document.getElementById('ii-obs').value = x['Observacoes'] || '';
+  document.getElementById('imovIntFormTitle').textContent = 'Editar interessado';
+};
+
+window.imovIntSalvar = function () {
+  var msg = document.getElementById('ii-msg');
+  var imovelId = document.getElementById('imovInt-imovelId').value;
+  var id = document.getElementById('ii-id').value;
+  var nome = document.getElementById('ii-nome').value.trim();
+  if (!nome) { msg.textContent = 'Preencha o Nome.'; msg.style.color = 'var(--red)'; return; }
+  var campos = {
+    'Imovel': imovelId,
+    'Nome': nome,
+    'Telefone': document.getElementById('ii-telefone').value.trim(),
+    'Email': document.getElementById('ii-email').value.trim(),
+    'Corretor': document.getElementById('ii-corretor').value,
+    'Status': document.getElementById('ii-status').value,
+    'Data Contato': document.getElementById('ii-dataContato').value,
+    'Observacoes': document.getElementById('ii-obs').value.trim()
+  };
+  msg.textContent = 'Salvando…'; msg.style.color = 'var(--muted)';
+  fetch(URL_AS, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ acao: id ? 'atualizar_imovint' : 'lancar_imovint', id: id, campos: campos })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.ok) { msg.textContent = (d && d.error) || 'Erro ao salvar.'; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = 'Salvo!'; msg.style.color = 'var(--green)';
+    imovIntLimpar();
+    setTimeout(async function () { await carregarImovInteressados(); imovIntRenderLista(imovelId); }, 800);
+  }).catch(function () { msg.textContent = 'Erro de conexão.'; msg.style.color = 'var(--red)'; });
+};
+
+window.imovIntExcluir = function (id) {
+  if (!confirm('Excluir este interessado?')) return;
+  var imovelId = document.getElementById('imovInt-imovelId').value;
+  fetch(URL_AS, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ acao: 'excluir_imovint', id: id })
+  }).then(function (r) { return r.json(); }).then(function () {
+    setTimeout(async function () { await carregarImovInteressados(); imovIntRenderLista(imovelId); }, 800);
   });
 };
 </script>

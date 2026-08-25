@@ -104,9 +104,13 @@ function primeiraFoto(n) {
 }
 
 function renderizar() {
+  var params = new URLSearchParams(location.search);
+  var idFoco = params.get('id');
+
   var busca = (document.getElementById('busca').value || '').toLowerCase();
   var fFinalidade = document.getElementById('filtroFinalidade').value;
-  var lista = TODOS_IMOVEIS.filter(function (n) {
+  var origem = idFoco ? TODOS_IMOVEIS.filter(function (n) { return String(n['ID']) === String(idFoco); }) : TODOS_IMOVEIS;
+  var lista = origem.filter(function (n) {
     if (fFinalidade && n['Finalidade'] !== fFinalidade && n['Finalidade'] !== 'Ambos') return false;
     if (busca) {
       var alvo = [n['Bairro'], n['Cidade']].filter(Boolean).join(' ').toLowerCase();
@@ -118,11 +122,19 @@ function renderizar() {
   var el = document.getElementById('conteudo');
   if (!lista.length) {
     el.className = 'estado';
-    el.textContent = TODOS_IMOVEIS.length ? 'Nenhum imóvel encontrado com esse filtro.' : 'Nenhum imóvel disponível no momento.';
+    el.textContent = idFoco
+      ? 'Este imóvel não está mais disponível.'
+      : (TODOS_IMOVEIS.length ? 'Nenhum imóvel encontrado com esse filtro.' : 'Nenhum imóvel disponível no momento.');
     return;
   }
   el.className = '';
-  el.innerHTML = '<div class="grid">' + lista.map(function (n) {
+  if (idFoco) {
+    // Link direto de UM imóvel (enviado pela equipe a um pretendente) — some os filtros de
+    // busca, que não fazem sentido aqui, e mostra um botão pra ver o catálogo completo.
+    document.querySelector('.filtros').style.display = 'none';
+  }
+  el.innerHTML = (idFoco ? '<div style="text-align:center;margin-bottom:16px"><a href="catalogo.html" style="color:var(--accent);font-size:13px;text-decoration:none">← Ver todo o catálogo</a></div>' : '')
+    + '<div class="grid">' + lista.map(function (n) {
     var foto = primeiraFoto(n);
     var fotoHtml = foto
       ? '<div class="imovel-foto" style="background-image:url(\'' + comE(foto) + '\')"></div>'
