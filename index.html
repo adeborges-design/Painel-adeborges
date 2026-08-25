@@ -4330,7 +4330,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
     +'<div class="loc-cfield"><label>Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico','Negociação de Locação','Acompanhamento de Locação','Cobrança de Acordo','Outro'].map(function(t){return '<option'+(d['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
+    +['Atendimento Jurídico','Negociação de Locação','Acompanhamento de Locação','Cobrança de Acordo','Oferta de Imóvel','Outro'].map(function(t){return '<option'+(d['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
     +'</select></div>'
     +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="rasc-status">'
     +['Em andamento','Convertido','Descartado'].map(function(s){return '<option'+(d['Status']===s?' selected':(!d['Status']&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
@@ -23133,12 +23133,70 @@ window.imovIntRenderLista = function (imovelId) {
     var cor = x['Status'] === 'Fechado' ? 'var(--green)' : (x['Status'] === 'Sem interesse' ? 'var(--muted)' : 'var(--orange)');
     return '<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
       + '<div><strong>' + comE(x['Nome']) + '</strong> — ' + comE(x['Telefone'] || x['Email'] || '') + '<br><span style="font-size:12px;color:var(--muted)">Corretor: ' + comE(x['Corretor'] || '-') + (x['Data Contato'] ? ' · ' + comE(x['Data Contato']) : '') + '</span></div>'
-      + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
       + '<span style="color:' + cor + ';font-weight:700;font-size:12.5px">● ' + comE(x['Status'] || '-') + '</span>'
+      + '<button class="loc-btn" onclick="imovIntEnviarWhatsApp(\'' + x['ID'] + '\')" title="Enviar oferta por WhatsApp">📲</button>'
+      + '<button class="loc-btn" onclick="imovIntEnviarEmail(\'' + x['ID'] + '\')" title="Enviar oferta por e-mail">✉️</button>'
+      + '<button class="loc-btn" style="border-color:var(--accent2);color:var(--accent2)" onclick="imovIntGerarFollowup(\'' + x['ID'] + '\')" title="Cria um lembrete em Tarefas &amp; Rascunhos pra não esquecer de cobrar retorno">🗂️</button>'
       + '<button class="loc-btn" onclick="imovIntEditar(\'' + x['ID'] + '\')" title="Editar">✏️</button>'
       + '<button class="loc-btn" onclick="imovIntExcluir(\'' + x['ID'] + '\')" title="Excluir">🗑️</button>'
       + '</div></div>';
   }).join('');
+};
+
+// Monta o texto da oferta (mesmo texto usado no WhatsApp e no e-mail) e devolve junto com o
+// imóvel/interessado, pra não duplicar a busca dos dois registros em cada função de envio.
+function imovIntMontarOferta_(interessadoId) {
+  var x = (window.imovInteressados || []).find(function (v) { return String(v['ID']) === String(interessadoId); });
+  if (!x) return null;
+  var n = (window.imoveis || []).find(function (v) { return String(v['ID']) === String(x['Imovel']); }) || {};
+  var valor = '';
+  if (n['Finalidade'] === 'Venda') valor = comBRL(n['Valor Venda']);
+  else if (n['Finalidade'] === 'Locação') valor = comBRL(n['Valor Locacao']) + '/mês';
+  else valor = [comNum(n['Valor Venda']) > 0 ? comBRL(n['Valor Venda']) : '', comNum(n['Valor Locacao']) > 0 ? comBRL(n['Valor Locacao']) + '/mês' : ''].filter(Boolean).join(' ou ');
+  var link = location.href.replace(/index\.html.*$/i, '') + 'catalogo.html?id=' + encodeURIComponent(n['ID'] || '');
+  var texto = 'Olá, ' + (x['Nome'] || '') + '! Segue uma oferta que pode te interessar:\n\n'
+    + (n['Tipo Imovel'] || 'Imóvel') + ' em ' + (n['Bairro'] || '') + (n['Cidade'] ? ' — ' + n['Cidade'] : '') + '\n'
+    + (n['Descricao'] ? n['Descricao'] + '\n' : '')
+    + 'Valor: ' + valor + '\n\n'
+    + 'Mais detalhes e fotos: ' + link;
+  return { interessado: x, imovel: n, texto: texto, link: link };
+}
+
+window.imovIntEnviarWhatsApp = function (interessadoId) {
+  var dados = imovIntMontarOferta_(interessadoId);
+  if (!dados) return;
+  var tel = String(dados.interessado['Telefone'] || '').replace(/\D/g, '');
+  var url = tel ? ('https://wa.me/55' + tel + '?text=' + encodeURIComponent(dados.texto)) : ('https://wa.me/?text=' + encodeURIComponent(dados.texto));
+  window.open(url, '_blank');
+};
+
+window.imovIntEnviarEmail = function (interessadoId) {
+  var dados = imovIntMontarOferta_(interessadoId);
+  if (!dados) return;
+  var assunto = 'Oferta de imóvel — ' + (dados.imovel['Bairro'] || dados.imovel['Endereco'] || '');
+  abrirEmailFlex(assunto, dados.texto);
+};
+
+// "Gerar follow-up" — mesmo espírito do botão já usado em Locações/Acordos: cria um rascunho em
+// Tarefas & Rascunhos pra não esquecer de cobrar retorno do interessado, sem depender de o
+// corretor lembrar sozinho. Não envia nada automaticamente — só abre o formulário pré-preenchido,
+// quem decide se salva é o usuário.
+window.imovIntGerarFollowup = function (interessadoId) {
+  var dados = imovIntMontarOferta_(interessadoId);
+  if (!dados) return;
+  var seed = {
+    Tipo: 'Oferta de Imóvel',
+    Titulo: 'Oferta — ' + (dados.interessado['Nome'] || '') + ' (' + (dados.imovel['Endereco'] || dados.imovel['Bairro'] || '') + ')',
+    Nome: dados.interessado['Nome'] || '',
+    Telefone: dados.interessado['Telefone'] || '',
+    Email: dados.interessado['Email'] || '',
+    Endereco: dados.imovel['Endereco'] || '',
+    Notas: 'Oferta enviada para o imóvel em ' + (dados.imovel['Bairro'] || '') + '. Corretor responsável: ' + (dados.interessado['Corretor'] || '-') + '.\n\nTexto enviado:\n' + dados.texto,
+    Status: 'Em andamento'
+  };
+  document.getElementById('modalImovInteressados').classList.remove('open');
+  if (typeof window.rascunhosAbrirComSeed === 'function') window.rascunhosAbrirComSeed(seed);
 };
 
 window.imovIntLimpar = function () {
