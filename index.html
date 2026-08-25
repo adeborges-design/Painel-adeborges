@@ -4577,6 +4577,7 @@ function saveConfig() {
   try{if(typeof carregarAlugueis==='function')carregarAlugueis();}catch(e){}
   try{if(typeof carregarAcordos==='function')carregarAcordos();}catch(e){}
   try{if(typeof carregarComissoes==='function')carregarComissoes();}catch(e){}
+  try{if(typeof carregarImoveis==='function')carregarImoveis();}catch(e){}
   try{if(typeof carregarNotas==='function')carregarNotas();}catch(e){}
   try{if(typeof carregarRascunhos==='function')carregarRascunhos();}catch(e){}
   try{if(typeof carregarLocLoc==='function')carregarLocLoc();}catch(e){}
@@ -20185,7 +20186,8 @@ window.cpRenderFixas=cpRenderFixas;
   .home-card.cont .ic{background:rgba(224,124,58,.15);color:var(--orange)}
   .home-card.hon .ic{background:rgba(76,175,125,.15);color:var(--green)}
   .home-card.com .ic{background:rgba(125,92,214,.15);color:var(--purple)}
-  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)} .home-card.com:hover{border-color:var(--purple)}
+  .home-card.imov .ic{background:rgba(201,154,28,.15);color:var(--yellow)}
+  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)} .home-card.com:hover{border-color:var(--purple)} .home-card.imov:hover{border-color:var(--yellow)}
   .cnum{position:relative;padding:2px 4px;margin:-2px -4px;border-radius:8px;transition:background .15s}
   .cnum.cnum-clickable{cursor:pointer}
   .cnum.cnum-clickable:hover{background:rgba(255,255,255,.06)}
@@ -20456,6 +20458,19 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-alertas" id="homeAlertCom"></div>
       </div>
       <div class="home-module">
+        <div class="home-card imov" onclick="openImoveisHome()">
+          <div class="arrow">→</div>
+          <div class="ic">🏘️</div>
+          <div class="ctitle">Imóveis Disponíveis</div>
+          <div class="cdesc">Catálogo interno de venda e locação</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openImoveisHome()" title="Imóveis disponíveis no catálogo"><div class="v" id="hc-imov-disp" style="color:var(--yellow)">—</div><div class="l">disponíveis</div><span class="cnum-spark-wrap" id="spark-imov-disp"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openImoveisHome()" title="Total de imóveis cadastrados"><div class="v" id="hc-imov-total" style="color:var(--muted)">—</div><div class="l">cadastrados</div><span class="cnum-spark-wrap" id="spark-imov-total"></span></div>
+          </div>
+        </div>
+        <div class="home-alertas" id="homeAlertImov"></div>
+      </div>
+      <div class="home-module">
         <div class="home-card hon" onclick="openHonorariosHome()">
           <div class="arrow">→</div>
           <div class="ic">💰</div>
@@ -20585,7 +20600,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.renderNotifBell=renderNotifBell;
 
-  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
@@ -21416,6 +21431,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.openAcordosHome=function(){closeOverlays();try{abrirAcordos();}catch(e){}};
   // Mesmo padrão dos wrappers acima, pro módulo "Comissões Imobiliárias".
   window.openComissoesHome=function(){closeOverlays();try{abrirComissoes();}catch(e){}};
+  window.openImoveisHome=function(){closeOverlays();try{abrirImoveis();}catch(e){}};
 
   // ---- Contas a Pagar: relocar para o overlay próprio (tirar de Honorários) ----
   function relocateContas(){var host=document.getElementById('contasPagar');var dest=document.getElementById('contasHostBody');if(host&&dest&&host.parentNode!==dest)dest.appendChild(host);}
@@ -22431,6 +22447,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['locacoes','locacao','alugueis','aluguel'],label:'Gestão de Locações e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
     {kw:['acordos','acordo'],label:'Acordos',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
     {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
+    {kw:['imoveis','imoveis disponiveis','catalogo de imoveis'],label:'Imóveis Disponíveis',run:function(){voiceCloseAllOverlays();if(typeof window.abrirImoveis==='function')window.abrirImoveis();}},
     {kw:['processos','processo'],label:'Processos',run:function(){voiceCloseAllOverlays();}},
     {kw:['inicio','pagina inicial','tela inicial','dashboard','home'],label:'Início',run:function(){voiceCloseAllOverlays();if(typeof window.goHome==='function')window.goHome();}},
     {kw:['manual','ajuda','como usar'],label:'Manual',run:function(){if(typeof window.abrirManual==='function')window.abrirManual();}},
@@ -22635,7 +22652,7 @@ window.cpRenderFixas=cpRenderFixas;
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
     // dispara carregamentos p/ popular o dashboard (se configurado)
-    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();}}catch(e){}},800);
+    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();if(typeof carregarImoveis==='function')carregarImoveis();}}catch(e){}},800);
     // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
     setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
@@ -22665,6 +22682,338 @@ window.cpRenderFixas=cpRenderFixas;
   .voice-mic-inline:hover{background:var(--accent);color:#fff}
   .voice-mic-inline.listening{background:var(--red);border-color:var(--red);color:#fff;animation:voicePulse 1.1s infinite}
 </style>
+
+<!-- IMÓVEIS DISPONÍVEIS — módulo interno (catálogo mestre gerido pela equipe). Etapa 1 da
+     comercialização (ver resumo_projeto.md): só cadastro interno + leitura pública curada
+     (catalogo.html), sem nenhum formulário público de escrita ainda. -->
+<div class="loc-overlay" id="imovOverlay">
+  <div class="loc-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskImov"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskImov)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Imóveis</span>
+    </div>
+    <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
+    <div class="loc-title">🏘️ Imóveis Disponíveis</div>
+    <div class="loc-sync"><span class="dot" id="imovSyncDot"></span><span id="imovSyncTxt">—</span></div>
+    <button class="loc-btn" onclick="carregarImoveis()">🔄 Atualizar</button>
+    <span class="user-menu-slot"></span>
+    <button class="loc-btn" onclick="document.getElementById('imovOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+  <div class="loc-body">
+    <div class="loc-stats" id="imovStats"></div>
+    <div class="loc-chips" id="imovChips"></div>
+    <div style="margin:10px 0"><input type="text" class="search-input" id="imovBusca" placeholder="Buscar por endereço, bairro ou proprietário..." oninput="imovRender()" style="width:100%"></div>
+    <div class="loc-toolbar">
+      <div class="loc-mes-wrap">
+        <label>Finalidade</label>
+        <select class="loc-select" id="imovFiltroFinalidade" onchange="imovRender()">
+          <option value="">Todas</option>
+          <option value="Venda">Venda</option>
+          <option value="Locação">Locação</option>
+          <option value="Ambos">Ambos</option>
+        </select>
+      </div>
+      <div class="loc-mes-wrap">
+        <label>Status</label>
+        <select class="loc-select" id="imovFiltroStatus" onchange="imovRender()">
+          <option value="">Todos</option>
+          <option value="Disponível">Disponível</option>
+          <option value="Reservado">Reservado</option>
+          <option value="Vendido">Vendido</option>
+          <option value="Alugado">Alugado</option>
+          <option value="Inativo">Inativo</option>
+        </select>
+      </div>
+      <button class="loc-btn primary" onclick="imovNovo()">🏘️ Novo imóvel</button>
+    </div>
+
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('imovNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
+      <div class="loc-note lf-tip-content" id="imovNote">
+        Cada imóvel cadastrado com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública (catálogo do site), sem precisar de nenhuma ação extra — só a atualização de status. Marque como Reservado, Vendido ou Alugado assim que a situação mudar, para não deixar imóvel indisponível na vitrine.
+      </div>
+    </div>
+
+    <div id="imovFormSection" class="loc-hidden">
+      <div class="loc-section-title" id="imovFormTitle">Novo imóvel</div>
+      <div class="loc-cform">
+        <input type="hidden" id="im-id">
+        <div class="loc-cfield"><label>Finalidade *</label>
+          <select class="loc-cinput" id="im-finalidade" onchange="imovAtualizarCamposValor()">
+            <option value="Venda">Venda</option>
+            <option value="Locação">Locação</option>
+            <option value="Ambos">Ambos</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Status</label>
+          <select class="loc-cinput" id="im-status">
+            <option value="Disponível">Disponível</option>
+            <option value="Reservado">Reservado</option>
+            <option value="Vendido">Vendido</option>
+            <option value="Alugado">Alugado</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Tipo de Imóvel</label>
+          <select class="loc-cinput" id="im-tipoImovel">
+            <option value="Apartamento">Apartamento</option>
+            <option value="Casa">Casa</option>
+            <option value="Sala Comercial">Sala Comercial</option>
+            <option value="Terreno">Terreno</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Localização</div>
+        <div class="loc-cfield full"><label>Endereço (rua e número) *</label><input class="loc-cinput" id="im-endereco" placeholder="Rua, número"></div>
+        <div class="loc-cfield"><label>Bairro *</label><input class="loc-cinput" id="im-bairro"></div>
+        <div class="loc-cfield"><label>Cidade *</label><input class="loc-cinput" id="im-cidade"></div>
+        <div class="loc-cfield"><label>Estado (UF)</label><input class="loc-cinput" id="im-estado" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="loc-cfield"><label>CEP</label><input class="loc-cinput" id="im-cep" maxlength="9"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Características</div>
+        <div class="loc-cfield"><label>Área (m²)</label><input class="loc-cinput" id="im-area" type="text" inputmode="decimal"></div>
+        <div class="loc-cfield"><label>Quartos</label><input class="loc-cinput" id="im-quartos" type="number" min="0"></div>
+        <div class="loc-cfield"><label>Banheiros</label><input class="loc-cinput" id="im-banheiros" type="number" min="0"></div>
+        <div class="loc-cfield"><label>Vagas</label><input class="loc-cinput" id="im-vagas" type="number" min="0"></div>
+        <div class="loc-cfield full"><label>Descrição</label><input class="loc-cinput" id="im-descricao" placeholder="Ex.: 2 dorms, sacada, próximo ao metrô"></div>
+        <div class="loc-cfield full"><label>Fotos (uma ou mais URLs, separadas por vírgula)</label><input class="loc-cinput" id="im-fotos" placeholder="https://..., https://..."></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Valores</div>
+        <div class="loc-cfield" id="im-campoValorVenda"><label>Valor de Venda (R$)</label><input class="loc-cinput" id="im-valorVenda" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield" id="im-campoValorLocacao"><label>Valor de Locação (R$)</label><input class="loc-cinput" id="im-valorLocacao" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Condomínio (R$)</label><input class="loc-cinput" id="im-condominio" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>IPTU (R$)</label><input class="loc-cinput" id="im-iptu" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Proprietário (nunca aparece na vitrine pública — uso interno)</div>
+        <div class="loc-cfield half"><label>Nome do Proprietário *</label><input class="loc-cinput" id="im-propNome"></div>
+        <div class="loc-cfield half"><label>CPF/CNPJ</label><input class="loc-cinput" id="im-propCpf" maxlength="18" oninput="mascararCPFCNPJ(this)" placeholder="000.000.000-00"></div>
+        <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="im-propTelefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+        <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="im-propEmail" type="email"></div>
+        <div class="loc-cfield full"><label>Observações internas</label><input class="loc-cinput" id="im-obs"></div>
+        <div class="loc-cform-actions">
+          <span class="msg" id="im-msg"></span>
+          <button class="loc-btn" onclick="imovFecharForm()">Cancelar</button>
+          <button class="loc-btn primary" onclick="imovSalvar()">💾 Salvar imóvel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="loc-table-wrap">
+      <table class="loc-table"><thead><tr><th>Endereço</th><th>Bairro/Cidade</th><th>Finalidade</th><th style="text-align:right">Valor</th><th style="text-align:center">Status</th><th></th></tr></thead>
+      <tbody id="imovTbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+window.imoveis = [];
+window.imovFiltroAtivo = 'all';
+
+window.abrirImoveis = function () {
+  document.getElementById('imovOverlay').classList.add('open');
+  carregarImoveis();
+};
+
+window.imovAtualizarCamposValor = function () {
+  var fin = document.getElementById('im-finalidade').value;
+  document.getElementById('im-campoValorVenda').style.display = (fin === 'Venda' || fin === 'Ambos') ? '' : 'none';
+  document.getElementById('im-campoValorLocacao').style.display = (fin === 'Locação' || fin === 'Ambos') ? '' : 'none';
+};
+
+window.carregarImoveis = async function () {
+  var dot = document.getElementById('imovSyncDot'), txt = document.getElementById('imovSyncTxt');
+  var c = getConfig();
+  if (!c || !c.apiKey || !c.sheetId) {
+    window.imoveis = [];
+    if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'planilha não configurada';
+    imovRender(); return;
+  }
+  if (dot) dot.className = 'dot load'; if (txt) txt.textContent = 'sincronizando…';
+  try {
+    var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
+    var k = '?key=' + c.apiKey;
+    var r1 = await fetch(base + encodeURIComponent('IMOV_CADASTRO!A1:Z2000') + k);
+    var d1 = r1.ok ? await r1.json() : { values: [] };
+    var rn = d1.values || [];
+    window.imoveis = rn.length < 2 ? [] : rn.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; rn[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    if (dot) dot.className = 'dot ok'; if (txt) txt.textContent = 'sincronizado';
+  } catch (e) {
+    if (dot) dot.className = 'dot erro'; if (txt) txt.textContent = 'erro ao sincronizar';
+  }
+  imovRender();
+  imovAtualizarNumerosHome_();
+};
+
+// Atualiza os números do card "Imóveis Disponíveis" na tela inicial, se ela já estiver
+// renderizada (mesmo espírito dos demais módulos, sem depender de homeRefresh() interno).
+function imovAtualizarNumerosHome_() {
+  var elDisp = document.getElementById('hc-imov-disp');
+  var elTotal = document.getElementById('hc-imov-total');
+  if (!elDisp || !elTotal) return;
+  var disponiveis = window.imoveis.filter(function (n) { return n['Status'] === 'Disponível'; }).length;
+  elDisp.textContent = disponiveis;
+  elTotal.textContent = window.imoveis.length;
+}
+
+function imovStatusCor_(status) {
+  if (status === 'Disponível') return 'var(--green)';
+  if (status === 'Reservado') return 'var(--orange)';
+  if (status === 'Inativo') return 'var(--muted)';
+  return 'var(--red)'; // Vendido/Alugado
+}
+
+window.imovRender = function () {
+  var busca = (document.getElementById('imovBusca').value || '').toLowerCase();
+  var fFinalidade = document.getElementById('imovFiltroFinalidade').value;
+  var fStatus = document.getElementById('imovFiltroStatus').value;
+  var lista = window.imoveis.filter(function (n) {
+    if (fFinalidade && n['Finalidade'] !== fFinalidade) return false;
+    if (fStatus && n['Status'] !== fStatus) return false;
+    if (busca) {
+      var alvo = [n['Endereco'], n['Bairro'], n['Cidade'], n['Proprietario Nome']].filter(Boolean).join(' ').toLowerCase();
+      if (alvo.indexOf(busca) < 0) return false;
+    }
+    return true;
+  });
+
+  var disponiveis = window.imoveis.filter(function (n) { return n['Status'] === 'Disponível'; }).length;
+  var statsEl = document.getElementById('imovStats');
+  if (statsEl) statsEl.innerHTML =
+    '<div class="loc-chip">Cadastrados: <b>' + window.imoveis.length + '</b></div>' +
+    '<div class="loc-chip" style="color:var(--green)">Disponíveis: <b>' + disponiveis + '</b></div>';
+
+  var tbody = document.getElementById('imovTbody');
+  if (!tbody) return;
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Nenhum imóvel encontrado.</td></tr>'; return; }
+  tbody.innerHTML = lista.map(function (n) {
+    var valor = '';
+    if (n['Finalidade'] === 'Venda') valor = comBRL(n['Valor Venda']);
+    else if (n['Finalidade'] === 'Locação') valor = comBRL(n['Valor Locacao']) + '/mês';
+    else valor = comBRL(n['Valor Venda']) + ' · ' + comBRL(n['Valor Locacao']) + '/mês';
+    return '<tr>'
+      + '<td>' + comE(n['Endereco']) + '</td>'
+      + '<td>' + comE(n['Bairro']) + (n['Cidade'] ? ' — ' + comE(n['Cidade']) : '') + '</td>'
+      + '<td>' + comE(n['Finalidade']) + '</td>'
+      + '<td style="text-align:right">' + valor + '</td>'
+      + '<td style="text-align:center"><span style="color:' + imovStatusCor_(n['Status']) + ';font-weight:700">● ' + comE(n['Status']) + '</span></td>'
+      + '<td style="white-space:nowrap">'
+      + '<button class="loc-btn" onclick="imovEditar(\'' + n['ID'] + '\')" title="Editar">✏️</button> '
+      + '<button class="loc-btn" onclick="imovExcluir(\'' + n['ID'] + '\')" title="Excluir">🗑️</button>'
+      + '</td></tr>';
+  }).join('');
+};
+
+window.imovNovo = function () {
+  document.getElementById('im-id').value = '';
+  ['im-endereco','im-bairro','im-cidade','im-estado','im-cep','im-area','im-quartos','im-banheiros','im-vagas',
+   'im-descricao','im-fotos','im-valorVenda','im-valorLocacao','im-condominio','im-iptu',
+   'im-propNome','im-propCpf','im-propTelefone','im-propEmail','im-obs'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('im-finalidade').value = 'Venda';
+  document.getElementById('im-status').value = 'Disponível';
+  document.getElementById('im-tipoImovel').value = 'Apartamento';
+  imovAtualizarCamposValor();
+  document.getElementById('imovFormTitle').textContent = 'Novo imóvel';
+  document.getElementById('imovFormSection').classList.remove('loc-hidden');
+};
+
+window.imovFecharForm = function () {
+  document.getElementById('imovFormSection').classList.add('loc-hidden');
+};
+
+window.imovEditar = function (id) {
+  var n = window.imoveis.find(function (x) { return String(x['ID']) === String(id); });
+  if (!n) return;
+  document.getElementById('im-id').value = n['ID'];
+  document.getElementById('im-finalidade').value = n['Finalidade'] || 'Venda';
+  document.getElementById('im-status').value = n['Status'] || 'Disponível';
+  document.getElementById('im-tipoImovel').value = n['Tipo Imovel'] || 'Apartamento';
+  document.getElementById('im-endereco').value = n['Endereco'] || '';
+  document.getElementById('im-bairro').value = n['Bairro'] || '';
+  document.getElementById('im-cidade').value = n['Cidade'] || '';
+  document.getElementById('im-estado').value = n['Estado'] || '';
+  document.getElementById('im-cep').value = n['CEP'] || '';
+  document.getElementById('im-area').value = n['Area'] || '';
+  document.getElementById('im-quartos').value = n['Quartos'] || '';
+  document.getElementById('im-banheiros').value = n['Banheiros'] || '';
+  document.getElementById('im-vagas').value = n['Vagas'] || '';
+  document.getElementById('im-descricao').value = n['Descricao'] || '';
+  document.getElementById('im-fotos').value = n['Fotos URLs'] || '';
+  document.getElementById('im-valorVenda').value = n['Valor Venda'] || '';
+  document.getElementById('im-valorLocacao').value = n['Valor Locacao'] || '';
+  document.getElementById('im-condominio').value = n['Condominio'] || '';
+  document.getElementById('im-iptu').value = n['IPTU'] || '';
+  document.getElementById('im-propNome').value = n['Proprietario Nome'] || '';
+  document.getElementById('im-propCpf').value = n['Proprietario CPF_CNPJ'] || '';
+  document.getElementById('im-propTelefone').value = n['Proprietario Telefone'] || '';
+  document.getElementById('im-propEmail').value = n['Proprietario Email'] || '';
+  document.getElementById('im-obs').value = n['Observacoes'] || '';
+  imovAtualizarCamposValor();
+  document.getElementById('imovFormTitle').textContent = 'Editar imóvel';
+  document.getElementById('imovFormSection').classList.remove('loc-hidden');
+};
+
+window.imovSalvar = function () {
+  var msg = document.getElementById('im-msg');
+  var id = document.getElementById('im-id').value;
+  var endereco = document.getElementById('im-endereco').value.trim();
+  var bairro = document.getElementById('im-bairro').value.trim();
+  var cidade = document.getElementById('im-cidade').value.trim();
+  var propNome = document.getElementById('im-propNome').value.trim();
+  if (!endereco || !bairro || !cidade || !propNome) {
+    msg.textContent = 'Preencha Endereço, Bairro, Cidade e Nome do Proprietário.';
+    msg.style.color = 'var(--red)';
+    return;
+  }
+  var campos = {
+    'Finalidade': document.getElementById('im-finalidade').value,
+    'Status': document.getElementById('im-status').value,
+    'Tipo Imovel': document.getElementById('im-tipoImovel').value,
+    'Endereco': endereco,
+    'Bairro': bairro,
+    'Cidade': cidade,
+    'Estado': document.getElementById('im-estado').value.trim().toUpperCase(),
+    'CEP': document.getElementById('im-cep').value.trim(),
+    'Area': document.getElementById('im-area').value.trim(),
+    'Quartos': document.getElementById('im-quartos').value.trim(),
+    'Banheiros': document.getElementById('im-banheiros').value.trim(),
+    'Vagas': document.getElementById('im-vagas').value.trim(),
+    'Valor Venda': document.getElementById('im-valorVenda').value.trim(),
+    'Valor Locacao': document.getElementById('im-valorLocacao').value.trim(),
+    'Condominio': document.getElementById('im-condominio').value.trim(),
+    'IPTU': document.getElementById('im-iptu').value.trim(),
+    'Descricao': document.getElementById('im-descricao').value.trim(),
+    'Fotos URLs': document.getElementById('im-fotos').value.trim(),
+    'Proprietario Nome': propNome,
+    'Proprietario CPF_CNPJ': document.getElementById('im-propCpf').value.trim(),
+    'Proprietario Telefone': document.getElementById('im-propTelefone').value.trim(),
+    'Proprietario Email': document.getElementById('im-propEmail').value.trim(),
+    'Observacoes': document.getElementById('im-obs').value.trim()
+  };
+  if (!id) campos['Data Cadastro'] = new Date().toLocaleDateString('pt-BR');
+  msg.textContent = 'Salvando…'; msg.style.color = 'var(--muted)';
+  fetch(URL_AS, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ acao: id ? 'atualizar_imov' : 'lancar_imov', id: id, campos: campos })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.ok) { msg.textContent = (d && d.error) || 'Erro ao salvar.'; msg.style.color = 'var(--red)'; return; }
+    msg.textContent = 'Salvo!'; msg.style.color = 'var(--green)';
+    imovFecharForm();
+    setTimeout(function () { carregarImoveis(); }, 800);
+  }).catch(function () { msg.textContent = 'Erro de conexão.'; msg.style.color = 'var(--red)'; });
+};
+
+window.imovExcluir = function (id) {
+  if (!confirm('Excluir este imóvel do catálogo? Ele some da vitrine pública imediatamente.')) return;
+  fetch(URL_AS, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ acao: 'excluir_imov', id: id })
+  }).then(function (r) { return r.json(); }).then(function () {
+    setTimeout(function () { carregarImoveis(); }, 800);
+  });
+};
+</script>
 
 <script>
   // ============ PWA: registro do Service Worker ============
