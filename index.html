@@ -2395,6 +2395,38 @@
 </style>
 </head>
 <body>
+<!-- Sugestões de autocomplete pro campo "Tipo de Ação" (Processos > Novo/Editar) — reúne os
+     tópicos das subcategorias de Ramo do Direito (Civil, Previdenciário...). É só sugestão:
+     o campo continua texto livre, digitar qualquer outra coisa funciona normalmente. Ao
+     cadastrar mais áreas, adicionar os tópicos novos aqui também. -->
+<datalist id="topicosAcaoOptions">
+  <option value="Inadimplemento">
+  <option value="Revisão Contratual">
+  <option value="Responsabilidade Contratual">
+  <option value="Danos Materiais">
+  <option value="Danos Morais">
+  <option value="Danos Estéticos">
+  <option value="Lucros Cessantes">
+  <option value="Usucapião">
+  <option value="Reintegração de Posse">
+  <option value="Reivindicatória">
+  <option value="Condomínio">
+  <option value="Capacidade Civil">
+  <option value="Validade dos Negócios Jurídicos">
+  <option value="Prescrição e Decadência">
+  <option value="Auxílio-Doença">
+  <option value="Aposentadoria por Invalidez">
+  <option value="Auxílio-Acidente">
+  <option value="Aposentadoria por Idade">
+  <option value="Aposentadoria por Tempo de Contribuição">
+  <option value="Aposentadoria Especial">
+  <option value="Regras de Transição">
+  <option value="Pensão por Morte">
+  <option value="Auxílio-Reclusão">
+  <option value="BPC/LOAS">
+  <option value="Revisão da Vida Toda">
+  <option value="Recálculo de RMI">
+</datalist>
 <!-- Saída de emergência do "modo impressão" (ver imprimirComClasse_): fica escondido o tempo
      todo, só aparece quando alguma classe "printing-*" está no body (ver CSS mais abaixo).
      Serve pra quem ficar preso na tela isolada/em branco de impressão caso os gatilhos
@@ -2642,21 +2674,6 @@
       <div id="ramoButtons" class="ramo-buttons"></div>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-label">Com audiência marcada</div>
-      <button class="filter-btn" onclick="filterBy('audiencia', this)" data-filter="audiencia">
-        Processos com audiência
-        <span class="count" id="cnt-audiencia">—</span>
-      </button>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-label">Com providência pendente</div>
-      <button class="filter-btn" onclick="filterBy('providencia', this)" data-filter="providencia">
-        Ação necessária
-        <span class="count" id="cnt-providencia">—</span>
-      </button>
-    </div>
   </aside>
 
   <!-- MAIN -->
@@ -3215,21 +3232,32 @@
             <select id="ed-ramo">
               <option value="">Selecionar</option>
               <option>CIVIL</option>
+              <optgroup label="↳ Direito Civil">
+                <option>Obrigações e Contratos</option>
+                <option>Responsabilidade Civil</option>
+                <option>Direitos Reais e Posse</option>
+                <option>Teoria Geral e Parte Geral</option>
+              </optgroup>
               <option>TRABALHISTA</option>
+              <option>Trabalhista TRT2</option>
               <option>CRIMINAL</option>
               <option>FAMILIA E SUCESSÕES</option>
               <option>ADMINISTRATIVO</option>
               <option>TRIBUTÁRIO</option>
               <option>EXTRAJUDICIAL</option>
-              <option>Pensão</option>
-              <option>Registros Públicos</option>
-              <option>Trabalhista TRT2</option>
               <option>Mandado de Segurança</option>
+              <option>PREVIDENCIÁRIO</option>
+              <optgroup label="↳ Direito Previdenciário">
+                <option>Benefícios por Incapacidade</option>
+                <option>Aposentadorias</option>
+                <option>Pensões e Auxílios</option>
+                <option>Revisão de Benefícios</option>
+              </optgroup>
             </select>
           </div>
           <div class="form-field">
             <label>Tipo de Ação</label>
-            <input type="text" id="ed-tipo" placeholder="Ex.: Cobrança, Divórcio...">
+            <input type="text" id="ed-tipo" placeholder="Ex.: Cobrança, Divórcio..." list="topicosAcaoOptions">
           </div>
           <div class="form-field">
             <label>Parte (posição)</label>
@@ -3586,21 +3614,32 @@
             <select id="cad-ramo">
               <option value="">Selecionar</option>
               <option>CIVIL</option>
+              <optgroup label="↳ Direito Civil">
+                <option>Obrigações e Contratos</option>
+                <option>Responsabilidade Civil</option>
+                <option>Direitos Reais e Posse</option>
+                <option>Teoria Geral e Parte Geral</option>
+              </optgroup>
               <option>TRABALHISTA</option>
+              <option>Trabalhista TRT2</option>
               <option>CRIMINAL</option>
               <option>FAMILIA E SUCESSÕES</option>
               <option>ADMINISTRATIVO</option>
               <option>TRIBUTÁRIO</option>
               <option>EXTRAJUDICIAL</option>
-              <option>Pensão</option>
-              <option>Registros Públicos</option>
-              <option>Trabalhista TRT2</option>
               <option>Mandado de Segurança</option>
+              <option>PREVIDENCIÁRIO</option>
+              <optgroup label="↳ Direito Previdenciário">
+                <option>Benefícios por Incapacidade</option>
+                <option>Aposentadorias</option>
+                <option>Pensões e Auxílios</option>
+                <option>Revisão de Benefícios</option>
+              </optgroup>
             </select>
           </div>
           <div class="form-field">
             <label>Tipo de Ação</label>
-            <input type="text" id="cad-tipo" placeholder="Ex.: Cobrança, Divórcio...">
+            <input type="text" id="cad-tipo" placeholder="Ex.: Cobrança, Divórcio..." list="topicosAcaoOptions">
           </div>
           <div class="form-field">
             <label>Parte (posição)</label>
@@ -5119,9 +5158,15 @@ function filterByRamo(ramo, btn) {
 
 // Mapa de subcategorias - aparece indentado sob o pai
 const RAMO_PARENTS = {
-  'Pensão': 'FAMILIA E SUCESSÕES',
-  'Registros Públicos': 'CIVIL',
-  'Trabalhista TRT2': 'Trabalhista',
+  'Trabalhista TRT2': 'TRABALHISTA',
+  'Obrigações e Contratos': 'CIVIL',
+  'Responsabilidade Civil': 'CIVIL',
+  'Direitos Reais e Posse': 'CIVIL',
+  'Teoria Geral e Parte Geral': 'CIVIL',
+  'Benefícios por Incapacidade': 'PREVIDENCIÁRIO',
+  'Aposentadorias': 'PREVIDENCIÁRIO',
+  'Pensões e Auxílios': 'PREVIDENCIÁRIO',
+  'Revisão de Benefícios': 'PREVIDENCIÁRIO',
 };
 
 function buildRamoFilter() {
@@ -5706,11 +5751,9 @@ function updateStats() {
   document.getElementById('cnt-all').textContent = ativos.length;
   document.getElementById('cnt-extinto').textContent = allProcessos.filter(p => p.status === 'EXTINTO').length;
   document.getElementById('cnt-semAtuacao').textContent = allProcessos.filter(p => ['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase())).length;
-  document.getElementById('cnt-audiencia').textContent = audiencias;
-  document.getElementById('cnt-providencia').textContent = providencias;
-  // Atualiza label sidebar
-  const lblProv = document.querySelector('#cnt-providencia');
-  if (lblProv) lblProv.textContent = providencias;
+  // "Com audiência marcada" e "Com providência pendente" saíram da barra lateral (os cards
+  // st-audiencia/st-providencias no topo do painel já cumprem esse papel) — cnt-audiencia e
+  // cnt-providencia não existem mais no DOM, por isso não são mais atualizados aqui.
 }
 
 // --- HELPERS --------------------------------------------------
