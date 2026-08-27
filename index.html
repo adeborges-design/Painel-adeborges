@@ -2442,6 +2442,16 @@
 (function(){
   var HASH = '4a330ac133adc3335296a11b39d8d5f7d5eb03ab27bb6ba933a2e76cc3d01c5b';
   var AUTH_KEY = 'lexflow_auth_ok';
+  // ---------- Desativar senha / trocar senha pelas Configurações ----------
+  // Pensado pro cenário de uso único (só o Dr. Adenilson usa e ainda está construindo/testando
+  // o sistema): em Configurações > Senha de Acesso é possível (a) desativar a senha por
+  // completo neste navegador (GATE_OFF_KEY) ou (b) gravar uma senha nova, sem mexer no código
+  // (fica salva com hash em SENHA_CUSTOM_KEY, sobrepondo o HASH fixo acima). Nenhuma senha em
+  // texto puro é gravada — sempre o hash SHA-256, do mesmo jeito que já era feito antes.
+  var GATE_OFF_KEY = 'lexflow_gate_off';
+  var SENHA_CUSTOM_KEY = 'lexflow_senha_hash_custom';
+  function gateDesativado(){ try{ return localStorage.getItem(GATE_OFF_KEY) === '1'; }catch(e){ return false; } }
+  function hashAtual(){ try{ return localStorage.getItem(SENHA_CUSTOM_KEY) || HASH; }catch(e){ return HASH; } }
   // ---------- Reforço de segurança do acesso ----------
   // O que isso resolve: alguém pegar o celular/computador DESTRAVADO (com o app já aberto e
   // logado) e conseguir ver processos/valores sem digitar senha nenhuma — o risco real do
@@ -2469,13 +2479,15 @@
   }
   function unlock(){ gate.style.display = 'none'; marcarAtividade(); }
   function travar(motivo){
+    if (gateDesativado()) return; // senha desativada nas Configurações - nunca re-trava sozinho
     try{ localStorage.removeItem(AUTH_KEY); }catch(e){}
     gate.style.display = 'flex';
     if (pwField) pwField.value = '';
     if (errField) errField.style.display = 'none';
   }
 
-  if (localStorage.getItem(AUTH_KEY) === '1' && !passouDoTempo()) { unlock(); }
+  if (gateDesativado()) { unlock(); }
+  else if (localStorage.getItem(AUTH_KEY) === '1' && !passouDoTempo()) { unlock(); }
   else { try{ localStorage.removeItem(AUTH_KEY); }catch(e){} }
 
   // Qualquer interação do usuário reseta o relógio de inatividade.
@@ -2493,8 +2505,29 @@
     if (gate.style.display === 'none' && passouDoTempo()) travar();
   }, 30000);
   // Trava manual (botão "Bloquear agora" no menu) — pra quando o próprio usuário vai
-  // entregar o aparelho pra alguém e quer travar na hora, sem esperar o tempo passar.
-  window.lexflowBloquearAgora = function(){ travar(); };
+  // entregar o aparelho pra alguém e quer travar na hora, sem esperar o tempo passar. Se a
+  // senha estiver desativada nas Configurações, travar agora deixaria o sistema preso (sem
+  // senha pra destravar de novo) — por isso fica sem efeito nesse caso.
+  window.lexflowBloquearAgora = function(){
+    if (gateDesativado()) { alert('A senha de acesso está desativada nas Configurações. Ative-a lá antes de usar "Bloquear agora".'); return; }
+    travar();
+  };
+
+  // ---------- API pra tela de Configurações (Desativar senha / Salvar nova senha) ----------
+  window.eixoSha256Hex = sha256Hex;
+  window.lexflowGateOffAtual = gateDesativado;
+  window.lexflowTemSenhaCustom = function(){ try{ return !!localStorage.getItem(SENHA_CUSTOM_KEY); }catch(e){ return false; } };
+  window.lexflowSetGateOff = function(v){
+    try{
+      if (v) { localStorage.setItem(GATE_OFF_KEY, '1'); unlock(); }
+      else { localStorage.removeItem(GATE_OFF_KEY); }
+    }catch(e){}
+  };
+  window.lexflowDefinirSenha = async function(novaSenhaPlana){
+    var h = await sha256Hex(novaSenhaPlana);
+    try{ localStorage.setItem(SENHA_CUSTOM_KEY, h); }catch(e){}
+    return true;
+  };
 
   async function sha256Hex(msg){
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -2512,7 +2545,7 @@
     }
     var pw = pwField.value;
     var h = await sha256Hex(pw);
-    if (h === HASH) {
+    if (h === hashAtual()) {
       localStorage.setItem(AUTH_KEY, '1');
       try{ localStorage.removeItem(FAIL_KEY); localStorage.removeItem(FAIL_UNTIL_KEY); }catch(eClr){}
       errField.style.display = 'none';
@@ -4090,6 +4123,28 @@
       <div id="backupStatus" style="margin-top:8px;font-size:12px"></div>
     </div>
 
+    <div class="form-group">
+      <label class="form-label">🔒 SENHA DE ACESSO AO SISTEMA</label>
+      <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">
+        Por padrão, o sistema pede uma senha antes de abrir e trava sozinho depois de 15 minutos parado.
+        Se você for o único usuário e estiver incomodado de digitar a senha o tempo todo (ex.: enquanto
+        está construindo/testando o sistema), pode desativar aqui. <strong>Atenção:</strong> desativar remove
+        a proteção de tela neste navegador — qualquer pessoa que abrir o link ou pegar o aparelho
+        destravado vai ver os dados sem pedir senha nenhuma.
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;cursor:pointer">
+        <input type="checkbox" id="cfgSenhaDesativada" onchange="cfgAlternarSenha()">
+        Desativar a senha de acesso neste navegador
+      </label>
+      <div id="cfgSenhaCamposWrap">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Trocar a senha atual (fica salva só neste navegador, sem precisar editar o código):</div>
+        <input type="password" class="form-input" id="cfgNovaSenha1" placeholder="Nova senha" autocomplete="new-password" style="margin-bottom:8px">
+        <input type="password" class="form-input" id="cfgNovaSenha2" placeholder="Confirmar nova senha" autocomplete="new-password" style="margin-bottom:8px">
+        <button class="btn-secondary" type="button" onclick="cfgSalvarNovaSenha()">🔑 Salvar nova senha</button>
+      </div>
+      <div id="cfgSenhaStatus" style="margin-top:8px;font-size:12px"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveConfig()">Salvar e carregar</button>
       <button class="btn-secondary" onclick="document.getElementById('modalConfig').classList.remove('open')">Fechar</button>
@@ -4585,6 +4640,49 @@ window.notaExcluir=function(id){
   atualizarBadgeNotas();
   fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_notas',id:id})}).catch(function(){});
 };
+
+// Desativar/reativar a senha de acesso e trocar a senha, ambos direto pela tela de
+// Configurações (sem precisar editar o Código.gs nem o HASH fixo no index.html). A lógica de
+// fato (localStorage, hash) mora no script do "gate" lá no topo do arquivo — aqui é só a UI.
+function cfgAlternarSenha(){
+  var chk = document.getElementById('cfgSenhaDesativada');
+  var camposWrap = document.getElementById('cfgSenhaCamposWrap');
+  var statusEl = document.getElementById('cfgSenhaStatus');
+  if (!chk) return;
+  var desativar = chk.checked;
+  if (typeof window.lexflowSetGateOff === 'function') window.lexflowSetGateOff(desativar);
+  if (camposWrap) camposWrap.style.opacity = desativar ? '0.5' : '1';
+  if (statusEl) {
+    statusEl.textContent = desativar
+      ? '⚠️ Senha desativada — o sistema abre direto neste navegador, sem pedir senha.'
+      : '🔒 Senha de acesso ativada novamente.';
+    statusEl.style.color = desativar ? 'var(--red)' : 'var(--muted)';
+  }
+}
+
+async function cfgSalvarNovaSenha(){
+  var p1El = document.getElementById('cfgNovaSenha1');
+  var p2El = document.getElementById('cfgNovaSenha2');
+  var statusEl = document.getElementById('cfgSenhaStatus');
+  var p1 = p1El ? p1El.value : '';
+  var p2 = p2El ? p2El.value : '';
+  if (!p1 || p1.length < 4) {
+    if (statusEl) { statusEl.textContent = 'Digite uma senha com pelo menos 4 caracteres.'; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+  if (p1 !== p2) {
+    if (statusEl) { statusEl.textContent = 'As senhas digitadas não conferem.'; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+  if (typeof window.lexflowDefinirSenha !== 'function') {
+    if (statusEl) { statusEl.textContent = 'Não foi possível salvar a senha agora — recarregue a página e tente de novo.'; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+  await window.lexflowDefinirSenha(p1);
+  if (p1El) p1El.value = '';
+  if (p2El) p2El.value = '';
+  if (statusEl) { statusEl.textContent = '✅ Nova senha salva neste navegador.'; statusEl.style.color = 'var(--muted)'; }
+}
 
 function saveConfig() {
   const sheetId = document.getElementById('inputSheetId').value.trim();
@@ -11601,6 +11699,14 @@ window.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('inputAdvOab')) document.getElementById('inputAdvOab').value = advInfo.oab || 'SP/335600';
   if (document.getElementById('inputAdvTelefone')) document.getElementById('inputAdvTelefone').value = advInfo.telefone || '(11) 99931-3712';
   if (document.getElementById('inputAdvEmail')) document.getElementById('inputAdvEmail').value = advInfo.email || 'adeborges@gmail.com';
+
+  var elSenhaOff = document.getElementById('cfgSenhaDesativada');
+  if (elSenhaOff) {
+    var senhaDesativada = (typeof window.lexflowGateOffAtual === 'function') && window.lexflowGateOffAtual();
+    elSenhaOff.checked = senhaDesativada;
+    var camposWrapInit = document.getElementById('cfgSenhaCamposWrap');
+    if (camposWrapInit) camposWrapInit.style.opacity = senhaDesativada ? '0.5' : '1';
+  }
 
   if (cfg.apiKey && cfg.sheetId) {
     loadFromSheets();
@@ -21123,7 +21229,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Notas Rápidas</div>'
       +MP+'Um bloco de notas simples (estilo Keep Note) pra anotar lembretes do que ainda precisa ser lançado no sistema — não faz nenhum lançamento sozinho, é só uma lista de tarefas. Acessível pelo menu do usuário, com um contador vermelho mostrando quantas anotações ainda estão pendentes. Marque como feito (risca o texto) ou exclua quando não precisar mais.</div>'
       +MH+'Menu do usuário</div>'
-      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, abrir Tarefas & Rascunhos, anotar uma Nota Rápida, acessar este Manual ou as Configurações.</div>',
+      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, abrir Tarefas & Rascunhos, anotar uma Nota Rápida, acessar este Manual ou as Configurações. Em Configurações também é possível <strong>desativar a senha de acesso</strong> neste navegador (útil só se você for o único usuário) ou <strong>trocar a senha</strong> sem precisar mexer no código do sistema.</div>',
 
     processos: MH+'Cadastro</div>'
       +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
