@@ -357,6 +357,28 @@
     margin-bottom: 8px;
   }
 
+  /* Seções recolhíveis da barra lateral (Sistema, Tribunal e Fórum, Cliente PF/PJ, Tipo de
+     Ação) — ficam fechadas por padrão pra não poluir a tela, clica no título pra abrir. */
+  details.sidebar-section summary.sidebar-label {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  details.sidebar-section summary.sidebar-label::-webkit-details-marker { display: none; }
+  details.sidebar-section summary.sidebar-label::before {
+    content: '▸';
+    font-size: 9px;
+  }
+  details.sidebar-section[open] summary.sidebar-label::before {
+    content: '▾';
+  }
+  details.sidebar-section .filter-btn,
+  details.sidebar-section .ramo-buttons {
+    margin-top: 6px;
+  }
+
   .filter-btn {
     display: flex;
     align-items: center;
@@ -2426,6 +2448,135 @@
   <option value="BPC/LOAS">
   <option value="Revisão da Vida Toda">
   <option value="Recálculo de RMI">
+  <option value="Regimes de Bens">
+  <option value="Divórcio">
+  <option value="Dissolução de União Estável">
+  <option value="Pacto Nupcial">
+  <option value="Guarda Compartilhada/Unilateral">
+  <option value="Alienação Parental">
+  <option value="Regulamentação de Visitas">
+  <option value="Fixação de Alimentos">
+  <option value="Exoneração de Alimentos">
+  <option value="Ação Revisional">
+  <option value="Execução de Alimentos">
+  <option value="Inventário Judicial e Extrajudicial">
+  <option value="Partilha de Bens">
+  <option value="Testamentos">
+  <option value="Planejamento Sucessório">
+  <option value="Compra e Venda">
+  <option value="Promessa de Venda">
+  <option value="Dação em Pagamento">
+  <option value="Ação de Despejo">
+  <option value="Revisional de Aluguel">
+  <option value="Renovatória de Locação">
+  <option value="Cobrança de Cotas Condominiais">
+  <option value="Convenção de Condomínio">
+  <option value="Regimento Interno">
+  <option value="Direito de Vizinhança">
+  <option value="Usucapião Extrajudicial">
+  <option value="Adjudicação Compulsória">
+  <option value="Retificação de Área">
+  <option value="Constituição de Sociedades">
+  <option value="Fusões e Aquisições (M&amp;A)">
+  <option value="Dissolução Parcial/Total">
+  <option value="Acordo de Sócios">
+  <option value="Marcas">
+  <option value="Patentes">
+  <option value="Direitos Autorais">
+  <option value="Trade Dress">
+  <option value="Recuperação Judicial e Extrajudicial">
+  <option value="Habilitação de Crédito">
+  <option value="Falência">
+  <option value="Duplicatas">
+  <option value="Cédulas de Crédito">
+  <option value="Franquias (Franchising)">
+  <option value="Joint Ventures">
+  <option value="Reconhecimento de Vínculo Empregatício">
+  <option value="Rescisão Indireta">
+  <option value="Despedida por Justa Causa">
+  <option value="Horas Extras">
+  <option value="Adicional de Insalubridade e Periculosidade">
+  <option value="Equiparação Salarial">
+  <option value="Acidente de Trabalho">
+  <option value="Doenças Ocupacionais">
+  <option value="Estabilidade Provisória">
+  <option value="Acordos Coletivos">
+  <option value="Convenções Coletivas">
+  <option value="Direito de Greve">
+  <option value="Produtos Defeituosos">
+  <option value="Vício Oculto">
+  <option value="Garantia Legal e Contratual">
+  <option value="Práticas Abusivas">
+  <option value="Venda Casada">
+  <option value="Inscrição Indevida em Cadastros de Restrição">
+  <option value="Telefonia e Internet">
+  <option value="Energia Elétrica e Água">
+  <option value="Tarifas Bancárias">
+  <option value="Superendividamento">
+  <option value="IR">
+  <option value="IPI">
+  <option value="ICMS">
+  <option value="ISS">
+  <option value="IPTU">
+  <option value="ITBI">
+  <option value="ITCMD">
+  <option value="PIS/COFINS">
+  <option value="Contribuição Previdenciária">
+  <option value="CIDE">
+  <option value="Exceção de Pré-Executividade">
+  <option value="Embargos à Execução">
+  <option value="Mandado de Segurança Tributário">
+  <option value="Tese do Século">
+  <option value="Restituição e Compensação de Indébito">
+  <option value="Regimes Especiais">
+  <option value="Dispensa e Inexigibilidade">
+  <option value="Pregão">
+  <option value="Reequilíbrio Econômico-Financeiro">
+  <option value="Concursos Públicos">
+  <option value="Processos Administrativos Disciplinares (PAD)">
+  <option value="Estabilidade">
+  <option value="Aposentadoria">
+  <option value="Atos de Improbidade">
+  <option value="Acordo de Leniência">
+  <option value="Servidão Administrativa">
+  <option value="Tombamento">
+  <option value="Desapropriação Direta e Indireta">
+  <option value="Mandado de Segurança">
+  <option value="Habeas Data">
+  <option value="Ação Popular">
+  <option value="Ação Civil Pública">
+  <option value="ADI">
+  <option value="ADC">
+  <option value="ADPF">
+  <option value="Controle Difuso">
+  <option value="Liberdade de Expressão">
+  <option value="Proteção de Dados">
+  <option value="Direitos Sociais">
+  <option value="Homicídio">
+  <option value="Lesão Corporal">
+  <option value="Furto">
+  <option value="Roubo">
+  <option value="Estelionato">
+  <option value="Lavagem de Dinheiro">
+  <option value="Sonegação Fiscal">
+  <option value="Crimes Contra o Sistema Financeiro">
+  <option value="Corrupção">
+  <option value="Peculato">
+  <option value="Concussão">
+  <option value="Habeas Corpus">
+  <option value="Prisão Preventiva">
+  <option value="Progressão de Regime">
+  <option value="Remição de Pena">
+  <option value="Adequação à LGPD">
+  <option value="Vazamento de Dados">
+  <option value="Direitos do Titular">
+  <option value="Invasão de Dispositivo">
+  <option value="Golpes Virtuais">
+  <option value="Crimes de Honra na Internet">
+  <option value="Termos de Uso">
+  <option value="Políticas de Privacidade">
+  <option value="E-commerce">
+  <option value="Assinaturas Digitais">
 </datalist>
 <!-- Saída de emergência do "modo impressão" (ver imprimirComClasse_): fica escondido o tempo
      todo, só aparece quando alguma classe "printing-*" está no body (ver CSS mais abaixo).
@@ -2673,6 +2824,31 @@
       <button class="filter-btn" onclick="filterByRamo('all', this)" id="ramobtn-all">Todas as áreas</button>
       <div id="ramoButtons" class="ramo-buttons"></div>
     </div>
+
+    <details class="sidebar-section">
+      <summary class="sidebar-label" style="cursor:pointer">Sistema</summary>
+      <button class="filter-btn" onclick="filterBySistema('all', this)" id="sistemabtn-all">Todos os sistemas</button>
+      <div id="sistemaButtons" class="ramo-buttons"></div>
+    </details>
+
+    <details class="sidebar-section">
+      <summary class="sidebar-label" style="cursor:pointer">Tribunal e Fórum</summary>
+      <button class="filter-btn" onclick="filterByTribunal('all', this)" id="tribunalbtn-all">Todos os tribunais</button>
+      <div id="tribunalButtons" class="ramo-buttons"></div>
+    </details>
+
+    <details class="sidebar-section">
+      <summary class="sidebar-label" style="cursor:pointer">Cliente PF/PJ</summary>
+      <button class="filter-btn" onclick="filterByClientePJPF('all', this)" id="pjpfbtn-all">Todos os clientes</button>
+      <button class="filter-btn" onclick="filterByClientePJPF('PF', this)" id="pjpfbtn-PF">Pessoa Física</button>
+      <button class="filter-btn" onclick="filterByClientePJPF('PJ', this)" id="pjpfbtn-PJ">Pessoa Jurídica</button>
+    </details>
+
+    <details class="sidebar-section">
+      <summary class="sidebar-label" style="cursor:pointer">Tipo de Ação</summary>
+      <button class="filter-btn" onclick="filterByTipoAcao('all', this)" id="tipoacaobtn-all">Todos os tipos</button>
+      <div id="tipoAcaoButtons" class="ramo-buttons"></div>
+    </details>
 
   </aside>
 
@@ -3238,14 +3414,69 @@
                 <option>Direitos Reais e Posse</option>
                 <option>Teoria Geral e Parte Geral</option>
               </optgroup>
+              <option>FAMILIA E SUCESSÕES</option>
+              <optgroup label="↳ Família e Sucessões">
+                <option>Casamento e União Estável</option>
+                <option>Parentesco e Guarda</option>
+                <option>Alimentos</option>
+                <option>Sucessões</option>
+              </optgroup>
+              <option>IMOBILIÁRIO</option>
+              <optgroup label="↳ Direito Imobiliário">
+                <option>Transações e Negócios Imobiliários</option>
+                <option>Locação e Despejo</option>
+                <option>Condominial e Vizinhança</option>
+                <option>Regularização Imobiliária e Registral</option>
+              </optgroup>
+              <option>EMPRESARIAL</option>
+              <optgroup label="↳ Direito Empresarial">
+                <option>Societário</option>
+                <option>Propriedade Intelectual e Industrial</option>
+                <option>Falência e Recuperação</option>
+                <option>Títulos de Crédito e Contratos Empresariais</option>
+              </optgroup>
               <option>TRABALHISTA</option>
               <option>Trabalhista TRT2</option>
-              <option>CRIMINAL</option>
-              <option>FAMILIA E SUCESSÕES</option>
-              <option>ADMINISTRATIVO</option>
+              <optgroup label="↳ Direito do Trabalho">
+                <option>Relação de Emprego</option>
+                <option>Verbas Rescisórias e Remuneração</option>
+                <option>Saúde e Segurança do Trabalho</option>
+                <option>Direito Coletivo e Sindical</option>
+              </optgroup>
+              <option>CONSUMIDOR</option>
+              <optgroup label="↳ Direito do Consumidor">
+                <option>Responsabilidade pelo Fato/Vício do Produto e Serviço</option>
+                <option>Contratos de Adesão e Cláusulas Abusivas</option>
+                <option>Serviços Essenciais e Financeiros</option>
+              </optgroup>
               <option>TRIBUTÁRIO</option>
-              <option>EXTRAJUDICIAL</option>
+              <optgroup label="↳ Direito Tributário">
+                <option>Impostos Federais, Estaduais e Municipais</option>
+                <option>Contribuições Sociais e Especiais</option>
+                <option>Execução Fiscal e Defesa do Contribuinte</option>
+                <option>Planejamento e Recuperação Tributária</option>
+              </optgroup>
+              <option>ADMINISTRATIVO</option>
+              <optgroup label="↳ Direito Administrativo">
+                <option>Licitações e Contratos Administrativos</option>
+                <option>Servidores Públicos</option>
+                <option>Improbidade Administrativa e Anticorrupção</option>
+                <option>Desapropriação e Intervenção Estatal</option>
+              </optgroup>
+              <option>CONSTITUCIONAL</option>
+              <optgroup label="↳ Direito Constitucional">
+                <option>Ações Constitucionais</option>
+                <option>Controle de Constitucionalidade</option>
+                <option>Direitos e Garantias Fundamentais</option>
+              </optgroup>
               <option>Mandado de Segurança</option>
+              <option>CRIMINAL</option>
+              <optgroup label="↳ Direito Penal">
+                <option>Crimes Contra a Pessoa e Patrimônio</option>
+                <option>Crimes Econômicos e Financeiros</option>
+                <option>Crimes Funcionais e Contra a Administração</option>
+                <option>Execução Penal e Prisões</option>
+              </optgroup>
               <option>PREVIDENCIÁRIO</option>
               <optgroup label="↳ Direito Previdenciário">
                 <option>Benefícios por Incapacidade</option>
@@ -3253,6 +3484,13 @@
                 <option>Pensões e Auxílios</option>
                 <option>Revisão de Benefícios</option>
               </optgroup>
+              <option>DIGITAL / LGPD</option>
+              <optgroup label="↳ Direito Digital e LGPD">
+                <option>Proteção de Dados Pessoais</option>
+                <option>Crimes Cibernéticos e Fraudes Digitais</option>
+                <option>Contratos e Negócios Digitais</option>
+              </optgroup>
+              <option>EXTRAJUDICIAL</option>
             </select>
           </div>
           <div class="form-field">
@@ -3620,14 +3858,69 @@
                 <option>Direitos Reais e Posse</option>
                 <option>Teoria Geral e Parte Geral</option>
               </optgroup>
+              <option>FAMILIA E SUCESSÕES</option>
+              <optgroup label="↳ Família e Sucessões">
+                <option>Casamento e União Estável</option>
+                <option>Parentesco e Guarda</option>
+                <option>Alimentos</option>
+                <option>Sucessões</option>
+              </optgroup>
+              <option>IMOBILIÁRIO</option>
+              <optgroup label="↳ Direito Imobiliário">
+                <option>Transações e Negócios Imobiliários</option>
+                <option>Locação e Despejo</option>
+                <option>Condominial e Vizinhança</option>
+                <option>Regularização Imobiliária e Registral</option>
+              </optgroup>
+              <option>EMPRESARIAL</option>
+              <optgroup label="↳ Direito Empresarial">
+                <option>Societário</option>
+                <option>Propriedade Intelectual e Industrial</option>
+                <option>Falência e Recuperação</option>
+                <option>Títulos de Crédito e Contratos Empresariais</option>
+              </optgroup>
               <option>TRABALHISTA</option>
               <option>Trabalhista TRT2</option>
-              <option>CRIMINAL</option>
-              <option>FAMILIA E SUCESSÕES</option>
-              <option>ADMINISTRATIVO</option>
+              <optgroup label="↳ Direito do Trabalho">
+                <option>Relação de Emprego</option>
+                <option>Verbas Rescisórias e Remuneração</option>
+                <option>Saúde e Segurança do Trabalho</option>
+                <option>Direito Coletivo e Sindical</option>
+              </optgroup>
+              <option>CONSUMIDOR</option>
+              <optgroup label="↳ Direito do Consumidor">
+                <option>Responsabilidade pelo Fato/Vício do Produto e Serviço</option>
+                <option>Contratos de Adesão e Cláusulas Abusivas</option>
+                <option>Serviços Essenciais e Financeiros</option>
+              </optgroup>
               <option>TRIBUTÁRIO</option>
-              <option>EXTRAJUDICIAL</option>
+              <optgroup label="↳ Direito Tributário">
+                <option>Impostos Federais, Estaduais e Municipais</option>
+                <option>Contribuições Sociais e Especiais</option>
+                <option>Execução Fiscal e Defesa do Contribuinte</option>
+                <option>Planejamento e Recuperação Tributária</option>
+              </optgroup>
+              <option>ADMINISTRATIVO</option>
+              <optgroup label="↳ Direito Administrativo">
+                <option>Licitações e Contratos Administrativos</option>
+                <option>Servidores Públicos</option>
+                <option>Improbidade Administrativa e Anticorrupção</option>
+                <option>Desapropriação e Intervenção Estatal</option>
+              </optgroup>
+              <option>CONSTITUCIONAL</option>
+              <optgroup label="↳ Direito Constitucional">
+                <option>Ações Constitucionais</option>
+                <option>Controle de Constitucionalidade</option>
+                <option>Direitos e Garantias Fundamentais</option>
+              </optgroup>
               <option>Mandado de Segurança</option>
+              <option>CRIMINAL</option>
+              <optgroup label="↳ Direito Penal">
+                <option>Crimes Contra a Pessoa e Patrimônio</option>
+                <option>Crimes Econômicos e Financeiros</option>
+                <option>Crimes Funcionais e Contra a Administração</option>
+                <option>Execução Penal e Prisões</option>
+              </optgroup>
               <option>PREVIDENCIÁRIO</option>
               <optgroup label="↳ Direito Previdenciário">
                 <option>Benefícios por Incapacidade</option>
@@ -3635,6 +3928,13 @@
                 <option>Pensões e Auxílios</option>
                 <option>Revisão de Benefícios</option>
               </optgroup>
+              <option>DIGITAL / LGPD</option>
+              <optgroup label="↳ Direito Digital e LGPD">
+                <option>Proteção de Dados Pessoais</option>
+                <option>Crimes Cibernéticos e Fraudes Digitais</option>
+                <option>Contratos e Negócios Digitais</option>
+              </optgroup>
+              <option>EXTRAJUDICIAL</option>
             </select>
           </div>
           <div class="form-field">
@@ -4275,6 +4575,10 @@ async function carregarPartesProcesso() {
 }
 window.carregarPartesProcesso = carregarPartesProcesso;
 let currentRamo = 'all';
+let currentSistema = 'all';
+let currentTribunal = 'all';
+let currentClientePJPF = 'all';
+let currentTipoAcao = 'all';
 let expandedId = null;
 
 const CONFIG_KEY = 'lexflow_config';
@@ -5008,6 +5312,9 @@ function parseProcessos(rows) {
   }
 
   buildRamoFilter();
+  buildSistemaFilter();
+  buildTribunalFilter();
+  buildTipoAcaoFilter();
   updateStats();
   renderProcessos();
 }
@@ -5163,10 +5470,47 @@ const RAMO_PARENTS = {
   'Responsabilidade Civil': 'CIVIL',
   'Direitos Reais e Posse': 'CIVIL',
   'Teoria Geral e Parte Geral': 'CIVIL',
+  'Casamento e União Estável': 'FAMILIA E SUCESSÕES',
+  'Parentesco e Guarda': 'FAMILIA E SUCESSÕES',
+  'Alimentos': 'FAMILIA E SUCESSÕES',
+  'Sucessões': 'FAMILIA E SUCESSÕES',
+  'Transações e Negócios Imobiliários': 'IMOBILIÁRIO',
+  'Locação e Despejo': 'IMOBILIÁRIO',
+  'Condominial e Vizinhança': 'IMOBILIÁRIO',
+  'Regularização Imobiliária e Registral': 'IMOBILIÁRIO',
+  'Societário': 'EMPRESARIAL',
+  'Propriedade Intelectual e Industrial': 'EMPRESARIAL',
+  'Falência e Recuperação': 'EMPRESARIAL',
+  'Títulos de Crédito e Contratos Empresariais': 'EMPRESARIAL',
+  'Relação de Emprego': 'TRABALHISTA',
+  'Verbas Rescisórias e Remuneração': 'TRABALHISTA',
+  'Saúde e Segurança do Trabalho': 'TRABALHISTA',
+  'Direito Coletivo e Sindical': 'TRABALHISTA',
+  'Responsabilidade pelo Fato/Vício do Produto e Serviço': 'CONSUMIDOR',
+  'Contratos de Adesão e Cláusulas Abusivas': 'CONSUMIDOR',
+  'Serviços Essenciais e Financeiros': 'CONSUMIDOR',
+  'Impostos Federais, Estaduais e Municipais': 'TRIBUTÁRIO',
+  'Contribuições Sociais e Especiais': 'TRIBUTÁRIO',
+  'Execução Fiscal e Defesa do Contribuinte': 'TRIBUTÁRIO',
+  'Planejamento e Recuperação Tributária': 'TRIBUTÁRIO',
+  'Licitações e Contratos Administrativos': 'ADMINISTRATIVO',
+  'Servidores Públicos': 'ADMINISTRATIVO',
+  'Improbidade Administrativa e Anticorrupção': 'ADMINISTRATIVO',
+  'Desapropriação e Intervenção Estatal': 'ADMINISTRATIVO',
+  'Ações Constitucionais': 'CONSTITUCIONAL',
+  'Controle de Constitucionalidade': 'CONSTITUCIONAL',
+  'Direitos e Garantias Fundamentais': 'CONSTITUCIONAL',
+  'Crimes Contra a Pessoa e Patrimônio': 'CRIMINAL',
+  'Crimes Econômicos e Financeiros': 'CRIMINAL',
+  'Crimes Funcionais e Contra a Administração': 'CRIMINAL',
+  'Execução Penal e Prisões': 'CRIMINAL',
   'Benefícios por Incapacidade': 'PREVIDENCIÁRIO',
   'Aposentadorias': 'PREVIDENCIÁRIO',
   'Pensões e Auxílios': 'PREVIDENCIÁRIO',
   'Revisão de Benefícios': 'PREVIDENCIÁRIO',
+  'Proteção de Dados Pessoais': 'DIGITAL / LGPD',
+  'Crimes Cibernéticos e Fraudes Digitais': 'DIGITAL / LGPD',
+  'Contratos e Negócios Digitais': 'DIGITAL / LGPD',
 };
 
 function buildRamoFilter() {
@@ -5187,6 +5531,75 @@ function buildRamoFilter() {
   }).join('');
 }
 
+// ---- Filtro por Sistema (ESAJ/EPROC/PJE/TRF3/EXTRAJUDICIAL...) — lista fixa igual ao
+// select de cadastro, mas só mostra o botão de um sistema se algum processo já usa ele. ----
+function filterBySistema(sistema, btn) {
+  currentSistema = sistema;
+  document.querySelectorAll('[id^="sistemabtn-"]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+const SISTEMAS_CONHECIDOS = ['ESAJ','EPROC','PJE','TRF3','EXTRAJUDICIAL'];
+function buildSistemaFilter() {
+  const usados = new Set(allProcessos.map(p => p.sistema).filter(Boolean));
+  const lista = SISTEMAS_CONHECIDOS.filter(s => usados.has(s))
+    .concat([...usados].filter(s => !SISTEMAS_CONHECIDOS.includes(s)).sort());
+  const container = document.getElementById('sistemaButtons');
+  const allBtn = document.getElementById('sistemabtn-all');
+  if (allBtn) allBtn.classList.add('active');
+  if (!container) return;
+  container.innerHTML = lista.map(s => `<button class="filter-btn" id="sistemabtn-${s.replace(/\s/g,'_')}" onclick="filterBySistema('${s}', this)">${s}</button>`).join('');
+}
+
+// ---- Filtro por Tribunal e Fórum — texto livre no cadastro, então a lista é construída
+// a partir dos valores realmente usados nos processos, igual ao filtro de área. ----
+function filterByTribunal(tribunal, btn) {
+  currentTribunal = tribunal;
+  document.querySelectorAll('[id^="tribunalbtn-"]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+function buildTribunalFilter() {
+  const tribunais = [...new Set(allProcessos.map(p => p.tribunal).filter(Boolean))].sort();
+  const container = document.getElementById('tribunalButtons');
+  const allBtn = document.getElementById('tribunalbtn-all');
+  if (allBtn) allBtn.classList.add('active');
+  if (!container) return;
+  container.innerHTML = tribunais.map((t, i) => {
+    const label = t.length > 26 ? t.substring(0,26)+'...' : t;
+    return `<button class="filter-btn" id="tribunalbtn-${i}" onclick="filterByTribunal('${escAttr(t)}', this)" title="${escAttr(t)}">${escHtml(label)}</button>`;
+  }).join('');
+}
+
+// ---- Filtro por Cliente Pessoa Física / Pessoa Jurídica — só duas opções fixas,
+// usa o mesmo critério de ehPessoaJuridica() já usado nos documentos/petições. ----
+function filterByClientePJPF(tipo, btn) {
+  currentClientePJPF = tipo;
+  document.querySelectorAll('[id^="pjpfbtn-"]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+
+// ---- Filtro por Tipo de Ação — texto livre no cadastro (mesmo campo que ganhou autocomplete
+// de tópicos), lista construída a partir dos valores realmente usados. ----
+function filterByTipoAcao(tipo, btn) {
+  currentTipoAcao = tipo;
+  document.querySelectorAll('[id^="tipoacaobtn-"]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderProcessos();
+}
+function buildTipoAcaoFilter() {
+  const tipos = [...new Set(allProcessos.map(p => p.tipo).filter(Boolean))].sort();
+  const container = document.getElementById('tipoAcaoButtons');
+  const allBtn = document.getElementById('tipoacaobtn-all');
+  if (allBtn) allBtn.classList.add('active');
+  if (!container) return;
+  container.innerHTML = tipos.map((t, i) => {
+    const label = t.length > 26 ? t.substring(0,26)+'...' : t;
+    return `<button class="filter-btn" id="tipoacaobtn-${i}" onclick="filterByTipoAcao('${escAttr(t)}', this)" title="${escAttr(t)}">${escHtml(label)}</button>`;
+  }).join('');
+}
+
 function renderProcessos() {
   const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
   const sort = (document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : '') || 'prioridade';
@@ -5197,6 +5610,19 @@ function renderProcessos() {
   let list = allProcessos.filter(p => {
     // Filtro de ramo
     if (currentRamo !== 'all' && p.ramo !== currentRamo) return false;
+
+    // Filtro de sistema (ESAJ/EPROC/PJE/TRF3/EXTRAJUDICIAL...)
+    if (currentSistema !== 'all' && p.sistema !== currentSistema) return false;
+
+    // Filtro de tribunal e fórum
+    if (currentTribunal !== 'all' && p.tribunal !== currentTribunal) return false;
+
+    // Filtro de cliente Pessoa Física / Pessoa Jurídica
+    if (currentClientePJPF === 'PJ' && !ehPessoaJuridica(p)) return false;
+    if (currentClientePJPF === 'PF' && ehPessoaJuridica(p)) return false;
+
+    // Filtro de tipo de ação
+    if (currentTipoAcao !== 'all' && p.tipo !== currentTipoAcao) return false;
 
     // Filtro de urgencia / audiencia / providencia
     if (currentFilter === 'audiencia') return p.dataAudi && p.dataAudi.length > 3;
