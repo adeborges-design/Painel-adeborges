@@ -3220,6 +3220,43 @@
           </div>
         </div>
       </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⚖️ Advogado da Parte Adversa</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Nome do Advogado</label>
+            <input type="text" id="ed-advAdvNome" placeholder="Nome do advogado da parte contrária">
+          </div>
+          <div class="form-field">
+            <label>OAB</label>
+            <input type="text" id="ed-advAdvOab" placeholder="Ex.: OAB/SP 000.000">
+          </div>
+          <div class="form-field">
+            <label>Telefone</label>
+            <input type="text" id="ed-advAdvTelefone" placeholder="(11) 99999-9999" maxlength="15" oninput="mascararTelefone(this)">
+          </div>
+          <div class="form-field">
+            <label>E-mail</label>
+            <input type="email" id="ed-advAdvEmail">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📝 Fatos e Providências</div>
+        <div class="form-grid">
+          <div class="form-field form-full">
+            <label>Narrativa dos Fatos</label>
+            <textarea id="ed-narrativaFatos" rows="6" placeholder="Descreva os fatos do caso, na ordem em que aconteceram..."></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Providências / Pontos de Atenção para o Advogado</label>
+            <textarea id="ed-providAdv" rows="4" placeholder="Ex.: providenciar fotos do local, solicitar documento X ao cliente, esclarecer data do ocorrido..."></textarea>
+          </div>
+        </div>
+      </div>
+
       <div class="form-section">
         <div class="form-section-title">📋 Andamento Processual</div>
         <div class="form-grid">
@@ -4787,6 +4824,12 @@ function parseProcessos(rows) {
     const repCargo          = get(row, 'Representante Cargo', -1);
     const chaveAcesso       = get(row, 'Chave de Acesso',    -1);
     const senhaCliente      = get(row, 'Senha Cliente',      -1);
+    const advAdvNome        = get(row, 'Advogado Adversário Nome', -1);
+    const advAdvOab         = get(row, 'Advogado Adversário OAB', -1);
+    const advAdvTelefone    = get(row, 'Advogado Adversário Telefone', -1);
+    const advAdvEmail       = get(row, 'Advogado Adversário Email', -1);
+    const narrativaFatos    = get(row, 'Narrativa dos Fatos', -1);
+    const providAdv         = get(row, 'Providências e Observações ao Advogado', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -4817,6 +4860,8 @@ function parseProcessos(rows) {
       dataAudi, horAudi, localAudi,
       advParc, obs, pastaDrive, linkTrib, telefone, email,
       telParceiro, emailParceiro,
+      advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
+      narrativaFatos, providAdv,
       processoPrincipal,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
@@ -10726,6 +10771,16 @@ function abrirEdicao(uid) {
   document.getElementById('ed-linkTrib').value = p.linkTrib || '';
   document.getElementById('ed-pastaDrive').value = p.pastaDrive || '';
 
+  // Preencher campos - Advogado da Parte Adversa
+  document.getElementById('ed-advAdvNome').value = p.advAdvNome || '';
+  document.getElementById('ed-advAdvOab').value = p.advAdvOab || '';
+  document.getElementById('ed-advAdvTelefone').value = p.advAdvTelefone || '';
+  document.getElementById('ed-advAdvEmail').value = p.advAdvEmail || '';
+
+  // Preencher campos - Fatos e Providências
+  document.getElementById('ed-narrativaFatos').value = p.narrativaFatos || '';
+  document.getElementById('ed-providAdv').value = p.providAdv || '';
+
   // Preencher campos - Andamento Processual
   document.getElementById('ed-ultima').value = p.ultima || '';
   document.getElementById('ed-status').value = p.status || 'ATIVO';
@@ -10837,6 +10892,12 @@ async function salvarEdicao() {
     'Advogado Parceiro': document.getElementById('ed-advParc').value,
     'Link Tribunal': document.getElementById('ed-linkTrib').value,
     'Pasta Drive': document.getElementById('ed-pastaDrive').value,
+    'Advogado Adversário Nome': document.getElementById('ed-advAdvNome').value,
+    'Advogado Adversário OAB': document.getElementById('ed-advAdvOab').value,
+    'Advogado Adversário Telefone': document.getElementById('ed-advAdvTelefone').value,
+    'Advogado Adversário Email': document.getElementById('ed-advAdvEmail').value,
+    'Narrativa dos Fatos': document.getElementById('ed-narrativaFatos').value,
+    'Providências e Observações ao Advogado': document.getElementById('ed-providAdv').value,
     'Última Atualizacao': document.getElementById('ed-ultima').value,
     'Status': document.getElementById('ed-status').value,
     'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
@@ -21068,7 +21129,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
       +MIMG('02_processos_novo.png','Botão "Novo" abre o formulário de cadastro de processo.')
       +MH+'Edição</div>'
-      +MP+'Abra o card do processo (clique nele na lista) e use o botão "Editar" pra corrigir qualquer dado cadastrado — número, cliente, prazos, status, urgência, sistema de origem e anotações. As alterações são salvas direto na planilha.</div>'
+      +MP+'Abra o card do processo (clique nele na lista) e use o botão "Editar" pra corrigir qualquer dado cadastrado — número, cliente, prazos, status, urgência, sistema de origem e anotações. Também é ali que ficam os dados do <strong>Advogado da Parte Adversa</strong> (nome, OAB, telefone, e-mail) e os campos de <strong>Narrativa dos Fatos</strong> e <strong>Providências / Pontos de Atenção para o Advogado</strong> (ex.: providenciar fotos, solicitar documentos, esclarecer algum ponto do caso). As alterações são salvas direto na planilha.</div>'
       +MIMG('04_processo_editar.png','Botão "Editar" abre o formulário para alterar os dados do processo.')
       +MH+'Filtros e busca</div>'
       +MP+'Na lateral esquerda, filtre por urgência (Crítico/Urgente/Atenção/Normal/Monitorar) ou por área do direito. A busca no topo aceita nome do cliente, número do processo ou tipo de ação — atalho de teclado: tecla "/".</div>'
