@@ -14037,6 +14037,10 @@ window.cpRenderFixas=cpRenderFixas;
 
         <div class="cobr-secao full">IPTU</div>
         <div class="loc-cfield"><label>Parcela deste mês (R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('cobr-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="cobr-iptu" type="text" inputmode="decimal" placeholder="0,00 (deixe 0 se não há parcela este mês)" oninput="cobrAtualizarPreview()"></div>
+        <div class="loc-cfield"><label>Parcela nº <span style="font-weight:400;color:var(--muted)">(ex.: 8)</span></label><input class="loc-cinput" id="cobr-iptu-parcela-num" type="number" min="0" placeholder="Ex.: 8"></div>
+        <div class="loc-cfield"><label>De um total de <span style="font-weight:400;color:var(--muted)">(ex.: 10)</span></label><input class="loc-cinput" id="cobr-iptu-parcela-total" type="number" min="0" placeholder="Ex.: 10">
+          <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Preencha os dois pra aparecer "IPTU (08/10)" no recibo do locatário e no informe do locador. Ao gerar o mês seguinte, a parcela avança sozinha e para automaticamente na última. Deixe em branco se o IPTU não for parcelado.</div>
+        </div>
 
         <div class="cobr-secao full">Multa e juros (sobre o aluguel) <a href="javascript:void(0)" onclick="abrirCalcMultaJuros()" style="font-size:11px;text-decoration:underline;color:var(--accent2);font-weight:400;text-transform:none;letter-spacing:0">📐 calcular por dias de atraso</a></div>
         <div class="loc-cfield"><label>Multa (R$)</label><input class="loc-cinput" id="cobr-multa" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -16048,6 +16052,13 @@ window.cpRenderFixas=cpRenderFixas;
     }
   };
   function BRL(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  // "IPTU" ou "IPTU (08/10)" quando o lançamento tem parcela nº/total preenchidos — usado no
+  // recibo do locatário, no informe de repasse do locador e nas versões texto/WhatsApp de ambos.
+  function iptuLabel_(o){
+    var n=parseInt(o&&o.iptuParcelaNum,10)||0, t=parseInt(o&&o.iptuParcelaTotal,10)||0;
+    if(n>0&&t>0)return 'IPTU ('+('0'+n).slice(-2)+'/'+('0'+t).slice(-2)+')';
+    return 'IPTU';
+  }
   // Converte "DD/MM/AAAA" (ou o formato que o Sheets às vezes devolve sozinho quando a célula
   // vira tipo Data) pra "AAAA-MM-DD", que é o que <input type="date"> espera.
   function locIsoFromBR(s){
@@ -16188,6 +16199,8 @@ window.cpRenderFixas=cpRenderFixas;
         var valorRepasseRaw=cell(row,ml,'Valor Repasse');
         return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),
           condominio:cell(row,ml,'Condominio'),iptu:cell(row,ml,'IPTU'),
+          iptuParcelaNum:cell(row,ml,'IPTU Parcela Numero'),iptuParcelaTotal:cell(row,ml,'IPTU Parcela Total'),
+          reciboEnviado:cell(row,ml,'Recibo Enviado'),dataEnvioRecibo:cell(row,ml,'Data Envio Recibo')||'',
           aguaPriv:cell(row,ml,'Agua Privativa'),gasPriv:cell(row,ml,'Gas Privativa'),aguaComum:cell(row,ml,'Agua Comum'),gasPiscina:cell(row,ml,'Gas Piscina'),
           energiaComum:cell(row,ml,'Energia Comum'),taxaLeitura:cell(row,ml,'Taxa Leitura'),fundoFerias:cell(row,ml,'Fundo Ferias'),decimoTerceiro:cell(row,ml,'Decimo Terceiro'),
           desconto:cell(row,ml,'Desconto'),multa:cell(row,ml,'Multa'),juros:cell(row,ml,'Juros'),
@@ -16581,16 +16594,20 @@ window.cpRenderFixas=cpRenderFixas;
       // Condomínio e IPTU: se o lançamento do mês já tem valor próprio, usa-o; senão, puxa o padrão do contrato.
       var condominio=(l.condominio!=null&&l.condominio!=='')?num(l.condominio):num(ct.condominioPadrao);
       var iptu=(l.iptu!=null&&l.iptu!=='')?num(l.iptu):num(ct.iptuParcela);
+      var iptuParcelaNum=num(l.iptuParcelaNum), iptuParcelaTotal=num(l.iptuParcelaTotal);
+      var reciboEnviado=String(l.reciboEnviado||'').toLowerCase()==='sim', dataEnvioRecibo=l.dataEnvioRecibo||'';
       var aguaPriv=num(l.aguaPriv), gasPriv=num(l.gasPriv), aguaComum=num(l.aguaComum), gasPiscina=num(l.gasPiscina),
           energiaComum=num(l.energiaComum), taxaLeitura=num(l.taxaLeitura), fundoFerias=num(l.fundoFerias), decimoTerceiro=num(l.decimoTerceiro),
           desconto=num(l.desconto);
       var outrasDesc=l.outrasDesc||'';
       var outrasValor=num(l.outrasValor);
       var r={id:l.id,mes:l.mes,contrato:l.contrato,aluguel:aluguel,multa:multa,juros:juros,taxa:taxa,condominio:condominio,iptu:iptu,
+             iptuParcelaNum:iptuParcelaNum,iptuParcelaTotal:iptuParcelaTotal,
              aguaPriv:aguaPriv,gasPriv:gasPriv,aguaComum:aguaComum,gasPiscina:gasPiscina,energiaComum:energiaComum,taxaLeitura:taxaLeitura,
              fundoFerias:fundoFerias,decimoTerceiro:decimoTerceiro,desconto:desconto,descontoIncideTaxa:!!l.descontoIncideTaxa,
              outrasDesc:outrasDesc,outrasValor:outrasValor,valorRepasse:(l.valorRepasse||0),repManual:!!l.temRepasse,
              statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||'',
+             reciboEnviado:reciboEnviado,dataEnvioRecibo:dataEnvioRecibo,
              // Observações do mês, cada uma só aparece no documento correspondente (recibo x informe).
              observacoesLocatario:l.observacoesLocatario||'',observacoesLocador:l.observacoesLocador||''};
       if(o){
@@ -16602,6 +16619,10 @@ window.cpRenderFixas=cpRenderFixas;
         if(o.banco!=null)r.banco=o.banco;
         if(o.condominio!=null)r.condominio=num(o.condominio);
         if(o.iptu!=null)r.iptu=num(o.iptu);
+        if(o.iptuParcelaNum!=null)r.iptuParcelaNum=num(o.iptuParcelaNum);
+        if(o.iptuParcelaTotal!=null)r.iptuParcelaTotal=num(o.iptuParcelaTotal);
+        if(o.reciboEnviado!=null)r.reciboEnviado=!!o.reciboEnviado;
+        if(o.dataEnvioRecibo!=null)r.dataEnvioRecibo=o.dataEnvioRecibo;
         if(o.aguaPriv!=null)r.aguaPriv=num(o.aguaPriv);
         if(o.gasPriv!=null)r.gasPriv=num(o.gasPriv);
         if(o.aguaComum!=null)r.aguaComum=num(o.aguaComum);
@@ -16803,7 +16824,9 @@ window.cpRenderFixas=cpRenderFixas;
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
-        '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button> <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button></td>'+
+        '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
+        +'<span style="cursor:pointer;font-size:12px;margin:0 3px" title="'+(l.reciboEnviado?('Recibo de aluguel enviado em '+E(l.dataEnvioRecibo||'—')+' — clique para desmarcar'):'Recibo de aluguel ainda não marcado como enviado — clique para marcar manualmente')+'" onclick="event.stopPropagation();locToggleReciboEnviado(\''+E(l.contrato)+'\')">'+(l.reciboEnviado?'✅':'⭘')+'</span>'
+        +' <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
     if(showRepasse)renderRepasse(lstTodos);
@@ -16877,6 +16900,8 @@ window.cpRenderFixas=cpRenderFixas;
       'Agua Privativa':w.aguaPriv||0,'Gas Privativa':w.gasPriv||0,'Agua Comum':w.aguaComum||0,'Gas Piscina':w.gasPiscina||0,
       'Energia Comum':w.energiaComum||0,'Taxa Leitura':w.taxaLeitura||0,'Fundo Ferias':w.fundoFerias||0,'Decimo Terceiro':w.decimoTerceiro||0,
       'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0,'Desconto Incide Taxa':w.descontoIncideTaxa?'Sim':'Nao',
+      'IPTU Parcela Numero':w.iptuParcelaNum||'','IPTU Parcela Total':w.iptuParcelaTotal||'',
+      'Recibo Enviado':w.reciboEnviado?'Sim':'Nao','Data Envio Recibo':w.dataEnvioRecibo||'',
       'Observacoes':w.observacoesLocador||'','Observacoes Locatario':w.observacoesLocatario||''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
@@ -16949,6 +16974,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
+    document.getElementById('cobr-iptu-parcela-num').value=l.iptuParcelaNum||'';
+    document.getElementById('cobr-iptu-parcela-total').value=l.iptuParcelaTotal||'';
     document.getElementById('cobr-desconto-incide-taxa').value=l.descontoIncideTaxa?'Sim':'Nao';
     document.getElementById('cobr-obs-locatario').value=l.observacoesLocatario||'';
     document.getElementById('cobr-obs-locador').value=l.observacoesLocador||'';
@@ -16978,6 +17005,8 @@ window.cpRenderFixas=cpRenderFixas;
       if(p[1]==='multa'||p[1]==='juros')return;
       document.getElementById(p[0]).value=origem[p[1]]||'';
     });
+    document.getElementById('cobr-iptu-parcela-num').value=origem.iptuParcelaNum||'';
+    document.getElementById('cobr-iptu-parcela-total').value=origem.iptuParcelaTotal||'';
     document.getElementById('cobr-desconto-incide-taxa').value=origem.descontoIncideTaxa?'Sim':'Nao';
     document.getElementById('cobr-outras-lista').innerHTML='';
     parseOutrasCobrancas(origem).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino,it.incideTaxa);});
@@ -17021,6 +17050,8 @@ window.cpRenderFixas=cpRenderFixas;
     });
     var patch={outrasDesc:montarOutrasCobrancas(itens),aluguel:num(document.getElementById('cobr-aluguel-mes').value)};
     COBR_CAMPOS_NUM.forEach(function(p){patch[p[1]]=num(document.getElementById(p[0]).value);});
+    patch.iptuParcelaNum=parseInt(document.getElementById('cobr-iptu-parcela-num').value,10)||0;
+    patch.iptuParcelaTotal=parseInt(document.getElementById('cobr-iptu-parcela-total').value,10)||0;
     patch.descontoIncideTaxa=document.getElementById('cobr-desconto-incide-taxa').value==='Sim';
     patch.observacoesLocatario=document.getElementById('cobr-obs-locatario').value.trim();
     patch.observacoesLocador=document.getElementById('cobr-obs-locador').value.trim();
@@ -17247,16 +17278,16 @@ window.cpRenderFixas=cpRenderFixas;
     var mesOrigem=document.getElementById('recriarlanc-copiar').value;
     var origem=mesOrigem?(workingList()||[]).filter(function(x){return x.mes===mesOrigem&&x.contrato===contrato;})[0]:null;
     var base=origem
-      ?{aluguel:origem.aluguel,condominio:origem.condominio,iptu:origem.iptu,aguaPriv:origem.aguaPriv,gasPriv:origem.gasPriv,aguaComum:origem.aguaComum,gasPiscina:origem.gasPiscina,energiaComum:origem.energiaComum,taxaLeitura:origem.taxaLeitura,fundoFerias:origem.fundoFerias,decimoTerceiro:origem.decimoTerceiro,desconto:origem.desconto,descontoIncideTaxa:origem.descontoIncideTaxa,outrasDesc:origem.outrasDesc}
-      :{aluguel:num(c.aluguel),condominio:num(c.condominioPadrao),iptu:num(c.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,descontoIncideTaxa:false,outrasDesc:''};
+      ?{aluguel:origem.aluguel,condominio:origem.condominio,iptu:origem.iptu,iptuParcelaNum:origem.iptuParcelaNum,iptuParcelaTotal:origem.iptuParcelaTotal,aguaPriv:origem.aguaPriv,gasPriv:origem.gasPriv,aguaComum:origem.aguaComum,gasPiscina:origem.gasPiscina,energiaComum:origem.energiaComum,taxaLeitura:origem.taxaLeitura,fundoFerias:origem.fundoFerias,decimoTerceiro:origem.decimoTerceiro,desconto:origem.desconto,descontoIncideTaxa:origem.descontoIncideTaxa,outrasDesc:origem.outrasDesc}
+      :{aluguel:num(c.aluguel),condominio:num(c.condominioPadrao),iptu:num(c.iptuParcela),iptuParcelaNum:0,iptuParcelaTotal:0,aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,descontoIncideTaxa:false,outrasDesc:''};
     var taxa=calcularTaxa(base,c);
     var campos={'Mes Ref':mes,'Contrato':contrato,'Locador':c.locador||'','Locatario':c.locatario||'','Endereco':c.end||'',
       'Aluguel':base.aluguel||0,'Taxa Adm':taxa,'Valor Repasse':'','Dia Vencimento':c.venc||'','Dia Repasse':c.rep||'',
       'Status':'Pendente','Data Pagamento':'','Origem Pgto':'','Data Repasse':'','Status Repasse':'Pendente',
-      'Condominio':base.condominio||0,'IPTU':base.iptu||0,'Outras Cobrancas Desc':base.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(base),
+      'Condominio':base.condominio||0,'IPTU':base.iptu||0,'IPTU Parcela Numero':base.iptuParcelaNum||'','IPTU Parcela Total':base.iptuParcelaTotal||'','Outras Cobrancas Desc':base.outrasDesc||'','Outras Cobrancas Valor':somaOutrasCobrancas(base),
       'Agua Privativa':base.aguaPriv||0,'Gas Privativa':base.gasPriv||0,'Agua Comum':base.aguaComum||0,'Gas Piscina':base.gasPiscina||0,
       'Energia Comum':base.energiaComum||0,'Taxa Leitura':base.taxaLeitura||0,'Fundo Ferias':base.fundoFerias||0,'Decimo Terceiro':base.decimoTerceiro||0,
-      'Desconto':base.desconto||0,'Multa':0,'Juros':0,'Desconto Incide Taxa':base.descontoIncideTaxa?'Sim':'Nao','Observacoes':'','Observacoes Locatario':''};
+      'Desconto':base.desconto||0,'Multa':0,'Juros':0,'Desconto Incide Taxa':base.descontoIncideTaxa?'Sim':'Nao','Observacoes':'','Observacoes Locatario':'','Recibo Enviado':'Nao','Data Envio Recibo':''};
     var detalhe='Mês '+mes+(mesOrigem?' — copiado de '+mesOrigem:' — valores padrão do contrato');
     if(live){
       try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locl',campos:campos})});}catch(e){}
@@ -17268,7 +17299,7 @@ window.cpRenderFixas=cpRenderFixas;
     }else{
       var s=state();
       s.extra.push({id:'',mes:mes,contrato:contrato,aluguel:base.aluguel||0,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',
-        condominio:base.condominio||0,iptu:base.iptu||0,aguaPriv:base.aguaPriv||0,gasPriv:base.gasPriv||0,aguaComum:base.aguaComum||0,gasPiscina:base.gasPiscina||0,
+        condominio:base.condominio||0,iptu:base.iptu||0,iptuParcelaNum:base.iptuParcelaNum||0,iptuParcelaTotal:base.iptuParcelaTotal||0,aguaPriv:base.aguaPriv||0,gasPriv:base.gasPriv||0,aguaComum:base.aguaComum||0,gasPiscina:base.gasPiscina||0,
         energiaComum:base.energiaComum||0,taxaLeitura:base.taxaLeitura||0,fundoFerias:base.fundoFerias||0,decimoTerceiro:base.decimoTerceiro||0,
         desconto:base.desconto||0,multa:0,juros:0,outrasDesc:base.outrasDesc||'',outrasValor:somaOutrasCobrancas(base),descontoIncideTaxa:!!base.descontoIncideTaxa});
       saveState(s);
@@ -18467,7 +18498,7 @@ window.cpRenderFixas=cpRenderFixas;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||''};
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||''};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -18510,7 +18541,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(l.multa?'<div>(+) Multa: <strong>'+BRL(l.multa)+'</strong></div>':'')
         +(l.juros?'<div>(+) Juros: <strong>'+BRL(l.juros)+'</strong></div>':'')
         +itensHtml
-        +(l.iptu?'<div>(+) IPTU: <strong>'+BRL(l.iptu)+'</strong></div>':'')
+        +(l.iptu?'<div>(+) '+iptuLabel_(l)+': <strong>'+BRL(l.iptu)+'</strong></div>':'')
         +(l.desconto?'<div>(−) Desconto: <strong>-'+BRL(l.desconto)+'</strong></div>':'')
         +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
         +(l.obsLocador?'<div style="margin-top:8px;padding:9px 12px;background:rgba(224,84,84,.16);border:2px solid var(--red);border-radius:8px;color:var(--red);font-weight:700;font-size:12.5px;line-height:1.5">📌 '+E(l.obsLocador)+'</div>':'')
@@ -18569,7 +18600,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='Aluguel: '+BRL(l.aluguel)+'\n';
       if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
       l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
-      if(l.iptu)txt+='(+) IPTU: '+BRL(l.iptu)+'\n';
+      if(l.iptu)txt+='(+) '+iptuLabel_(l)+': '+BRL(l.iptu)+'\n';
       if(l.desconto)txt+='(−) Desconto: -'+BRL(l.desconto)+'\n';
       txt+='Líquido repassado: '+BRL(l.valorLiq)+'\n';
       if(l.obsLocador)txt+='📌 *'+l.obsLocador+'*\n';
@@ -18662,7 +18693,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
         +linhasCondoRep
-        +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
+        +(w.iptu?'<div>(+) '+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
         +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
       totalLabel='Total repassado'; totalValor=effRep(w);
       totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
@@ -18928,7 +18959,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(w.multa?'<div>Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
         +(w.juros?'<div>Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +linhasCondo
-        +(w.iptu?'<div>IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
+        +(w.iptu?'<div>'+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
         +(w.desconto?'<div>Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
         +(totalIRCoprop?'<div>(−) IRRF retido na fonte pelo locatário — '+E(nomesIR.join(', '))+': <strong>-'+BRL(totalIRCoprop)+'</strong></div>':'');
       var vencData=reciboLocVencimentoStr(w,c);
@@ -18956,7 +18987,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
         +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
         +linhasCondoRep
-        +(w.iptu?'<div>(+) IPTU: <strong>'+BRL(w.iptu)+'</strong></div>':'')
+        +(w.iptu?'<div>(+) '+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
         +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
       totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
       contaTitulo='Dados bancários do locador (repasse)';
@@ -19077,7 +19108,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.multa)txt+='Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='Juros: '+fmt(w.juros)+'\n';
       itensCondoInquilino2.forEach(function(it){txt+=it[0]+': '+fmt(it[1])+'\n';});
-      if(w.iptu)txt+='IPTU: '+fmt(w.iptu)+'\n';
+      if(w.iptu)txt+=iptuLabel_(w)+': '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='Desconto: -'+fmt(w.desconto)+'\n';
       if(totalIRCoprop2)txt+='(−) IRRF retido na fonte pelo locatário — '+nomesIR2.join(', ')+': -'+fmt(totalIRCoprop2)+'\n';
       txt+='\n*TOTAL A SER PAGO:* '+fmt(totalPago)+'\n';
@@ -19105,7 +19136,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
       txt+='(−) Taxa de administração: -'+fmt(w.taxa)+'\n';
       reciboLocItensCondo(w,true).filter(function(it){return it[1];}).forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+fmt(Math.abs(it[1]))+'\n';});
-      if(w.iptu)txt+='(+) IPTU: '+fmt(w.iptu)+'\n';
+      if(w.iptu)txt+='(+) '+iptuLabel_(w)+': '+fmt(w.iptu)+'\n';
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
       txt+='Referente ao aluguel vencido em '+mesExtenso(w.mes)+'\n';
@@ -19118,8 +19149,20 @@ window.cpRenderFixas=cpRenderFixas;
     txt+='\nDr. Adenilson Borges — (11) 99931-3712';
     return txt;
   }
+  // Controle de envio do recibo de aluguel (item 2 do pedido do usuário): marca sozinho que o
+  // recibo deste mês/contrato já foi gerado/enviado, com a data, toda vez que o usuário usa um
+  // dos botões de envio (WhatsApp/E-mail/Foto/Imprimir). Só se aplica ao RECIBO do locatário
+  // (tipo 'aluguel') — o informe de repasse ao locador é outro documento, sem esse controle.
+  function locMarcarReciboEnviado_(){
+    if(_reciboLocTipo!=='aluguel'||!_reciboLocContrato)return;
+    setOverride(_reciboLocContrato,{reciboEnviado:true,dataEnvioRecibo:fmtHoje()});
+    gravarSheet(_reciboLocContrato);
+    logAuditoria_('Recibo de aluguel enviado',_reciboLocContrato,'Mês '+(selMes||'—'));
+    locRender();
+  }
   window.enviarReciboLocWpp=function(){
     window.open('https://wa.me/?text='+encodeURIComponent(_reciboLocTexto()),'_blank');
+    locMarcarReciboEnviado_();
   };
   // Leitura em voz alta do recibo/informe antes de enviar — conferência rápida por voz.
   window.ouvirReciboLoc=function(){
@@ -19138,6 +19181,7 @@ window.cpRenderFixas=cpRenderFixas;
   window.enviarReciboLocEmail=function(){
     var assunto=(_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');
     abrirEmailFlex(assunto,_reciboLocTexto().replace(/\*/g,''));
+    locMarcarReciboEnviado_();
   };
   window.enviarReciboLocImagem=function(){
     getReciboLocImagemFile().then(function(file){
@@ -19149,10 +19193,12 @@ window.cpRenderFixas=cpRenderFixas;
         URL.revokeObjectURL(url);
       }
     });
+    locMarcarReciboEnviado_();
   };
   window.imprimirReciboLoc=function(){
     document.getElementById('modalReciboLoc').classList.add('open');
     imprimirComClasse_('printing-recibo-loc', 300);
+    locMarcarReciboEnviado_();
   };
   document.addEventListener('DOMContentLoaded',function(){
     var mrl=document.getElementById('modalReciboLoc');
@@ -19184,6 +19230,16 @@ window.cpRenderFixas=cpRenderFixas;
     setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
   window.locSetBanco=function(contrato,val){setOverride(contrato,{banco:val});gravarSheet(contrato);};
+  // Marca/desmarca manualmente o "Recibo Enviado" do mês selecionado (além de ser marcado
+  // sozinho ao usar WhatsApp/E-mail/Foto/Imprimir no recibo — ver locMarcarReciboEnviado_).
+  window.locToggleReciboEnviado=function(contrato){
+    var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+    var novo=!(w&&w.reciboEnviado);
+    setOverride(contrato,{reciboEnviado:novo,dataEnvioRecibo:novo?fmtHoje():''});
+    gravarSheet(contrato);
+    logAuditoria_('Recibo de aluguel — marcação manual',contrato,'Mês '+(selMes||'—')+' → '+(novo?'enviado':'não enviado'));
+    locRender();
+  };
   // locSetRepasse foi removida: a coluna Repasse não é mais editável (sempre mostra o valor
   // calculado por effRep — ver comentário na definição de effRep, mais acima no arquivo).
 
@@ -19202,10 +19258,25 @@ window.cpRenderFixas=cpRenderFixas;
       alert('Solicitada a geração de '+novo+' na planilha. Aguarde alguns segundos e clique em 🔄 Atualizar.');
       setTimeout(carregarAlugueis,2800);
     }else{
+      // Espelha a mesma regra do backend (gerar_mes_loc em Codigo.gs): puxa aluguel/encargos do
+      // ÚLTIMO lançamento real desse contrato (histórico), não do cadastro — só cai pro cadastro
+      // quando o contrato ainda não tem nenhum mês lançado. IPTU com parcela avança sozinho e
+      // para na última; sem parcela, repete o valor como um encargo fixo.
       var s=state();ativos.forEach(function(ct){
-        var lTemp={aluguel:ct.aluguel,multa:0,juros:0,condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,outrasDesc:'',outrasValor:0};
+        var mesesCt=workingList().filter(function(x){return x.contrato===ct.contrato;}).sort(function(a,b){var pa=a.mes.split('/'),pb=b.mes.split('/');return (pa[1]+pa[0]).localeCompare(pb[1]+pb[0]);});
+        var ultimo=mesesCt.length?mesesCt[mesesCt.length-1]:null;
+        var aluguel=ultimo?ultimo.aluguel:num(ct.aluguel);
+        var condominio=ultimo?ultimo.condominio:num(ct.condominioPadrao);
+        var iptu=0,iptuParcelaNum=0,iptuParcelaTotal=0;
+        if(ultimo&&ultimo.iptuParcelaTotal>0){
+          if(ultimo.iptuParcelaNum<ultimo.iptuParcelaTotal){iptu=ultimo.iptu;iptuParcelaNum=ultimo.iptuParcelaNum+1;iptuParcelaTotal=ultimo.iptuParcelaTotal;}
+        }else if(ultimo){iptu=ultimo.iptu;}else{iptu=num(ct.iptuParcela);}
+        var lTemp={aluguel:aluguel,multa:0,juros:0,condominio:condominio,iptu:iptu,
+          aguaPriv:ultimo?ultimo.aguaPriv:0,gasPriv:ultimo?ultimo.gasPriv:0,aguaComum:ultimo?ultimo.aguaComum:0,gasPiscina:ultimo?ultimo.gasPiscina:0,
+          energiaComum:ultimo?ultimo.energiaComum:0,taxaLeitura:ultimo?ultimo.taxaLeitura:0,fundoFerias:ultimo?ultimo.fundoFerias:0,decimoTerceiro:ultimo?ultimo.decimoTerceiro:0,
+          desconto:ultimo?ultimo.desconto:0,descontoIncideTaxa:ultimo?ultimo.descontoIncideTaxa:false,outrasDesc:'',outrasValor:0};
         var taxa=calcularTaxa(lTemp,ct);
-        s.extra.push({id:'',mes:novo,contrato:ct.contrato,aluguel:ct.aluguel,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',condominio:num(ct.condominioPadrao),iptu:num(ct.iptuParcela),aguaPriv:0,gasPriv:0,aguaComum:0,gasPiscina:0,energiaComum:0,taxaLeitura:0,fundoFerias:0,decimoTerceiro:0,desconto:0,multa:0,juros:0,outrasDesc:'',outrasValor:0});
+        s.extra.push(Object.assign({},lTemp,{id:'',mes:novo,contrato:ct.contrato,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',iptuParcelaNum:iptuParcelaNum,iptuParcelaTotal:iptuParcelaTotal,multa:0,juros:0,outrasDesc:'',outrasValor:0,reciboEnviado:false,dataEnvioRecibo:''}));
       });saveState(s);selMes=novo;locRefreshMeses();locRender();
     }
   };
@@ -21300,6 +21371,12 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Quando um imóvel tem mais de um dono, cadastre cada um com seu percentual (botão "👥 proprietários" na lista de contratos) — o informe de repasse então mostra um seletor pra trocar entre eles, cada um vendo só a sua fatia, com IR calculado quando marcado.</div>'
       +MH+'Encargos do mês</div>'
       +MP+'Condomínio, IPTU, multa, juros e "Outras cobranças e descontos" (lista flexível — valor positivo soma ao repasse, negativo desconta; cada item pode ser pontual, mensal recorrente, ou parcelado com contagem automática, tipo IPTU 7/10 ou um desconto de aluguel avançando sozinho a cada mês gerado). Cada item tem "Quem recebe/paga esse valor?" — "Repassar ao locador" (padrão) ou "Só entre você e o locatário", pra cobranças como Seguro Fiança que você paga e recupera do inquilino, sem afetar o que o locador recebe. Também tem "Este valor entra na base de cálculo da taxa de administração?" — marque num desconto (ex.: parcelas de desconto de aluguel) pra fazer a taxa incidir sobre o valor já líquido, em vez do aluguel cheio. Um desconto negativo aparece certinho tanto pro locador quanto pro inquilino. O campo Desconto (único, fora da lista) também tem sua própria opção "incide na taxa" — pra quem prefere lançar um desconto simples, sem parcelamento.</div>'
+      +MH+'IPTU com número de parcela</div>'
+      +MP+'O campo de IPTU (dentro de "Encargos do mês") ganhou dois campos ao lado — "Parcela nº" e "De um total de" (ex.: 8 de 10). Preenchendo os dois, o recibo do locatário e o informe de repasse do locador passam a mostrar "IPTU (08/10)" em vez de só "IPTU". Ao clicar em "Gerar mês seguinte", a parcela avança sozinha (08/10 → 09/10) e o sistema para de lançar o IPTU automaticamente assim que a última parcela é atingida. Deixe os dois campos em branco se o IPTU não for parcelado.</div>'
+      +MH+'Recibo enviado</div>'
+      +MP+'Ao lado do botão "📄" (recibo de aluguel) na tabela de lançamentos aparece um marcador — ⭘ (ainda não enviado) ou ✅ (enviado, com a data). Ele é marcado sozinho ao usar WhatsApp, E-mail, Foto ou Imprimir no recibo do locatário; também pode ser marcado/desmarcado manualmente clicando nele. Serve só de controle visual — não afeta cálculo nem status de pagamento.</div>'
+      +MH+'Gerar mês seguinte</div>'
+      +MP+'Ao gerar o mês seguinte (botão na barra de ferramentas), o aluguel e os encargos (condomínio, água, gás, energia, taxa de leitura, fundo de férias, 13º, desconto) vêm do <strong>último mês efetivamente lançado</strong> daquele contrato — não mais do valor cadastrado no contrato, que podia estar desatualizado. Só cai para o valor do cadastro quando o contrato ainda não tem nenhum lançamento anterior (primeiro mês gerado).</div>'
       +MH+'Busca rápida e cabeçalho fixo</div>'
       +MP+'Campo de busca no topo da lista de lançamentos — digite locador, locatário, endereço ou número do contrato pra filtrar na hora (atalho de teclado: tecla "/"). O cabeçalho e a barra de ferramentas ficam fixos no topo ao rolar a tela, então os botões continuam sempre acessíveis.</div>'
       +MH+'Filtros clicáveis</div>'
