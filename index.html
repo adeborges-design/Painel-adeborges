@@ -21510,6 +21510,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '28/ago/2026 (2)', itens: [
+      'Manual do Sistema atualizado: novo módulo "Comissões Imobiliárias" (cadastro de negócio, corretores, co-corretagem/rateio, propostas e relatórios) e, em Processos, explicação dos novos campos "Data de Autuação", "Idoso" e "Opção por Juízo 100% Digital".'
+    ]},
     { data: '28/ago/2026', itens: [
       'Corrigido: no card "Processos" da tela inicial, o número de "casos ativos" mostrava o total bruto de linhas da planilha (100), sem descontar Extinto/Suspenso/Sem Atuação — divergia do número correto (62) que já aparecia dentro do módulo Processos. Os dois lugares agora usam o mesmo cálculo.',
       'Novos alertas no cadastro de Processos: "Idoso" (prioridade — Estatuto do Idoso) e "Opção por Juízo 100% Digital", com badge vermelho no card do processo (mesmo padrão usado pelo tribunal na consulta processual). Novo campo "Data de Autuação".'
@@ -21890,6 +21893,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'entregas',      titulo:'Entregas'},
     {key:'acordos',       titulo:'Acordos com a Parte Contrária'},
     {key:'locacoes',      titulo:'Gestão de Locações e Repasses'},
+    {key:'comissoes',     titulo:'Comissões Imobiliárias'},
     {key:'rascunhos',     titulo:'Tarefas & Rascunhos'},
     {key:'glossario',     titulo:'Glossário'}
   ];
@@ -21913,6 +21917,8 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Edição</div>'
       +MP+'Abra o card do processo (clique nele na lista) e use o botão "Editar" pra corrigir qualquer dado cadastrado — número, cliente, prazos, status, urgência, sistema de origem e anotações. Também é ali que ficam os dados do <strong>Advogado da Parte Adversa</strong> (nome, OAB, telefone, e-mail) e os campos de <strong>Narrativa dos Fatos</strong> e <strong>Providências / Pontos de Atenção para o Advogado</strong> (ex.: providenciar fotos, solicitar documentos, esclarecer algum ponto do caso). As alterações são salvas direto na planilha.</div>'
       +MIMG('04_processo_editar.png','Botão "Editar" abre o formulário para alterar os dados do processo.')
+      +MH+'Data de Autuação e alertas do tribunal</div>'
+      +MP+'Campo <strong>Data de Autuação</strong> (data em que o processo foi protocolado/autuado no tribunal) e dois avisos que reproduzem os selos que aparecem na consulta processual dos tribunais: <strong>Idoso</strong> (prioridade de tramitação — Estatuto do Idoso, Lei nº 10.741/2003, art. 71) e <strong>Opção por Juízo 100% Digital</strong>. Marque a caixa correspondente quando o processo tiver essa condição — um badge vermelho aparece no card do processo, no mesmo padrão visual usado pelo tribunal, pra chamar atenção na lista.</div>'
       +MH+'Filtros e busca</div>'
       +MP+'Na lateral esquerda, filtre por urgência (Crítico/Urgente/Atenção/Normal/Monitorar) ou por área do direito. A busca no topo aceita nome do cliente, número do processo ou tipo de ação — atalho de teclado: tecla "/".</div>'
       +MH+'Cards de estatística</div>'
@@ -21999,6 +22005,19 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
       +MH+'Tabela de IR</div>'
       +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>',
+
+    comissoes: MH+'Visão geral</div>'
+      +MP+'Controla a comissão da imobiliária sobre <strong>vendas</strong> (sugestão de 6% do valor do imóvel) e <strong>locações</strong> (sugestão de 100% do primeiro aluguel) e o repasse dessa comissão aos corretores. Cada <strong>negócio</strong> é um cadastro independente — não precisa estar vinculado a um Processo. O próprio imóvel é só texto (endereço/descrição); cadastro de imóveis é um módulo futuro à parte.</div>'
+      +MH+'Cadastro de negócio</div>'
+      +MP+'Botão "🤝 Novo negócio" registra tipo (Venda ou Locação), status, data de fechamento, dados do cliente proprietário, endereço/descrição do imóvel, valor do negócio e percentual de comissão (os percentuais sugeridos — 6% ou 100% do 1º aluguel — são só um ponto de partida, editáveis livremente). O sistema calcula sozinho o valor da comissão e, se houver corretor vinculado, o valor do repasse a ele. Datas previstas/efetivas de recebimento (da comissão) e de pagamento (ao corretor) controlam o status de cada lado — Pendente, Recebido/Pago, Atrasado (automático quando passa da data prevista sem confirmação).</div>'
+      +MH+'Corretores cadastrados</div>'
+      +MP+'Botão "🧑‍💼 Corretores cadastrados" mantém a lista de corretores parceiros, com CRECI e dados bancários/Pix — cadastre o corretor aqui antes de vincular um negócio a ele, para o sistema poder calcular o repasse.</div>'
+      +MH+'Co-corretagem (rateio)</div>'
+      +MP+'Quando mais de um corretor participa do mesmo negócio, o botão de corretores/recibos na linha do negócio abre um modal com três seções: (A) corretores vinculados — o principal (definido no cadastro do negócio) mais os adicionais em regime de co-corretagem, cada um com seu próprio percentual de rateio sobre a comissão; (B) recibos de recebimento da comissão (emitidos pela imobiliária ou por um corretor, ao Locador/Vendedor/Comprador/Permutante); (C) recibos de repasse — um por corretor, registrando o pagamento da parte dele na comissão.</div>'
+      +MH+'Propostas e documentos</div>'
+      +MP+'Gere a <strong>Proposta de Compra</strong> (negócio tipo Venda) ou a <strong>Proposta de Locação</strong> (tipo Locação) direto na linha do negócio — texto pronto, com a cláusula de comissão de corretagem já preenchida a partir dos dados cadastrados na imobiliária (botão "⚙️ Dados da Imobiliária": razão social, CNPJ, CRECI-PJ) e do percentual pactuado no negócio.</div>'
+      +MH+'Relatórios</div>'
+      +MP+'Menu "📊 Relatórios" reúne cinco relatórios prontos: <strong>Vendas Realizadas</strong>, <strong>Locações Realizadas</strong>, <strong>Comissões Pagas aos Corretores</strong>, <strong>Comissões a Pagar aos Corretores</strong> (o que ainda está pendente/atrasado) e <strong>Ranking de Corretores</strong>. Botão "⬇️ Exportar CSV" exporta a lista de negócios para planilha.</div>',
 
     rascunhos: MH+'Para que serve</div>'
       +MP+'Uma antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — assim você rascunha, junta os dados aos poucos, e quando fecha converte direto em Processo ou Contrato de Locação, sem digitar tudo de novo.</div>'
