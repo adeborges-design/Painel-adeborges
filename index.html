@@ -707,6 +707,7 @@
   .badge-extinto { background: rgba(120,120,130,0.25); color: #c8c8d0; border-color: rgba(120,120,130,0.5); }
   .badge-semAtuacao { background: rgba(200,140,60,0.18); color: #e0a860; border-color: rgba(200,140,60,0.4); }
   .badge-suspenso { background: rgba(150,120,220,0.18); color: #b3a0ec; border-color: rgba(150,120,220,0.4); }
+  .badge-alerta-proc { background: rgba(224,84,84,0.16); color: var(--red); border-color: rgba(224,84,84,0.4); font-weight: 600; }
   .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
   .processo-card-extinto:hover { opacity: 1; }
   .processo-card-semAtuacao { background: repeating-linear-gradient(135deg, rgba(200,140,60,0.08), rgba(200,140,60,0.08) 10px, rgba(200,140,60,0.14) 10px, rgba(200,140,60,0.14) 20px) !important; opacity: 0.85; }
@@ -3445,6 +3446,14 @@
             <input type="text" id="ed-tribunal">
           </div>
           <div class="form-field">
+            <label>Data de Autuação</label>
+            <input type="date" id="ed-dataAutuacao">
+          </div>
+          <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
+          </div>
+          <div class="form-field">
             <label>Ramo do Direito</label>
             <select id="ed-ramo">
               <option value="">Selecionar</option>
@@ -3887,6 +3896,14 @@
           <div class="form-field form-full">
             <label>Tribunal e Fórum</label>
             <input type="text" id="cad-tribunal">
+          </div>
+          <div class="form-field">
+            <label>Data de Autuação</label>
+            <input type="date" id="cad-dataAutuacao">
+          </div>
+          <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
           </div>
           <div class="form-field">
             <label>Ramo do Direito</label>
@@ -5312,6 +5329,9 @@ function parseProcessos(rows) {
     const advAdvEmail       = get(row, 'Advogado Adversário Email', -1);
     const narrativaFatos    = get(row, 'Narrativa dos Fatos', -1);
     const providAdv         = get(row, 'Providências e Observações ao Advogado', -1);
+    const dataAutuacao      = get(row, 'Data de Autuacao', -1);
+    const idoso             = get(row, 'Idoso', -1);
+    const digital100        = get(row, 'Opcao Juizo Digital', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -5344,6 +5364,7 @@ function parseProcessos(rows) {
       telParceiro, emailParceiro,
       advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
       narrativaFatos, providAdv,
+      dataAutuacao, idoso, digital100,
       processoPrincipal,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
@@ -5815,8 +5836,11 @@ function renderCard(p, idx) {
           ${p.status === 'SUBSTABELECIDO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Substabelecido</span>' : ''}
           ${(p.status||'').toUpperCase() === 'RENUNCIA' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Renúncia</span>' : ''}
           ${p.status === 'REVOGADO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Procuração Revogada</span>' : ''}
+          ${(p.idoso||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Idoso</span>' : ''}
+          ${(p.digital100||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Opção por Juízo 100% Digital</span>' : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
+        ${p.dataAutuacao ? `<div style="font-size:11px;color:var(--muted)">📅 Autuação: ${formatDate(p.dataAutuacao)}</div>` : ''}
         ${p.chaveAcesso ? `<div style="font-size:11px;color:var(--muted)">🔑 Chave de acesso: ${escHtml(p.chaveAcesso)}</div>` : ''}
         ${(() => {
           let html = '';
@@ -11393,6 +11417,9 @@ function abrirEdicao(uid) {
   document.getElementById('ed-vara').value = p.vara || '';
   document.getElementById('ed-juiz').value = p.juiz || '';
   document.getElementById('ed-tribunal').value = p.tribunal || '';
+  document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
+  document.getElementById('ed-idoso').checked = (p.idoso || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-digital100').checked = (p.digital100 || '').toUpperCase() === 'SIM';
   document.getElementById('ed-ramo').value = p.ramo || '';
   document.getElementById('ed-tipo').value = p.tipo || '';
   document.getElementById('ed-parte').value = p.parte || '';
@@ -11515,6 +11542,9 @@ async function salvarEdicao() {
     'Vara': document.getElementById('ed-vara').value,
     'Juiz(a)': document.getElementById('ed-juiz').value,
     'Tribunal e Forum': document.getElementById('ed-tribunal').value,
+    'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
+    'Idoso': document.getElementById('ed-idoso').checked ? 'Sim' : 'Nao',
+    'Opcao Juizo Digital': document.getElementById('ed-digital100').checked ? 'Sim' : 'Nao',
     'Ramo do Direito': document.getElementById('ed-ramo').value,
     'Tipo de Acao': document.getElementById('ed-tipo').value,
     'Parte': document.getElementById('ed-parte').value,
@@ -11903,7 +11933,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
@@ -11924,6 +11954,8 @@ function abrirCadastro() {
   });
   document.getElementById('cad-status').value = 'ATIVO';
   document.getElementById('cad-dataNasc').value = '';
+  document.getElementById('cad-idoso').checked = false;
+  document.getElementById('cad-digital100').checked = false;
 
   document.getElementById('cadastroStatus').textContent = '';
   document.getElementById('modalCadastro').classList.add('open');
@@ -12138,6 +12170,9 @@ async function salvarCadastro() {
     'Vara': document.getElementById('cad-vara').value,
     'Juiz(a)': document.getElementById('cad-juiz').value,
     'Tribunal e Forum': document.getElementById('cad-tribunal').value,
+    'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
+    'Idoso': document.getElementById('cad-idoso').checked ? 'Sim' : 'Nao',
+    'Opcao Juizo Digital': document.getElementById('cad-digital100').checked ? 'Sim' : 'Nao',
     'Ramo do Direito': document.getElementById('cad-ramo').value,
     'Tipo de Acao': document.getElementById('cad-tipo').value,
     'Parte': document.getElementById('cad-parte').value,
