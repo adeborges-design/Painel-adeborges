@@ -22407,7 +22407,8 @@ window.cpRenderFixas=cpRenderFixas;
     try{renderSaldos();}catch(e){console.error('saldos',e);}
     // Processos
     try{if(typeof allProcessos!=='undefined'){
-      var pTotal=allProcessos.length||0,pCrit=allProcessos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;
+      var pAtivos=allProcessos.filter(function(p){var st=(p.status||'').toUpperCase();return st!=='EXTINTO'&&st!=='SUBSTABELECIDO'&&st!=='RENUNCIA'&&st!=='REVOGADO'&&st!=='SUSPENSO';});
+      var pTotal=pAtivos.length||0,pCrit=pAtivos.filter(function(p){return p.urgencia==='critico'||p.urgencia==='urgente';}).length;
       document.getElementById('hc-proc-total').textContent=pTotal;
       document.getElementById('hc-proc-crit').textContent=pCrit;
       renderSpark('spark-proc-total','proc-total',pTotal,'var(--accent2)');
