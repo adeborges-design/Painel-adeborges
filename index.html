@@ -21510,6 +21510,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '28/ago/2026', itens: [
+      'Corrigido: no card "Processos" da tela inicial, o número de "casos ativos" mostrava o total bruto de linhas da planilha (100), sem descontar Extinto/Suspenso/Sem Atuação — divergia do número correto (62) que já aparecia dentro do módulo Processos. Os dois lugares agora usam o mesmo cálculo.',
+      'Novos alertas no cadastro de Processos: "Idoso" (prioridade — Estatuto do Idoso) e "Opção por Juízo 100% Digital", com badge vermelho no card do processo (mesmo padrão usado pelo tribunal na consulta processual). Novo campo "Data de Autuação".'
+    ]},
     { data: '23/ago/2026 (8)', itens: [
       'Corrigido: este Histórico de atualizações estava parado desde 14/ago — as entregas mais recentes não tinham sido registradas aqui (é uma lista mantida manualmente a cada versão, e ficou pra trás). Atualizado com tudo que faltava, e agora mostra só as 2 versões mais recentes na tela (antes mostrava as 5 últimas).'
     ]},
