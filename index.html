@@ -357,8 +357,9 @@
     margin-bottom: 8px;
   }
 
-  /* Seções recolhíveis da barra lateral (Sistema, Tribunal e Fórum, Cliente PF/PJ, Tipo de
-     Ação) — ficam fechadas por padrão pra não poluir a tela, clica no título pra abrir. */
+  /* Seções recolhíveis da barra lateral (Área, Sistema, Tribunal e Fórum, Cliente PF/PJ, Tipo
+     de Ação) — ficam SEMPRE fechadas por padrão pra não poluir a tela, clica no título pra
+     abrir. Todas vivem dentro do botão-mestre "🔍 Pesquisas", também fechado por padrão. */
   details.sidebar-section summary.sidebar-label {
     cursor: pointer;
     list-style: none;
@@ -377,6 +378,41 @@
   details.sidebar-section .filter-btn,
   details.sidebar-section .ramo-buttons {
     margin-top: 6px;
+  }
+
+  /* Botão-mestre "🔍 Pesquisas" — agrupa os 5 filtros de busca (área, sistema, tribunal,
+     cliente PF/PJ, tipo de ação) num único lugar em destaque, sempre fechado por padrão. */
+  details.sidebar-pesquisas {
+    margin-bottom: 24px;
+  }
+  details.sidebar-pesquisas > summary.sidebar-pesquisas-btn {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent2, #4d7cf0), var(--accent, #6a5acd));
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 0 12px 4px;
+  }
+  details.sidebar-pesquisas > summary.sidebar-pesquisas-btn::-webkit-details-marker { display: none; }
+  details.sidebar-pesquisas > summary.sidebar-pesquisas-btn::after {
+    content: '▸';
+    margin-left: auto;
+    font-size: 11px;
+  }
+  details.sidebar-pesquisas[open] > summary.sidebar-pesquisas-btn::after {
+    content: '▾';
+  }
+  details.sidebar-pesquisas > details.sidebar-section {
+    margin: 10px 0 0;
+  }
+  details.sidebar-pesquisas > details.sidebar-section:first-of-type {
+    margin-top: 12px;
   }
 
   .filter-btn {
@@ -2819,35 +2855,40 @@
       </button>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-label">Filtrar por área</div>
-      <button class="filter-btn" onclick="filterByRamo('all', this)" id="ramobtn-all">Todas as áreas</button>
-      <div id="ramoButtons" class="ramo-buttons"></div>
-    </div>
+    <details class="sidebar-section sidebar-pesquisas">
+      <summary class="sidebar-pesquisas-btn">🔍 Pesquisas</summary>
 
-    <details class="sidebar-section">
-      <summary class="sidebar-label" style="cursor:pointer">Sistema</summary>
-      <button class="filter-btn" onclick="filterBySistema('all', this)" id="sistemabtn-all">Todos os sistemas</button>
-      <div id="sistemaButtons" class="ramo-buttons"></div>
-    </details>
+      <details class="sidebar-section">
+        <summary class="sidebar-label">Filtrar por área</summary>
+        <button class="filter-btn" onclick="filterByRamo('all', this)" id="ramobtn-all">Todas as áreas</button>
+        <div id="ramoButtons" class="ramo-buttons"></div>
+      </details>
 
-    <details class="sidebar-section">
-      <summary class="sidebar-label" style="cursor:pointer">Tribunal e Fórum</summary>
-      <button class="filter-btn" onclick="filterByTribunal('all', this)" id="tribunalbtn-all">Todos os tribunais</button>
-      <div id="tribunalButtons" class="ramo-buttons"></div>
-    </details>
+      <details class="sidebar-section">
+        <summary class="sidebar-label">Filtrar por sistema</summary>
+        <button class="filter-btn" onclick="filterBySistema('all', this)" id="sistemabtn-all">Todos os sistemas</button>
+        <div id="sistemaButtons" class="ramo-buttons"></div>
+      </details>
 
-    <details class="sidebar-section">
-      <summary class="sidebar-label" style="cursor:pointer">Cliente PF/PJ</summary>
-      <button class="filter-btn" onclick="filterByClientePJPF('all', this)" id="pjpfbtn-all">Todos os clientes</button>
-      <button class="filter-btn" onclick="filterByClientePJPF('PF', this)" id="pjpfbtn-PF">Pessoa Física</button>
-      <button class="filter-btn" onclick="filterByClientePJPF('PJ', this)" id="pjpfbtn-PJ">Pessoa Jurídica</button>
-    </details>
+      <details class="sidebar-section">
+        <summary class="sidebar-label">Filtrar por tribunal e fórum</summary>
+        <button class="filter-btn" onclick="filterByTribunal('all', this)" id="tribunalbtn-all">Todos os tribunais</button>
+        <div id="tribunalButtons" class="ramo-buttons"></div>
+      </details>
 
-    <details class="sidebar-section">
-      <summary class="sidebar-label" style="cursor:pointer">Tipo de Ação</summary>
-      <button class="filter-btn" onclick="filterByTipoAcao('all', this)" id="tipoacaobtn-all">Todos os tipos</button>
-      <div id="tipoAcaoButtons" class="ramo-buttons"></div>
+      <details class="sidebar-section">
+        <summary class="sidebar-label">Filtrar clientes PF/PJ</summary>
+        <button class="filter-btn" onclick="filterByClientePJPF('all', this)" id="pjpfbtn-all">Todos os clientes</button>
+        <button class="filter-btn" onclick="filterByClientePJPF('PF', this)" id="pjpfbtn-PF">Pessoa Física</button>
+        <button class="filter-btn" onclick="filterByClientePJPF('PJ', this)" id="pjpfbtn-PJ">Pessoa Jurídica</button>
+      </details>
+
+      <details class="sidebar-section">
+        <summary class="sidebar-label">Filtrar por tipo de ação</summary>
+        <button class="filter-btn" onclick="filterByTipoAcao('all', this)" id="tipoacaobtn-all">Todos os tipos</button>
+        <div id="tipoAcaoButtons" class="ramo-buttons"></div>
+      </details>
+
     </details>
 
   </aside>
@@ -5513,8 +5554,30 @@ const RAMO_PARENTS = {
   'Contratos e Negócios Digitais': 'DIGITAL / LGPD',
 };
 
+// Nomes canônicos das áreas de topo — usado pra juntar variações de maiúsculas/minúsculas
+// que possam existir na planilha (ex.: "Trabalhista" e "TRABALHISTA" viram um botão só,
+// sempre no formato maiúsculo abaixo) em vez de aparecerem como filtros duplicados.
+const RAMO_CANONICOS = ['CIVIL','FAMILIA E SUCESSÕES','IMOBILIÁRIO','EMPRESARIAL','TRABALHISTA',
+  'CONSUMIDOR','TRIBUTÁRIO','ADMINISTRATIVO','CONSTITUCIONAL','CRIMINAL','PREVIDENCIÁRIO',
+  'DIGITAL / LGPD','EXTRAJUDICIAL'];
+// Valores antigos e soltos que a reorganização em áreas/subcategorias já cobre (INSS e Pensão
+// -> PREVIDENCIÁRIO; Registros Públicos -> CIVIL/Direitos Reais e Posse) — somem da lista de
+// filtro. O texto continua intacto nos processos que já tinham; só não vira mais botão aqui.
+const RAMO_OCULTOS = ['inss', 'pensão', 'pensao', 'registros públicos', 'registros publicos'];
+function normalizarRamo_(r) {
+  const norm = String(r || '').trim();
+  if (!norm) return norm;
+  const canonico = RAMO_CANONICOS.find(c => c.toLowerCase() === norm.toLowerCase());
+  return canonico || norm;
+}
+function ramoOculto_(r) {
+  return RAMO_OCULTOS.includes(String(r || '').trim().toLowerCase());
+}
+
 function buildRamoFilter() {
-  const ramos = [...new Set(allProcessos.map(p => p.ramo).filter(Boolean))].sort();
+  const ramos = [...new Set(
+    allProcessos.map(p => normalizarRamo_(p.ramo)).filter(Boolean).filter(r => !ramoOculto_(r))
+  )].sort();
   const container = document.getElementById('ramoButtons');
   const allBtn = document.getElementById('ramobtn-all');
   allBtn.classList.add('active');
@@ -5608,8 +5671,8 @@ function renderProcessos() {
   const diasOf = p => (p.prazoInfo && p.prazoInfo.dias !== null && p.prazoInfo.dias !== undefined) ? p.prazoInfo.dias : null;
 
   let list = allProcessos.filter(p => {
-    // Filtro de ramo
-    if (currentRamo !== 'all' && p.ramo !== currentRamo) return false;
+    // Filtro de ramo (normalizado — "Trabalhista" e "TRABALHISTA" contam como o mesmo)
+    if (currentRamo !== 'all' && normalizarRamo_(p.ramo) !== currentRamo) return false;
 
     // Filtro de sistema (ESAJ/EPROC/PJE/TRF3/EXTRAJUDICIAL...)
     if (currentSistema !== 'all' && p.sistema !== currentSistema) return false;
