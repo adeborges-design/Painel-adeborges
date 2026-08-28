@@ -21418,7 +21418,7 @@ window.cpRenderFixas=cpRenderFixas;
   function renderNotifBell(){
     var badge=document.getElementById('notifBadge');var panel=document.getElementById('notifPanelBody');
     if(!badge||!panel)return;
-    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertAcc','homeAlertCom','homeAlertas','homeAlertCartoes'];
+    var ordem=['homeAlertProc','homeAlertHon','homeAlertLoc','homeAlertAcc','homeAlertCom','homeAlertImov','homeAlertas','homeAlertCartoes'];
     var reg=window.__notifReg||{};
     var itens=ordem.map(function(id){return reg[id];}).filter(Boolean);
     if(!itens.length){
@@ -21510,6 +21510,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '28/ago/2026 (3)', itens: [
+      'Novo em Imóveis Disponíveis: botão "💬 Atendimentos" em cada imóvel, para registrar clientes interessados (comprador/locatário) com follow-up — vira "Atrasado" sozinho quando passa a data, com aviso na tela inicial. Botão "🤝 Converter em negócio" cria (ou reaproveita) o negócio em Comissões Imobiliárias com os dados do proprietário e já lança a Proposta do cliente interessado.'
+    ]},
     { data: '28/ago/2026 (2)', itens: [
       'Manual do Sistema atualizado: novo módulo "Comissões Imobiliárias" (cadastro de negócio, corretores, co-corretagem/rateio, propostas e relatórios) e, em Processos, explicação dos novos campos "Data de Autuação", "Idoso" e "Opção por Juízo 100% Digital".'
     ]},
@@ -21893,6 +21896,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'entregas',      titulo:'Entregas'},
     {key:'acordos',       titulo:'Acordos com a Parte Contrária'},
     {key:'locacoes',      titulo:'Gestão de Locações e Repasses'},
+    {key:'imoveis',       titulo:'Imóveis Disponíveis'},
     {key:'comissoes',     titulo:'Comissões Imobiliárias'},
     {key:'rascunhos',     titulo:'Tarefas & Rascunhos'},
     {key:'glossario',     titulo:'Glossário'}
@@ -22005,6 +22009,15 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
       +MH+'Tabela de IR</div>'
       +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>',
+
+    imoveis: MH+'Visão geral</div>'
+      +MP+'Catálogo interno de imóveis para venda e/ou locação, gerido pela equipe (atrás da senha do sistema). Todo imóvel com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública do site, sem nenhuma ação extra além de manter o status atualizado.</div>'
+      +MH+'Cadastro do imóvel</div>'
+      +MP+'Botão "🏘️ Novo imóvel" registra finalidade (Venda/Locação/Ambos), tipo, localização, características (área, quartos, banheiros, vagas), valores, condomínio/IPTU, fotos (URLs) e os dados do proprietário — esses dados do proprietário nunca aparecem na vitrine pública, são só de uso interno (usados depois para preencher o negócio em Comissões, na conversão de atendimento).</div>'
+      +MH+'💬 Atendimentos de clientes interessados</div>'
+      +MP+'Cada linha da lista de imóveis tem um botão "💬" que abre os atendimentos daquele imóvel específico — registre ali cada cliente que demonstrou interesse (comprador ou locatário): nome, telefone, e-mail, corretor responsável (opcional), status (Novo contato/Em andamento/Perdido), uma data de <strong>follow-up</strong> (quando voltar a contatar) e observações livres. O número ao lado do "💬" mostra quantos atendimentos daquele imóvel ainda estão em aberto. Se a data de follow-up passar sem o atendimento ter sido concluído, ele vira "Atrasado" sozinho (vermelho) — sem precisar de nenhuma ação manual — e um aviso aparece no card "Imóveis Disponíveis" da tela inicial.</div>'
+      +MH+'Converter atendimento em negócio</div>'
+      +MP+'No atendimento, o botão "🤝 Converter em negócio" cria (ou reaproveita, se já existir um negócio "Em andamento" para o mesmo endereço) um <strong>negócio</strong> no módulo Comissões Imobiliárias — usando os dados do proprietário já cadastrados no imóvel — e lança automaticamente uma <strong>Proposta</strong> nesse negócio com os dados do cliente interessado. O atendimento passa a "Convertido" e o sistema já abre direto o negócio na tela de Comissões, na proposta recém-criada, pronta para revisar valores e gerar o documento (Proposta de Compra ou de Locação).</div>',
 
     comissoes: MH+'Visão geral</div>'
       +MP+'Controla a comissão da imobiliária sobre <strong>vendas</strong> (sugestão de 6% do valor do imóvel) e <strong>locações</strong> (sugestão de 100% do primeiro aluguel) e o repasse dessa comissão aos corretores. Cada <strong>negócio</strong> é um cadastro independente — não precisa estar vinculado a um Processo. O próprio imóvel é só texto (endereço/descrição); cadastro de imóveis é um módulo futuro à parte.</div>'
@@ -22599,6 +22612,19 @@ window.cpRenderFixas=cpRenderFixas;
             }).join('');
         }
         setAlertBox('homeAlertCom','🤝 '+comAtrasados+' pendência(s) em Comissões Imobiliárias','var(--red)',hCom,'abrir Comissões Imobiliárias','openComissoesHome()');
+      }
+    }catch(e){}
+    // Imóveis Disponíveis — atendimentos de clientes interessados com follow-up atrasado
+    try{
+      var imAtLista=(window.imovAtendimentos||[]).filter(function(a){return typeof imovAtEstaAtrasado_==='function'&&imovAtEstaAtrasado_(a);});
+      if(!imAtLista.length){setAlertBox('homeAlertImov',null);}
+      else{
+        var hImov='<div class="ha-tit venc">💬 '+imAtLista.length+' atendimento(s) com follow-up atrasado</div>'
+          +imAtLista.slice(0,8).map(function(a){
+            var imRef=(window.imoveis||[]).find(function(x){return String(x['ID'])===String(a['Imovel']);});
+            return '<div class="ha-item"><b>'+E(a['Nome']||'-')+'</b> — '+E((imRef&&imRef['Endereco'])||'-')+' — follow-up '+E(a['Data Followup']||'-')+'</div>';
+          }).join('');
+        setAlertBox('homeAlertImov','💬 '+imAtLista.length+' atendimento(s) de imóvel atrasado(s)','var(--red)',hImov,'abrir Imóveis Disponíveis','openImoveisHome()');
       }
     }catch(e){}
     // Quadro de aviso: PROCESSOS (prazos + audiências)
@@ -23600,7 +23626,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="lf-tip-wrap">
       <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('imovNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
       <div class="loc-note lf-tip-content" id="imovNote">
-        Cada imóvel cadastrado com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública (catálogo do site), sem precisar de nenhuma ação extra — só a atualização de status. Marque como Reservado, Vendido ou Alugado assim que a situação mudar, para não deixar imóvel indisponível na vitrine.
+        Cada imóvel cadastrado com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública (catálogo do site), sem precisar de nenhuma ação extra — só a atualização de status. Marque como Reservado, Vendido ou Alugado assim que a situação mudar, para não deixar imóvel indisponível na vitrine. Use o botão "💬" na linha do imóvel para registrar um cliente interessado (atendimento) e acompanhar o follow-up — e "🤝 Converter em negócio" quando fechar, para já cair em Comissões Imobiliárias.
       </div>
     </div>
 
@@ -23672,9 +23698,57 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL ATENDIMENTOS DE CLIENTE (por imóvel) — cliente interessado (comprador/locatário) que
+     entrou em contato sobre um imóvel do catálogo. Reaproveita a aba IMOV_INTERESSADOS (ID, Imovel,
+     Nome, Telefone, Email, Corretor, Status, Data Contato, Observacoes) que já existia na planilha
+     (com um lançamento de teste) — só foi estendida com Data Followup e Negocio ID, ver
+     HEADERS_IMOV_INT em Código.gs. Lista + formulário colapsável, mesmo padrão de #modalComRecibos.
+     Botão "Converter em negócio" (imovAtConverter) cria/reaproveita um negócio em Comissões
+     Imobiliárias (dados do proprietário vêm do próprio cadastro do imóvel) e já lança uma Proposta
+     com os dados do atendimento, abrindo direto no módulo de Comissões. -->
+<div class="modal-repasse-overlay" id="modalImovAtendimentos">
+  <div class="repasse-wrap" id="imovAtWrap">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">💬 Atendimentos de Clientes Interessados</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalImovAtendimentos').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input type="hidden" id="imovAt-imovelId">
+      <div class="loc-note" id="imovAtImovelInfo" style="margin-bottom:16px"></div>
+
+      <div id="imovAtLista" style="margin-bottom:8px"></div>
+      <button class="loc-btn" onclick="imovAtFormAbrir()">➕ Novo atendimento</button>
+      <div id="imovAtFormWrap" class="loc-hidden" style="margin-top:10px;padding:12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2)">
+        <input type="hidden" id="iat-id">
+        <div class="loc-cform" style="padding:0;border:none;background:none">
+          <div class="loc-cfield full"><label>Cliente *</label><input class="loc-cinput" id="iat-nome" placeholder="Nome completo"></div>
+          <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="iat-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+          <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="iat-email" type="email"></div>
+          <div class="loc-cfield half"><label>Corretor</label><select class="loc-cinput" id="iat-corretor"><option value="">—</option></select></div>
+          <div class="loc-cfield half"><label>Status</label>
+            <select class="loc-cinput" id="iat-status">
+              <option value="Novo contato">Novo contato</option>
+              <option value="Em andamento">Em andamento</option>
+              <option value="Perdido">Perdido</option>
+            </select>
+          </div>
+          <div class="loc-cfield half"><label>Follow-up (voltar a contatar em)</label><input class="loc-cinput" id="iat-followup" type="date"></div>
+          <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="iat-obs" placeholder="Ex.: visitou dia X, aguardando aprovação de financiamento..."></div>
+          <div class="loc-cform-actions">
+            <span class="msg" id="iat-msg"></span>
+            <button class="loc-btn" onclick="imovAtFormFechar()">Cancelar</button>
+            <button class="loc-btn primary" id="imovAtSalvarBtn" onclick="imovAtSalvar()">💾 Salvar atendimento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 window.imoveis = [];
 window.imovFiltroAtivo = 'all';
+window.imovAtendimentos = [];
 
 window.abrirImoveis = function () {
   document.getElementById('imovOverlay').classList.add('open');
@@ -23691,7 +23765,7 @@ window.carregarImoveis = async function () {
   var dot = document.getElementById('imovSyncDot'), txt = document.getElementById('imovSyncTxt');
   var c = getConfig();
   if (!c || !c.apiKey || !c.sheetId) {
-    window.imoveis = [];
+    window.imoveis = []; window.imovAtendimentos = [];
     if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'planilha não configurada';
     imovRender(); return;
   }
@@ -23700,10 +23774,16 @@ window.carregarImoveis = async function () {
     var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
     var k = '?key=' + c.apiKey;
     var r1 = await fetch(base + encodeURIComponent('IMOV_CADASTRO!A1:Z2000') + k);
+    var r2 = await fetch(base + encodeURIComponent('IMOV_ATENDIMENTOS!A1:Z2000') + k);
     var d1 = r1.ok ? await r1.json() : { values: [] };
+    var d2 = r2.ok ? await r2.json() : { values: [] };
     var rn = d1.values || [];
     window.imoveis = rn.length < 2 ? [] : rn.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
       var o = {}; rn[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
+    });
+    var ra = d2.values || [];
+    window.imovAtendimentos = ra.length < 2 ? [] : ra.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
+      var o = {}; ra[0].forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
     });
     if (dot) dot.className = 'dot ok'; if (txt) txt.textContent = 'sincronizado';
   } catch (e) {
@@ -23766,10 +23846,244 @@ window.imovRender = function () {
       + '<td style="text-align:right">' + valor + '</td>'
       + '<td style="text-align:center"><span style="color:' + imovStatusCor_(n['Status']) + ';font-weight:700">● ' + comE(n['Status']) + '</span></td>'
       + '<td style="white-space:nowrap">'
+      + imovAtBotao_(n['ID'])
       + '<button class="loc-btn" onclick="imovEditar(\'' + n['ID'] + '\')" title="Editar">✏️</button> '
       + '<button class="loc-btn" onclick="imovExcluir(\'' + n['ID'] + '\')" title="Excluir">🗑️</button>'
       + '</td></tr>';
   }).join('');
+};
+
+// ---------- ATENDIMENTOS DE CLIENTE INTERESSADO (por imóvel) ----------
+// Cliente que entrou em contato sobre um imóvel do catálogo — antes de virar negócio de verdade.
+// Mesmo padrão estrutural do módulo de Comissões (lista + formulário colapsável, #modalComRecibos):
+// lista sempre visível, formulário some até "+ Novo atendimento". Follow-up é calculado no
+// client-side (não existe campo "Atrasado" na planilha) — mesma lógica de Tarefas & Rascunhos.
+
+// Botão da linha da tabela de imóveis — mostra quantos atendimentos ainda em aberto (Novo
+// contato/Em andamento, inclui Atrasado) esse imóvel tem, para chamar atenção sem abrir o modal.
+function imovAtBotao_(imovelId) {
+  var lista = (window.imovAtendimentos || []).filter(function (a) { return String(a['Imovel']) === String(imovelId); });
+  var abertos = lista.filter(function (a) { return a['Status'] !== 'Convertido' && a['Status'] !== 'Perdido'; }).length;
+  var cor = abertos ? 'color:var(--yellow);font-weight:700' : '';
+  return '<button class="loc-btn" style="' + cor + '" onclick="imovAtAbrir(\'' + imovelId + '\')" title="Atendimentos de clientes interessados">💬' + (abertos ? ' ' + abertos : '') + '</button> ';
+}
+
+// true quando um atendimento ainda aberto (não Convertido/Perdido) já passou da data de follow-up.
+function imovAtEstaAtrasado_(a) {
+  if (a['Status'] === 'Convertido' || a['Status'] === 'Perdido') return false;
+  var fu = String(a['Data Followup'] || '').trim();
+  if (!fu) return false;
+  var d = comIsoFromBR(fu) ? new Date(comIsoFromBR(fu) + 'T00:00:00') : new Date(fu + 'T00:00:00');
+  if (isNaN(d.getTime())) return false;
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return d.getTime() < hoje.getTime();
+}
+
+function imovAtStatusVisual_(a) {
+  if (a['Status'] === 'Convertido') return { label: 'Convertido', cor: 'var(--green)' };
+  if (a['Status'] === 'Perdido') return { label: 'Perdido', cor: 'var(--muted)' };
+  if (imovAtEstaAtrasado_(a)) return { label: 'Atrasado', cor: 'var(--red)' };
+  return { label: a['Status'] || 'Novo contato', cor: 'var(--orange)' };
+}
+
+window.imovAtAbrir = function (imovelId) {
+  var im = (window.imoveis || []).find(function (x) { return String(x['ID']) === String(imovelId); }) || {};
+  document.getElementById('imovAt-imovelId').value = imovelId;
+  document.getElementById('imovAtImovelInfo').innerHTML =
+    '<strong>' + comE(im['Endereco'] || '-') + '</strong> — ' + comE(im['Bairro'] || '') + (im['Cidade'] ? ' — ' + comE(im['Cidade']) : '')
+    + '<br><span style="color:var(--muted);font-size:12px">Proprietário: ' + comE(im['Proprietario Nome'] || '-') + ' · Finalidade: ' + comE(im['Finalidade'] || '-') + '</span>';
+  var sel = document.getElementById('iat-corretor');
+  if (sel) sel.innerHTML = '<option value="">—</option>' + (window.comCorretores || []).map(function (c) { return '<option value="' + comE(c['Nome']) + '">' + comE(c['Nome']) + '</option>'; }).join('');
+  imovAtRenderLista(imovelId);
+  imovAtFormFechar();
+  document.getElementById('modalImovAtendimentos').classList.add('open');
+};
+
+function imovAtRenderLista(imovelId) {
+  var el = document.getElementById('imovAtLista');
+  if (!el) return;
+  var lista = (window.imovAtendimentos || []).filter(function (a) { return String(a['Imovel']) === String(imovelId); });
+  if (!lista.length) { el.innerHTML = '<div class="loc-note">Nenhum atendimento registrado ainda para este imóvel.</div>'; return; }
+  // Em aberto/Atrasado primeiro, Convertido/Perdido por último — o que precisa de ação fica em cima.
+  lista = lista.slice().sort(function (a, b) {
+    var pa = (a['Status'] === 'Convertido' || a['Status'] === 'Perdido') ? 1 : 0;
+    var pb = (b['Status'] === 'Convertido' || b['Status'] === 'Perdido') ? 1 : 0;
+    return pa - pb;
+  });
+  el.innerHTML = lista.map(function (a) {
+    var sv = imovAtStatusVisual_(a);
+    var podeConverter = a['Status'] !== 'Convertido';
+    var btnConverter = podeConverter
+      ? '<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="imovAtConverter(\'' + comE(a['ID']) + '\')" title="Criar/anexar negócio em Comissões Imobiliárias">🤝 Converter em negócio</button> '
+      : '<span style="color:var(--muted);font-size:11px">negócio #' + comE(a['Negocio ID'] || '-') + '</span> ';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div><strong>' + comE(a['Nome']) + '</strong>' + (a['Corretor'] ? ' <span style="color:var(--muted);font-size:11px">(' + comE(a['Corretor']) + ')</span>' : '') + ' — '
+      + '<span style="color:' + sv.cor + ';font-weight:600">' + sv.label + '</span>'
+      + (a['Data Followup'] ? ' <span style="color:var(--muted);font-size:11px">follow-up ' + comE(a['Data Followup']) + '</span>' : '')
+      + '<br><span style="font-size:12px;color:var(--muted)">' + [a['Telefone'], a['Email']].filter(Boolean).map(comE).join(' · ') + (a['Observacoes'] ? ' — ' + comE(a['Observacoes']) : '') + '</span></div>'
+      + '<div style="white-space:nowrap">'
+      + btnConverter
+      + '<button class="loc-btn-edit" onclick="imovAtEditar(\'' + comE(a['ID']) + '\')">✎</button> '
+      + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="imovAtExcluir(\'' + comE(a['ID']) + '\',\'' + comE(imovelId) + '\')">🗑️</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+window.imovAtFormAbrir = function () {
+  document.getElementById('iat-id').value = '';
+  ['iat-nome', 'iat-telefone', 'iat-email', 'iat-followup', 'iat-obs'].forEach(function (id) { document.getElementById(id).value = ''; });
+  document.getElementById('iat-corretor').value = '';
+  document.getElementById('iat-status').value = 'Novo contato';
+  document.getElementById('iat-msg').textContent = '';
+  document.getElementById('imovAtFormWrap').classList.remove('loc-hidden');
+};
+window.imovAtFormFechar = function () {
+  document.getElementById('imovAtFormWrap').classList.add('loc-hidden');
+};
+window.imovAtEditar = function (id) {
+  var a = (window.imovAtendimentos || []).find(function (x) { return String(x['ID']) === String(id); });
+  if (!a) return;
+  document.getElementById('iat-id').value = a['ID'];
+  document.getElementById('iat-nome').value = a['Nome'] || '';
+  document.getElementById('iat-telefone').value = a['Telefone'] || '';
+  document.getElementById('iat-email').value = a['Email'] || '';
+  var sel = document.getElementById('iat-corretor');
+  if (sel && a['Corretor'] && !Array.prototype.some.call(sel.options, function (o) { return o.value === a['Corretor']; })) {
+    var opt = document.createElement('option'); opt.value = a['Corretor']; opt.textContent = a['Corretor']; sel.appendChild(opt);
+  }
+  document.getElementById('iat-corretor').value = a['Corretor'] || '';
+  document.getElementById('iat-status').value = (a['Status'] === 'Convertido') ? 'Em andamento' : (a['Status'] || 'Novo contato');
+  document.getElementById('iat-followup').value = comIsoFromBR(a['Data Followup']);
+  document.getElementById('iat-obs').value = a['Observacoes'] || '';
+  document.getElementById('iat-msg').textContent = '';
+  document.getElementById('imovAtFormWrap').classList.remove('loc-hidden');
+};
+window.imovAtSalvar = function () {
+  var btn = document.getElementById('imovAtSalvarBtn');
+  if (btn && btn.disabled) return; // trava contra clique duplo
+  var id = document.getElementById('iat-id').value;
+  var imovelId = document.getElementById('imovAt-imovelId').value;
+  var nome = document.getElementById('iat-nome').value.trim();
+  var msgEl = document.getElementById('iat-msg');
+  if (!imovelId) { msgEl.textContent = 'Imóvel não identificado.'; msgEl.style.color = 'var(--red)'; return; }
+  if (!nome) { msgEl.textContent = 'Informe o nome do cliente.'; msgEl.style.color = 'var(--red)'; return; }
+  var c = getConfig();
+  if (!c || !c.apiKey || !c.sheetId) { msgEl.textContent = 'Configure a planilha (Config) para salvar.'; msgEl.style.color = 'var(--red)'; return; }
+  if (btn) btn.disabled = true;
+  var campos = {
+    'Imovel': imovelId, 'Nome': nome,
+    'Telefone': document.getElementById('iat-telefone').value.trim(),
+    'Email': document.getElementById('iat-email').value.trim(),
+    'Corretor': document.getElementById('iat-corretor').value,
+    'Status': document.getElementById('iat-status').value,
+    'Data Followup': comDtBRfromInput(document.getElementById('iat-followup').value),
+    'Observacoes': document.getElementById('iat-obs').value.trim()
+  };
+  if (!id) campos['Data Contato'] = comFdt(new Date());
+  msgEl.textContent = '⏳ salvando...'; msgEl.style.color = 'var(--muted)';
+  var body = { acao: id ? 'atualizar_imovAt' : 'lancar_imovAt', campos: campos }; if (id) body.id = id;
+  (async function () {
+    var resp = null, erroRede = null;
+    try { var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); resp = await r.json(); }
+    catch (e2) { erroRede = e2; }
+    if (erroRede) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); }
+      catch (e3) { msgEl.textContent = '❌ Erro ao salvar: ' + e3.message; msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return; }
+      msgEl.textContent = '✓ Enviado (sem confirmação de leitura, mas deve ter salvo)'; msgEl.style.color = 'var(--green)';
+    } else if (!resp || !resp.ok) {
+      msgEl.innerHTML = '❌ O Apps Script recusou: <strong>' + ((resp && resp.error) || 'ação não reconhecida') + '</strong>';
+      msgEl.style.color = 'var(--red)'; if (btn) btn.disabled = false; return;
+    } else {
+      msgEl.textContent = '✓ Salvo!'; msgEl.style.color = 'var(--green)';
+      if (!id && resp.id) document.getElementById('iat-id').value = resp.id;
+    }
+    setTimeout(function () {
+      carregarImoveis().then(function () {
+        imovAtRenderLista(imovelId);
+        window.imovAtFormFechar();
+      });
+      if (btn) btn.disabled = false;
+    }, 1000);
+  })();
+};
+window.imovAtExcluir = function (id, imovelId) {
+  if (!confirm('Excluir este atendimento?')) return;
+  (async function () {
+    try {
+      var r = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_imovAt', id: id }) });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'não foi possível excluir');
+    } catch (e) {
+      try { await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_imovAt', id: id }) }); }
+      catch (e2) { alert('Erro ao excluir: ' + e2.message); return; }
+    }
+    setTimeout(function () { carregarImoveis().then(function () { imovAtRenderLista(imovelId); }); }, 800);
+  })();
+};
+
+// ---- Converter atendimento em negócio de Comissões Imobiliárias ----
+// Reaproveita o imóvel do próprio negócio (dono já cadastrado em IMOV_CADASTRO) — se já existir um
+// negócio "Em andamento" com o MESMO endereço, anexa a proposta a ele em vez de duplicar; senão
+// cria um negócio novo com os dados do proprietário e do imóvel. Em seguida lança uma Proposta com
+// os dados do cliente interessado (o atendimento), marca o atendimento como Convertido, e abre
+// direto a tela de Comissões já na Proposta recém-criada, para revisar/gerar o documento.
+window.imovAtConverter = async function (atendimentoId) {
+  var a = (window.imovAtendimentos || []).find(function (x) { return String(x['ID']) === String(atendimentoId); });
+  if (!a) return;
+  var im = (window.imoveis || []).find(function (x) { return String(x['ID']) === String(a['Imovel']); });
+  if (!im) { alert('Imóvel deste atendimento não foi encontrado — atualize a tela e tente de novo.'); return; }
+  if (!confirm('Converter o atendimento de "' + (a['Nome'] || '-') + '" em negócio no módulo Comissões Imobiliárias?')) return;
+
+  var enderecoAlvo = String(im['Endereco'] || '').trim().toLowerCase();
+  var negExistente = (window.comNegocios || []).find(function (n) {
+    return String(n['Status Negocio']) === 'Em andamento' && String(n['Endereco Imovel'] || '').trim().toLowerCase() === enderecoAlvo && enderecoAlvo;
+  });
+
+  var negocioId = negExistente ? negExistente['ID'] : null;
+  if (!negocioId) {
+    var tipoNegocio = im['Finalidade'] === 'Locação' ? 'Locação' : 'Venda'; // "Ambos" cai em Venda por padrão — ajustável depois direto no negócio
+    var pctComissao = tipoNegocio === 'Locação' ? 100 : 6;
+    var valorNegocio = comNum(tipoNegocio === 'Locação' ? im['Valor Locacao'] : im['Valor Venda']);
+    var valorComissao = Math.round(valorNegocio * pctComissao / 100 * 100) / 100;
+    var camposNeg = {
+      'Tipo': tipoNegocio, 'Status Negocio': 'Em andamento', 'Corretor': a['Corretor'] || '',
+      'Cliente Proprietario': im['Proprietario Nome'] || '', 'Telefone Cliente': im['Proprietario Telefone'] || '',
+      'Email Cliente': im['Proprietario Email'] || '', 'CPF_CNPJ Cliente': im['Proprietario CPF_CNPJ'] || '',
+      'Endereco Imovel': im['Endereco'] || '', 'Descricao Imovel': im['Descricao'] || '',
+      'Valor Negocio': valorNegocio, 'Percentual Comissao': pctComissao, 'Valor Comissao': valorComissao,
+      'Status Recebimento': 'Pendente', 'Status Pagamento Corretor': 'Pendente',
+      'Observacoes': 'Criado a partir do atendimento de cliente interessado (' + (a['Nome'] || '-') + ') em Imóveis Disponíveis.'
+    };
+    try {
+      var rNeg = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_com', campos: camposNeg }) });
+      var dNeg = await rNeg.json();
+      if (!dNeg.ok) { alert('Não foi possível criar o negócio: ' + (dNeg.error || 'erro desconhecido')); return; }
+      negocioId = dNeg.id;
+    } catch (e) { alert('Erro de rede ao criar o negócio: ' + e.message); return; }
+  }
+
+  var camposProp = {
+    'Negocio': negocioId, 'Nome Proponente': a['Nome'] || '',
+    'Telefone Proponente': a['Telefone'] || '', 'Email Proponente': a['Email'] || '',
+    'Valor Proposta': comNum(im['Finalidade'] === 'Locação' ? im['Valor Locacao'] : im['Valor Venda']),
+    'Data Proposta': comFdt(new Date()), 'Status': 'Em análise',
+    'Observacoes': a['Observacoes'] || ''
+  };
+  try {
+    var rProp = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_proposta', campos: camposProp }) });
+    var dProp = await rProp.json();
+    if (!dProp.ok) { alert('Negócio criado, mas não foi possível lançar a proposta: ' + (dProp.error || 'erro desconhecido')); }
+  } catch (e) { alert('Negócio criado, mas houve erro de rede ao lançar a proposta: ' + e.message); }
+
+  try {
+    await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar_imovAt', id: atendimentoId, campos: { 'Status': 'Convertido', 'Negocio ID': negocioId } }) });
+  } catch (e) { /* o essencial (negócio + proposta) já foi criado; a marcação do atendimento pode ser refeita manualmente se isso falhar */ }
+
+  await Promise.all([carregarComissoes(), carregarImoveis()]);
+  document.getElementById('modalImovAtendimentos').classList.remove('open');
+  document.getElementById('imovOverlay').classList.remove('open');
+  abrirComissoes();
+  setTimeout(function () { comPropostaAbrir(negocioId); }, 300);
 };
 
 window.imovNovo = function () {
