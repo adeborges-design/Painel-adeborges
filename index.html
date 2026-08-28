@@ -6209,7 +6209,7 @@ function lcCopiar() {
 function updateStats() {
   const ativos = allProcessos.filter(p => {
     const st = (p.status||'').toUpperCase();
-    return st !== 'EXTINTO' && st !== 'SUBSTABELECIDO' && st !== 'RENUNCIA' && st !== 'REVOGADO';
+    return st !== 'EXTINTO' && st !== 'SUBSTABELECIDO' && st !== 'RENUNCIA' && st !== 'REVOGADO' && st !== 'SUSPENSO';
   });
   const criticos = ativos.filter(p => p.urgencia === 'critico' || p.urgencia === 'urgente').length;
   const audiencias = ativos.filter(p => p.dataAudi && p.dataAudi.length > 3).length;
