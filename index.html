@@ -2950,6 +2950,8 @@
       </select>
     </div>
 
+    <div id="tarWidget-processos"></div>
+
     <!-- LISTA -->
     <div class="processos-header">
       <div class="processos-title">Processos</div>
@@ -2984,6 +2986,7 @@
     <span class="user-menu-slot"></span>
     <button class="btn-sync" onclick="document.getElementById('honOverlay').classList.remove('open')">✕ Fechar</button>
   </div>
+  <div style="padding:10px 20px 0"><div id="tarWidget-honorarios"></div></div>
 
   <div class="hon-body">
     <!-- COLUNA ESQUERDA: Resumo + Formulário -->
@@ -4793,16 +4796,17 @@ function atualizarBadgeRascunhos(){
     else{
       alertHost.innerHTML='<div class="ha-head" onclick="toggleAlertBox(\'homeAlertRascunhos\')"><span class="ha-summary" style="color:var(--red)">🗂️ '+atrasados.length+' follow-up(s) atrasado(s)</span><span class="ha-chevron">▸</span></div>'
         +'<div class="ha-body">'+atrasados.map(function(r){return '<div class="ha-item"><b>'+escHtml(r['Titulo']||'-')+'</b> — follow-up era '+escHtml(r['Data Follow-up']||'-')+'</div>';}).join('')
-        +'<div class="ha-cta" onclick="rascunhosAbrir()">→ abrir Tarefas & Rascunhos</div></div>';
+        +'<div class="ha-cta" onclick="rascunhosAbrir()">→ abrir Tarefas</div></div>';
     }
   }
+  if(typeof window.tarefasWidgetsAtualizar==='function')window.tarefasWidgetsAtualizar();
 }
 window.rascunhosAbrir=function(){
   document.getElementById('rascunhoFormWrap').style.display='none';
   rascunhosRender();
   document.getElementById('modalRascunhos').classList.add('open');
 };
-// Abre Tarefas & Rascunhos já direto no formulário de um NOVO rascunho, pré-preenchido com
+// Abre Tarefas já direto no formulário de um NOVO rascunho, pré-preenchido com
 // "seed" (mesmo formato de campos de um item do rascunhosCache: Titulo/Tipo/Locador/Locatario/
 // Telefone/Email/Endereco/Notas/Status). Usado pelo botão "Gerar follow-up" da tela de
 // Anotações (Locações), pra levar o contexto do contrato/conversa direto pro rascunho, sem
@@ -4822,11 +4826,15 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<input type="hidden" id="rasc-id" value="'+(r?escHtml(r['ID']):'')+'">'
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
-    +'<div class="loc-cfield"><label>Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico','Negociação de Locação','Acompanhamento de Locação','Cobrança de Acordo','Outro'].map(function(t){return '<option'+(d['Tipo']===t?' selected':'')+'>'+t+'</option>';}).join('')
+    +'<div class="loc-cfield"><label>Módulo / Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
+    +['Atendimento Jurídico (Processos)','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Imóveis Disponíveis','Geral'].map(function(t){
+      var valorReal=t.split(' (')[0];
+      var marcado=d['Tipo']===valorReal||(!d['Tipo']&&t==='Geral')||(d['Tipo']==='Outro'&&t==='Geral');
+      return '<option value="'+valorReal+'"'+(marcado?' selected':'')+'>'+t+'</option>';
+    }).join('')
     +'</select></div>'
     +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="rasc-status">'
-    +['Em andamento','Convertido','Descartado'].map(function(s){return '<option'+(d['Status']===s?' selected':(!d['Status']&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
+    +['Em andamento','Concluída','Convertido','Descartado'].map(function(s){return '<option'+(d['Status']===s?' selected':(!d['Status']&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
     +'</select></div>'
     +'<div class="loc-cfield full" id="rasc-campo-nome"><label>Nome</label><input class="loc-cinput" id="rasc-nome" value="'+(d['Nome']?escHtml(d['Nome']):'')+'" placeholder="Nome do cliente/contato"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locador"><label>Locador (se já tiver)</label><input class="loc-cinput" id="rasc-locador" value="'+(d['Locador']?escHtml(d['Locador']):'')+'" placeholder="Dono do imóvel"></div>'
@@ -4838,7 +4846,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cfield"><label>Follow-up em</label><input class="loc-cinput" id="rasc-followup" type="date" value="'+(d['Data Follow-up']?accIsoFromBR(d['Data Follow-up']):'')+'"></div>'
     +'<div class="loc-cfield full"><label>Notas — rascunho livre, cole o que precisar (transcrição de ligação, condições combinadas...)</label><textarea class="loc-cinput" id="rasc-notas" rows="6" style="resize:vertical">'+(d['Notas']?escHtml(d['Notas']):'')+'</textarea></div>'
     +'<div class="loc-cfield full" style="display:flex;gap:8px">'
-    +'<button type="button" class="loc-btn primary" onclick="rascunhoSalvar()" style="flex:1">'+(r?'Salvar alterações':'Criar rascunho')+'</button>'
+    +'<button type="button" class="loc-btn primary" onclick="rascunhoSalvar()" style="flex:1">'+(r?'Salvar alterações':'Criar tarefa')+'</button>'
     +'<button type="button" class="loc-btn" onclick="document.getElementById(\'rascunhoFormWrap\').style.display=\'none\'">Cancelar</button>'
     +'</div>'
     +'</div></div>';
@@ -4850,6 +4858,97 @@ window.rascToggleCampos=function(){
   document.getElementById('rasc-campo-nome').style.display=ehLocacao?'none':'';
   document.getElementById('rasc-campo-locador').style.display=ehLocacao?'':'none';
   document.getElementById('rasc-campo-locatario').style.display=ehLocacao?'':'none';
+};
+
+// ---------- TAREFAS POR MÓDULO (widget compacto embaixo de cada tela) ----------
+// Cada "rascunho" tem um Tipo que já diz a que módulo ele pertence — essa função só traduz.
+// 'Outro' é valor legado (antes de existir a lista completa de módulos); trata como 'geral'.
+function tarTipoParaModulo_(tipo){
+  switch(tipo){
+    case 'Atendimento Jurídico': return 'processos';
+    case 'Negociação de Locação':
+    case 'Acompanhamento de Locação': return 'locacoes';
+    case 'Cobrança de Acordo': return 'acordos';
+    case 'Honorários': return 'honorarios';
+    case 'Contas a Pagar': return 'contas';
+    case 'Comissões Imobiliárias': return 'comissoes';
+    case 'Imóveis Disponíveis': return 'imoveis';
+    default: return 'geral'; // 'Geral' e o legado 'Outro'
+  }
+}
+// Registro dos módulos que têm um container de Tarefas na tela (id do <div> já inserido logo
+// abaixo do cabeçalho/stats de cada módulo) e os botões de criação rápida daquele módulo —
+// Processos e Locações ganham um botão especial que já nasce com o Tipo certo pra poder
+// converter em Processo/Contrato com 1 clique (rascunhoConverterProcesso/rascunhoConverterLocacao).
+window.TAR_MODULOS_REGISTRO=[
+  {chave:'processos',  container:'tarWidget-processos',  addBtns:[{label:'+ Pré-cadastro rápido (vira Processo)',tipo:'Atendimento Jurídico'}]},
+  {chave:'locacoes',   container:'tarWidget-locacoes',    addBtns:[{label:'+ Negociação rápida (vira Contrato)',tipo:'Negociação de Locação'},{label:'+ Tarefa',tipo:'Acompanhamento de Locação'}]},
+  {chave:'acordos',    container:'tarWidget-acordos',     addBtns:[{label:'+ Nova tarefa',tipo:'Cobrança de Acordo'}]},
+  {chave:'honorarios', container:'tarWidget-honorarios',  addBtns:[{label:'+ Nova tarefa',tipo:'Honorários'}]},
+  {chave:'contas',     container:'tarWidget-contas',      addBtns:[{label:'+ Nova tarefa',tipo:'Contas a Pagar'}]},
+  {chave:'comissoes',  container:'tarWidget-comissoes',   addBtns:[{label:'+ Nova tarefa',tipo:'Comissões Imobiliárias'}]},
+  {chave:'imoveis',    container:'tarWidget-imoveis',     addBtns:[{label:'+ Nova tarefa',tipo:'Imóveis Disponíveis'}]}
+];
+// Abre o formulário de Tarefas já com o Tipo certo pré-selecionado — usado pelos botões de
+// criação rápida de cada widget de módulo (inclusive os que viram Processo/Contrato).
+window.tarefaNovaRapida_=function(tipo){
+  rascunhosAbrirComSeed({Tipo:tipo});
+};
+// Abre a Tarefa para edição, reaproveitando o mesmo modal/form global.
+window.tarefaEditar_=function(id){
+  document.getElementById('modalRascunhos').classList.add('open');
+  rascunhosRender();
+  rascunhoAbrirForm(id);
+};
+function tarStatusCor_(status,atrasado){
+  if(status==='Convertido'||status==='Concluída')return 'var(--green)';
+  if(status==='Descartado')return 'var(--muted)';
+  if(atrasado)return 'var(--red)';
+  return 'var(--orange)';
+}
+// Redesenha TODOS os widgets de módulo já montados na tela (checa se o container existe antes —
+// como as telas ficam sempre no DOM, isso atualiza até as que não estão visíveis no momento,
+// então quando o usuário abrir aquele módulo os dados já estão prontos).
+window.tarefasWidgetsAtualizar=function(){
+  (window.TAR_MODULOS_REGISTRO||[]).forEach(function(m){
+    var el=document.getElementById(m.container);
+    if(!el)return;
+    var lista=(window.rascunhosCache||[]).filter(function(r){return tarTipoParaModulo_(r['Tipo'])===m.chave&&r['Status']==='Em andamento';});
+    lista.sort(function(a,b){
+      var A=rascFollowUpAtrasado(a)?0:1,B=rascFollowUpAtrasado(b)?0:1;
+      if(A!==B)return A-B;
+      return String(b['ID']).localeCompare(String(a['ID']));
+    });
+    var addBtnsHtml=(m.addBtns||[]).map(function(b){
+      return '<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="tarefaNovaRapida_(\''+b.tipo+'\')">'+b.label+'</button>';
+    }).join(' ');
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+      +'<div style="font-weight:700;font-size:13px;color:var(--accent)">🗒️ Tarefas'+(lista.length?' ('+lista.length+')':'')+'</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+addBtnsHtml+'</div></div>';
+    if(!lista.length){
+      el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2)">'+head+'<div style="font-size:12px;color:var(--muted)">Nenhuma tarefa pendente.</div></div>';
+      return;
+    }
+    el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2);max-height:220px;overflow-y:auto">'+head
+      +lista.map(function(r){
+        var atrasado=rascFollowUpAtrasado(r);
+        var quem=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Nome']||'');
+        var btnConverter=r['Tipo']==='Atendimento Jurídico'
+          ?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')" title="Converter em Processo">→ Processo</button> '
+          :r['Tipo']==='Negociação de Locação'
+          ?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoConverterLocacao(\''+escHtml(r['ID'])+'\')" title="Converter em Contrato de Locação">→ Contrato</button> '
+          :'';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">'
+          +'<div style="font-size:12.5px"><strong>'+escHtml(r['Titulo']||'-')+'</strong>'+(quem?' <span style="color:var(--muted)">— '+escHtml(quem)+'</span>':'')
+          +(r['Data Follow-up']?' <span style="color:'+(atrasado?'var(--red)':'var(--muted)')+'">· follow-up '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</span>':'')+'</div>'
+          +'<div style="white-space:nowrap">'
+          +btnConverter
+          +'<button class="loc-btn-edit" onclick="tarefaEditar_(\''+escHtml(r['ID'])+'\')" title="Editar">✎</button> '
+          +(btnConverter?'':'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Concluída\')" title="Concluir">✓</button>')
+          +'</div></div>';
+      }).join('')
+      +'</div>';
+  });
 };
 window.rascunhoSalvar=async function(){
   var id=document.getElementById('rasc-id').value;
@@ -4891,7 +4990,7 @@ window.rascunhoSalvar=async function(){
   if(window._anotRetorno&&typeof window.anotFecharEVoltar_==='function')window.anotFecharEVoltar_('modalRascunhos');
 };
 window.rascunhoExcluir=function(id){
-  if(!confirm('Excluir este rascunho?'))return;
+  if(!confirm('Excluir esta tarefa?'))return;
   window.rascunhosCache=(window.rascunhosCache||[]).filter(function(x){return String(x['ID'])!==String(id);});
   rascunhosRender();
   atualizarBadgeRascunhos();
@@ -4914,12 +5013,12 @@ function rascunhosRender(){
     if(atA!==atB)return atA-atB;
     return String(b['ID']).localeCompare(String(a['ID']));
   });
-  if(!lista.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Nenhum rascunho ainda.</div>';return;}
+  if(!lista.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Nenhuma tarefa ainda.</div>';return;}
   host.innerHTML=lista.map(function(r){
     var atrasado=rascFollowUpAtrasado(r);
     var status=r['Status'];
-    var classe=status==='Convertido'?'st-pago':status==='Descartado'?'':atrasado?'st-atras':'st-pend';
-    var corBorda=status==='Convertido'?'var(--green)':status==='Descartado'?'var(--muted)':atrasado?'var(--red)':'var(--orange)';
+    var classe=(status==='Convertido'||status==='Concluída')?'st-pago':status==='Descartado'?'':atrasado?'st-atras':'st-pend';
+    var corBorda=tarStatusCor_(status,atrasado);
     var quemNesse=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador']?'Locador: '+r['Locador']:'',r['Locatario']?'Locatário: '+r['Locatario']:''].filter(Boolean).join(' · '):(r['Nome']||'');
     var podeConverter=status!=='Convertido'&&(r['Tipo']==='Atendimento Jurídico'||r['Tipo']==='Negociação de Locação');
     return '<div style="border-left:3px solid '+corBorda+';background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:10px">'
@@ -4934,6 +5033,7 @@ function rascunhosRender(){
       +'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="rascunhoAbrirForm(\''+escHtml(r['ID'])+'\')">✎ Editar</button>'
       +(r['Tipo']==='Atendimento Jurídico'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')">→ Converter em Processo</button>':'')
       +(r['Tipo']==='Negociação de Locação'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterLocacao(\''+escHtml(r['ID'])+'\')">→ Converter em Contrato</button>':'')
+      +(status==='Em andamento'&&r['Tipo']!=='Atendimento Jurídico'&&r['Tipo']!=='Negociação de Locação'?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Concluída\')">✓ Concluir</button>':'')
       +(status==='Em andamento'?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Descartado\')">Descartar</button>':'')
       +'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--red);border-color:var(--red);margin-left:auto" onclick="rascunhoExcluir(\''+escHtml(r['ID'])+'\')">🗑️</button>'
       +'</div>'
@@ -14325,6 +14425,7 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
   <div class="loc-body">
     <div class="loc-stats" id="locStats"></div>
+    <div id="tarWidget-locacoes"></div>
     <div class="loc-chips" id="locChips"></div>
     <div style="margin:10px 0"><input type="text" class="search-input" id="locSearchInput" placeholder="Buscar por locador, locatário, endereço ou contrato... (atalho: /)" oninput="locRender()" style="width:100%"></div>
     <div id="locAlertaVigencia" style="margin:10px 0"></div>
@@ -14666,6 +14767,7 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
   <div class="loc-body">
     <div class="loc-stats" id="accStats"></div>
+    <div id="tarWidget-acordos"></div>
     <div class="loc-chips" id="accChips"></div>
     <div style="margin:10px 0"><input type="text" class="search-input" id="accBusca" placeholder="Buscar por cliente, parte contrária ou processo... (atalho: /)" oninput="accRender()" style="width:100%"></div>
     <div class="loc-toolbar">
@@ -14780,6 +14882,7 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
   <div class="loc-body">
     <div class="loc-stats" id="comStats"></div>
+    <div id="tarWidget-comissoes"></div>
     <div class="loc-chips" id="comChips"></div>
     <div style="margin:10px 0"><input type="text" class="search-input" id="comBusca" placeholder="Buscar por cliente, imóvel ou corretor... (atalho: /)" oninput="comRender()" style="width:100%"></div>
     <div class="loc-toolbar">
@@ -15113,7 +15216,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-wpp" onclick="accAvisoEnviarWhats()">📱 WhatsApp</button>
       <button class="btn-parc-email" onclick="accAvisoEnviarEmail()">✉️ E-mail</button>
       <button class="loc-btn" onclick="accAvisoCopiarTexto()">📋 Copiar texto</button>
-      <button class="loc-btn" style="border-color:var(--accent2);color:var(--accent2)" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar o retorno" onclick="accAvisoGerarFollowup()">🗂️ Gerar follow-up</button>
+      <button class="loc-btn" style="border-color:var(--accent2);color:var(--accent2)" title="Cria um lembrete em Tarefas pra você não esquecer de cobrar o retorno" onclick="accAvisoGerarFollowup()">🗂️ Gerar follow-up</button>
     </div>
   </div>
 </div>
@@ -15433,7 +15536,7 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="cobr-secao full" style="margin-top:10px" id="anotLabelMensagem">Enviar mensagem</div>
       <div class="loc-cfield full"><textarea class="loc-cinput" id="anot-mensagem" rows="3" placeholder="Escreva a mensagem..."></textarea></div>
       <div class="loc-cfield full" style="text-align:right;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-        <button class="loc-btn" onclick="anotGerarFollowup()" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
+        <button class="loc-btn" onclick="anotGerarFollowup()" title="Cria um lembrete em Tarefas pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
         <button class="loc-btn primary" onclick="abrirCardLocacaoDaAnotacao()" title="Monta o card padrão do escritório com os dados da locação pra enviar por WhatsApp">📇 Ver card e enviar</button>
       </div>
     </div>
@@ -15494,7 +15597,7 @@ window.cpRenderFixas=cpRenderFixas;
         </svg>
         Copiar texto
       </button>
-      <button class="loc-btn" onclick="cardLocGerarFollowup()" title="Cria um lembrete em Tarefas &amp; Rascunhos pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
+      <button class="loc-btn" onclick="cardLocGerarFollowup()" title="Cria um lembrete em Tarefas pra você não esquecer de cobrar retorno">🗂️ Gerar follow-up</button>
       <button class="btn-close-card" onclick="anotFecharEVoltar_('modalCardLoc')">✕</button>
     </div>
   </div>
@@ -15548,12 +15651,12 @@ window.cpRenderFixas=cpRenderFixas;
 <div class="modal-repasse-overlay" id="modalRascunhos">
   <div class="repasse-wrap" style="max-width:640px">
     <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
-      <div class="parceiro-toolbar-title" style="color:var(--accent)">🗂️ Tarefas & Rascunhos</div>
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">🗂️ Tarefas</div>
       <button class="btn-form-cancel" onclick="anotFecharEVoltar_('modalRascunhos')">✕</button>
     </div>
     <div style="padding:16px 20px 0">
       <div class="loc-note" style="margin-bottom:12px">Anote aqui um atendimento em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — quando fechar, converta direto em Processo ou Contrato, sem digitar tudo de novo.</div>
-      <button class="loc-btn primary" onclick="rascunhoAbrirForm()" style="width:100%;margin-bottom:14px">+ Novo Rascunho</button>
+      <button class="loc-btn primary" onclick="rascunhoAbrirForm()" style="width:100%;margin-bottom:14px">+ Nova Tarefa</button>
       <div id="rascunhoFormWrap" style="display:none;margin-bottom:16px"></div>
     </div>
     <div id="rascunhosLista" style="padding:0 20px 20px;max-height:50vh;overflow-y:auto"></div>
@@ -15597,7 +15700,7 @@ window.cpRenderFixas=cpRenderFixas;
         <option value="entregas">6. 📦 Entregas</option>
         <option value="acordos">7. 🤝 Acordos com a Parte Contrária</option>
         <option value="locacoes">8. 🏘️ Gestão de Locações e Repasses</option>
-        <option value="rascunhos">9. 🗂️ Tarefas &amp; Rascunhos</option>
+        <option value="rascunhos">9. 🗂️ Tarefas</option>
         <option value="glossario">10. 📘 Glossário</option>
       </select>
     </div>
@@ -17978,12 +18081,12 @@ window.cpRenderFixas=cpRenderFixas;
     };
   }
   // "Gerar follow-up": pega o que acabou de ser escrito (mensagem ou anotação) e pré-preenche um
-  // novo rascunho em Tarefas & Rascunhos, já com contrato/locador/locatário/telefone preenchidos —
+  // novo rascunho em Tarefas, já com contrato/locador/locatário/telefone preenchidos —
   // só falta escolher a data de follow-up e confirmar. Não salva nada sozinho: abre o formulário
   // já pronto, quem decide se cria é você (rascunhoSalvar()).
   //
   // Guarda em window._anotRetorno de onde essa geração partiu (contrato/audiência/rascunho da
-  // mensagem que estava sendo digitada) — assim, ao fechar Tarefas & Rascunhos (✕ ou depois de
+  // mensagem que estava sendo digitada) — assim, ao fechar Tarefas (✕ ou depois de
   // salvar), o sistema volta sozinho pra tela de Anotações com a mensagem ainda ali, em vez de
   // simplesmente perdê-la. É isso que resolve "ou gero o follow-up ou mando WhatsApp, nunca os
   // dois": nenhuma das duas ações fecha mais a porta da outra.
@@ -18000,7 +18103,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Fecha o modal indicado e, se havia um follow-up pendente de retorno (window._anotRetorno,
   // setado por anotGerarFollowup ou abrirCardLocacaoDaAnotacao), reabre a tela de Anotações do
   // mesmo contrato/audiência com a mensagem que estava sendo digitada. Usado pelo ✕ do modal de
-  // Tarefas & Rascunhos, pelo ✕ do card de WhatsApp e pelo fim de um rascunhoSalvar() bem-
+  // Tarefas, pelo ✕ do card de WhatsApp e pelo fim de um rascunhoSalvar() bem-
   // sucedido. Sem retorno pendente, só fecha o modal normalmente (comportamento de sempre).
   window.anotFecharEVoltar_=function(idModal){
     var el=document.getElementById(idModal);
@@ -18167,7 +18270,7 @@ window.cpRenderFixas=cpRenderFixas;
     });
   };
   // "Gerar follow-up" a partir do próprio card: fecha o card (sem voltar pra Anotações agora — o
-  // destino é direto o formulário de Tarefas & Rascunhos) e abre o rascunho pré-preenchido.
+  // destino é direto o formulário de Tarefas) e abre o rascunho pré-preenchido.
   // window._anotRetorno continua valendo (foi setado quando o card foi aberto a partir das
   // Anotações), então ao fechar/salvar o rascunho depois, o sistema volta pra Anotações do mesmo
   // jeito — a mensagem não se perde e o WhatsApp continua acessível se precisar reenviar.
@@ -21196,7 +21299,7 @@ window.cpRenderFixas=cpRenderFixas;
         </button>
         <div class="home-user-divider"></div>
         <button class="home-user-item" onclick="rascunhosAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
-          🗂️ &nbsp;Tarefas &amp; Rascunhos
+          🗂️ &nbsp;Tarefas
           <span class="rascunhos-badge" style="display:none;margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span>
         </button>
         <button class="home-user-item" onclick="notasAbrir();document.getElementById('homeUserMenu').classList.remove('open')" style="position:relative">
@@ -21338,7 +21441,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-card" onclick="rascunhosAbrir()">
           <div class="arrow">→</div>
           <div class="ic">🗂️</div>
-          <div class="ctitle">Tarefas & Rascunhos</div>
+          <div class="ctitle">Tarefas</div>
           <div class="cdesc">Atendimentos e negociações em andamento</div>
           <div class="cnums">
             <div class="cnum cnum-clickable" onclick="event.stopPropagation();rascunhosAbrir()" title="Rascunhos em andamento"><div class="v" id="hc-rasc-andamento" style="color:var(--orange)">—</div><div class="l">em andamento</div><span class="cnum-spark-wrap" id="spark-rasc-andamento"></span></div>
@@ -21365,6 +21468,7 @@ window.cpRenderFixas=cpRenderFixas;
     <span class="user-menu-slot"></span>
     <button class="btn-sync" onclick="goHome()">✕ Fechar</button>
   </div>
+  <div style="padding:10px 20px 0"><div id="tarWidget-contas"></div></div>
   <div class="hon-body">
     <div class="fc-card">
       <div class="fc-head">
@@ -21487,7 +21591,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="fechamentoAbrir();this.closest(\'.home-user\').classList.remove(\'open\')">📊 &nbsp;Fechamento mensal</button>'+
         '<button class="home-user-item" onclick="buscaGlobalAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">🔎 &nbsp;Busca em tudo<span style="margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:1px 5px">Ctrl+K</span></button>'+
         '<div class="home-user-divider"></div>'+
-        '<button class="home-user-item" onclick="rascunhosAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">🗂️ &nbsp;Tarefas &amp; Rascunhos <span class="rascunhos-badge" style="display:none;margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
+        '<button class="home-user-item" onclick="rascunhosAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">🗂️ &nbsp;Tarefas <span class="rascunhos-badge" style="display:none;margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<button class="home-user-item" onclick="notasAbrir();this.closest(\'.home-user\').classList.remove(\'open\')" style="position:relative">📝 &nbsp;Notas Rápidas <span class="notas-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;align-items:center"></span></button>'+
         '<div class="home-user-divider"></div>'+
         '<button class="home-user-item" onclick="loadFromSheets();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Atualizar dados</button>'+
@@ -21510,6 +21614,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '29/ago/2026', itens: [
+      'Corrigido: atendimentos de clientes interessados (Imóveis Disponíveis) salvavam certo mas não apareciam de volta na tela — o app lia de uma aba com nome errado.',
+      'Novo em Imóveis Disponíveis: botão "📋 Follow-ups" mostra todos os atendimentos com follow-up marcado, de todos os imóveis, numa lista só, ordenada por data. Novo campo "Origem" (Cliente Interessado / Corretor Ofereceu) e status "Descartado". Ao cadastrar um cliente que já aparece em outro imóvel, o sistema avisa e oferece a "👤 Ficha do Pretendente" — todos os imóveis daquele cliente numa tela só.',
+      '"Tarefas & Rascunhos" virou apenas "Tarefas", com uma mudança de arquitetura: em vez de um módulo central único, cada módulo com dados (Processos, Locações, Acordos, Honorários, Contas a Pagar, Comissões Imobiliárias, Imóveis Disponíveis) ganhou sua própria caixinha "🗒️ Tarefas" logo abaixo do cabeçalho, mostrando só as tarefas daquele módulo. O pré-cadastro rápido que converte em Processo ou Contrato de Locação continua existindo, agora como botão dentro da própria tela de Processos/Locações.'
+    ]},
     { data: '28/ago/2026 (3)', itens: [
       'Novo em Imóveis Disponíveis: botão "💬 Atendimentos" em cada imóvel, para registrar clientes interessados (comprador/locatário) com follow-up — vira "Atrasado" sozinho quando passa a data, com aviso na tela inicial. Botão "🤝 Converter em negócio" cria (ou reaproveita) o negócio em Comissões Imobiliárias com os dados do proprietário e já lança a Proposta do cliente interessado.'
     ]},
@@ -21542,7 +21651,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Corrigida a barra de rolagem espelhada (a que aparece no topo de tabelas largas, sem precisar rolar até o fim da tela pra achar a barra nativa): antes só existia em Contas a Pagar, agora foi generalizada e aparece automaticamente em qualquer tabela larga de qualquer módulo (Locações, Acordos, Contas a Pagar), inclusive nas telas onde quem rola de verdade é a tela inteira, não só a tabela.'
     ]},
     { data: '23/ago/2026', itens: [
-      'Novo em Acordos: o sistema agora identifica o pagador (devedor) do acordo, e assim que uma parcela vence sem ter sido recebida, aparece um alerta igual ao de aluguéis atrasados em Locações — com um botão 📢 pra montar e enviar (WhatsApp ou e-mail) um aviso de cobrança pronto (com aviso antigolpe padrão do escritório), e outro botão pra gerar um follow-up em Tarefas & Rascunhos, do mesmo jeito que já existia em Locações. É preciso cadastrar o telefone da parte contrária no acordo pra habilitar o envio por WhatsApp.'
+      'Novo em Acordos: o sistema agora identifica o pagador (devedor) do acordo, e assim que uma parcela vence sem ter sido recebida, aparece um alerta igual ao de aluguéis atrasados em Locações — com um botão 📢 pra montar e enviar (WhatsApp ou e-mail) um aviso de cobrança pronto (com aviso antigolpe padrão do escritório), e outro botão pra gerar um follow-up em Tarefas, do mesmo jeito que já existia em Locações. É preciso cadastrar o telefone da parte contrária no acordo pra habilitar o envio por WhatsApp.'
     ]},
     { data: '14/ago/2026 (2)', itens: [
       'Corrigido de vez o cálculo da taxa com desconto: a correção anterior só afetava o campo único "Desconto", mas descontos de verdade (como parcelas de desconto de aluguel) são lançados em "Outras Cobranças" — que agora se chama "Outras Cobranças e Descontos". Cada item dessa lista ganhou a opção "Este valor entra na base de cálculo da taxa de administração" — marque num desconto parcelado e a taxa passa a incidir sobre o aluguel já líquido dele. Testado com o cenário real (aluguel 1.500, desconto 200 parcelado, marcado "incide na taxa"): taxa saiu em R$130,00 (10% de 1.300), confirmado certo. Continua aparecendo certinho no recibo do inquilino também.'
@@ -21580,7 +21689,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Corrigido bug no "Aluguéis Recebidos a serem Repassados": antes somava qualquer lançamento do mês, mesmo com o aluguel ainda pendente ou atrasado — inflando o valor do repasse. Agora só entram os aluguéis efetivamente recebidos; se algum imóvel do locador ainda não recebeu, ele fica de fora e aparece uma nota avisando quantos foram excluídos por esse motivo (em vez de simplesmente sumir sem explicação).'
     ]},
     { data: '13/ago/2026', itens: [
-      'Novo módulo: "🗂️ Tarefas & Rascunhos" — antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação antes de virar algo oficial no sistema. Campos: Título, Tipo (Atendimento Jurídico / Negociação de Locação / Outro), Nome (ou Locador+Locatário separados, pra cobrir tanto negociação completa quanto locatário ainda procurando imóvel), Telefone, E-mail, Endereço, Valor estimado, Notas (texto livre, aceita colar transcrição de ligação), Data de follow-up.',
+      'Novo módulo: "🗂️ Tarefas" — antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação antes de virar algo oficial no sistema. Campos: Título, Tipo (Atendimento Jurídico / Negociação de Locação / Outro), Nome (ou Locador+Locatário separados, pra cobrir tanto negociação completa quanto locatário ainda procurando imóvel), Telefone, E-mail, Endereço, Valor estimado, Notas (texto livre, aceita colar transcrição de ligação), Data de follow-up.',
       'Conversão com 1 clique: "Converter em Processo" abre o cadastro de processo já preenchido; "Converter em Contrato de Locação" abre o novo contrato já com Locador/Locatário/Endereço/Notas preenchidos (telefone e e-mail vão pro campo certo quando só um dos lados está preenchido). O rascunho muda sozinho pra "Convertido" (verde).',
       'Follow-up automático: quando a data marcada passa e o rascunho ainda está "Em andamento", vira "Atrasado" sozinho (vermelho), sem precisar de ação manual — mesma regra de automação já usada no resto do sistema.',
       'Acesso pelo menu do usuário e por um card novo na tela inicial, com alerta de follow-ups atrasados (recolhido por padrão, clicável).',
@@ -21898,7 +22007,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'locacoes',      titulo:'Gestão de Locações e Repasses'},
     {key:'imoveis',       titulo:'Imóveis Disponíveis'},
     {key:'comissoes',     titulo:'Comissões Imobiliárias'},
-    {key:'rascunhos',     titulo:'Tarefas & Rascunhos'},
+    {key:'rascunhos',     titulo:'Tarefas'},
     {key:'glossario',     titulo:'Glossário'}
   ];
 
@@ -21913,7 +22022,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Notas Rápidas</div>'
       +MP+'Um bloco de notas simples (estilo Keep Note) pra anotar lembretes do que ainda precisa ser lançado no sistema — não faz nenhum lançamento sozinho, é só uma lista de tarefas. Acessível pelo menu do usuário, com um contador vermelho mostrando quantas anotações ainda estão pendentes. Marque como feito (risca o texto) ou exclua quando não precisar mais.</div>'
       +MH+'Menu do usuário</div>'
-      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, abrir Tarefas & Rascunhos, anotar uma Nota Rápida, acessar este Manual ou as Configurações. Em Configurações também é possível <strong>desativar a senha de acesso</strong> neste navegador (útil só se você for o único usuário) ou <strong>trocar a senha</strong> sem precisar mexer no código do sistema.</div>',
+      +MP+'Clique no seu nome/avatar no canto superior direito para navegar rapidamente entre todos os painéis, atualizar os dados da planilha, cadastrar um processo novo, abrir Tarefas, anotar uma Nota Rápida, acessar este Manual ou as Configurações. Em Configurações também é possível <strong>desativar a senha de acesso</strong> neste navegador (útil só se você for o único usuário) ou <strong>trocar a senha</strong> sem precisar mexer no código do sistema.</div>',
 
     processos: MH+'Cadastro</div>'
       +MP+'Botão "+ Novo" cadastra um processo. Suporta pessoa física e jurídica (com representante legal). Cada processo tem: número, cliente, área, urgência, prazos, posição processual, sistema de origem e anotações. Quando o sistema é ESAJ, EPROC, PJE ou TRF3, aparece um botão de acesso direto ao processo naquele tribunal.</div>'
@@ -21934,7 +22043,9 @@ window.cpRenderFixas=cpRenderFixas;
       +'<li>Histórico de Atendimento (ligações, WhatsApp, despesas reembolsáveis) e Entregas (documentos entregues, com assinatura digital) — acessíveis a partir do card do processo.</li></ul>'
       +MH+'Link do cliente</div>'
       +MP+'Botão verde "Link do cliente" (🔗) no card do processo gera um link somente-leitura, sem senha, para o próprio cliente acompanhar sozinho: status, próximo passo, providência pendente, data de audiência e última atualização. <strong>Nunca</strong> mostra CPF, endereço ou valores — só o essencial pra ele saber como o caso está. "Gerar novo link" invalida o anterior (o link antigo para de funcionar na hora); "Revogar acesso" desliga o acesso completamente. Cada processo tem um link independente, então revogar um não afeta os outros.</div>'
-      +MIMG('03_processo_link_cliente.png','Botão verde "Link do cliente" gera o link somente-leitura para o cliente acompanhar o processo.'),
+      +MIMG('03_processo_link_cliente.png','Botão verde "Link do cliente" gera o link somente-leitura para o cliente acompanhar o processo.')
+      +MH+'Tarefas e pré-cadastro rápido</div>'
+      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. O botão "+ Pré-cadastro rápido (vira Processo)" anota um atendimento jurídico em andamento (nome, telefone, notas, follow-up) antes de virar processo oficial — quando fechar, "→ Processo" na própria tarefa abre o cadastro completo já preenchido.</div>',
 
     honorarios: MH+'Lançamento de contrato de honorários</div>'
       +MP+'Vincula o contrato de honorários a um processo/cliente já cadastrado. Aceita contrato Único ou Parcelado (com entrada + parcelas), e permite repasse a um advogado parceiro (com percentual). O botão "Novo Lançamento" fica recolhido por padrão — o formulário só aparece quando você clica nele, pra manter a lista de contratos limpa.</div>'
@@ -22008,7 +22119,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Alertas de vigência</div>'
       +MP+'Avisa sozinho quando um contrato está a até 60 dias do fim da vigência, e quando o prazo já venceu e o contrato passou a vigorar por prazo indeterminado (Lei do Inquilinato, art. 46, §1º).</div>'
       +MH+'Tabela de IR</div>'
-      +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>',
+      +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>'
+      +MH+'Tarefas e negociação rápida</div>'
+      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. "+ Negociação rápida (vira Contrato)" anota Locador e Locatário separados (preenche só quem já tiver — cobre também um locatário ainda procurando imóvel); "→ Contrato" na própria tarefa abre o cadastro de contrato já preenchido quando fechar negócio.</div>',
 
     imoveis: MH+'Visão geral</div>'
       +MP+'Catálogo interno de imóveis para venda e/ou locação, gerido pela equipe (atrás da senha do sistema). Todo imóvel com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública do site, sem nenhuma ação extra além de manter o status atualizado.</div>'
@@ -22033,13 +22146,15 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Menu "📊 Relatórios" reúne cinco relatórios prontos: <strong>Vendas Realizadas</strong>, <strong>Locações Realizadas</strong>, <strong>Comissões Pagas aos Corretores</strong>, <strong>Comissões a Pagar aos Corretores</strong> (o que ainda está pendente/atrasado) e <strong>Ranking de Corretores</strong>. Botão "⬇️ Exportar CSV" exporta a lista de negócios para planilha.</div>',
 
     rascunhos: MH+'Para que serve</div>'
-      +MP+'Uma antessala pra anotar um atendimento jurídico em andamento ou uma negociação de locação enquanto ainda não virou nada oficial — assim você rascunha, junta os dados aos poucos, e quando fecha converte direto em Processo ou Contrato de Locação, sem digitar tudo de novo.</div>'
-      +MH+'Tipos de rascunho</div>'
-      +MP+'<strong>Atendimento Jurídico</strong> (campo Nome do cliente) — converte em Processo. <strong>Negociação de Locação</strong> (campos Locador e Locatário separados, ambos opcionais — preenche o que já tiver) — converte em Contrato de Locação. Cobre tanto uma negociação completa (já tem os dois lados) quanto um locatário ainda procurando imóvel (só preenche o Locatário). <strong>Outro</strong> — fica só como tarefa solta, sem conversão automática.</div>'
-      +MH+'Conversão</div>'
-      +MP+'O botão "Converter" abre o formulário de destino já preenchido com os dados do rascunho (nome/locador/locatário, telefone, e-mail, endereço). Quando é locação e só um dos lados (locador ou locatário) está preenchido, o telefone e e-mail vão pro campo certo daquela parte automaticamente; se os dois lados estiverem preenchidos, esses dois campos ficam em branco pra você distribuir manualmente (o sistema não tem como saber de qual parte é o contato). As Notas vão direto pro campo Observações do contrato; num Processo, aparecem numa mensagem pra você copiar pro campo que fizer mais sentido. O rascunho muda sozinho pra "Convertido" (verde).</div>'
+      +MP+'Lembretes e follow-ups do dia a dia, ligados ao módulo a que pertencem. Cada módulo com dados no sistema — Processos, Locações, Acordos, Honorários, Contas a Pagar, Comissões Imobiliárias e Imóveis Disponíveis — tem sua própria caixinha "🗒️ Tarefas" logo abaixo do cabeçalho daquela tela, mostrando só as tarefas em aberto daquele módulo. Não precisa ficar trocando de tela pra saber o que está pendente ali.</div>'
+      +MH+'Pré-cadastro rápido (Processos e Locações)</div>'
+      +MP+'Só nesses dois módulos, o botão de criar tarefa vem com um nome diferente e um poder a mais: em <strong>Processos</strong>, "+ Pré-cadastro rápido (vira Processo)" anota um atendimento jurídico em andamento (nome do cliente, telefone, notas) antes de virar processo oficial. Em <strong>Locações</strong>, "+ Negociação rápida (vira Contrato)" anota uma negociação com Locador e Locatário separados — cobre tanto uma negociação completa quanto um locatário ainda procurando imóvel (só preenche quem já tiver). Quando fechar negócio, o botão "→ Converter" na própria tarefa abre o formulário de destino já preenchido com os dados salvos, sem digitar tudo de novo; a tarefa muda sozinha pra "Convertido" (verde).</div>'
+      +MH+'Tarefa simples (demais módulos)</div>'
+      +MP+'Nos outros módulos, "+ Nova tarefa" abre o mesmo formulário (Título, Notas, data de follow-up) sem opção de conversão — é só um lembrete. Marque "✓ Concluir" quando resolver, ou "Descartar" se não precisa mais.</div>'
       +MH+'Follow-up automático</div>'
-      +MP+'Marque uma data de follow-up (quando precisa voltar a olhar aquilo) — se a data passar e o rascunho ainda estiver "Em andamento", vira "Atrasado" sozinho (vermelho), sem precisar de nenhuma ação manual. Aparece um alerta na tela inicial, no card "Tarefas & Rascunhos".</div>',
+      +MP+'Marque uma data de follow-up (quando precisa voltar a olhar aquilo) — se a data passar e a tarefa ainda estiver "Em andamento", vira "Atrasado" sozinha (vermelho), sem precisar de nenhuma ação manual. Aparece um alerta na tela inicial.</div>'
+      +MH+'Visão geral</div>'
+      +MP+'O menu do usuário (avatar, canto superior direito) tem um atalho "🗒️ Tarefas" que abre a lista completa, de todos os módulos juntos — útil pra uma revisão geral do dia, mas o uso do dia a dia é mesmo dentro de cada módulo.</div>',
 
     glossario: (function(){
       var termos=[
@@ -23336,7 +23451,7 @@ window.cpRenderFixas=cpRenderFixas;
 
   var VOICE_COMMANDS=[
     {kw:['contas a pagar','contas para pagar','abrir contas a pagar'],label:'Contas a Pagar',run:function(){voiceCloseAllOverlays();if(typeof window.openContas==='function')window.openContas();}},
-    {kw:['tarefas e rascunhos','tarefas','rascunhos'],label:'Tarefas & Rascunhos',run:function(){if(typeof window.rascunhosAbrir==='function')window.rascunhosAbrir();}},
+    {kw:['tarefas e rascunhos','tarefas','rascunhos'],label:'Tarefas',run:function(){if(typeof window.rascunhosAbrir==='function')window.rascunhosAbrir();}},
     {kw:['notas rapidas','nota rapida','notas'],label:'Notas Rápidas',run:function(){if(typeof window.notasAbrir==='function')window.notasAbrir();}},
     {kw:['honorarios'],label:'Honorários',run:function(){voiceCloseAllOverlays();if(typeof abrirHonorarios==='function')abrirHonorarios();}},
     {kw:['locacoes','locacao','alugueis','aluguel'],label:'Gestão de Locações e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
@@ -23514,7 +23629,7 @@ window.cpRenderFixas=cpRenderFixas;
   // duplicar a lógica de qual botão abre o quê.
   var VOICE_KEY_MAP={
     '1':'Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
-    '6':'Notas Rápidas','7':'Tarefas & Rascunhos','8':'Início','9':'Busca'
+    '6':'Notas Rápidas','7':'Tarefas','8':'Início','9':'Busca'
   };
   document.addEventListener('keydown',function(e){
     if(!e.altKey||e.ctrlKey||e.metaKey)return;
@@ -23597,6 +23712,7 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
   <div class="loc-body">
     <div class="loc-stats" id="imovStats"></div>
+    <div id="tarWidget-imoveis"></div>
     <div class="loc-chips" id="imovChips"></div>
     <div style="margin:10px 0"><input type="text" class="search-input" id="imovBusca" placeholder="Buscar por endereço, bairro ou proprietário..." oninput="imovRender()" style="width:100%"></div>
     <div class="loc-toolbar">
@@ -23620,6 +23736,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="Inativo">Inativo</option>
         </select>
       </div>
+      <button class="loc-btn" onclick="imovFollowupsAbrir()">📋 Follow-ups</button>
       <button class="loc-btn primary" onclick="imovNovo()">🏘️ Novo imóvel</button>
     </div>
 
@@ -23721,14 +23838,22 @@ window.cpRenderFixas=cpRenderFixas;
       <div id="imovAtFormWrap" class="loc-hidden" style="margin-top:10px;padding:12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2)">
         <input type="hidden" id="iat-id">
         <div class="loc-cform" style="padding:0;border:none;background:none">
-          <div class="loc-cfield full"><label>Cliente *</label><input class="loc-cinput" id="iat-nome" placeholder="Nome completo"></div>
-          <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="iat-telefone" maxlength="15" oninput="mascararTelefone(this)" placeholder="(11) 90000-0000"></div>
+          <div class="loc-cfield full"><label>Cliente *</label><input class="loc-cinput" id="iat-nome" oninput="imovAtChecarPretendente_()" placeholder="Nome completo"></div>
+          <div class="loc-cfield half"><label>Telefone</label><input class="loc-cinput" id="iat-telefone" maxlength="15" oninput="mascararTelefone(this);imovAtChecarPretendente_()" placeholder="(11) 90000-0000"></div>
           <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="iat-email" type="email"></div>
+          <div class="loc-cfield full loc-hidden" id="iat-pretendenteAviso" style="background:var(--surface3,var(--surface2));border:1px solid var(--accent);border-radius:8px;padding:8px 10px;font-size:12.5px"></div>
+          <div class="loc-cfield half"><label>Origem</label>
+            <select class="loc-cinput" id="iat-origem">
+              <option value="Cliente Interessado">Cliente se interessou</option>
+              <option value="Corretor Ofereceu">Corretor ofereceu</option>
+            </select>
+          </div>
           <div class="loc-cfield half"><label>Corretor</label><select class="loc-cinput" id="iat-corretor"><option value="">—</option></select></div>
           <div class="loc-cfield half"><label>Status</label>
             <select class="loc-cinput" id="iat-status">
               <option value="Novo contato">Novo contato</option>
               <option value="Em andamento">Em andamento</option>
+              <option value="Descartado">Descartado (ofertado, não gostou)</option>
               <option value="Perdido">Perdido</option>
             </select>
           </div>
@@ -23741,6 +23866,37 @@ window.cpRenderFixas=cpRenderFixas;
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FICHA DO PRETENDENTE — todos os imóveis (interessado, ofertado, descartado, convertido)
+     ligados ao mesmo cliente (casado por telefone; se não tiver telefone, por nome), cruzando
+     as linhas de IMOV_INTERESSADOS de TODOS os imóveis, não só o que estava aberto. -->
+<div class="modal-repasse-overlay" id="modalImovPretendente">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">👤 Ficha do Pretendente</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalImovPretendente').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div id="imovPretendenteInfo" style="margin-bottom:14px"></div>
+      <div id="imovPretendenteLista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FOLLOW-UPS CENTRAIS — todos os atendimentos com follow-up em aberto, de TODOS os
+     imóveis, numa lista só, ordenada por data (atrasado primeiro). Pedido do usuário pra não
+     precisar abrir imóvel por imóvel só pra saber quem precisa de retorno. -->
+<div class="modal-repasse-overlay" id="modalImovFollowups">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">📋 Follow-ups de Atendimentos</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalImovFollowups').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div id="imovFollowupsLista"></div>
     </div>
   </div>
 </div>
@@ -23857,20 +24013,26 @@ window.imovRender = function () {
 // Cliente que entrou em contato sobre um imóvel do catálogo — antes de virar negócio de verdade.
 // Mesmo padrão estrutural do módulo de Comissões (lista + formulário colapsável, #modalComRecibos):
 // lista sempre visível, formulário some até "+ Novo atendimento". Follow-up é calculado no
-// client-side (não existe campo "Atrasado" na planilha) — mesma lógica de Tarefas & Rascunhos.
+// client-side (não existe campo "Atrasado" na planilha) — mesma lógica de Tarefas.
 
 // Botão da linha da tabela de imóveis — mostra quantos atendimentos ainda em aberto (Novo
 // contato/Em andamento, inclui Atrasado) esse imóvel tem, para chamar atenção sem abrir o modal.
 function imovAtBotao_(imovelId) {
   var lista = (window.imovAtendimentos || []).filter(function (a) { return String(a['Imovel']) === String(imovelId); });
-  var abertos = lista.filter(function (a) { return a['Status'] !== 'Convertido' && a['Status'] !== 'Perdido'; }).length;
+  var abertos = lista.filter(function (a) { return imovAtStatusAberto_(a); }).length;
   var cor = abertos ? 'color:var(--yellow);font-weight:700' : '';
   return '<button class="loc-btn" style="' + cor + '" onclick="imovAtAbrir(\'' + imovelId + '\')" title="Atendimentos de clientes interessados">💬' + (abertos ? ' ' + abertos : '') + '</button> ';
 }
 
-// true quando um atendimento ainda aberto (não Convertido/Perdido) já passou da data de follow-up.
+// Status "fechados" (não precisam mais de ação): Convertido, Perdido, Descartado (ofertado e o
+// cliente não gostou). Tudo que não é isso conta como "em aberto" pra badges/contadores/follow-up.
+function imovAtStatusAberto_(a) {
+  return a['Status'] !== 'Convertido' && a['Status'] !== 'Perdido' && a['Status'] !== 'Descartado';
+}
+
+// true quando um atendimento ainda aberto já passou da data de follow-up.
 function imovAtEstaAtrasado_(a) {
-  if (a['Status'] === 'Convertido' || a['Status'] === 'Perdido') return false;
+  if (!imovAtStatusAberto_(a)) return false;
   var fu = String(a['Data Followup'] || '').trim();
   if (!fu) return false;
   var d = comIsoFromBR(fu) ? new Date(comIsoFromBR(fu) + 'T00:00:00') : new Date(fu + 'T00:00:00');
@@ -23882,6 +24044,7 @@ function imovAtEstaAtrasado_(a) {
 function imovAtStatusVisual_(a) {
   if (a['Status'] === 'Convertido') return { label: 'Convertido', cor: 'var(--green)' };
   if (a['Status'] === 'Perdido') return { label: 'Perdido', cor: 'var(--muted)' };
+  if (a['Status'] === 'Descartado') return { label: 'Descartado', cor: 'var(--muted)' };
   if (imovAtEstaAtrasado_(a)) return { label: 'Atrasado', cor: 'var(--red)' };
   return { label: a['Status'] || 'Novo contato', cor: 'var(--orange)' };
 }
@@ -23904,10 +24067,10 @@ function imovAtRenderLista(imovelId) {
   if (!el) return;
   var lista = (window.imovAtendimentos || []).filter(function (a) { return String(a['Imovel']) === String(imovelId); });
   if (!lista.length) { el.innerHTML = '<div class="loc-note">Nenhum atendimento registrado ainda para este imóvel.</div>'; return; }
-  // Em aberto/Atrasado primeiro, Convertido/Perdido por último — o que precisa de ação fica em cima.
+  // Em aberto/Atrasado primeiro, Convertido/Perdido/Descartado por último — o que precisa de ação fica em cima.
   lista = lista.slice().sort(function (a, b) {
-    var pa = (a['Status'] === 'Convertido' || a['Status'] === 'Perdido') ? 1 : 0;
-    var pb = (b['Status'] === 'Convertido' || b['Status'] === 'Perdido') ? 1 : 0;
+    var pa = imovAtStatusAberto_(a) ? 0 : 1;
+    var pb = imovAtStatusAberto_(b) ? 0 : 1;
     return pa - pb;
   });
   el.innerHTML = lista.map(function (a) {
@@ -23916,26 +24079,107 @@ function imovAtRenderLista(imovelId) {
     var btnConverter = podeConverter
       ? '<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="imovAtConverter(\'' + comE(a['ID']) + '\')" title="Criar/anexar negócio em Comissões Imobiliárias">🤝 Converter em negócio</button> '
       : '<span style="color:var(--muted);font-size:11px">negócio #' + comE(a['Negocio ID'] || '-') + '</span> ';
+    var origemBadge = a['Origem'] === 'Corretor Ofereceu' ? ' <span style="color:var(--muted);font-size:11px">· corretor ofereceu</span>' : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
       + '<div><strong>' + comE(a['Nome']) + '</strong>' + (a['Corretor'] ? ' <span style="color:var(--muted);font-size:11px">(' + comE(a['Corretor']) + ')</span>' : '') + ' — '
-      + '<span style="color:' + sv.cor + ';font-weight:600">' + sv.label + '</span>'
+      + '<span style="color:' + sv.cor + ';font-weight:600">' + sv.label + '</span>' + origemBadge
       + (a['Data Followup'] ? ' <span style="color:var(--muted);font-size:11px">follow-up ' + comE(a['Data Followup']) + '</span>' : '')
       + '<br><span style="font-size:12px;color:var(--muted)">' + [a['Telefone'], a['Email']].filter(Boolean).map(comE).join(' · ') + (a['Observacoes'] ? ' — ' + comE(a['Observacoes']) : '') + '</span></div>'
       + '<div style="white-space:nowrap">'
       + btnConverter
+      + '<button class="loc-btn-edit" onclick="imovPretendenteAbrir(\'' + comE(String(a['Telefone'] || '').replace(/\D/g, '')) + '\',\'' + comE((a['Nome'] || '').toLowerCase()) + '\')" title="Ver todos os imóveis deste cliente">👤</button> '
       + '<button class="loc-btn-edit" onclick="imovAtEditar(\'' + comE(a['ID']) + '\')">✎</button> '
       + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="imovAtExcluir(\'' + comE(a['ID']) + '\',\'' + comE(imovelId) + '\')">🗑️</button>'
       + '</div></div>';
   }).join('');
 }
 
+// ---- Ficha do pretendente: todos os imóveis (interessado/ofertado/descartado/convertido) do
+// mesmo cliente, casado por telefone (ou por nome quando não há telefone em nenhum dos lados). ----
+window.imovPretendenteAbrir = function (telNorm, nomeLower) {
+  var lista = (window.imovAtendimentos || []).filter(function (a) {
+    var matchTel = telNorm && String(a['Telefone'] || '').replace(/\D/g, '') === telNorm;
+    var matchNome = !telNorm && nomeLower && String(a['Nome'] || '').trim().toLowerCase() === nomeLower;
+    return matchTel || matchNome;
+  });
+  var nomeRef = lista.length ? lista[0]['Nome'] : '-';
+  document.getElementById('imovPretendenteInfo').innerHTML = '<strong style="font-size:15px">' + comE(nomeRef) + '</strong>'
+    + (telNorm ? ' — ' + comE(lista[0]['Telefone'] || '') : '')
+    + '<br><span style="color:var(--muted);font-size:12px">' + lista.length + ' imóvel(is) neste histórico</span>';
+  lista = lista.slice().sort(function (a, b) { return imovAtStatusAberto_(a) === imovAtStatusAberto_(b) ? 0 : (imovAtStatusAberto_(a) ? -1 : 1); });
+  document.getElementById('imovPretendenteLista').innerHTML = lista.length ? lista.map(function (a) {
+    var im = (window.imoveis || []).find(function (x) { return String(x['ID']) === String(a['Imovel']); }) || {};
+    var sv = imovAtStatusVisual_(a);
+    var origem = a['Origem'] === 'Corretor Ofereceu' ? 'Corretor ofereceu' : 'Cliente se interessou';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div><strong>' + comE(im['Endereco'] || 'Imóvel #' + comE(a['Imovel'])) + '</strong> — ' + comE(im['Bairro'] || '')
+      + '<br><span style="font-size:12px;color:var(--muted)">' + origem + ' · <span style="color:' + sv.cor + ';font-weight:600">' + sv.label + '</span>'
+      + (a['Data Followup'] ? ' · follow-up ' + comE(a['Data Followup']) : '') + '</span></div>'
+      + '<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="document.getElementById(\'modalImovPretendente\').classList.remove(\'open\');imovAtAbrir(\'' + comE(a['Imovel']) + '\')">Abrir imóvel</button>'
+      + '</div>';
+  }).join('') : '<div class="loc-note">Nenhum outro imóvel encontrado para este cliente.</div>';
+  document.getElementById('modalImovPretendente').classList.add('open');
+};
+
+// ---- Lista central de follow-ups: todos os atendimentos em aberto de TODOS os imóveis, numa
+// lista só, ordenada por data (atrasado primeiro, depois mais próximo). ----
+window.imovFollowupsAbrir = function () {
+  var lista = (window.imovAtendimentos || []).filter(function (a) { return imovAtStatusAberto_(a) && a['Data Followup']; });
+  lista = lista.slice().sort(function (a, b) {
+    var da = comIsoFromBR(a['Data Followup']) || '9999'; var db = comIsoFromBR(b['Data Followup']) || '9999';
+    return da < db ? -1 : (da > db ? 1 : 0);
+  });
+  var el = document.getElementById('imovFollowupsLista');
+  if (!lista.length) { el.innerHTML = '<div class="loc-note">Nenhum atendimento com follow-up marcado no momento.</div>'; }
+  else {
+    el.innerHTML = '<table class="loc-table"><thead><tr><th>Cliente</th><th>Imóvel</th><th>Corretor</th><th>Status</th><th>Follow-up</th><th></th></tr></thead><tbody>'
+      + lista.map(function (a) {
+        var im = (window.imoveis || []).find(function (x) { return String(x['ID']) === String(a['Imovel']); }) || {};
+        var sv = imovAtStatusVisual_(a);
+        return '<tr>'
+          + '<td>' + comE(a['Nome']) + '</td>'
+          + '<td>' + comE(im['Endereco'] || '#' + comE(a['Imovel'])) + '</td>'
+          + '<td>' + comE(a['Corretor'] || '-') + '</td>'
+          + '<td style="color:' + sv.cor + ';font-weight:600">' + sv.label + '</td>'
+          + '<td>' + comE(a['Data Followup']) + '</td>'
+          + '<td><button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="document.getElementById(\'modalImovFollowups\').classList.remove(\'open\');imovAtAbrir(\'' + comE(a['Imovel']) + '\')">Abrir</button></td>'
+          + '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+  document.getElementById('modalImovFollowups').classList.add('open');
+};
+
 window.imovAtFormAbrir = function () {
   document.getElementById('iat-id').value = '';
   ['iat-nome', 'iat-telefone', 'iat-email', 'iat-followup', 'iat-obs'].forEach(function (id) { document.getElementById(id).value = ''; });
   document.getElementById('iat-corretor').value = '';
   document.getElementById('iat-status').value = 'Novo contato';
+  document.getElementById('iat-origem').value = 'Cliente Interessado';
+  document.getElementById('iat-pretendenteAviso').classList.add('loc-hidden');
   document.getElementById('iat-msg').textContent = '';
   document.getElementById('imovAtFormWrap').classList.remove('loc-hidden');
+};
+// Ao digitar nome/telefone no formulário de atendimento, verifica se esse mesmo cliente (mesmo
+// telefone, ou mesmo nome se não tiver telefone) já tem atendimento registrado em OUTRO imóvel —
+// e mostra um aviso com atalho pra "ficha do pretendente" (todos os imóveis dele de uma vez).
+window.imovAtChecarPretendente_ = function () {
+  var aviso = document.getElementById('iat-pretendenteAviso');
+  var idAtual = document.getElementById('iat-id').value;
+  var tel = (document.getElementById('iat-telefone').value || '').replace(/\D/g, '');
+  var nome = (document.getElementById('iat-nome').value || '').trim().toLowerCase();
+  var imovelAtual = document.getElementById('imovAt-imovelId').value;
+  if (!tel && !nome) { aviso.classList.add('loc-hidden'); return; }
+  var outros = (window.imovAtendimentos || []).filter(function (a) {
+    if (String(a['ID']) === String(idAtual)) return false;
+    var matchTel = tel && String(a['Telefone'] || '').replace(/\D/g, '') === tel;
+    var matchNome = !tel && nome && String(a['Nome'] || '').trim().toLowerCase() === nome;
+    return matchTel || matchNome;
+  });
+  var outrosImoveis = outros.filter(function (a) { return String(a['Imovel']) !== String(imovelAtual); });
+  if (!outrosImoveis.length) { aviso.classList.add('loc-hidden'); return; }
+  aviso.classList.remove('loc-hidden');
+  aviso.innerHTML = '⚠️ Este cliente já aparece em <strong>' + outrosImoveis.length + ' outro(s) imóvel(is)</strong>. '
+    + '<button type="button" class="loc-btn" style="padding:2px 8px;font-size:11.5px" onclick="imovPretendenteAbrir(\'' + comE(tel) + '\',\'' + comE(nome) + '\')">👤 Ver ficha do pretendente</button>';
 };
 window.imovAtFormFechar = function () {
   document.getElementById('imovAtFormWrap').classList.add('loc-hidden');
@@ -23953,9 +24197,11 @@ window.imovAtEditar = function (id) {
   }
   document.getElementById('iat-corretor').value = a['Corretor'] || '';
   document.getElementById('iat-status').value = (a['Status'] === 'Convertido') ? 'Em andamento' : (a['Status'] || 'Novo contato');
+  document.getElementById('iat-origem').value = a['Origem'] === 'Corretor Ofereceu' ? 'Corretor Ofereceu' : 'Cliente Interessado';
   document.getElementById('iat-followup').value = comIsoFromBR(a['Data Followup']);
   document.getElementById('iat-obs').value = a['Observacoes'] || '';
   document.getElementById('iat-msg').textContent = '';
+  document.getElementById('iat-pretendenteAviso').classList.add('loc-hidden');
   document.getElementById('imovAtFormWrap').classList.remove('loc-hidden');
 };
 window.imovAtSalvar = function () {
@@ -23976,6 +24222,7 @@ window.imovAtSalvar = function () {
     'Email': document.getElementById('iat-email').value.trim(),
     'Corretor': document.getElementById('iat-corretor').value,
     'Status': document.getElementById('iat-status').value,
+    'Origem': document.getElementById('iat-origem').value,
     'Data Followup': comDtBRfromInput(document.getElementById('iat-followup').value),
     'Observacoes': document.getElementById('iat-obs').value.trim()
   };
