@@ -23774,7 +23774,7 @@ window.carregarImoveis = async function () {
     var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
     var k = '?key=' + c.apiKey;
     var r1 = await fetch(base + encodeURIComponent('IMOV_CADASTRO!A1:Z2000') + k);
-    var r2 = await fetch(base + encodeURIComponent('IMOV_ATENDIMENTOS!A1:Z2000') + k);
+    var r2 = await fetch(base + encodeURIComponent('IMOV_INTERESSADOS!A1:Z2000') + k);
     var d1 = r1.ok ? await r1.json() : { values: [] };
     var d2 = r2.ok ? await r2.json() : { values: [] };
     var rn = d1.values || [];
