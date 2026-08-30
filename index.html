@@ -4827,7 +4827,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
     +'<div class="loc-cfield"><label>Módulo / Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico (Processos)','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Imóveis Disponíveis','Geral'].map(function(t){
+    +['Atendimento Jurídico (Processos)','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Atendimento de Compra de Imóveis','Imóveis Disponíveis','Geral'].map(function(t){
       var valorReal=t.split(' (')[0];
       var marcado=d['Tipo']===valorReal||(!d['Tipo']&&t==='Geral')||(d['Tipo']==='Outro'&&t==='Geral');
       return '<option value="'+valorReal+'"'+(marcado?' selected':'')+'>'+t+'</option>';
@@ -4872,6 +4872,7 @@ function tarTipoParaModulo_(tipo){
     case 'Honorários': return 'honorarios';
     case 'Contas a Pagar': return 'contas';
     case 'Comissões Imobiliárias': return 'comissoes';
+    case 'Atendimento de Compra de Imóveis':
     case 'Imóveis Disponíveis': return 'imoveis';
     default: return 'geral'; // 'Geral' e o legado 'Outro'
   }
@@ -4887,7 +4888,7 @@ window.TAR_MODULOS_REGISTRO=[
   {chave:'honorarios', container:'tarWidget-honorarios',  addBtns:[{label:'+ Nova tarefa',tipo:'Honorários'}]},
   {chave:'contas',     container:'tarWidget-contas',      addBtns:[{label:'+ Nova tarefa',tipo:'Contas a Pagar'}]},
   {chave:'comissoes',  container:'tarWidget-comissoes',   addBtns:[{label:'+ Nova tarefa',tipo:'Comissões Imobiliárias'}]},
-  {chave:'imoveis',    container:'tarWidget-imoveis',     addBtns:[{label:'+ Nova tarefa',tipo:'Imóveis Disponíveis'}]}
+  {chave:'imoveis',    container:'tarWidget-imoveis',     addBtns:[{label:'+ Atendimento de compra',tipo:'Atendimento de Compra de Imóveis'},{label:'+ Nova tarefa',tipo:'Imóveis Disponíveis'}]}
 ];
 // Abre o formulário de Tarefas já com o Tipo certo pré-selecionado — usado pelos botões de
 // criação rápida de cada widget de módulo (inclusive os que viram Processo/Contrato).
@@ -21614,6 +21615,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '30/ago/2026', itens: [
+      'Novo em Imóveis Disponíveis: filtros de Tipo de busca (Compra/Locação), Tipo de imóvel, Categoria (Residencial/Comercial) e Bairro na lista, com botão "✕ Limpar filtros". Novo campo "Categoria" no cadastro do imóvel.',
+      'Novo no atendimento de cliente interessado: seção "O que o cliente está procurando" (Tipo de busca, Categoria, Tipo de imóvel, Bairro de interesse) — botão "🔍" na linha do atendimento já abre a lista de Imóveis Disponíveis filtrada com esse perfil, pra achar rápido outras opções compatíveis.',
+      'Nova opção em Tarefas: "Atendimento de Compra de Imóveis", simétrica às tarefas de locação, pra acompanhar pretendentes à compra (antes só existiam opções ligadas a locação e ao módulo geral de Imóveis).'
+    ]},
     { data: '29/ago/2026', itens: [
       'Corrigido: atendimentos de clientes interessados (Imóveis Disponíveis) salvavam certo mas não apareciam de volta na tela — o app lia de uma aba com nome errado.',
       'Novo em Imóveis Disponíveis: botão "📋 Follow-ups" mostra todos os atendimentos com follow-up marcado, de todos os imóveis, numa lista só, ordenada por data. Novo campo "Origem" (Cliente Interessado / Corretor Ofereceu) e status "Descartado". Ao cadastrar um cliente que já aparece em outro imóvel, o sistema avisa e oferece a "👤 Ficha do Pretendente" — todos os imóveis daquele cliente numa tela só.',
@@ -22130,7 +22136,11 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'💬 Atendimentos de clientes interessados</div>'
       +MP+'Cada linha da lista de imóveis tem um botão "💬" que abre os atendimentos daquele imóvel específico — registre ali cada cliente que demonstrou interesse (comprador ou locatário): nome, telefone, e-mail, corretor responsável (opcional), status (Novo contato/Em andamento/Perdido), uma data de <strong>follow-up</strong> (quando voltar a contatar) e observações livres. O número ao lado do "💬" mostra quantos atendimentos daquele imóvel ainda estão em aberto. Se a data de follow-up passar sem o atendimento ter sido concluído, ele vira "Atrasado" sozinho (vermelho) — sem precisar de nenhuma ação manual — e um aviso aparece no card "Imóveis Disponíveis" da tela inicial.</div>'
       +MH+'Converter atendimento em negócio</div>'
-      +MP+'No atendimento, o botão "🤝 Converter em negócio" cria (ou reaproveita, se já existir um negócio "Em andamento" para o mesmo endereço) um <strong>negócio</strong> no módulo Comissões Imobiliárias — usando os dados do proprietário já cadastrados no imóvel — e lança automaticamente uma <strong>Proposta</strong> nesse negócio com os dados do cliente interessado. O atendimento passa a "Convertido" e o sistema já abre direto o negócio na tela de Comissões, na proposta recém-criada, pronta para revisar valores e gerar o documento (Proposta de Compra ou de Locação).</div>',
+      +MP+'No atendimento, o botão "🤝 Converter em negócio" cria (ou reaproveita, se já existir um negócio "Em andamento" para o mesmo endereço) um <strong>negócio</strong> no módulo Comissões Imobiliárias — usando os dados do proprietário já cadastrados no imóvel — e lança automaticamente uma <strong>Proposta</strong> nesse negócio com os dados do cliente interessado. O atendimento passa a "Convertido" e o sistema já abre direto o negócio na tela de Comissões, na proposta recém-criada, pronta para revisar valores e gerar o documento (Proposta de Compra ou de Locação).</div>'
+      +MH+'Filtros da lista (Tipo de busca, Tipo de imóvel, Categoria, Bairro)</div>'
+      +MP+'A barra de filtros acima da lista permite cruzar <strong>Tipo de busca</strong> (Compra/Locação/Ambos), <strong>Tipo de imóvel</strong> (Apartamento/Casa/Sala Comercial/Terreno/Outro), <strong>Categoria</strong> (Residencial/Comercial — cadastrada em cada imóvel, botão "🏘️ Novo imóvel") e <strong>Bairro</strong> (lista dos bairros já cadastrados no estoque) com o Status. Botão "✕ Limpar filtros" aparece assim que algum filtro estiver ativo.</div>'
+      +MH+'O que o cliente está procurando (perfil de busca do pretendente)</div>'
+      +MP+'No formulário de atendimento, a seção "O que o cliente está procurando" registra o perfil de busca do pretendente — Tipo de busca, Categoria, Tipo de imóvel e Bairro de interesse — separado dos dados do imóvel específico em que o atendimento foi aberto (o pretendente pode estar interessado num imóvel mas na verdade estar procurando outro perfil, por exemplo, um bairro diferente). Sempre que esses campos estiverem preenchidos, um botão "🔍" aparece na linha do atendimento — ele fecha o atendimento e já mostra a lista de Imóveis Disponíveis filtrada com esse mesmo perfil, pra achar rápido outras opções compatíveis no estoque.</div>',
 
     comissoes: MH+'Visão geral</div>'
       +MP+'Controla a comissão da imobiliária sobre <strong>vendas</strong> (sugestão de 6% do valor do imóvel) e <strong>locações</strong> (sugestão de 100% do primeiro aluguel) e o repasse dessa comissão aos corretores. Cada <strong>negócio</strong> é um cadastro independente — não precisa estar vinculado a um Processo. O próprio imóvel é só texto (endereço/descrição); cadastro de imóveis é um módulo futuro à parte.</div>'
@@ -22150,7 +22160,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Pré-cadastro rápido (Processos e Locações)</div>'
       +MP+'Só nesses dois módulos, o botão de criar tarefa vem com um nome diferente e um poder a mais: em <strong>Processos</strong>, "+ Pré-cadastro rápido (vira Processo)" anota um atendimento jurídico em andamento (nome do cliente, telefone, notas) antes de virar processo oficial. Em <strong>Locações</strong>, "+ Negociação rápida (vira Contrato)" anota uma negociação com Locador e Locatário separados — cobre tanto uma negociação completa quanto um locatário ainda procurando imóvel (só preenche quem já tiver). Quando fechar negócio, o botão "→ Converter" na própria tarefa abre o formulário de destino já preenchido com os dados salvos, sem digitar tudo de novo; a tarefa muda sozinha pra "Convertido" (verde).</div>'
       +MH+'Tarefa simples (demais módulos)</div>'
-      +MP+'Nos outros módulos, "+ Nova tarefa" abre o mesmo formulário (Título, Notas, data de follow-up) sem opção de conversão — é só um lembrete. Marque "✓ Concluir" quando resolver, ou "Descartar" se não precisa mais.</div>'
+      +MP+'Nos outros módulos, "+ Nova tarefa" abre o mesmo formulário (Título, Notas, data de follow-up) sem opção de conversão — é só um lembrete. Marque "✓ Concluir" quando resolver, ou "Descartar" se não precisa mais. Em <strong>Imóveis Disponíveis</strong> há dois botões: "+ Nova tarefa" (acompanhamento geral do módulo) e "+ Atendimento de compra" (Tipo "Atendimento de Compra de Imóveis" — pra acompanhar especificamente um pretendente à compra, simétrico às tarefas de locação).</div>'
       +MH+'Follow-up automático</div>'
       +MP+'Marque uma data de follow-up (quando precisa voltar a olhar aquilo) — se a data passar e a tarefa ainda estiver "Em andamento", vira "Atrasado" sozinha (vermelho), sem precisar de nenhuma ação manual. Aparece um alerta na tela inicial.</div>'
       +MH+'Visão geral</div>'
@@ -23717,12 +23727,37 @@ window.cpRenderFixas=cpRenderFixas;
     <div style="margin:10px 0"><input type="text" class="search-input" id="imovBusca" placeholder="Buscar por endereço, bairro ou proprietário..." oninput="imovRender()" style="width:100%"></div>
     <div class="loc-toolbar">
       <div class="loc-mes-wrap">
-        <label>Finalidade</label>
+        <label>Tipo de busca</label>
         <select class="loc-select" id="imovFiltroFinalidade" onchange="imovRender()">
           <option value="">Todas</option>
-          <option value="Venda">Venda</option>
+          <option value="Venda">Compra</option>
           <option value="Locação">Locação</option>
           <option value="Ambos">Ambos</option>
+        </select>
+      </div>
+      <div class="loc-mes-wrap">
+        <label>Tipo de imóvel</label>
+        <select class="loc-select" id="imovFiltroTipo" onchange="imovRender()">
+          <option value="">Todos</option>
+          <option value="Apartamento">Apartamento</option>
+          <option value="Casa">Casa</option>
+          <option value="Sala Comercial">Sala Comercial</option>
+          <option value="Terreno">Terreno</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="loc-mes-wrap">
+        <label>Categoria</label>
+        <select class="loc-select" id="imovFiltroCategoria" onchange="imovRender()">
+          <option value="">Todas</option>
+          <option value="Residencial">Residencial</option>
+          <option value="Comercial">Comercial</option>
+        </select>
+      </div>
+      <div class="loc-mes-wrap">
+        <label>Bairro</label>
+        <select class="loc-select" id="imovFiltroBairro" onchange="imovRender()">
+          <option value="">Todos</option>
         </select>
       </div>
       <div class="loc-mes-wrap">
@@ -23736,9 +23771,11 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="Inativo">Inativo</option>
         </select>
       </div>
+      <button class="loc-btn" id="imovFiltroLimparBtn" onclick="imovFiltrosLimpar()" style="display:none">✕ Limpar filtros</button>
       <button class="loc-btn" onclick="imovFollowupsAbrir()">📋 Follow-ups</button>
       <button class="loc-btn primary" onclick="imovNovo()">🏘️ Novo imóvel</button>
     </div>
+    <div class="loc-note" id="imovFiltroCompativelAviso" style="display:none;margin-top:8px"></div>
 
     <div class="lf-tip-wrap">
       <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('imovNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
@@ -23774,6 +23811,12 @@ window.cpRenderFixas=cpRenderFixas;
             <option value="Sala Comercial">Sala Comercial</option>
             <option value="Terreno">Terreno</option>
             <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="loc-cfield"><label>Categoria</label>
+          <select class="loc-cinput" id="im-categoria">
+            <option value="Residencial">Residencial</option>
+            <option value="Comercial">Comercial</option>
           </select>
         </div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Localização</div>
@@ -23858,6 +23901,32 @@ window.cpRenderFixas=cpRenderFixas;
             </select>
           </div>
           <div class="loc-cfield half"><label>Follow-up (voltar a contatar em)</label><input class="loc-cinput" id="iat-followup" type="date"></div>
+          <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">O que o cliente está procurando</div>
+          <div class="loc-cfield half"><label>Tipo de busca</label>
+            <select class="loc-cinput" id="iat-tipoBusca">
+              <option value="">—</option>
+              <option value="Compra">Compra</option>
+              <option value="Locação">Locação</option>
+            </select>
+          </div>
+          <div class="loc-cfield half"><label>Categoria</label>
+            <select class="loc-cinput" id="iat-categoriaBusca">
+              <option value="">—</option>
+              <option value="Residencial">Residencial</option>
+              <option value="Comercial">Comercial</option>
+            </select>
+          </div>
+          <div class="loc-cfield half"><label>Tipo de imóvel</label>
+            <select class="loc-cinput" id="iat-tipoImovelBusca">
+              <option value="">—</option>
+              <option value="Apartamento">Apartamento</option>
+              <option value="Casa">Casa</option>
+              <option value="Sala Comercial">Sala Comercial</option>
+              <option value="Terreno">Terreno</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <div class="loc-cfield half"><label>Bairro de interesse</label><input class="loc-cinput" id="iat-bairroBusca" placeholder="Ex.: Vila Mariana"></div>
           <div class="loc-cfield full"><label>Observações</label><input class="loc-cinput" id="iat-obs" placeholder="Ex.: visitou dia X, aguardando aprovação de financiamento..."></div>
           <div class="loc-cform-actions">
             <span class="msg" id="iat-msg"></span>
@@ -23967,13 +24036,66 @@ function imovStatusCor_(status) {
   return 'var(--red)'; // Vendido/Alugado
 }
 
+// Popula o filtro de Bairro dinamicamente com os bairros distintos que já existem no
+// estoque cadastrado, preservando a seleção atual se ela ainda existir na lista nova.
+function imovFiltroBairroPopular_() {
+  var sel = document.getElementById('imovFiltroBairro');
+  if (!sel) return;
+  var atual = sel.value;
+  var bairros = Array.from(new Set((window.imoveis || []).map(function (n) { return (n['Bairro'] || '').trim(); }).filter(Boolean))).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+  sel.innerHTML = '<option value="">Todos</option>' + bairros.map(function (b) { return '<option value="' + escHtml(b) + '"' + (b === atual ? ' selected' : '') + '>' + escHtml(b) + '</option>'; }).join('');
+  if (bairros.indexOf(atual) < 0) sel.value = '';
+}
+
+// Aplica um perfil de busca (Tipo/Categoria/Tipo Imóvel/Bairro) vindo da ficha de um
+// pretendente aos filtros da lista de Imóveis Disponíveis, e mostra um aviso de contexto.
+window.imovFiltrosAplicarPerfil = function (perfil, nomeCliente) {
+  document.getElementById('imovFiltroFinalidade').value = perfil.tipoBusca === 'Compra' ? 'Venda' : (perfil.tipoBusca === 'Locação' ? 'Locação' : '');
+  document.getElementById('imovFiltroCategoria').value = perfil.categoriaBusca || '';
+  document.getElementById('imovFiltroTipo').value = perfil.tipoImovelBusca || '';
+  var bairroSel = document.getElementById('imovFiltroBairro');
+  if (bairroSel) {
+    var opts = Array.from(bairroSel.options).map(function (o) { return o.value; });
+    bairroSel.value = (perfil.bairroBusca && opts.indexOf(perfil.bairroBusca) >= 0) ? perfil.bairroBusca : '';
+  }
+  document.getElementById('imovFiltroStatus').value = 'Disponível';
+  var aviso = document.getElementById('imovFiltroCompativelAviso');
+  if (aviso) {
+    aviso.style.display = '';
+    aviso.innerHTML = '🔍 Mostrando imóveis compatíveis com o que <strong>' + comE(nomeCliente || 'o pretendente') + '</strong> procura' + (perfil.bairroBusca && (!bairroSel || bairroSel.value !== perfil.bairroBusca) ? ' (bairro "' + comE(perfil.bairroBusca) + '" não está no filtro por não haver estoque cadastrado nele ainda)' : '') + '.';
+  }
+  imovRender();
+};
+
+window.imovFiltrosLimpar = function () {
+  document.getElementById('imovFiltroFinalidade').value = '';
+  document.getElementById('imovFiltroTipo').value = '';
+  document.getElementById('imovFiltroCategoria').value = '';
+  document.getElementById('imovFiltroBairro').value = '';
+  document.getElementById('imovFiltroStatus').value = '';
+  document.getElementById('imovBusca').value = '';
+  var aviso = document.getElementById('imovFiltroCompativelAviso');
+  if (aviso) aviso.style.display = 'none';
+  imovRender();
+};
+
 window.imovRender = function () {
+  imovFiltroBairroPopular_();
   var busca = (document.getElementById('imovBusca').value || '').toLowerCase();
   var fFinalidade = document.getElementById('imovFiltroFinalidade').value;
   var fStatus = document.getElementById('imovFiltroStatus').value;
+  var fTipo = document.getElementById('imovFiltroTipo').value;
+  var fCategoria = document.getElementById('imovFiltroCategoria').value;
+  var fBairro = document.getElementById('imovFiltroBairro').value;
+  var filtrosAtivos = !!(fFinalidade || fStatus || fTipo || fCategoria || fBairro || busca);
+  var limparBtn = document.getElementById('imovFiltroLimparBtn');
+  if (limparBtn) limparBtn.style.display = filtrosAtivos ? '' : 'none';
   var lista = window.imoveis.filter(function (n) {
-    if (fFinalidade && n['Finalidade'] !== fFinalidade) return false;
+    if (fFinalidade && n['Finalidade'] !== fFinalidade && n['Finalidade'] !== 'Ambos') return false;
     if (fStatus && n['Status'] !== fStatus) return false;
+    if (fTipo && n['Tipo Imovel'] !== fTipo) return false;
+    if (fCategoria && (n['Categoria'] || 'Residencial') !== fCategoria) return false;
+    if (fBairro && n['Bairro'] !== fBairro) return false;
     if (busca) {
       var alvo = [n['Endereco'], n['Bairro'], n['Cidade'], n['Proprietario Nome']].filter(Boolean).join(' ').toLowerCase();
       if (alvo.indexOf(busca) < 0) return false;
@@ -23998,7 +24120,7 @@ window.imovRender = function () {
     return '<tr>'
       + '<td>' + comE(n['Endereco']) + '</td>'
       + '<td>' + comE(n['Bairro']) + (n['Cidade'] ? ' — ' + comE(n['Cidade']) : '') + '</td>'
-      + '<td>' + comE(n['Finalidade']) + '</td>'
+      + '<td>' + comE(n['Finalidade']) + '<br><span style="color:var(--muted);font-size:11px">' + comE(n['Tipo Imovel'] || '') + (n['Categoria'] ? ' · ' + comE(n['Categoria']) : '') + '</span></td>'
       + '<td style="text-align:right">' + valor + '</td>'
       + '<td style="text-align:center"><span style="color:' + imovStatusCor_(n['Status']) + ';font-weight:700">● ' + comE(n['Status']) + '</span></td>'
       + '<td style="white-space:nowrap">'
@@ -24087,12 +24209,30 @@ function imovAtRenderLista(imovelId) {
       + '<br><span style="font-size:12px;color:var(--muted)">' + [a['Telefone'], a['Email']].filter(Boolean).map(comE).join(' · ') + (a['Observacoes'] ? ' — ' + comE(a['Observacoes']) : '') + '</span></div>'
       + '<div style="white-space:nowrap">'
       + btnConverter
+      + ((a['Tipo Busca'] || a['Categoria Busca'] || a['Tipo Imovel Busca'] || a['Bairro Busca'])
+        ? '<button class="loc-btn-edit" onclick="imovVerCompativeisDoAtendimento_(\'' + comE(a['ID']) + '\')" title="Ver imóveis compatíveis com o que este cliente procura">🔍</button> '
+        : '')
       + '<button class="loc-btn-edit" onclick="imovPretendenteAbrir(\'' + comE(String(a['Telefone'] || '').replace(/\D/g, '')) + '\',\'' + comE((a['Nome'] || '').toLowerCase()) + '\')" title="Ver todos os imóveis deste cliente">👤</button> '
       + '<button class="loc-btn-edit" onclick="imovAtEditar(\'' + comE(a['ID']) + '\')">✎</button> '
       + '<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="imovAtExcluir(\'' + comE(a['ID']) + '\',\'' + comE(imovelId) + '\')">🗑️</button>'
       + '</div></div>';
   }).join('');
 }
+
+// Fecha os modais de atendimento e aplica o perfil de busca daquele cliente como filtro na
+// lista principal de Imóveis Disponíveis — o "casamento" entre o que o pretendente procura e o
+// estoque cadastrado, pedido pelo usuário.
+window.imovVerCompativeisDoAtendimento_ = function (atendimentoId) {
+  var a = (window.imovAtendimentos || []).find(function (x) { return String(x['ID']) === String(atendimentoId); });
+  if (!a) return;
+  document.getElementById('modalImovAtendimentos').classList.remove('open');
+  imovFiltrosAplicarPerfil({
+    tipoBusca: a['Tipo Busca'] || '',
+    categoriaBusca: a['Categoria Busca'] || '',
+    tipoImovelBusca: a['Tipo Imovel Busca'] || '',
+    bairroBusca: a['Bairro Busca'] || ''
+  }, a['Nome']);
+};
 
 // ---- Ficha do pretendente: todos os imóveis (interessado/ofertado/descartado/convertido) do
 // mesmo cliente, casado por telefone (ou por nome quando não há telefone em nenhum dos lados). ----
@@ -24151,7 +24291,7 @@ window.imovFollowupsAbrir = function () {
 
 window.imovAtFormAbrir = function () {
   document.getElementById('iat-id').value = '';
-  ['iat-nome', 'iat-telefone', 'iat-email', 'iat-followup', 'iat-obs'].forEach(function (id) { document.getElementById(id).value = ''; });
+  ['iat-nome', 'iat-telefone', 'iat-email', 'iat-followup', 'iat-obs', 'iat-tipoBusca', 'iat-categoriaBusca', 'iat-tipoImovelBusca', 'iat-bairroBusca'].forEach(function (id) { document.getElementById(id).value = ''; });
   document.getElementById('iat-corretor').value = '';
   document.getElementById('iat-status').value = 'Novo contato';
   document.getElementById('iat-origem').value = 'Cliente Interessado';
@@ -24199,6 +24339,10 @@ window.imovAtEditar = function (id) {
   document.getElementById('iat-status').value = (a['Status'] === 'Convertido') ? 'Em andamento' : (a['Status'] || 'Novo contato');
   document.getElementById('iat-origem').value = a['Origem'] === 'Corretor Ofereceu' ? 'Corretor Ofereceu' : 'Cliente Interessado';
   document.getElementById('iat-followup').value = comIsoFromBR(a['Data Followup']);
+  document.getElementById('iat-tipoBusca').value = a['Tipo Busca'] || '';
+  document.getElementById('iat-categoriaBusca').value = a['Categoria Busca'] || '';
+  document.getElementById('iat-tipoImovelBusca').value = a['Tipo Imovel Busca'] || '';
+  document.getElementById('iat-bairroBusca').value = a['Bairro Busca'] || '';
   document.getElementById('iat-obs').value = a['Observacoes'] || '';
   document.getElementById('iat-msg').textContent = '';
   document.getElementById('iat-pretendenteAviso').classList.add('loc-hidden');
@@ -24224,6 +24368,10 @@ window.imovAtSalvar = function () {
     'Status': document.getElementById('iat-status').value,
     'Origem': document.getElementById('iat-origem').value,
     'Data Followup': comDtBRfromInput(document.getElementById('iat-followup').value),
+    'Tipo Busca': document.getElementById('iat-tipoBusca').value,
+    'Categoria Busca': document.getElementById('iat-categoriaBusca').value,
+    'Tipo Imovel Busca': document.getElementById('iat-tipoImovelBusca').value,
+    'Bairro Busca': document.getElementById('iat-bairroBusca').value.trim(),
     'Observacoes': document.getElementById('iat-obs').value.trim()
   };
   if (!id) campos['Data Contato'] = comFdt(new Date());
@@ -24343,6 +24491,7 @@ window.imovNovo = function () {
   document.getElementById('im-finalidade').value = 'Venda';
   document.getElementById('im-status').value = 'Disponível';
   document.getElementById('im-tipoImovel').value = 'Apartamento';
+  document.getElementById('im-categoria').value = 'Residencial';
   imovAtualizarCamposValor();
   document.getElementById('imovFormTitle').textContent = 'Novo imóvel';
   document.getElementById('imovFormSection').classList.remove('loc-hidden');
@@ -24359,6 +24508,7 @@ window.imovEditar = function (id) {
   document.getElementById('im-finalidade').value = n['Finalidade'] || 'Venda';
   document.getElementById('im-status').value = n['Status'] || 'Disponível';
   document.getElementById('im-tipoImovel').value = n['Tipo Imovel'] || 'Apartamento';
+  document.getElementById('im-categoria').value = n['Categoria'] || 'Residencial';
   document.getElementById('im-endereco').value = n['Endereco'] || '';
   document.getElementById('im-bairro').value = n['Bairro'] || '';
   document.getElementById('im-cidade').value = n['Cidade'] || '';
@@ -24400,6 +24550,7 @@ window.imovSalvar = function () {
     'Finalidade': document.getElementById('im-finalidade').value,
     'Status': document.getElementById('im-status').value,
     'Tipo Imovel': document.getElementById('im-tipoImovel').value,
+    'Categoria': document.getElementById('im-categoria').value,
     'Endereco': endereco,
     'Bairro': bairro,
     'Cidade': cidade,
