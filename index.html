@@ -4761,7 +4761,7 @@ window.carregarRascunhos = async function(){
   try{
     var cfg = getConfig();
     if(!cfg||!cfg.apiKey||!cfg.sheetId){window.rascunhosCache=[];return;}
-    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('TAREFAS_RASCUNHOS!A1:O500')+'?key='+cfg.apiKey);
+    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+cfg.sheetId+'/values/'+encodeURIComponent('TAREFAS_RASCUNHOS!A1:Z500')+'?key='+cfg.apiKey);
     if(!r.ok){window.rascunhosCache=[];return;}
     var d = await r.json();
     var rows = d.values || [];
@@ -4945,6 +4945,7 @@ window.tarefasWidgetsAtualizar=function(){
           +'<div style="white-space:nowrap">'
           +btnConverter
           +'<button class="loc-btn-edit" onclick="tarefaEditar_(\''+escHtml(r['ID'])+'\')" title="Editar">✎</button> '
+          +(r['Email']?'<button class="loc-btn-edit" onclick="tarefaEmailAbrir(\''+escHtml(r['ID'])+'\')" title="Enviar e-mail">✉️</button> ':'')
           +(btnConverter?'':'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Concluída\')" title="Concluir">✓</button>')
           +'</div></div>';
       }).join('')
@@ -5029,9 +5030,10 @@ function rascunhosRender(){
       +'</div>'
       +(quemNesse?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+escHtml(quemNesse)+'</div>':'')
       +(r['Telefone']||r['Email']?'<div style="font-size:11.5px;color:var(--muted)">'+[escHtml(r['Telefone']||''),escHtml(r['Email']||'')].filter(Boolean).join(' · ')+'</div>':'')
-      +(r['Data Follow-up']?'<div style="font-size:11.5px;color:'+(atrasado?'var(--red)':'var(--muted)')+';margin-top:2px">Follow-up: '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</div>':'')
+      +(r['Data Follow-up']?'<div style="font-size:11.5px;color:'+(atrasado?'var(--red)':'var(--muted)')+';margin-top:2px">Follow-up: '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+(r['Calendar Event ID']?' · 📅 na Agenda':'')+'</div>':'')
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
       +'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="rascunhoAbrirForm(\''+escHtml(r['ID'])+'\')">✎ Editar</button>'
+      +(r['Email']?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="tarefaEmailAbrir(\''+escHtml(r['ID'])+'\')">✉️ E-mail</button>':'')
       +(r['Tipo']==='Atendimento Jurídico'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')">→ Converter em Processo</button>':'')
       +(r['Tipo']==='Negociação de Locação'&&podeConverter?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoConverterLocacao(\''+escHtml(r['ID'])+'\')">→ Converter em Contrato</button>':'')
       +(status==='Em andamento'&&r['Tipo']!=='Atendimento Jurídico'&&r['Tipo']!=='Negociação de Locação'?'<button class="loc-btn" style="padding:4px 10px;font-size:11.5px;color:var(--green);border-color:var(--green)" onclick="rascunhoMudarStatus(\''+escHtml(r['ID'])+'\',\'Concluída\')">✓ Concluir</button>':'')
@@ -5082,6 +5084,47 @@ window.rascunhoConverterLocacao=function(id){
     },200);
   },200);
   rascunhoMudarStatus(id,'Convertido');
+};
+
+// ---------- E-MAIL A PARTIR DE UMA TAREFA (30/ago/2026) ----------
+// Modal simples de composição (#modalTarefaEmail) — pré-preenche Para/Assunto a partir da
+// tarefa e envia via backend (acao=enviar_email_tarefa, usa MailApp — mesmo serviço já usado
+// nos alertas de prazo automáticos, sem escopo novo). O envio fica registrado nas Notas da
+// própria tarefa (ver Código.gs) pra ficar um rastro do contato.
+window.tarefaEmailAbrir=function(id){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(!r)return;
+  document.getElementById('tarefaEmail-id').value=r['ID'];
+  document.getElementById('tarefaEmail-para').value=r['Email']||'';
+  document.getElementById('tarefaEmail-assunto').value=r['Titulo']||'Eixo';
+  document.getElementById('tarefaEmail-mensagem').value='';
+  document.getElementById('modalTarefaEmail').classList.add('open');
+};
+window.tarefaEmailEnviar=async function(){
+  var id=document.getElementById('tarefaEmail-id').value;
+  var para=document.getElementById('tarefaEmail-para').value.trim();
+  var assunto=document.getElementById('tarefaEmail-assunto').value.trim();
+  var mensagem=document.getElementById('tarefaEmail-mensagem').value;
+  if(!para||para.indexOf('@')<0){alert('Informe um e-mail válido.');return;}
+  if(!mensagem.trim()){alert('Escreva a mensagem.');return;}
+  var btn=document.getElementById('tarefaEmail-btnEnviar');
+  if(btn.disabled)return;
+  btn.disabled=true;btn.textContent='Enviando...';
+  try{
+    var resp=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'enviar_email_tarefa',tarefaId:id,para:para,assunto:assunto,mensagem:mensagem})});
+    var d=await resp.json();
+    if(d&&d.ok){
+      alert('E-mail enviado.');
+      document.getElementById('modalTarefaEmail').classList.remove('open');
+      if(typeof window.carregarRascunhos==='function')window.carregarRascunhos();
+    }else{
+      alert('Não foi possível enviar: '+(d&&d.error?d.error:'erro desconhecido'));
+    }
+  }catch(eEnvio){
+    alert('Não foi possível enviar o e-mail agora. Tente novamente.');
+  }finally{
+    btn.disabled=false;btn.textContent='Enviar';
+  }
 };
 
 window.notasAbrir=function(){
@@ -15664,6 +15707,30 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- MODAL E-MAIL A PARTIR DE UMA TAREFA (30/ago/2026) — composição simples, envia via
+     MailApp no backend (acao=enviar_email_tarefa). O envio fica registrado nas Notas
+     da própria tarefa, pra manter um histórico de contato. -->
+<div class="modal-repasse-overlay" id="modalTarefaEmail">
+  <div class="repasse-wrap" style="max-width:520px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">✉️ Enviar E-mail</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalTarefaEmail').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:16px 20px 20px">
+      <input type="hidden" id="tarefaEmail-id">
+      <div class="loc-cform" style="padding:0;border:none;background:none">
+        <div class="loc-cfield full"><label>Para</label><input class="loc-cinput" id="tarefaEmail-para" type="email" placeholder="cliente@exemplo.com"></div>
+        <div class="loc-cfield full"><label>Assunto</label><input class="loc-cinput" id="tarefaEmail-assunto"></div>
+        <div class="loc-cfield full"><label>Mensagem</label><textarea class="loc-cinput" id="tarefaEmail-mensagem" rows="7" style="resize:vertical" placeholder="Escreva a mensagem..."></textarea></div>
+        <div class="loc-cfield full" style="display:flex;gap:8px">
+          <button type="button" class="loc-btn primary" id="tarefaEmail-btnEnviar" onclick="tarefaEmailEnviar()" style="flex:1">Enviar</button>
+          <button type="button" class="loc-btn" onclick="document.getElementById('modalTarefaEmail').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL NOTAS RÁPIDAS (estilo Keep Note, para anotar lembretes antes de lançar no sistema) -->
 <div class="modal-repasse-overlay" id="modalNotas">
   <div class="repasse-wrap" style="max-width:520px">
@@ -21615,6 +21682,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '30/ago/2026 (2)', itens: [
+      'Tarefas agora sincronizam com o Google Agenda: toda tarefa com follow-up marcado ganha um evento automático na Agenda (mão única — editar no Eixo atualiza a Agenda, mas não o contrário).',
+      'Novo botão "✉️ E-mail" em qualquer tarefa com e-mail preenchido — envia direto pelo sistema, com o histórico registrado na própria tarefa.',
+      'Marcar um e-mail no Gmail com o rótulo "Eixo/Nova Tarefa" agora cria uma Tarefa sozinho no sistema (varredura automática a cada 15 min).'
+    ]},
     { data: '30/ago/2026', itens: [
       'Novo em Imóveis Disponíveis: filtros de Tipo de busca (Compra/Locação), Tipo de imóvel, Categoria (Residencial/Comercial) e Bairro na lista, com botão "✕ Limpar filtros". Novo campo "Categoria" no cadastro do imóvel.',
       'Novo no atendimento de cliente interessado: seção "O que o cliente está procurando" (Tipo de busca, Categoria, Tipo de imóvel, Bairro de interesse) — botão "🔍" na linha do atendimento já abre a lista de Imóveis Disponíveis filtrada com esse perfil, pra achar rápido outras opções compatíveis.',
@@ -22163,6 +22235,12 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Nos outros módulos, "+ Nova tarefa" abre o mesmo formulário (Título, Notas, data de follow-up) sem opção de conversão — é só um lembrete. Marque "✓ Concluir" quando resolver, ou "Descartar" se não precisa mais. Em <strong>Imóveis Disponíveis</strong> há dois botões: "+ Nova tarefa" (acompanhamento geral do módulo) e "+ Atendimento de compra" (Tipo "Atendimento de Compra de Imóveis" — pra acompanhar especificamente um pretendente à compra, simétrico às tarefas de locação).</div>'
       +MH+'Follow-up automático</div>'
       +MP+'Marque uma data de follow-up (quando precisa voltar a olhar aquilo) — se a data passar e a tarefa ainda estiver "Em andamento", vira "Atrasado" sozinha (vermelho), sem precisar de nenhuma ação manual. Aparece um alerta na tela inicial.</div>'
+      +MH+'Sincronização com o Google Agenda</div>'
+      +MP+'Toda tarefa com Data de Follow-up e Status "Em andamento" ganha automaticamente um evento de dia inteiro no seu Google Agenda (mesma conta usada pelo sistema) — "📅 na Agenda" aparece ao lado da data de follow-up quando isso já aconteceu. É mão única: o Eixo cria/atualiza/remove o evento sozinho conforme você edita a tarefa, mas editar o evento direto no Google Agenda não muda nada na tarefa — a tarefa continua sendo a fonte de verdade. Concluir, descartar ou apagar a tarefa remove o evento correspondente da Agenda.</div>'
+      +MH+'Enviar e-mail direto de uma tarefa</div>'
+      +MP+'Toda tarefa com e-mail preenchido ganha um botão "✉️ E-mail" — abre uma janela simples de composição (Para/Assunto/Mensagem, já vem com o e-mail e o título da tarefa preenchidos) e envia direto pelo sistema. O envio fica registrado nas Notas da própria tarefa, com data e destinatário, pra manter um histórico de contato.</div>'
+      +MH+'Criar tarefa a partir de um e-mail (Gmail)</div>'
+      +MP+'Marque um e-mail no Gmail com o rótulo <strong>"Eixo/Nova Tarefa"</strong> (crie o rótulo se ainda não existir) e o sistema cria uma Tarefa sozinho a partir dele — assunto, remetente e um trecho do corpo do e-mail vão para a tarefa (Tipo "Geral", pra você reclassificar no módulo certo), e o rótulo do e-mail muda para "Eixo/Tarefa Criada" (não processa de novo). Isso roda sozinho a cada 15 minutos, sem precisar abrir o painel.</div>'
       +MH+'Visão geral</div>'
       +MP+'O menu do usuário (avatar, canto superior direito) tem um atalho "🗒️ Tarefas" que abre a lista completa, de todos os módulos juntos — útil pra uma revisão geral do dia, mas o uso do dia a dia é mesmo dentro de cada módulo.</div>',
 
