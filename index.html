@@ -20478,7 +20478,10 @@ window.cpRenderFixas=cpRenderFixas;
     var tb=document.getElementById('locContratosTbody');
     var listaOrdenada=DATA.contratos.slice().sort(function(a,b){return String(a.locador||'').localeCompare(String(b.locador||''),'pt-BR',{sensitivity:'base'});});
     tb.innerHTML=listaOrdenada.map(function(c){
-      return '<tr>'+
+      var sinAbertoC=sinAbertoDoContrato_(c.contrato);
+      var sinComNumeroC=!!(sinAbertoC&&sinAbertoC['Numero Sinistro']);
+      var btnSinC='<button class="loc-btn-edit'+(sinAbertoC?' loc-send-btn-sinistro':'')+'" title="'+(sinAbertoC?'Sinistro em aberto'+(sinComNumeroC?' — nº '+E(sinAbertoC['Numero Sinistro']):' — aguardando nº da seguradora'):'Registrar sinistro/inadimplência (garantia locatícia)')+'" onclick="abrirSinistro(\''+E(c.contrato)+'\')">🚨 sinistro</button> ';
+      return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':'')+'>'+
         '<td class="loc-num">'+E(c.contrato)+'</td>'+
         '<td>'+E(c.locador||'-')+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
@@ -20486,7 +20489,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
-        '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
+        '<td style="white-space:nowrap">'+btnSinC+'<button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
   }
