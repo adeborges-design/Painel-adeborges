@@ -4827,7 +4827,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
     +'<div class="loc-cfield"><label>Módulo / Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico (Processos)','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Atendimento de Compra de Imóveis','Imóveis Disponíveis','Geral'].map(function(t){
+    +['Atendimento Jurídico (Processos)','Follow-up de Processo','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Atendimento de Compra de Imóveis','Imóveis Disponíveis','Geral'].map(function(t){
       var valorReal=t.split(' (')[0];
       var marcado=d['Tipo']===valorReal||(!d['Tipo']&&t==='Geral')||(d['Tipo']==='Outro'&&t==='Geral');
       return '<option value="'+valorReal+'"'+(marcado?' selected':'')+'>'+t+'</option>';
@@ -4839,6 +4839,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cfield full" id="rasc-campo-nome"><label>Nome</label><input class="loc-cinput" id="rasc-nome" value="'+(d['Nome']?escHtml(d['Nome']):'')+'" placeholder="Nome do cliente/contato"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locador"><label>Locador (se já tiver)</label><input class="loc-cinput" id="rasc-locador" value="'+(d['Locador']?escHtml(d['Locador']):'')+'" placeholder="Dono do imóvel"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locatario"><label>Locatário (se já tiver)</label><input class="loc-cinput" id="rasc-locatario" value="'+(d['Locatario']?escHtml(d['Locatario']):'')+'" placeholder="Quem vai alugar"></div>'
+    +'<div class="loc-cfield" id="rasc-campo-nrprocesso" style="display:none"><label>Nº do Processo vinculado</label><input class="loc-cinput" id="rasc-nrprocesso" value="'+(d['Nr Processo']?escHtml(d['Nr Processo']):'')+'" placeholder="Ex.: 1000000-00.2026.8.26.0000"></div>'
     +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="rasc-telefone" maxlength="15" oninput="mascararTelefone(this)" value="'+(d['Telefone']?escHtml(d['Telefone']):'')+'"></div>'
     +'<div class="loc-cfield"><label>E-mail</label><input class="loc-cinput" id="rasc-email" value="'+(d['Email']?escHtml(d['Email']):'')+'"></div>'
     +'<div class="loc-cfield full"><label>Endereço</label><input class="loc-cinput" id="rasc-endereco" value="'+(d['Endereco']?escHtml(d['Endereco']):'')+'"></div>'
@@ -4858,6 +4859,8 @@ window.rascToggleCampos=function(){
   document.getElementById('rasc-campo-nome').style.display=ehLocacao?'none':'';
   document.getElementById('rasc-campo-locador').style.display=ehLocacao?'':'none';
   document.getElementById('rasc-campo-locatario').style.display=ehLocacao?'':'none';
+  var elProc=document.getElementById('rasc-campo-nrprocesso');
+  if(elProc)elProc.style.display=(tipo==='Follow-up de Processo')?'':'none';
 };
 
 // ---------- TAREFAS POR MÓDULO (widget compacto embaixo de cada tela) ----------
@@ -4865,7 +4868,8 @@ window.rascToggleCampos=function(){
 // 'Outro' é valor legado (antes de existir a lista completa de módulos); trata como 'geral'.
 function tarTipoParaModulo_(tipo){
   switch(tipo){
-    case 'Atendimento Jurídico': return 'processos';
+    case 'Atendimento Jurídico':
+    case 'Follow-up de Processo': return 'processos';
     case 'Negociação de Locação':
     case 'Acompanhamento de Locação': return 'locacoes';
     case 'Cobrança de Acordo': return 'acordos';
@@ -4933,7 +4937,7 @@ window.tarefasWidgetsAtualizar=function(){
     el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2);max-height:220px;overflow-y:auto">'+head
       +lista.map(function(r){
         var atrasado=rascFollowUpAtrasado(r);
-        var quem=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Nome']||'');
+        var quem=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Tipo']==='Follow-up de Processo'?[r['Nome'],r['Nr Processo']?('Proc. '+r['Nr Processo']):''].filter(Boolean).join(' — '):(r['Nome']||''));
         var btnConverter=r['Tipo']==='Atendimento Jurídico'
           ?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')" title="Converter em Processo">→ Processo</button> '
           :r['Tipo']==='Negociação de Locação'
@@ -4952,6 +4956,115 @@ window.tarefasWidgetsAtualizar=function(){
       +'</div>';
   });
 };
+
+// ---------- FOLLOW-UPS DE UM PROCESSO ESPECÍFICO (31/ago/2026) ----------
+// Reaproveita 100% a infraestrutura de Tarefas (aba TAREFAS_RASCUNHOS, backend, sincronização
+// com o Google Agenda) — só filtra pelo campo "Nr Processo" e usa o Tipo dedicado "Follow-up
+// de Processo". Nenhuma tabela nova, nenhum endpoint novo (mesmo princípio da regra permanente
+// nº10 do resumo do projeto). Botão "Follow-up" em cada linha de Processos abre este drawer.
+function fpEnsureModal_(){
+  if(document.getElementById('fpModalOverlay'))return;
+  var ov=document.createElement('div');
+  ov.id='fpModalOverlay';
+  ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+  ov.innerHTML='<div id="fpModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:640px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+  ov.addEventListener('click',function(e){if(e.target===ov)window.fpFechar();});
+  document.body.appendChild(ov);
+}
+window.fpFechar=function(){var ov=document.getElementById('fpModalOverlay');if(ov)ov.style.display='none';};
+window.abrirFollowupsProcesso=function(uid){
+  var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
+  fpEnsureModal_();
+  document.getElementById('fpModalOverlay').style.display='flex';
+  fpRenderModal_(uid);
+};
+function fpItens_(p){
+  var pk=String(p.processo||'').trim().toLowerCase();
+  return (window.rascunhosCache||[]).filter(function(r){
+    return r['Tipo']==='Follow-up de Processo' && String(r['Nr Processo']||'').trim().toLowerCase()===pk && pk;
+  }).sort(function(a,b){
+    var A=rascFollowUpAtrasado(a)?0:1,B=rascFollowUpAtrasado(b)?0:1;
+    if(A!==B)return A-B;
+    return String(b['ID']).localeCompare(String(a['ID']));
+  });
+}
+window.fpFormAbrir_=function(uid,id){
+  var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
+  var r=id?(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);}):null;
+  var host=document.getElementById('fpFormHost');if(!host)return;
+  host.style.display='block';
+  host.innerHTML='<input type="hidden" id="fp-id" value="'+(r?escHtml(r['ID']):'')+'">'
+    +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+    +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="fp-titulo" value="'+(r&&r['Titulo']?escHtml(r['Titulo']):'')+'" placeholder="Ex.: Cobrar documento do cliente"></div>'
+    +'<div class="loc-cfield"><label>Follow-up em</label><input class="loc-cinput" id="fp-followup" type="date" value="'+(r&&r['Data Follow-up']?accIsoFromBR(r['Data Follow-up']):'')+'"></div>'
+    +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="fp-status">'
+    +['Em andamento','Concluída','Descartado'].map(function(s){return '<option'+((r?r['Status']===s:s==='Em andamento')?' selected':'')+'>'+s+'</option>';}).join('')
+    +'</select></div>'
+    +'<div class="loc-cfield full"><label>Notas</label><textarea class="loc-cinput" id="fp-notas" rows="4" style="resize:vertical">'+(r&&r['Notas']?escHtml(r['Notas']):'')+'</textarea></div>'
+    +'<div class="loc-cfield full" style="display:flex;gap:8px">'
+    +'<button type="button" class="loc-btn primary" onclick="fpSalvar_(\''+uid+'\')" style="flex:1">'+(r?'Salvar alterações':'Criar follow-up')+'</button>'
+    +'<button type="button" class="loc-btn" onclick="document.getElementById(\'fpFormHost\').style.display=\'none\'">Cancelar</button>'
+    +'</div></div>';
+};
+window.fpSalvar_=async function(uid){
+  var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
+  var id=document.getElementById('fp-id').value;
+  var titulo=document.getElementById('fp-titulo').value.trim();
+  if(!titulo){alert('Preencha o título.');return;}
+  var agora=new Date().toLocaleDateString('pt-BR');
+  var campos={
+    'Tipo':'Follow-up de Processo','Titulo':titulo,'Nome':p.nome||'',
+    'Status':document.getElementById('fp-status').value,
+    'Data Follow-up':accDtBRfromInput(document.getElementById('fp-followup').value),
+    'Notas':document.getElementById('fp-notas').value,
+    'Nr Processo':p.processo||'','Data Atualizacao':agora
+  };
+  if(id){
+    var existente=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+    if(existente)Object.assign(existente,campos);
+    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:campos})}).catch(function(){});
+  }else{
+    campos['Data Criacao']=agora;
+    await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_rascunhos',campos:campos})})
+      .then(function(r){return r.json();}).catch(function(){});
+  }
+  document.getElementById('fpFormHost').style.display='none';
+  setTimeout(async function(){await carregarRascunhos();fpRenderModal_(uid);},1200);
+};
+window.fpConcluir_=async function(id,uid){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});if(r)r['Status']='Concluída';
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:{'Status':'Concluída','Data Atualizacao':new Date().toLocaleDateString('pt-BR')}})}).catch(function(){});
+  setTimeout(async function(){await carregarRascunhos();fpRenderModal_(uid);},1200);
+};
+window.fpExcluir_=async function(id,uid){
+  if(!confirm('Excluir este follow-up?'))return;
+  await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_rascunhos',id:id})}).catch(function(){});
+  setTimeout(async function(){await carregarRascunhos();fpRenderModal_(uid);},1200);
+};
+function fpRenderModal_(uid){
+  var wrap=document.getElementById('fpModalWrap');if(!wrap)return;
+  var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
+  var itens=fpItens_(p);
+  wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:16px;font-weight:700">🗒️ Follow-ups — '+escHtml(p.nome||'')+(p.processo?' <span style="color:var(--muted);font-weight:400;font-size:13px">(Proc. '+escHtml(p.processo)+')</span>':'')+'</div>'
+    +'<button class="cp-btn" onclick="fpFechar()">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada follow-up com data marcada aparece também no seu Google Agenda automaticamente.</div>'
+    +'<button type="button" class="loc-btn" style="margin-bottom:10px" onclick="fpFormAbrir_(\''+uid+'\')">➕ Novo follow-up</button>'
+    +'<div id="fpFormHost" style="display:none;margin-bottom:10px"></div>'
+    +(itens.length?itens.map(function(r){
+      var atrasado=rascFollowUpAtrasado(r);
+      var cor=tarStatusCor_(r['Status'],atrasado);
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
+        +'<div style="font-size:12.5px"><strong>'+escHtml(r['Titulo']||'-')+'</strong> <span style="color:'+cor+'">· '+escHtml(r['Status']||'')+'</span>'
+        +(r['Data Follow-up']?' <span style="color:'+(atrasado?'var(--red)':'var(--muted)')+'">· follow-up '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</span>':'')+'</div>'
+        +'<div style="white-space:nowrap">'
+        +'<button class="loc-btn-edit" onclick="fpFormAbrir_(\''+uid+'\',\''+escHtml(r['ID'])+'\')" title="Editar">✎</button> '
+        +(r['Status']==='Em andamento'?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="fpConcluir_(\''+escHtml(r['ID'])+'\',\''+uid+'\')" title="Concluir">✓</button> ':'')
+        +'<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="fpExcluir_(\''+escHtml(r['ID'])+'\',\''+uid+'\')" title="Excluir">🗑️</button>'
+        +'</div></div>';
+    }).join(''):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhum follow-up cadastrado para este processo ainda.</div>');
+}
+
 window.rascunhoSalvar=async function(){
   var id=document.getElementById('rasc-id').value;
   var titulo=document.getElementById('rasc-titulo').value.trim();
@@ -4970,6 +5083,7 @@ window.rascunhoSalvar=async function(){
     'Notas':document.getElementById('rasc-notas').value,
     'Status':document.getElementById('rasc-status').value,
     'Data Follow-up':accDtBRfromInput(document.getElementById('rasc-followup').value),
+    'Nr Processo':(document.getElementById('rasc-nrprocesso')||{}).value?document.getElementById('rasc-nrprocesso').value.trim():'',
     'Data Atualizacao':agora
   };
   if(id){
@@ -6164,6 +6278,12 @@ function renderCard(p, idx) {
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
               </svg>
               Atendimentos
+            </button>
+            <button class="btn-action" style="background:rgba(200,169,110,0.12);border-color:rgba(200,169,110,0.35);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirFollowupsProcesso(this.dataset.uid)" title="Follow-ups deste processo — cria lembretes que sincronizam com o Google Agenda">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Follow-up
             </button>
             ${p.processo && p.sistema === 'ESAJ' ? `
             <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank">
@@ -21682,6 +21802,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '31/ago/2026', itens: [
+      'Novo em Processos: botão "⏱ Follow-up" em cada processo já cadastrado abre uma lista de lembretes ligados especificamente àquele processo (cobrar documento, retornar contato, etc.) — cada um com data que vira "Atrasado" sozinha e sincroniza com o Google Agenda, igual às Tarefas normais.'
+    ]},
     { data: '30/ago/2026 (2)', itens: [
       'Tarefas agora sincronizam com o Google Agenda: toda tarefa com follow-up marcado ganha um evento automático na Agenda (mão única — editar no Eixo atualiza a Agenda, mas não o contrário).',
       'Novo botão "✉️ E-mail" em qualquer tarefa com e-mail preenchido — envia direto pelo sistema, com o histórico registrado na própria tarefa.',
@@ -22123,7 +22246,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Botão verde "Link do cliente" (🔗) no card do processo gera um link somente-leitura, sem senha, para o próprio cliente acompanhar sozinho: status, próximo passo, providência pendente, data de audiência e última atualização. <strong>Nunca</strong> mostra CPF, endereço ou valores — só o essencial pra ele saber como o caso está. "Gerar novo link" invalida o anterior (o link antigo para de funcionar na hora); "Revogar acesso" desliga o acesso completamente. Cada processo tem um link independente, então revogar um não afeta os outros.</div>'
       +MIMG('03_processo_link_cliente.png','Botão verde "Link do cliente" gera o link somente-leitura para o cliente acompanhar o processo.')
       +MH+'Tarefas e pré-cadastro rápido</div>'
-      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. O botão "+ Pré-cadastro rápido (vira Processo)" anota um atendimento jurídico em andamento (nome, telefone, notas, follow-up) antes de virar processo oficial — quando fechar, "→ Processo" na própria tarefa abre o cadastro completo já preenchido.</div>',
+      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. O botão "+ Pré-cadastro rápido (vira Processo)" anota um atendimento jurídico em andamento (nome, telefone, notas, follow-up) antes de virar processo oficial — quando fechar, "→ Processo" na própria tarefa abre o cadastro completo já preenchido.</div>'
+      +MH+'Follow-up de um processo já cadastrado</div>'
+      +MP+'Diferente do pré-cadastro acima (que é antes de existir o processo), o botão "⏱ Follow-up" no card de um processo já cadastrado abre uma lista de lembretes ligados especificamente àquele processo — "cobrar documento em 10 dias", "retornar contato após audiência", etc. Cada follow-up com data marcada aparece automaticamente no seu Google Agenda (mesma sincronização das Tarefas — ver seção "Tarefas" do manual). Marque como concluído, edite ou exclua a qualquer momento; os follow-ups também aparecem, resumidos, na caixinha "🗒️ Tarefas" no topo da tela.</div>',
 
     honorarios: MH+'Lançamento de contrato de honorários</div>'
       +MP+'Vincula o contrato de honorários a um processo/cliente já cadastrado. Aceita contrato Único ou Parcelado (com entrada + parcelas), e permite repasse a um advogado parceiro (com percentual). O botão "Novo Lançamento" fica recolhido por padrão — o formulário só aparece quando você clica nele, pra manter a lista de contratos limpa.</div>'
@@ -22241,6 +22366,8 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Toda tarefa com e-mail preenchido ganha um botão "✉️ E-mail" — abre uma janela simples de composição (Para/Assunto/Mensagem, já vem com o e-mail e o título da tarefa preenchidos) e envia direto pelo sistema. O envio fica registrado nas Notas da própria tarefa, com data e destinatário, pra manter um histórico de contato.</div>'
       +MH+'Criar tarefa a partir de um e-mail (Gmail)</div>'
       +MP+'Marque um e-mail no Gmail com o rótulo <strong>"Eixo/Nova Tarefa"</strong> (crie o rótulo se ainda não existir) e o sistema cria uma Tarefa sozinho a partir dele — assunto, remetente e um trecho do corpo do e-mail vão para a tarefa (Tipo "Geral", pra você reclassificar no módulo certo), e o rótulo do e-mail muda para "Eixo/Tarefa Criada" (não processa de novo). Isso roda sozinho a cada 15 minutos, sem precisar abrir o painel.</div>'
+      +MH+'Follow-up de um processo já cadastrado</div>'
+      +MP+'Tipo "Follow-up de Processo" (usado internamente pelo botão "⏱ Follow-up" de cada processo, em Processos) liga a tarefa a um número de processo específico, diferente do "Atendimento Jurídico" (que ainda não é um processo formal). Não costuma ser preciso criar esse Tipo por aqui — o jeito normal é abrir o próprio processo e usar o botão "⏱ Follow-up" ali.</div>'
       +MH+'Visão geral</div>'
       +MP+'O menu do usuário (avatar, canto superior direito) tem um atalho "🗒️ Tarefas" que abre a lista completa, de todos os módulos juntos — útil pra uma revisão geral do dia, mas o uso do dia a dia é mesmo dentro de cada módulo.</div>',
 
