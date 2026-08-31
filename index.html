@@ -4781,6 +4781,9 @@ function rascFollowUpAtrasado(r){
   var ms=rascParseDataBR(r['Data Follow-up']);
   return ms!=null&&ms<rascHojeMs();
 }
+// Exposta em window (31/ago/2026) pra ser reaproveitada pelo drawer de Sinistro/Seguro Fiança,
+// que mora no bloco de script de Locações (escopo diferente deste bloco de Tarefas).
+window.rascFollowUpAtrasado = rascFollowUpAtrasado;
 function atualizarBadgeRascunhos(){
   var lista=window.rascunhosCache||[];
   var andamento=lista.filter(function(r){return r['Status']==='Em andamento';});
@@ -4827,7 +4830,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="rasc-titulo" value="'+(d['Titulo']?escHtml(d['Titulo']):'')+'" placeholder="Ex.: Cobrança — João Pedro"></div>'
     +'<div class="loc-cfield"><label>Módulo / Tipo</label><select class="loc-cinput" id="rasc-tipo" onchange="rascToggleCampos()">'
-    +['Atendimento Jurídico (Processos)','Follow-up de Processo','Negociação de Locação (Locações)','Acompanhamento de Locação','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Atendimento de Compra de Imóveis','Imóveis Disponíveis','Geral'].map(function(t){
+    +['Atendimento Jurídico (Processos)','Follow-up de Processo','Negociação de Locação (Locações)','Acompanhamento de Locação','Sinistro Seguro Fiança','Cobrança de Acordo (Acordos)','Honorários','Contas a Pagar','Comissões Imobiliárias','Atendimento de Compra de Imóveis','Imóveis Disponíveis','Geral'].map(function(t){
       var valorReal=t.split(' (')[0];
       var marcado=d['Tipo']===valorReal||(!d['Tipo']&&t==='Geral')||(d['Tipo']==='Outro'&&t==='Geral');
       return '<option value="'+valorReal+'"'+(marcado?' selected':'')+'>'+t+'</option>';
@@ -4840,6 +4843,7 @@ window.rascunhoAbrirForm=function(id,seed){
     +'<div class="loc-cfield" id="rasc-campo-locador"><label>Locador (se já tiver)</label><input class="loc-cinput" id="rasc-locador" value="'+(d['Locador']?escHtml(d['Locador']):'')+'" placeholder="Dono do imóvel"></div>'
     +'<div class="loc-cfield" id="rasc-campo-locatario"><label>Locatário (se já tiver)</label><input class="loc-cinput" id="rasc-locatario" value="'+(d['Locatario']?escHtml(d['Locatario']):'')+'" placeholder="Quem vai alugar"></div>'
     +'<div class="loc-cfield" id="rasc-campo-nrprocesso" style="display:none"><label>Nº do Processo vinculado</label><input class="loc-cinput" id="rasc-nrprocesso" value="'+(d['Nr Processo']?escHtml(d['Nr Processo']):'')+'" placeholder="Ex.: 1000000-00.2026.8.26.0000"></div>'
+    +'<div class="loc-cfield" id="rasc-campo-sinistroid" style="display:none"><label>ID do Sinistro vinculado</label><input class="loc-cinput" id="rasc-sinistroid" value="'+(d['Sinistro ID']?escHtml(d['Sinistro ID']):'')+'" placeholder="Preenchido automaticamente ao criar pelo botão Sinistro em Locações"></div>'
     +'<div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="rasc-telefone" maxlength="15" oninput="mascararTelefone(this)" value="'+(d['Telefone']?escHtml(d['Telefone']):'')+'"></div>'
     +'<div class="loc-cfield"><label>E-mail</label><input class="loc-cinput" id="rasc-email" value="'+(d['Email']?escHtml(d['Email']):'')+'"></div>'
     +'<div class="loc-cfield full"><label>Endereço</label><input class="loc-cinput" id="rasc-endereco" value="'+(d['Endereco']?escHtml(d['Endereco']):'')+'"></div>'
@@ -4861,6 +4865,8 @@ window.rascToggleCampos=function(){
   document.getElementById('rasc-campo-locatario').style.display=ehLocacao?'':'none';
   var elProc=document.getElementById('rasc-campo-nrprocesso');
   if(elProc)elProc.style.display=(tipo==='Follow-up de Processo')?'':'none';
+  var elSin=document.getElementById('rasc-campo-sinistroid');
+  if(elSin)elSin.style.display=(tipo==='Sinistro Seguro Fiança')?'':'none';
 };
 
 // ---------- TAREFAS POR MÓDULO (widget compacto embaixo de cada tela) ----------
@@ -4871,7 +4877,8 @@ function tarTipoParaModulo_(tipo){
     case 'Atendimento Jurídico':
     case 'Follow-up de Processo': return 'processos';
     case 'Negociação de Locação':
-    case 'Acompanhamento de Locação': return 'locacoes';
+    case 'Acompanhamento de Locação':
+    case 'Sinistro Seguro Fiança': return 'locacoes';
     case 'Cobrança de Acordo': return 'acordos';
     case 'Honorários': return 'honorarios';
     case 'Contas a Pagar': return 'contas';
@@ -4911,6 +4918,7 @@ function tarStatusCor_(status,atrasado){
   if(atrasado)return 'var(--red)';
   return 'var(--orange)';
 }
+window.tarStatusCor_ = tarStatusCor_;
 // Redesenha TODOS os widgets de módulo já montados na tela (checa se o container existe antes —
 // como as telas ficam sempre no DOM, isso atualiza até as que não estão visíveis no momento,
 // então quando o usuário abrir aquele módulo os dados já estão prontos).
@@ -4937,7 +4945,7 @@ window.tarefasWidgetsAtualizar=function(){
     el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2);max-height:220px;overflow-y:auto">'+head
       +lista.map(function(r){
         var atrasado=rascFollowUpAtrasado(r);
-        var quem=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Tipo']==='Follow-up de Processo'?[r['Nome'],r['Nr Processo']?('Proc. '+r['Nr Processo']):''].filter(Boolean).join(' — '):(r['Nome']||''));
+        var quem=(r['Tipo']==='Negociação de Locação'||r['Tipo']==='Acompanhamento de Locação')?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Tipo']==='Follow-up de Processo'?[r['Nome'],r['Nr Processo']?('Proc. '+r['Nr Processo']):''].filter(Boolean).join(' — '):(r['Tipo']==='Sinistro Seguro Fiança'?[r['Locador'],r['Locatario']].filter(Boolean).join(' / '):(r['Nome']||'')));
         var btnConverter=r['Tipo']==='Atendimento Jurídico'
           ?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="rascunhoConverterProcesso(\''+escHtml(r['ID'])+'\')" title="Converter em Processo">→ Processo</button> '
           :r['Tipo']==='Negociação de Locação'
@@ -5084,6 +5092,7 @@ window.rascunhoSalvar=async function(){
     'Status':document.getElementById('rasc-status').value,
     'Data Follow-up':accDtBRfromInput(document.getElementById('rasc-followup').value),
     'Nr Processo':(document.getElementById('rasc-nrprocesso')||{}).value?document.getElementById('rasc-nrprocesso').value.trim():'',
+    'Sinistro ID':(document.getElementById('rasc-sinistroid')||{}).value?document.getElementById('rasc-sinistroid').value.trim():'',
     'Data Atualizacao':agora
   };
   if(id){
@@ -14509,6 +14518,14 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-money{font-family:'DM Mono',monospace;text-align:right;white-space:nowrap}
   .loc-send-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;width:30px;height:30px;font-size:14px;cursor:pointer;line-height:1}
   .loc-send-btn:hover{background:var(--border)}
+  /* Sinistro/Seguro Fiança (31/ago/2026) — botão fica vermelho assim que há um sinistro em
+     aberto (mesmo sem número ainda); a linha inteira pisca (fundo + borda) assim que o Nº do
+     Sinistro é preenchido — alerta bem chamativo, pedido explícito do usuário. */
+  .loc-send-btn-sinistro{background:rgba(224,84,84,0.16);border-color:var(--red);color:var(--red)}
+  .loc-send-btn-sinistro:hover{background:rgba(224,84,84,0.28)}
+  @keyframes locSinistroPing{0%,100%{background:rgba(224,84,84,0.14)}50%{background:rgba(224,84,84,0.32)}}
+  tr.loc-row-sinistro{animation:locSinistroPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--red)}
+  tr.loc-row-sinistro td{position:relative}
   .loc-money.rep{color:var(--accent2)}
   .loc-row-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
   .loc-row-date{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 6px;border-radius:6px;font-size:11px;outline:none;font-family:'DM Mono',monospace}
@@ -17048,6 +17065,8 @@ window.cpRenderFixas=cpRenderFixas;
       var r2=await fetch(base+encodeURIComponent('LOC_LANCAMENTOS!A1:AZ3000')+k);
       var r3=await fetch(base+encodeURIComponent('LOC_COPROPRIETARIOS!A1:J500')+k).catch(function(){return null;});
       var r4=await fetch(base+encodeURIComponent('LOC_COLOCATARIOS!A1:J500')+k).catch(function(){return null;});
+      var r5=await fetch(base+encodeURIComponent('LOC_SINISTROS!A1:R500')+k).catch(function(){return null;});
+      var r6=await fetch(base+encodeURIComponent('LOC_SINISTROS_HISTORICO!A1:F2000')+k).catch(function(){return null;});
       if(!r1.ok||!r2.ok) throw new Error('HTTP '+r1.status+'/'+r2.status);
       var d1=await r1.json(), d2=await r2.json();
       var rc=d1.values||[], rl=d2.values||[];
@@ -17101,6 +17120,31 @@ window.cpRenderFixas=cpRenderFixas;
           });})();
         } else { window.locColoc = []; }
       }catch(e3){ window.locColoc = []; }
+      // LOC_SINISTROS / LOC_SINISTROS_HISTORICO (31/ago/2026): controle de acionamento da
+      // garantia locatícia (Seguro Fiança) em contratos inadimplentes. Mesmo esquema de
+      // "filho ligado ao pai" do coprop/colocatário, só que ligado por 'Contrato' (o sinistro)
+      // e por 'Sinistro ID' (cada entrada da linha do tempo).
+      try{
+        if(r5&&r5.ok){
+          var d5=await r5.json(); var rsin=d5.values||[];
+          window.locSinistros = rsin.length<2?[]:(function(){var msin=hidx(rsin[0]);return rsin.slice(1).filter(function(x){return x[0];}).map(function(row){
+            return {ID:String(cell(row,msin,'ID')),Contrato:String(cell(row,msin,'Contrato')),Locador:cell(row,msin,'Locador'),Locatario:cell(row,msin,'Locatario'),Endereco:cell(row,msin,'Endereco'),
+              Seguradora:cell(row,msin,'Seguradora'),'Nr Apolice':cell(row,msin,'Nr Apolice'),
+              'Data Sinistro Aberto':cell(row,msin,'Data Sinistro Aberto'),'Data Comunicacao Seguradora':cell(row,msin,'Data Comunicacao Seguradora'),'Numero Sinistro':cell(row,msin,'Numero Sinistro'),
+              Status:cell(row,msin,'Status')||'Aberto',
+              'Valor Aluguel Atraso':num(cell(row,msin,'Valor Aluguel Atraso')),'Valor Encargos Atraso':num(cell(row,msin,'Valor Encargos Atraso')),'Meses Atraso':num(cell(row,msin,'Meses Atraso')),
+              Observacoes:cell(row,msin,'Observacoes'),'Data Criacao':cell(row,msin,'Data Criacao'),'Data Atualizacao':cell(row,msin,'Data Atualizacao')};
+          });})();
+        } else { window.locSinistros = []; }
+      }catch(e4){ window.locSinistros = []; }
+      try{
+        if(r6&&r6.ok){
+          var d6=await r6.json(); var rsh=d6.values||[];
+          window.locSinistrosHist = rsh.length<2?[]:(function(){var msh=hidx(rsh[0]);return rsh.slice(1).filter(function(x){return x[0];}).map(function(row){
+            return {ID:String(cell(row,msh,'ID')),'Sinistro ID':String(cell(row,msh,'Sinistro ID')),Data:cell(row,msh,'Data'),Tipo:cell(row,msh,'Tipo'),Descricao:cell(row,msh,'Descricao')};
+          });})();
+        } else { window.locSinistrosHist = []; }
+      }catch(e5){ window.locSinistrosHist = []; }
       indexContratos(); live=true;
       var now=new Date(); lastSync=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);
       if(dot){dot.className='dot live';} if(txt)txt.textContent='sincronizado com a planilha às '+lastSync;
@@ -17108,6 +17152,8 @@ window.cpRenderFixas=cpRenderFixas;
       live=false; DATA={contratos:SEED.contratos.slice(),lancamentos:seedLancamentos(),desmembramento:SEED.desmembramento||{}};
       window.locCoprop=[];
       window.locColoc=[];
+      window.locSinistros=window.locSinistros||[];
+      window.locSinistrosHist=window.locSinistrosHist||[];
       indexContratos();
       if(dot){dot.className='dot local';} if(txt)txt.textContent='falha ao ler a planilha ('+e.message+') — usando dados locais';
     }
@@ -17115,6 +17161,253 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.locCoprop = window.locCoprop || [];
   window.locColoc = window.locColoc || [];
+  window.locSinistros = window.locSinistros || [];
+  window.locSinistrosHist = window.locSinistrosHist || [];
+
+  // ---------- SINISTRO / SEGURO FIANÇA — controle de acionamento da garantia (31/ago/2026) ----------
+  // Registro formal do acionamento da garantia locatícia (Seguro Fiança) num contrato
+  // inadimplente: comunicação à seguradora, número do sinistro, status do caso, e os valores/
+  // meses em atraso — puxados automaticamente de LOC_LANCAMENTOS na hora de abrir o drawer
+  // (editável, caso a seguradora aceite/exija um valor diferente). Linha do tempo própria
+  // (LOC_SINISTROS_HISTORICO, pedido do usuário: "registro" como histórico completo, não só
+  // um campo de observações) e Follow-ups (lembretes com data) reaproveitando 100% a
+  // infraestrutura de Tarefas já existente (Tipo "Sinistro Seguro Fiança", ligado por
+  // "Sinistro ID") — mesmo princípio da regra permanente nº10, sincroniza sozinho com o Google
+  // Agenda. "Conexão com o Gmail" pedida pelo usuário foi esclarecida como só isso: agendar — não
+  // há envio/leitura de e-mail aqui, é o mesmo mecanismo de Follow-up→Agenda das Tarefas normais.
+  var SIN_STATUS=['Aberto','Comunicado à Seguradora','Em Análise','Pago','Negado','Encerrado'];
+  function sinCorStatus_(status){
+    if(status==='Pago')return 'var(--green)';
+    if(status==='Encerrado')return 'var(--muted)';
+    if(status==='Negado')return 'var(--red)';
+    return 'var(--orange)'; // Aberto, Comunicado à Seguradora, Em Análise
+  }
+  // Sinistro "em aberto" pra fins de destaque visual na linha do contrato = qualquer status
+  // diferente de Encerrado (Pago/Negado ainda merecem atenção até o caso ser formalmente fechado).
+  function sinAbertoDoContrato_(contrato){
+    var itens=(window.locSinistros||[]).filter(function(s){return String(s.Contrato)===String(contrato)&&s.Status!=='Encerrado';});
+    if(!itens.length)return null;
+    itens.sort(function(a,b){return String(b.ID).localeCompare(String(a.ID),undefined,{numeric:true});});
+    return itens[0];
+  }
+  function sinCalcularAtraso_(contrato){
+    var c=contratosById[contrato]||{};
+    var atrasados=DATA.lancamentos.filter(function(l){return l.contrato===contrato&&inadLocEstaAtrasado_(l,c);});
+    var valorAluguel=0,valorTotal=0;
+    atrasados.forEach(function(l){valorAluguel+=(l.aluguel||0);valorTotal+=valorCobradoOf(l);});
+    return {meses:atrasados.length,valorAluguel:Math.round(valorAluguel*100)/100,valorEncargos:Math.round((valorTotal-valorAluguel)*100)/100};
+  }
+  function sinEnsureModal_(){
+    if(document.getElementById('sinModalOverlay'))return;
+    var ov=document.createElement('div');
+    ov.id='sinModalOverlay';
+    ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:975;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML='<div id="sinModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:680px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+    ov.addEventListener('click',function(e){if(e.target===ov)window.sinFechar();});
+    document.body.appendChild(ov);
+  }
+  window.sinFechar=function(){var ov=document.getElementById('sinModalOverlay');if(ov)ov.style.display='none';};
+  window.abrirSinistro=function(contrato){
+    var c=contratosById[contrato];if(!c)return;
+    sinEnsureModal_();
+    document.getElementById('sinModalOverlay').style.display='flex';
+    sinRenderModal_(contrato);
+  };
+  window.sinFormAbrir_=function(contrato,id){
+    var c=contratosById[contrato]||{};
+    var s=id?(window.locSinistros||[]).find(function(x){return String(x.ID)===String(id);}):null;
+    var host=document.getElementById('sinFormHost');if(!host)return;
+    host.style.display='block';
+    var calc=sinCalcularAtraso_(contrato);
+    var ehSeguroFianca=c.tipoGarantia==='Seguro Fiança';
+    host.innerHTML='<input type="hidden" id="sin-id" value="'+(s?E(s.ID):'')+'">'
+      +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+      +(!ehSeguroFianca?'<div class="loc-cfield full" style="color:var(--orange);font-size:12px">⚠️ A garantia cadastrada deste contrato não é Seguro Fiança (é "'+E(c.tipoGarantia||'não informada')+'"). Pode registrar mesmo assim, se for o caso.</div>':'')
+      +'<div class="loc-cfield"><label>Seguradora</label><input class="loc-cinput" id="sin-seguradora" value="'+(s?E(s.Seguradora||''):E(c.garSeguradora||''))+'"></div>'
+      +'<div class="loc-cfield"><label>Nº da Apólice</label><input class="loc-cinput" id="sin-apolice" value="'+(s?E(s['Nr Apolice']||''):E(c.garApolice||''))+'"></div>'
+      +'<div class="loc-cfield"><label>Data de comunicação à seguradora</label><input class="loc-cinput" id="sin-datacom" type="date" value="'+(s&&s['Data Comunicacao Seguradora']?locIsoFromBR(s['Data Comunicacao Seguradora']):'')+'"></div>'
+      +'<div class="loc-cfield"><label>Nº do Sinistro</label><input class="loc-cinput" id="sin-numero" value="'+(s?E(s['Numero Sinistro']||''):'')+'" placeholder="Preencha assim que a seguradora informar"></div>'
+      +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="sin-status">'
+      +SIN_STATUS.map(function(st){return '<option'+((s?s.Status===st:st==='Aberto')?' selected':'')+'>'+st+'</option>';}).join('')
+      +'</select></div>'
+      +'<div class="loc-cfield"><label>Meses em atraso</label><input class="loc-cinput" id="sin-meses" type="number" min="0" value="'+(s?num(s['Meses Atraso']):calc.meses)+'"></div>'
+      +'<div class="loc-cfield"><label>Valor de aluguel em atraso (R$)</label><input class="loc-cinput" id="sin-valoraluguel" type="text" inputmode="decimal" value="'+(s?num(s['Valor Aluguel Atraso']):calc.valorAluguel)+'"></div>'
+      +'<div class="loc-cfield"><label>Valor de encargos em atraso (R$)</label><input class="loc-cinput" id="sin-valorencargos" type="text" inputmode="decimal" value="'+(s?num(s['Valor Encargos Atraso']):calc.valorEncargos)+'"></div>'
+      +(!s?'<div class="loc-cfield full" style="font-size:11.5px;color:var(--muted)">Meses/valores acima já vieram calculados a partir dos lançamentos em atraso deste contrato — revise e ajuste se a seguradora exigir um valor diferente.</div>':'')
+      +'<div class="loc-cfield full"><label>Observações</label><textarea class="loc-cinput" id="sin-obs" rows="3" style="resize:vertical">'+(s&&s.Observacoes?E(s.Observacoes):'')+'</textarea></div>'
+      +'<div class="loc-cfield full" style="display:flex;gap:8px">'
+      +'<button type="button" class="loc-btn primary" onclick="sinSalvar_(\''+contrato+'\')" style="flex:1">'+(s?'Salvar alterações':'Abrir sinistro')+'</button>'
+      +'<button type="button" class="loc-btn" onclick="document.getElementById(\'sinFormHost\').style.display=\'none\'">Cancelar</button>'
+      +'</div></div>';
+  };
+  window.sinSalvar_=async function(contrato){
+    var c=contratosById[contrato]||{};
+    var id=document.getElementById('sin-id').value;
+    var statusNovo=document.getElementById('sin-status').value;
+    var numeroNovo=document.getElementById('sin-numero').value.trim();
+    var agora=new Date().toLocaleDateString('pt-BR');
+    var existente=id?(window.locSinistros||[]).find(function(x){return String(x.ID)===String(id);}):null;
+    var campos={
+      'Contrato':contrato,'Locador':c.locador||'','Locatario':c.locatario||'','Endereco':c.end||'',
+      'Seguradora':document.getElementById('sin-seguradora').value.trim(),
+      'Nr Apolice':document.getElementById('sin-apolice').value.trim(),
+      'Data Comunicacao Seguradora':locDtBRfromInput(document.getElementById('sin-datacom').value),
+      'Numero Sinistro':numeroNovo,
+      'Status':statusNovo,
+      'Meses Atraso':num(document.getElementById('sin-meses').value),
+      'Valor Aluguel Atraso':num(document.getElementById('sin-valoraluguel').value),
+      'Valor Encargos Atraso':num(document.getElementById('sin-valorencargos').value),
+      'Observacoes':document.getElementById('sin-obs').value,
+      'Data Atualizacao':agora
+    };
+    // Entradas de histórico geradas automaticamente por esta gravação — além do que o usuário
+    // registra manualmente na linha do tempo, essas mudanças-chave ficam sempre rastreadas.
+    var eventos=[];
+    if(!existente){
+      eventos.push('Sinistro aberto'+(campos.Seguradora?(' — seguradora '+campos.Seguradora):''));
+    }else{
+      if(existente.Status!==statusNovo)eventos.push('Status alterado: '+existente.Status+' → '+statusNovo);
+      if(!existente['Numero Sinistro']&&numeroNovo)eventos.push('Número do sinistro informado pela seguradora: '+numeroNovo);
+      if(!existente['Data Comunicacao Seguradora']&&campos['Data Comunicacao Seguradora'])eventos.push('Comunicação à seguradora registrada em '+campos['Data Comunicacao Seguradora']);
+    }
+    if(id){
+      if(existente)Object.assign(existente,campos);
+      await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_sinistro',id:id,campos:campos})}).catch(function(){});
+    }else{
+      campos['Data Sinistro Aberto']=agora;campos['Data Criacao']=agora;
+      var resp=await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_sinistro',campos:campos})}).then(function(r){return r.json();}).catch(function(){return null;});
+      if(resp&&resp.ok&&resp.id){id=String(resp.id);campos.ID=id;(window.locSinistros=window.locSinistros||[]).push(campos);}
+    }
+    for(var i=0;i<eventos.length;i++){ await sinHistAdicionar_(id,eventos[i],true); }
+    document.getElementById('sinFormHost').style.display='none';
+    setTimeout(async function(){await carregarAlugueis();sinRenderModal_(contrato);},1200);
+  };
+  window.sinHistAdicionar_=async function(sinistroId,descricao,silencioso){
+    if(!sinistroId||!descricao)return;
+    var agora=new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    var campos={'Sinistro ID':sinistroId,'Data':agora,'Tipo':'Registro','Descricao':descricao};
+    await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_sinistroHist',campos:campos})}).then(function(r){return r.json();}).catch(function(){return null;});
+    (window.locSinistrosHist=window.locSinistrosHist||[]).push(campos);
+    if(!silencioso){var el=document.getElementById('sinHistTexto');if(el)el.value='';}
+  };
+  window.sinHistFormSalvar_=async function(contrato,sinistroId){
+    var el=document.getElementById('sinHistTexto');
+    var texto=(el?el.value:'').trim();
+    if(!texto){alert('Escreva o que aconteceu.');return;}
+    await sinHistAdicionar_(sinistroId,texto,false);
+    sinRenderModal_(contrato);
+  };
+  window.sinFollowupFormAbrir_=function(contrato,sinistroId,id){
+    var r=id?(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);}):null;
+    var host=document.getElementById('sinFpFormHost');if(!host)return;
+    host.style.display='block';
+    host.innerHTML='<input type="hidden" id="sinfp-id" value="'+(r?E(r['ID']):'')+'">'
+      +'<div class="loc-cform" style="padding:0;border:none;background:none">'
+      +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="sinfp-titulo" value="'+(r&&r['Titulo']?E(r['Titulo']):'')+'" placeholder="Ex.: Cobrar retorno da seguradora"></div>'
+      +'<div class="loc-cfield"><label>Follow-up em</label><input class="loc-cinput" id="sinfp-followup" type="date" value="'+(r&&r['Data Follow-up']?locIsoFromBR(r['Data Follow-up']):'')+'"></div>'
+      +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="sinfp-status">'
+      +['Em andamento','Concluída','Descartado'].map(function(s2){return '<option'+((r?r['Status']===s2:s2==='Em andamento')?' selected':'')+'>'+s2+'</option>';}).join('')
+      +'</select></div>'
+      +'<div class="loc-cfield full"><label>Notas</label><textarea class="loc-cinput" id="sinfp-notas" rows="3" style="resize:vertical">'+(r&&r['Notas']?E(r['Notas']):'')+'</textarea></div>'
+      +'<div class="loc-cfield full" style="display:flex;gap:8px">'
+      +'<button type="button" class="loc-btn primary" onclick="sinFollowupSalvar_(\''+contrato+'\',\''+sinistroId+'\')" style="flex:1">'+(r?'Salvar alterações':'Criar follow-up')+'</button>'
+      +'<button type="button" class="loc-btn" onclick="document.getElementById(\'sinFpFormHost\').style.display=\'none\'">Cancelar</button>'
+      +'</div></div>';
+  };
+  window.sinFollowupSalvar_=async function(contrato,sinistroId){
+    var c=contratosById[contrato]||{};
+    var id=document.getElementById('sinfp-id').value;
+    var titulo=document.getElementById('sinfp-titulo').value.trim();
+    if(!titulo){alert('Preencha o título.');return;}
+    var agora=new Date().toLocaleDateString('pt-BR');
+    var campos={
+      'Tipo':'Sinistro Seguro Fiança','Titulo':titulo,'Locador':c.locador||'','Locatario':c.locatario||'',
+      'Status':document.getElementById('sinfp-status').value,
+      'Data Follow-up':locDtBRfromInput(document.getElementById('sinfp-followup').value),
+      'Notas':document.getElementById('sinfp-notas').value,
+      'Sinistro ID':sinistroId,'Data Atualizacao':agora
+    };
+    if(id){
+      var existente=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+      if(existente)Object.assign(existente,campos);
+      await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:campos})}).catch(function(){});
+    }else{
+      campos['Data Criacao']=agora;
+      await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_rascunhos',campos:campos})}).then(function(r){return r.json();}).catch(function(){});
+    }
+    document.getElementById('sinFpFormHost').style.display='none';
+    setTimeout(async function(){if(window.carregarRascunhos)await window.carregarRascunhos();sinRenderModal_(contrato);},1200);
+  };
+  window.sinFollowupConcluir_=async function(id,contrato){
+    var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});if(r)r['Status']='Concluída';
+    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:{'Status':'Concluída','Data Atualizacao':new Date().toLocaleDateString('pt-BR')}})}).catch(function(){});
+    setTimeout(async function(){if(window.carregarRascunhos)await window.carregarRascunhos();sinRenderModal_(contrato);},1200);
+  };
+  window.sinFollowupExcluir_=async function(id,contrato){
+    if(!confirm('Excluir este follow-up?'))return;
+    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_rascunhos',id:id})}).catch(function(){});
+    setTimeout(async function(){if(window.carregarRascunhos)await window.carregarRascunhos();sinRenderModal_(contrato);},1200);
+  };
+  function sinRenderAtual_(contrato,s,hist,followups){
+    var cor=sinCorStatus_(s.Status);
+    var atrasadoFn=window.rascFollowUpAtrasado||function(){return false;};
+    var corFn=window.tarStatusCor_||function(){return 'var(--orange)';};
+    var html='<div style="border:1px solid '+cor+';border-radius:10px;padding:12px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
+      +'<div style="font-size:13px"><b style="color:'+cor+'">'+E(s.Status)+'</b>'+(s['Numero Sinistro']?' · Sinistro nº <b>'+E(s['Numero Sinistro'])+'</b>':' · <span style="color:var(--muted)">nº do sinistro ainda não informado</span>')+(s.Seguradora?' · '+E(s.Seguradora):'')+'</div>'
+      +'<button class="loc-btn-edit" onclick="sinFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\')" title="Editar">✎ Editar</button>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:6px">'
+      +(s['Data Comunicacao Seguradora']?'Comunicado à seguradora em '+E(s['Data Comunicacao Seguradora'])+' · ':'')
+      +(num(s['Meses Atraso'])?num(s['Meses Atraso'])+' mês(es) em atraso · ':'')
+      +'Aluguel em atraso: '+BRL(num(s['Valor Aluguel Atraso']))+' · Encargos em atraso: '+BRL(num(s['Valor Encargos Atraso']))
+      +'</div>'
+      +(s.Observacoes?'<div style="font-size:12px;color:var(--text);margin-top:6px;white-space:pre-wrap">'+E(s.Observacoes)+'</div>':'')
+      +'</div>'
+      +'<div id="sinFormHost" style="display:none;margin-bottom:12px"></div>'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🕓 Linha do tempo</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:8px"><input class="loc-cinput" id="sinHistTexto" placeholder="Registrar o que foi feito/falado com a seguradora..." style="flex:1"><button type="button" class="loc-btn" onclick="sinHistFormSalvar_(\''+contrato+'\',\''+E(s.ID)+'\')">Registrar</button></div>'
+      +(hist.length?'<div style="max-height:160px;overflow-y:auto;margin-bottom:14px">'+hist.map(function(h){
+        return '<div style="font-size:12px;padding:5px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">'+E(h.Data)+'</span> — '+E(h.Descricao)+'</div>';
+      }).join('')+'</div>':'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Nenhum registro na linha do tempo ainda.</div>')
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🗒️ Follow-ups (sincronizam com o Google Agenda)</div>'
+      +'<button type="button" class="loc-btn" style="margin-bottom:10px" onclick="sinFollowupFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\')">➕ Novo follow-up</button>'
+      +'<div id="sinFpFormHost" style="display:none;margin-bottom:10px"></div>'
+      +(followups.length?followups.map(function(r){
+        var atrasado=atrasadoFn(r);
+        var corF=corFn(r['Status'],atrasado);
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
+          +'<div style="font-size:12.5px"><strong>'+E(r['Titulo']||'-')+'</strong> <span style="color:'+corF+'">· '+E(r['Status']||'')+'</span>'
+          +(r['Data Follow-up']?' <span style="color:'+(atrasado?'var(--red)':'var(--muted)')+'">· follow-up '+E(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</span>':'')+'</div>'
+          +'<div style="white-space:nowrap">'
+          +'<button class="loc-btn-edit" onclick="sinFollowupFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\',\''+E(r['ID'])+'\')" title="Editar">✎</button> '
+          +(r['Status']==='Em andamento'?'<button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="sinFollowupConcluir_(\''+E(r['ID'])+'\',\''+contrato+'\')" title="Concluir">✓</button> ':'')
+          +'<button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="sinFollowupExcluir_(\''+E(r['ID'])+'\',\''+contrato+'\')" title="Excluir">🗑️</button>'
+          +'</div></div>';
+      }).join(''):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhum follow-up cadastrado para este sinistro ainda.</div>');
+    return html;
+  }
+  function sinRenderModal_(contrato){
+    var wrap=document.getElementById('sinModalWrap');if(!wrap)return;
+    var c=contratosById[contrato];if(!c){window.sinFechar();return;}
+    var sinistros=(window.locSinistros||[]).filter(function(s){return String(s.Contrato)===String(contrato);}).sort(function(a,b){return String(b.ID).localeCompare(String(a.ID),undefined,{numeric:true});});
+    var atual=sinistros[0]||null; // o mais recente, se houver mais de um ao longo do tempo
+    var hist=atual?(window.locSinistrosHist||[]).filter(function(h){return String(h['Sinistro ID'])===String(atual.ID);}).sort(function(a,b){return String(b.ID).localeCompare(String(a.ID),undefined,{numeric:true});}):[];
+    var followups=atual?(window.rascunhosCache||[]).filter(function(r){return r['Tipo']==='Sinistro Seguro Fiança'&&String(r['Sinistro ID'])===String(atual.ID);}).sort(function(a,b){
+      var atrasadoFn=window.rascFollowUpAtrasado||function(){return false;};
+      var A=atrasadoFn(a)?0:1,B=atrasadoFn(b)?0:1;
+      if(A!==B)return A-B;
+      return String(b['ID']).localeCompare(String(a['ID']),undefined,{numeric:true});
+    }):[];
+    wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:16px;font-weight:700">🚨 Sinistro / Seguro Fiança — '+E(c.locatario||'')+' <span style="color:var(--muted);font-weight:400;font-size:13px">(Contrato '+E(contrato)+')</span></div>'
+      +'<button class="cp-btn" onclick="sinFechar()">✕</button></div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Locador: <b>'+E(c.locador||'-')+'</b> · Endereço: '+E(c.end||'-')+(c.tipoGarantia?' · Garantia: <b>'+E(c.tipoGarantia)+'</b>':'')+'</div>'
+      +(atual?sinRenderAtual_(contrato,atual,hist,followups):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhum sinistro registrado para este contrato ainda.</div>')
+      +(!atual||atual.Status==='Encerrado'
+        ?'<button type="button" class="loc-btn" style="margin-top:12px" onclick="sinFormAbrir_(\''+contrato+'\')">➕ Abrir novo sinistro</button><div id="sinFormHost" style="display:none;margin-top:10px"></div>'
+        :'');
+  }
 
   // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
   // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
@@ -17675,7 +17968,14 @@ window.cpRenderFixas=cpRenderFixas;
       var alertaMJ=locPrecisaDecidirMultaJuros_(l,c)
         ? ' <span class="loc-alerta-mj" title="Atraso de '+diasAtrasoAluguel+' dia(s) — multa e juros ainda não foram lançados neste mês. Clique para calcular e decidir se cobra." onclick="event.stopPropagation();abrirAlertaMultaJuros(\''+E(l.contrato)+'\')" style="cursor:pointer;color:#d9772f;font-weight:700">⚠️</span>'
         : '';
-      return '<tr>'+
+      // Sinistro/Seguro Fiança (31/ago/2026): destaque bem chamativo na linha assim que o Nº do
+      // Sinistro é preenchido (pedido explícito do usuário) — antes disso (sinistro aberto mas
+      // ainda sem número) o botão já fica vermelho, só sem a linha inteira piscando.
+      var sinAberto=sinAbertoDoContrato_(l.contrato);
+      var sinComNumero=!!(sinAberto&&sinAberto['Numero Sinistro']);
+      var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':'';
+      var btnSin='<button class="loc-send-btn'+(sinAberto?' loc-send-btn-sinistro':'')+'" title="'+(sinAberto?'Sinistro em aberto'+(sinComNumero?' — nº '+E(sinAberto['Numero Sinistro']):' — aguardando nº da seguradora'):'Registrar sinistro/inadimplência (garantia locatícia)')+'" onclick="event.stopPropagation();abrirSinistro(\''+E(l.contrato)+'\')">🚨</button> ';
+      return '<tr'+linhaClasseSin+'>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
         '<td>'+E(c.locador||'-')+coprop+'</td>'+
@@ -17693,7 +17993,7 @@ window.cpRenderFixas=cpRenderFixas;
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
-        '<td style="text-align:center;white-space:nowrap"><button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
+        '<td style="text-align:center;white-space:nowrap">'+btnSin+'<button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
         +'<span style="cursor:pointer;font-size:12px;margin:0 3px" title="'+(l.reciboEnviado?('Recibo de aluguel enviado em '+E(l.dataEnvioRecibo||'—')+' — clique para desmarcar'):'Recibo de aluguel ainda não marcado como enviado — clique para marcar manualmente')+'" onclick="event.stopPropagation();locToggleReciboEnviado(\''+E(l.contrato)+'\')">'+(l.reciboEnviado?'✅':'⭘')+'</span>'
         +' <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button></td>'+
       '</tr>';
@@ -21802,6 +22102,11 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '31/ago/2026 (2)', itens: [
+      'Novo em Gestão de Locações e Repasses: botão "🚨" em cada contrato controla o acionamento da garantia locatícia (Seguro Fiança) num caso de inadimplência — seguradora, apólice, data de comunicação, nº do sinistro e status, com meses/valores em atraso já calculados automaticamente a partir dos lançamentos.',
+      'Assim que o Nº do Sinistro é informado, a linha do contrato pisca em vermelho na lista (alerta bem chamativo) e um aviso aparece também na tela inicial.',
+      'Cada sinistro ganhou uma linha do tempo (histórico completo de tudo que foi feito/registrado) e Follow-ups próprios, que sincronizam sozinhos com o Google Agenda, igual às Tarefas normais.'
+    ]},
     { data: '31/ago/2026', itens: [
       'Novo em Processos: botão "⏱ Follow-up" em cada processo já cadastrado abre uma lista de lembretes ligados especificamente àquele processo (cobrar documento, retornar contato, etc.) — cada um com data que vira "Atrasado" sozinha e sincroniza com o Google Agenda, igual às Tarefas normais.'
     ]},
@@ -22324,7 +22629,10 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Tabela de IR</div>'
       +MP+'A tabela usada para calcular a retenção de IR nos informes de repasse a coproprietários é editável (botão "⚙️ Tabela de IR"), pra ajustar quando a Receita reajustar os valores.</div>'
       +MH+'Tarefas e negociação rápida</div>'
-      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. "+ Negociação rápida (vira Contrato)" anota Locador e Locatário separados (preenche só quem já tiver — cobre também um locatário ainda procurando imóvel); "→ Contrato" na própria tarefa abre o cadastro de contrato já preenchido quando fechar negócio.</div>',
+      +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. "+ Negociação rápida (vira Contrato)" anota Locador e Locatário separados (preenche só quem já tiver — cobre também um locatário ainda procurando imóvel); "→ Contrato" na própria tarefa abre o cadastro de contrato já preenchido quando fechar negócio.</div>'
+      +MH+'Sinistro / Seguro Fiança (inadimplência)</div>'
+      +MP+'O botão <b>🚨</b> ao lado do recibo de aluguel, em cada linha da tabela de lançamentos, abre o controle de acionamento da garantia locatícia daquele contrato. Ao abrir pela primeira vez, o sistema já sugere os meses e valores (aluguel + encargos) em atraso, calculados a partir dos lançamentos — você só confirma ou ajusta. Preencha Seguradora, Nº da Apólice (vem do cadastro do contrato quando a garantia é Seguro Fiança), Data de comunicação à seguradora, Status (Aberto → Comunicado à Seguradora → Em Análise → Pago/Negado → Encerrado) e o Nº do Sinistro assim que a seguradora informar. <b>Assim que o Nº do Sinistro é preenchido, a linha inteira do contrato pisca em vermelho na lista</b> — alerta bem chamativo, difícil de passar batido. Enquanto o sinistro estiver em qualquer status diferente de "Encerrado", o botão 🚨 já fica vermelho e um aviso aparece também na tela inicial (Home).</div>'
+      +MP+'Dentro do sinistro, a <b>Linha do tempo</b> guarda um registro histórico de tudo que for feito (mudanças de status, comunicações com a seguradora, anotações) com data e hora — é o "processo" do sinistro documentado passo a passo. Os <b>Follow-ups</b> (lembretes com data) reaproveitam o mesmo mecanismo das Tarefas normais: sincronizam sozinhos com o Google Agenda assim que uma data de follow-up é marcada (mesmo princípio do Follow-up de um processo, em Processos) — não há envio ou leitura de e-mail aqui, é só agenda mesmo.</div>',
 
     imoveis: MH+'Visão geral</div>'
       +MP+'Catálogo interno de imóveis para venda e/ou locação, gerido pela equipe (atrás da senha do sistema). Todo imóvel com <strong>Status = Disponível</strong> aparece automaticamente na vitrine pública do site, sem nenhuma ação extra além de manter o status atualizado.</div>'
@@ -22368,6 +22676,8 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Marque um e-mail no Gmail com o rótulo <strong>"Eixo/Nova Tarefa"</strong> (crie o rótulo se ainda não existir) e o sistema cria uma Tarefa sozinho a partir dele — assunto, remetente e um trecho do corpo do e-mail vão para a tarefa (Tipo "Geral", pra você reclassificar no módulo certo), e o rótulo do e-mail muda para "Eixo/Tarefa Criada" (não processa de novo). Isso roda sozinho a cada 15 minutos, sem precisar abrir o painel.</div>'
       +MH+'Follow-up de um processo já cadastrado</div>'
       +MP+'Tipo "Follow-up de Processo" (usado internamente pelo botão "⏱ Follow-up" de cada processo, em Processos) liga a tarefa a um número de processo específico, diferente do "Atendimento Jurídico" (que ainda não é um processo formal). Não costuma ser preciso criar esse Tipo por aqui — o jeito normal é abrir o próprio processo e usar o botão "⏱ Follow-up" ali.</div>'
+      +MH+'Sinistro Seguro Fiança</div>'
+      +MP+'Tipo "Sinistro Seguro Fiança" (usado internamente pelo botão "🚨" de cada contrato, em Gestão de Locações e Repasses) liga a tarefa a um sinistro de garantia locatícia específico. Assim como o Follow-up de Processo, não costuma ser preciso criar esse Tipo por aqui — o jeito normal é abrir o sinistro direto no contrato em Locações.</div>'
       +MH+'Visão geral</div>'
       +MP+'O menu do usuário (avatar, canto superior direito) tem um atalho "🗒️ Tarefas" que abre a lista completa, de todos os módulos juntos — útil pra uma revisão geral do dia, mas o uso do dia a dia é mesmo dentro de cada módulo.</div>',
 
@@ -23019,16 +23329,31 @@ window.cpRenderFixas=cpRenderFixas;
         setAlertBox('homeAlertHon',resumoH,parcAvisos.some(function(x){return x.diff<0;})?'var(--red)':'var(--orange)',hh,'abrir Honorários','openHonorariosHome()');
       }
     }catch(e){}
-    // Quadro de aviso: LOCAÇÕES (aluguéis em atraso)
+    // Quadro de aviso: LOCAÇÕES (aluguéis em atraso + sinistros/Seguro Fiança em aberto)
     try{
+      var temAvisoLoc=false, resumoLocPartes=[], hlLoc='';
       if(typeof window.locAvisos==='function'){
         var la=window.locAvisos();
-        if(!la.itens.length){setAlertBox('homeAlertLoc',null);}
-        else{
-          var hl='<div class="ha-tit venc">🏠 '+la.itens.length+' aluguel(éis) em atraso ('+la.mes+')</div>'+la.itens.slice(0,8).map(function(i){return '<div class="ha-item"><b>'+E(i.locatario)+'</b> — '+BRLf(i.aluguel)+' (venc. dia '+E(i.venc)+' · '+E(i.status)+')</div>';}).join('');
-          setAlertBox('homeAlertLoc','🏠 '+la.itens.length+' aluguel(éis) em atraso','var(--red)',hl,'abrir Locações','openAlugueisHome()');
+        if(la.itens.length){
+          temAvisoLoc=true;
+          resumoLocPartes.push('🏠 '+la.itens.length+' aluguel(éis) em atraso');
+          hlLoc+='<div class="ha-tit venc">🏠 '+la.itens.length+' aluguel(éis) em atraso ('+la.mes+')</div>'+la.itens.slice(0,8).map(function(i){return '<div class="ha-item"><b>'+E(i.locatario)+'</b> — '+BRLf(i.aluguel)+' (venc. dia '+E(i.venc)+' · '+E(i.status)+')</div>';}).join('');
         }
       }
+      // Sinistros de garantia locatícia (Seguro Fiança) em aberto — pedido do usuário (31/ago/2026):
+      // avisar na Home, não só na cor da linha em Locações. Os com nº do sinistro já informado
+      // entram destacados primeiro (é o mesmo critério de destaque visual usado na lista).
+      var sinAbertos=(window.locSinistros||[]).filter(function(s){return s.Status!=='Encerrado';});
+      if(sinAbertos.length){
+        temAvisoLoc=true;
+        sinAbertos.sort(function(a,b){var A=a['Numero Sinistro']?0:1,B=b['Numero Sinistro']?0:1;return A-B;});
+        resumoLocPartes.push('🚨 '+sinAbertos.length+' sinistro(s) de garantia em aberto');
+        hlLoc+='<div class="ha-tit" style="color:var(--red);margin-top:'+(hlLoc?'12px':'0')+'">🚨 '+sinAbertos.length+' sinistro(s) de garantia locatícia em aberto</div>'+sinAbertos.slice(0,8).map(function(s){
+          return '<div class="ha-item"><b>'+E(s.Locatario||'-')+'</b> — '+E(s.Status)+(s['Numero Sinistro']?' · nº '+E(s['Numero Sinistro']):' · aguardando nº da seguradora')+'</div>';
+        }).join('');
+      }
+      if(!temAvisoLoc){setAlertBox('homeAlertLoc',null);}
+      else{setAlertBox('homeAlertLoc',resumoLocPartes.join(' · '),'var(--red)',hlLoc,'abrir Locações','openAlugueisHome()');}
     }catch(e){}
     // Quadro de aviso: contas vencidas / a vencer em 7 dias
     try{
