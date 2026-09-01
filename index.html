@@ -5710,8 +5710,11 @@ async function loadFromSheets() {
 
   try {
     const sheetName = encodeURIComponent(cfg.sheetName || 'Planilha1');
-    // Le colunas A a W (23 colunas conforme estrutura mapeada)
-    const range = `${sheetName}!A1:BT300`;
+    // Range com folga generosa: colunas novas (Idoso, alertas, Link Artefato etc.) sao sempre
+    // criadas no FINAL da planilha por garantirColunaProcessos_, entao um range curto demais aqui
+    // faz a coluna gravar certinho no backend mas nunca aparecer de volta no front (foi o caso de
+    // "Link Artefato" caindo depois da antiga coluna BT, 01/set/2026) - manter folga de proposito.
+    const range = `${sheetName}!A1:HZ300`;
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${range}?key=${cfg.apiKey}`;
 
     const resp = await fetch(url);
