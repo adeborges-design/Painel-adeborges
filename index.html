@@ -14957,6 +14957,10 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
       </div>
       </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <input class="loc-cinput" id="locContratosBusca" type="text" placeholder="🔎 Buscar por contrato, locador, locatário ou endereço..." style="max-width:360px;flex:1" oninput="locRenderContratos()">
+        <span id="locContratosBuscaCont" style="font-size:12px;color:var(--muted)"></span>
+      </div>
       <div class="loc-table-wrap">
         <table class="loc-table"><thead><tr><th>Contrato</th><th>Locador</th><th>Locatário</th><th>Endereço</th><th style="text-align:right">Aluguel</th><th style="text-align:center">Taxa Adm. (% / R$)</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
         <tbody id="locContratosTbody"></tbody></table>
@@ -21027,6 +21031,19 @@ window.cpRenderFixas=cpRenderFixas;
   function locRenderContratos(){
     var tb=document.getElementById('locContratosTbody');
     var listaOrdenada=DATA.contratos.slice().sort(function(a,b){return String(a.locador||'').localeCompare(String(b.locador||''),'pt-BR',{sensitivity:'base'});});
+    // Busca (contrato/locador/locatário/endereço) — pedido do usuário (01/set/2026): a lista de
+    // contratos pode ter dezenas de linhas, e sem filtro é preciso rolar/usar Ctrl+F do
+    // navegador pra achar um contrato específico. Filtra em tempo real conforme digita.
+    var buscaEl=document.getElementById('locContratosBusca');
+    var busca=(buscaEl?buscaEl.value:'').toLowerCase().trim();
+    var contEl=document.getElementById('locContratosBuscaCont');
+    if(busca){
+      listaOrdenada=listaOrdenada.filter(function(c){
+        var hay=[c.contrato,c.locador,c.locatario,c.end].map(function(v){return String(v||'').toLowerCase();}).join(' ');
+        return hay.indexOf(busca)>=0;
+      });
+    }
+    if(contEl)contEl.textContent=busca?(listaOrdenada.length+' de '+DATA.contratos.length+' contrato(s)'):'';
     tb.innerHTML=listaOrdenada.map(function(c){
       var sinAbertoC=sinAbertoDoContrato_(c.contrato);
       var sinComNumeroC=!!(sinAbertoC&&sinAbertoC['Numero Sinistro']);
@@ -21041,7 +21058,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
         '<td style="white-space:nowrap">'+btnSinC+'<button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
-    }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sem contratos.</td></tr>';
+    }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">'+(busca?'Nenhum contrato encontrado para "'+E(busca)+'".':'Sem contratos.')+'</td></tr>';
   }
   window.locExcluirContrato=function(id,contrato){
     var qtdLanc=0;
