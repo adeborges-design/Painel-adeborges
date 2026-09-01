@@ -6373,11 +6373,11 @@ function renderCard(p, idx) {
           ${(p.tutelaDeferida||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Antecipação de Tutela - Deferida</span>' : ''}
           ${(p.desinteresseConciliacao||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Autor manifesta desinteresse na conciliação</span>' : ''}
           ${(p.justicaGratuita||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Justiça Gratuita</span>' : ''}
+          ${p.linkArtefato ? `<a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="badge" style="background:rgba(200,169,110,0.16);color:var(--eixo-gold);border-color:rgba(200,169,110,0.4);text-decoration:none;cursor:pointer">🔗 Acompanhamento</a>` : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
         ${p.dataAutuacao ? `<div style="font-size:11px;color:var(--muted)">📅 Autuação: ${formatDate(p.dataAutuacao)}</div>` : ''}
         ${p.chaveAcesso ? `<div style="font-size:11px;color:var(--muted)">🔑 Chave de acesso: ${escHtml(p.chaveAcesso)}</div>` : ''}
-        ${p.linkArtefato ? `<div style="font-size:11px"><a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--eixo-gold);text-decoration:none;font-weight:600">🔗 Acompanhamento (artefato Claude)</a></div>` : ''}
         ${(() => {
           let html = '';
           if (p.processoPrincipal) {
