@@ -14538,6 +14538,8 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-row-select.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d;font-weight:700}
   .loc-row-select.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f;font-weight:700}
   .loc-row-select.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red);font-weight:700}
+  .loc-row-select.st-menor{background:rgba(217,119,47,.18);border-color:#d9772f;color:#a3591f;font-weight:700}
+  .loc-row-select.st-maior{background:rgba(91,141,238,.16);border-color:var(--accent2);color:var(--accent2);font-weight:700}
   .loc-row-money.valor-confirmado{color:var(--green);border-color:var(--green)}
   .loc-row-money.st-pago{color:var(--green);border-color:var(--green)}
   .loc-row-money.st-pend{color:#a3591f;border-color:var(--orange)}
@@ -14546,6 +14548,8 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-status-badge.st-pago{background:rgba(47,157,104,.14);border-color:var(--green);color:#1f7a4d}
   .loc-status-badge.st-pend{background:rgba(217,119,47,.14);border-color:var(--orange);color:#a3591f}
   .loc-status-badge.st-atras{background:rgba(209,69,74,.14);border-color:var(--red);color:var(--red)}
+  .loc-status-badge.st-menor{background:rgba(217,119,47,.18);border-color:#d9772f;color:#a3591f}
+  .loc-status-badge.st-maior{background:rgba(91,141,238,.16);border-color:var(--accent2);color:var(--accent2)}
   /* Conta "Saldo livre" (sem regra de pagamento): mesma cor de vencida (é dívida em aberto, sem
      empurrar pra debaixo do tapete), mas borda tracejada — pra não confundir com uma conta que
      está vencida por causa da data, já que aqui não tem data que manda. */
@@ -15711,6 +15715,36 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="loc-cfield full" style="text-align:right">
         <span class="msg" id="recriarlanc-msg" style="display:block;margin-bottom:8px;font-size:12px"></span>
         <button class="loc-btn primary" onclick="locCriarLancamento()">✓ Criar lançamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECEBIMENTO A MENOR/A MAIOR (01/set/2026, 5ª rodada) -->
+<div class="modal-cobr-overlay" id="modalRecebimento">
+  <div class="cobr-wrap" style="max-width:560px">
+    <div class="cobr-header">
+      <div class="cobr-title">💵 Recebido <span id="receb-tipo-label"></span> — <span id="receb-contrato-label"></span></div>
+      <button class="btn-form-cancel" onclick="fecharModalRecebimento()">✕</button>
+    </div>
+    <div class="cobr-body" style="grid-template-columns:1fr">
+      <input type="hidden" id="receb-contrato">
+      <div style="font-size:11px;color:#5c6f8a;margin-top:-6px">Informe o valor que o locatário efetivamente pagou este mês. A diferença em relação ao valor cobrado é calculada sozinha, e o repasse ao locador já sai ajustado por ela — você só repassa o que realmente entrou.</div>
+      <div class="loc-cfield"><label>Valor cobrado neste mês (R$)</label><input class="loc-cinput" id="receb-cobrado" type="text" disabled style="opacity:.75"></div>
+      <div class="loc-cfield"><label>Valor efetivamente recebido (R$)</label><input class="loc-cinput" id="receb-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="recebimentoAtualizarPreview()"></div>
+      <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+        <div id="receb-diferenca" style="font-size:14px;font-weight:700"></div>
+      </div>
+      <div class="cobr-secao full" id="receb-acao-secao">O que fazer com a diferença?</div>
+      <div class="loc-cfield full" id="receb-acao-wrap">
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-bottom:8px"><input type="radio" name="receb-acao" value="multa" style="margin-top:3px"> <span>Lançar multa/juros agora sobre a diferença — abre a calculadora de Encargos do mês já pronta pra você calcular e decidir.</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-bottom:8px"><input type="radio" name="receb-acao" value="proxmes" checked style="margin-top:3px"> <span>Cobrar/creditar automaticamente no lançamento do <strong>mês seguinte</strong> deste contrato, como item de "Outras Cobranças" — se o mês seguinte já existir, entra na hora; senão, entra sozinho assim que ele for gerado.</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="radio" name="receb-acao" value="nada" style="margin-top:3px"> <span>Só registrar o valor recebido, sem gerar nenhuma cobrança nova.</span></label>
+      </div>
+      <div class="loc-cfield full" id="receb-desc-wrap"><label>Descrição do item no mês seguinte</label><input class="loc-cinput" id="receb-desc" type="text"></div>
+      <div class="loc-cfield full" style="text-align:right">
+        <span class="msg" id="receb-msg" style="display:block;margin-bottom:8px;font-size:12px"></span>
+        <button class="loc-btn primary" onclick="recebimentoSalvar()">✓ Salvar recebimento</button>
       </div>
     </div>
   </div>
@@ -17033,13 +17067,36 @@ window.cpRenderFixas=cpRenderFixas;
   function calcularTaxa(l,ct){
     return Math.round(baseTaxa(l,ct)*(num(ct&&ct.taxaPct)/100)*100)/100;
   }
+  // Recebido a menor/maior (01/set/2026, 5ª rodada): "já recebeu alguma coisa do locatário" —
+  // usado em todo canto que hoje só olhava statusAluguel==='Recebido' pra decidir se o aluguel
+  // já entrou (estatísticas, liberar Status Repasse, entrar no informe de repasse etc.). Um
+  // recebimento parcial/maior AINDA é um recebimento — só "Pendente"/"Atrasado" não são.
+  function locFoiRecebido_(l){var s=l.statusAluguel;return s==='Recebido'||s==='Recebido a menor'||s==='Recebido a maior';}
+  // Valor que o locatário efetivamente pagou neste mês. Nos status normais (Recebido/Pendente/
+  // Atrasado) é sempre igual ao valor cobrado — só "Recebido a menor"/"Recebido a maior" guardam
+  // um valor próprio (digitado no modal de recebimento), diferente do cobrado.
+  function valorRecebidoOf(l){
+    if((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.valorRecebido!=null&&l.valorRecebido!=='')return num(l.valorRecebido);
+    return valorCobradoOf(l);
+  }
+  // Diferença entre o que foi cobrado e o que foi recebido: positiva = faltou (recebido a
+  // menor), negativa = sobrou (recebido a maior), zero = bateu certinho.
+  function diferencaRecebidoOf(l){return Math.round((valorCobradoOf(l)-valorRecebidoOf(l))*100)/100;}
+
   // Repasse SEMPRE calculado pela fórmula — não existe mais valor manual/travado aqui de
   // propósito: por segurança, o que aparece na coluna Repasse tem que coincidir sempre com o
   // informe de repasse ao locador (que também usa effRep). Um "Valor Repasse" antigo gravado na
   // planilha (de uma versão anterior do sistema) é ignorado, nunca mais sobrepõe este cálculo.
-  function effRep(l){return (l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l);}
+  // Recebido a menor/maior (01/set/2026, 5ª rodada): o repasse é reduzido/aumentado pela mesma
+  // diferença entre cobrado e recebido — você só tem pra repassar o que realmente entrou; a
+  // Taxa de Administração continua calculada sobre o valor contratual (não é afetada aqui).
+  function effRep(l){
+    var base=(l.aluguel||0)+(l.multa||0)+(l.juros||0)-(l.taxa||0)+encargosOf(l);
+    if(l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')base-=diferencaRecebidoOf(l);
+    return base;
+  }
 
-  function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Atrasado'?'st-atras':'st-pend');}
+  function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Recebido a menor'?'st-menor':(s==='Recebido a maior'?'st-maior':(s==='Atrasado'?'st-atras':'st-pend')));}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
   function diaMes(dayNum,mesStr){
     var mp=String(mesStr||'').split('/'); if(mp.length!==2)return null;
@@ -17123,7 +17180,13 @@ window.cpRenderFixas=cpRenderFixas;
           // (informe de repasse); "Observacoes Locatario" (coluna nova) = observação pro
           // recibo do inquilino. cell() devolve '' sozinho se a coluna ainda não existir na
           // planilha (caso de quem nunca salvou nenhuma observação ainda).
-          observacoesLocador:cell(row,ml,'Observacoes')||'',observacoesLocatario:cell(row,ml,'Observacoes Locatario')||''};
+          observacoesLocador:cell(row,ml,'Observacoes')||'',observacoesLocatario:cell(row,ml,'Observacoes Locatario')||'',
+          // Recebido a menor/maior (01/set/2026, 5ª rodada): valor efetivamente pago pelo
+          // locatário neste mês (só relevante quando Status é "Recebido a menor"/"Recebido a
+          // maior" — nos demais status, o valor recebido é sempre igual ao valor cobrado). Saldo
+          // Prox Mes* é o "carrinho" da diferença aguardando o mês seguinte ser gerado — ver
+          // recebimentoAplicarProximoMes_ e o backend gerar_mes_loc.
+          valorRecebido:cell(row,ml,'Valor Recebido'),saldoProxMesDesc:cell(row,ml,'Saldo Prox Mes Desc')||'',saldoProxMesValor:num(cell(row,ml,'Saldo Prox Mes Valor'))};
       });
       var desm={};
       contratos.forEach(function(c2){var o=String(c2.obs||'');if(o.toLowerCase().indexOf('co-propriet')>=0){var arr=(o.split(':')[1]||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(arr.length>1)desm[c2.contrato]=arr;}});
@@ -18143,7 +18206,9 @@ window.cpRenderFixas=cpRenderFixas;
              statusAluguel:l.statusAluguel,statusRep:l.statusRep,dataPag:l.dataPag||'',dataRep:l.dataRep||'',banco:l.banco||'',
              reciboEnviado:reciboEnviado,dataEnvioRecibo:dataEnvioRecibo,
              // Observações do mês, cada uma só aparece no documento correspondente (recibo x informe).
-             observacoesLocatario:l.observacoesLocatario||'',observacoesLocador:l.observacoesLocador||''};
+             observacoesLocatario:l.observacoesLocatario||'',observacoesLocador:l.observacoesLocador||'',
+             valorRecebido:(l.valorRecebido!=null&&l.valorRecebido!=='')?num(l.valorRecebido):'',
+             saldoProxMesDesc:l.saldoProxMesDesc||'',saldoProxMesValor:num(l.saldoProxMesValor)};
       if(o){
         if(o.aluguel!=null)r.aluguel=num(o.aluguel);
         if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
@@ -18175,15 +18240,19 @@ window.cpRenderFixas=cpRenderFixas;
         else if(Object.prototype.hasOwnProperty.call(o,'valorRepasse')){r.repManual=false;} // sinal explícito de "limpar o manual"
         if(o.observacoesLocatario!=null)r.observacoesLocatario=o.observacoesLocatario;
         if(o.observacoesLocador!=null)r.observacoesLocador=o.observacoesLocador;
+        if(o.valorRecebido!=null)r.valorRecebido=o.valorRecebido===''?'':num(o.valorRecebido);
+        if(o.saldoProxMesDesc!=null)r.saldoProxMesDesc=o.saldoProxMesDesc;
+        if(o.saldoProxMesValor!=null)r.saldoProxMesValor=num(o.saldoProxMesValor);
       }
       // Taxa de administração recalculada agora, com aluguel/multa/juros/encargos/desconto já
       // totalmente resolvidos (incluindo qualquer override) — assim, quando o contrato tem a
       // opção "Taxa incide sobre encargos" marcada, o valor sai correto mesmo depois de editar
       // os encargos na tela de Encargos.
       r.taxa=calcularTaxa(r,ct);
-      // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar:
-      // só faz sentido repassar depois de receber. O valor real (quando Recebido) fica preservado acima.
-      if(r.statusAluguel!=='Recebido')r.statusRep=r.statusAluguel;
+      // Status Repasse acompanha automaticamente o Status Aluguel enquanto o locatário não pagar
+      // NADA: "Recebido a menor"/"Recebido a maior" também liberam o repasse (já entrou dinheiro,
+      // só que em valor diferente do cobrado) — só "Pendente"/"Atrasado" travam o Status Repasse.
+      if(!locFoiRecebido_(r))r.statusRep=r.statusAluguel;
       return r;
     });
   }
@@ -18264,13 +18333,15 @@ window.cpRenderFixas=cpRenderFixas;
     var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
     lstTodos.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
     var alug=0,taxa=0,repLiq=0,emCaixa=0;
-    var cAlRec=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0,cMJPendente=0;
+    var cAlRec=0,cAlMenor=0,cAlMaior=0,cAlPend=0,cAlAtras=0,cRepFeito=0,cRepPend=0,cRepAtras=0,cMJPendente=0;
     lstTodos.forEach(function(l){
       alug+=l.aluguel;taxa+=l.taxa;
       var rep=effRep(l);
-      var recebeu=(l.statusAluguel==='Recebido');
+      var recebeu=locFoiRecebido_(l);
       var repassou=(l.statusRep==='Repassado');
-      if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado')cAlAtras++;else cAlPend++;
+      if(l.statusAluguel==='Recebido a menor')cAlMenor++;
+      else if(l.statusAluguel==='Recebido a maior')cAlMaior++;
+      else if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado')cAlAtras++;else cAlPend++;
       if(repassou){repLiq+=rep;cRepFeito++;}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
       if(recebeu&&!repassou)emCaixa+=rep;
       if(locPrecisaDecidirMultaJuros_(l,contratosById[l.contrato]))cMJPendente++;
@@ -18283,7 +18354,7 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="loc-stat-clicavel'+ativoCls('rep_aguardando')+'" onclick="locFiltrar(\'rep_aguardando\')" style="cursor:pointer" title="Ver só o que já foi recebido do locatário e ainda precisa ser repassado">'+card('roxo','Em caixa, aguardando repasse',BRL(emCaixa),'já recebido do locatário, falta repassar — clique pra ver')+'</div>'+
       '<div class="loc-stat-clicavel'+ativoCls('rep_feito')+'" onclick="locFiltrar(\'rep_feito\')" style="cursor:pointer" title="Ver os repasses já concluídos no mês">'+card('verde','Já repassado aos locadores',BRL(repLiq),'repasses concluídos no mês — clique pra ver')+'</div>';
     document.getElementById('locChips').innerHTML=
-      '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec,'al_recebido')+chip('pend','Pendentes',cAlPend,'al_pendente')+chip('atras','Atrasados',cAlAtras,'al_atrasado')+chip('ativos','Contratos ativos',ativos,null)+'</div>'+
+      '<div class="loc-chips-row"><span class="loc-chips-label">Aluguéis</span>'+chip('pago','Recebidos',cAlRec,'al_recebido')+(cAlMenor?chip('pend','A menor',cAlMenor,'al_menor'):'')+(cAlMaior?chip('pago','A maior',cAlMaior,'al_maior'):'')+chip('pend','Pendentes',cAlPend,'al_pendente')+chip('atras','Atrasados',cAlAtras,'al_atrasado')+chip('ativos','Contratos ativos',ativos,null)+'</div>'+
       '<div class="loc-chips-row"><span class="loc-chips-label">Repasses</span>'+chip('pago','Repassados',cRepFeito,'rep_feito')+chip('pend','Pendentes',cRepPend,'rep_pendente')+chip('atras','Atrasados',cRepAtras,'rep_atrasado')+'</div>'+
       (cMJPendente?'<div class="loc-chips-row"><span class="loc-chips-label">Multa/juros</span>'+chip('atras','Atraso ≥ 2 dias sem multa/juros lançados',cMJPendente,'mj_pendente')+'</div>':'')+
       (locFiltroAtivo!=='all'?'<div style="margin-top:8px"><button class="loc-btn" style="padding:5px 12px;font-size:12px" onclick="locFiltrar(\''+locFiltroAtivo+'\')">✕ Limpar filtro</button></div>':'');
@@ -18294,8 +18365,10 @@ window.cpRenderFixas=cpRenderFixas;
       var alvo=ordem(selMes);
       var pendentes=workingList().filter(function(l){
         if(ordem(l.mes)>=alvo)return false; // só meses estritamente anteriores ao selecionado
-        var alugPend=l.statusAluguel!=='Recebido';
-        var repPend=l.statusAluguel==='Recebido'&&l.statusRep!=='Repassado';
+        // "Recebido a menor" ainda conta como pendência (falta receber a diferença); "Recebido a
+        // maior" não (já recebeu tudo e mais um pouco).
+        var alugPend=l.statusAluguel==='Pendente'||l.statusAluguel==='Atrasado'||l.statusAluguel==='Recebido a menor';
+        var repPend=locFoiRecebido_(l)&&l.statusRep!=='Repassado';
         return alugPend||repPend;
       });
       var badge=document.getElementById('locMesAlerta');
@@ -18318,8 +18391,10 @@ window.cpRenderFixas=cpRenderFixas;
         if(alvo.indexOf(termoBusca.trim().toLowerCase())<0)return false;
       }
       if(locFiltroAtivo==='all')return true;
-      var recebeu=(l.statusAluguel==='Recebido'),repassou=(l.statusRep==='Repassado');
+      var recebeu=locFoiRecebido_(l),repassou=(l.statusRep==='Repassado');
       if(locFiltroAtivo==='al_recebido')return l.statusAluguel==='Recebido';
+      if(locFiltroAtivo==='al_menor')return l.statusAluguel==='Recebido a menor';
+      if(locFiltroAtivo==='al_maior')return l.statusAluguel==='Recebido a maior';
       if(locFiltroAtivo==='al_pendente')return l.statusAluguel==='Pendente';
       if(locFiltroAtivo==='al_atrasado')return l.statusAluguel==='Atrasado';
       if(locFiltroAtivo==='rep_aguardando')return recebeu&&!repassou;
@@ -18353,14 +18428,15 @@ window.cpRenderFixas=cpRenderFixas;
         '<td>'+E(c.locador||'-')+coprop+'</td>'+
         '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
         '<td style="text-align:center">'+E(c.venc||'-')+'</td>'+
-        '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+        '<td><select class="loc-row-select '+stCls(l.statusAluguel)+'" onchange="locSetStatusAluguel(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Recebido','Recebido a menor','Recebido a maior','Atrasado'].map(function(s){return '<option'+(s===l.statusAluguel?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+        +((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')?' <span style="cursor:pointer;font-size:12px" title="Recebido: '+BRL(valorRecebidoOf(l))+' — '+(diferencaRecebidoOf(l)>0?'faltam '+BRL(diferencaRecebidoOf(l)):'sobrou '+BRL(-diferencaRecebidoOf(l)))+'. Clique para editar." onclick="event.stopPropagation();abrirModalRecebimento(\''+E(l.contrato)+'\',\''+E(l.statusAluguel)+'\')">✎</span>':'')+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataPag)+'" onchange="locSetData(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td style="text-align:center">'+E(c.rep||'-')+'</td>'+
         '<td class="loc-money" style="cursor:pointer" title="Aluguel + multa/juros + encargos cobrados do inquilino + IPTU − desconto — clique para editar" onclick="abrirModalCobrancas(\''+E(l.contrato)+'\')">'+BRL(valorCobradoOf(l))+' <span class="loc-num">✎</span>'+alertaMJ+'</td>'+
         '<td><span class="loc-row-money loc-row-money-fixo" title="Valor final do repasse (Aluguel + Multa + Juros − Taxa + Encargos) — não é editável aqui: por segurança, sempre coincide com o informe de repasse enviado ao locador.">🔒 '+BRL(rep)+'</span></td>'+
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
-        '<td>'+(l.statusAluguel!=='Recebido'?
-          '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido.">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
+        '<td>'+(!locFoiRecebido_(l)?
+          '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido (inclusive a menor/a maior).">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
           :'<select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
@@ -18427,12 +18503,17 @@ window.cpRenderFixas=cpRenderFixas;
   }
 
   // ---------- BAIXAS (local + Apps Script) ----------
-  function setOverride(contrato,patch){var s=state();var k=selMes+'|'+contrato;s.overrides[k]=Object.assign({},s.overrides[k]||{},patch);saveState(s);}
-  function lancDoMes(contrato){return DATA.lancamentos.filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];}
-  function gravarSheet(contrato){
+  // mesParam (opcional, nos 3): permite operar sobre um mês diferente do selecionado na tela —
+  // usado quando "recebido a menor/maior" precisa lançar a diferença direto no mês SEGUINTE
+  // (que pode já existir mesmo sem estar selecionado agora). Sem passar nada, comportamento
+  // idêntico ao de sempre (usa selMes).
+  function setOverride(contrato,patch,mesParam){var m=mesParam||selMes;var s=state();var k=m+'|'+contrato;s.overrides[k]=Object.assign({},s.overrides[k]||{},patch);saveState(s);}
+  function lancDoMes(contrato,mesParam){var m=mesParam||selMes;return DATA.lancamentos.filter(function(l){return l.mes===m&&l.contrato===contrato;})[0];}
+  function gravarSheet(contrato,mesParam){
     if(!live)return; var c=cfg(); if(!c)return;
-    var l=lancDoMes(contrato); if(!l||!l.id)return;
-    var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return;
+    var m=mesParam||selMes;
+    var l=lancDoMes(contrato,m); if(!l||!l.id)return;
+    var w=workingList().filter(function(x){return x.mes===m&&x.contrato===contrato;})[0]; if(!w)return;
     // "Valor Repasse" sempre é gravado vazio na planilha — a coluna Repasse não aceita mais
     // valor manual (ver effRep), então não há mais nada "travado" pra persistir aqui; o valor
     // exibido é sempre recalculado a partir de aluguel/taxa/encargos.
@@ -18443,7 +18524,8 @@ window.cpRenderFixas=cpRenderFixas;
       'Desconto':w.desconto||0,'Multa':w.multa||0,'Juros':w.juros||0,'Taxa Adm':w.taxa||0,'Desconto Incide Taxa':w.descontoIncideTaxa?'Sim':'Nao',
       'IPTU Parcela Numero':w.iptuParcelaNum||'','IPTU Parcela Total':w.iptuParcelaTotal||'',
       'Recibo Enviado':w.reciboEnviado?'Sim':'Nao','Data Envio Recibo':w.dataEnvioRecibo||'',
-      'Observacoes':w.observacoesLocador||'','Observacoes Locatario':w.observacoesLocatario||''};
+      'Observacoes':w.observacoesLocador||'','Observacoes Locatario':w.observacoesLocatario||'',
+      'Valor Recebido':(w.valorRecebido!=null&&w.valorRecebido!=='')?w.valorRecebido:'','Saldo Prox Mes Desc':w.saldoProxMesDesc||'','Saldo Prox Mes Valor':w.saldoProxMesValor||''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
 
@@ -20038,9 +20120,10 @@ window.cpRenderFixas=cpRenderFixas;
     var c=imovelInfo.contrato,pct=imovelInfo.pct;
     var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
     if(!w)return null;
-    // Só entra no relatório o que já foi efetivamente recebido do inquilino — não faz sentido
-    // "repassar" um aluguel que ainda está pendente ou atrasado, isso inflaria o total errado.
-    if(w.statusAluguel!=='Recebido')return null;
+    // Só entra no relatório o que já foi efetivamente recebido do inquilino (inclusive a
+    // menor/a maior — já entrou algum dinheiro) — não faz sentido "repassar" um aluguel que
+    // ainda está pendente ou atrasado, isso inflaria o total errado.
+    if(!locFoiRecebido_(w))return null;
     // E só entra o que ainda está APTO a ser repassado (Status Repasse ainda não é "Repassado")
     // — esse relatório serve como informe de repasse consolidado, então o que já foi repassado
     // não precisa mais aparecer aqui.
@@ -20063,7 +20146,7 @@ window.cpRenderFixas=cpRenderFixas;
     imoveis.forEach(function(im){
       var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
       if(!w)return;
-      if(w.statusAluguel!=='Recebido')naoRecebidos++;
+      if(!locFoiRecebido_(w))naoRecebidos++;
       else if(w.statusRep==='Repassado')jaRepassados++;
     });
     var avulsos=locLocPendentes(nome,mes);
@@ -20132,7 +20215,7 @@ window.cpRenderFixas=cpRenderFixas;
     imoveis.forEach(function(im){
       var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===im.contrato.contrato;})[0];
       if(!w)return;
-      if(w.statusAluguel!=='Recebido')naoRecebidos++;
+      if(!locFoiRecebido_(w))naoRecebidos++;
       else if(w.statusRep==='Repassado')jaRepassados++;
     });
     if(!linhas.length&&!avulsos.length)return '';
@@ -20215,7 +20298,7 @@ window.cpRenderFixas=cpRenderFixas;
     var c=im.contrato;
     var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
     if(!w)return null;
-    if(w.statusAluguel!=='Recebido')return null;
+    if(!locFoiRecebido_(w))return null;
     if(w.statusRep==='Repassado')return null;
 
     var tenants=(window.locColoc||[]).filter(function(o){return o.Contrato===c.contrato;});
@@ -20757,19 +20840,119 @@ window.cpRenderFixas=cpRenderFixas;
     var mrl=document.getElementById('modalReciboLoc');
     if(mrl)mrl.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   });
-  window.locSetStatusAluguel=function(contrato,val){var patch={statusAluguel:val};if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();};
+
+  // ---------- RECEBIMENTO A MENOR/A MAIOR (01/set/2026, 5ª rodada) ----------
+  // Pedido do usuário: quando o locatário paga a menos ou a mais que o valor cobrado, o sistema
+  // precisa registrar isso (não só "Recebido"/"Pendente"/"Atrasado" como antes) e deixar o
+  // usuário decidir o que fazer com a diferença: lançar multa/juros agora, cobrar/creditar
+  // automaticamente no mês seguinte, ou só registrar sem gerar nada.
+  function proximoMesStr_(mes){
+    var p=String(mes||'').split('/'); if(p.length!==2)return '';
+    var m=parseInt(p[0],10),y=parseInt(p[1],10); m++; if(m>12){m=1;y++;}
+    return ('0'+m).slice(-2)+'/'+y;
+  }
+  // Se o lançamento do mês seguinte deste contrato já existir, aplica a diferença ali na hora
+  // (como item de Outras Cobranças, tipo pontual) e devolve true. Se ainda não existir, devolve
+  // false — quem chamou guarda a diferença em "Saldo Prox Mes" pra ser aplicada automaticamente
+  // quando esse mês for gerado (ver gerar_mes_loc no Codigo.gs e o fallback local mais abaixo).
+  function recebimentoAplicarProximoMes_(contrato,mesAtualStr,desc,valor){
+    var prox=proximoMesStr_(mesAtualStr);
+    var wProx=(workingList()||[]).filter(function(x){return x.mes===prox&&x.contrato===contrato;})[0];
+    if(!wProx)return false;
+    var itens=parseOutrasCobrancas(wProx);
+    itens.push({desc:desc,valor:valor,tipo:'pontual',parcelaAtual:0,parcelaTotal:0,destino:'repasse',incideTaxa:false});
+    setOverride(contrato,{outrasDesc:montarOutrasCobrancas(itens)},prox);
+    gravarSheet(contrato,prox);
+    return true;
+  }
+  window.abrirModalRecebimento=function(contrato,statusEscolhido){
+    var w=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+    if(!w){locRender();return;}
+    var c=contratosById[contrato]||{};
+    document.getElementById('receb-contrato').value=contrato;
+    document.getElementById('receb-contrato-label').textContent=contrato+' — '+(c.locatario||'');
+    document.getElementById('receb-tipo-label').textContent=statusEscolhido==='Recebido a maior'?'a maior':'a menor';
+    var cobrado=valorCobradoOf(w);
+    document.getElementById('receb-cobrado').value=cobrado.toFixed(2);
+    var atual=(w.valorRecebido!=null&&w.valorRecebido!=='')?num(w.valorRecebido):cobrado;
+    document.getElementById('receb-valor').value=atual.toFixed(2);
+    document.getElementById('receb-desc').value='Saldo aluguel '+w.mes+' ('+contrato+')';
+    document.querySelectorAll('input[name="receb-acao"]').forEach(function(r){r.checked=(r.value==='proxmes');});
+    document.getElementById('receb-msg').textContent='';
+    recebimentoAtualizarPreview();
+    document.getElementById('modalRecebimento').classList.add('open');
+  };
+  // Fecha sem gravar nada — como o <select> de Status Aluguel na linha já tinha mudado
+  // visualmente pra "Recebido a menor/maior" antes do modal abrir, locRender() aqui devolve o
+  // select pro valor real gravado (se o usuário cancelou, nada muda de fato).
+  window.fecharModalRecebimento=function(){document.getElementById('modalRecebimento').classList.remove('open');locRender();};
+  window.recebimentoAtualizarPreview=function(){
+    var cobrado=num(document.getElementById('receb-cobrado').value);
+    var recebido=num(document.getElementById('receb-valor').value);
+    var diff=Math.round((cobrado-recebido)*100)/100;
+    var el=document.getElementById('receb-diferenca');
+    var mostraAcao=diff!==0;
+    document.getElementById('receb-acao-secao').style.display=mostraAcao?'':'none';
+    document.getElementById('receb-acao-wrap').style.display=mostraAcao?'':'none';
+    document.getElementById('receb-desc-wrap').style.display=mostraAcao?'':'none';
+    if(diff>0)el.innerHTML='Faltam <strong style="color:var(--red)">'+BRL(diff)+'</strong> em relação ao valor cobrado.';
+    else if(diff<0)el.innerHTML='Recebeu <strong style="color:var(--green)">'+BRL(-diff)+'</strong> a mais que o valor cobrado.';
+    else el.innerHTML='Valor recebido bate certinho com o cobrado — sem diferença a tratar.';
+    window._recebDiff=diff;
+  };
+  window.recebimentoSalvar=function(){
+    var contrato=document.getElementById('receb-contrato').value;
+    var w=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+    if(!w)return;
+    var recebido=num(document.getElementById('receb-valor').value);
+    var diff=window._recebDiff||0;
+    var statusFinal=diff>0?'Recebido a menor':(diff<0?'Recebido a maior':'Recebido');
+    var acao=diff===0?'nada':((document.querySelector('input[name="receb-acao"]:checked')||{}).value||'nada');
+    var patch={statusAluguel:statusFinal,valorRecebido:recebido,saldoProxMesDesc:'',saldoProxMesValor:0};
+    var cur=(state().overrides[selMes+'|'+contrato]||{});
+    var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;
+    if(!jaTem)patch.dataPag=fmtHoje();
+    if(diff!==0&&acao==='proxmes'){
+      var descItem=(document.getElementById('receb-desc').value||'').trim()||('Saldo aluguel '+w.mes);
+      var aplicadoNaHora=recebimentoAplicarProximoMes_(contrato,w.mes,descItem,diff);
+      if(!aplicadoNaHora){patch.saldoProxMesDesc=descItem;patch.saldoProxMesValor=diff;}
+    }
+    setOverride(contrato,patch);
+    gravarSheet(contrato);
+    logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+statusFinal+(diff?' (diferença de '+BRL(Math.abs(diff))+', ação: '+(acao==='multa'?'multa/juros agora':(acao==='proxmes'?'cobrar no mês seguinte':'só registrar'))+')':''));
+    document.getElementById('modalRecebimento').classList.remove('open');
+    if(diff!==0&&acao==='multa'){locRender();abrirModalCobrancas(contrato);return;}
+    locRender();
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var mr=document.getElementById('modalRecebimento');
+    if(mr)mr.addEventListener('click',function(e){if(e.target===this)fecharModalRecebimento();});
+  });
+
+  // "Recebido a menor"/"Recebido a maior" precisam de mais informação (o valor efetivamente
+  // recebido, e o que fazer com a diferença) do que um simples select — por isso abrem o modal
+  // de recebimento em vez de gravar na hora; quem grava, ali, é recebimentoSalvar(). Escolher
+  // qualquer outro status limpa valorRecebido/saldoProxMes de uma eventual escolha anterior
+  // (não faz sentido carregar esse resquício se o usuário mudou de ideia).
+  window.locSetStatusAluguel=function(contrato,val){
+    if(val==='Recebido a menor'||val==='Recebido a maior'){abrirModalRecebimento(contrato,val);return;}
+    var patch={statusAluguel:val,valorRecebido:'',saldoProxMesDesc:'',saldoProxMesValor:''};
+    if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}
+    setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();
+  };
   window.locSetStatusRepasse=function(contrato,val){
     var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
-    if(atual&&atual.statusAluguel!=='Recebido'){locRender();return;}
+    if(atual&&!locFoiRecebido_(atual)){locRender();return;}
     var patch={statusRep:val};if(val==='Repassado'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataRep||(lancDoMes(contrato)||{}).dataRep;if(!jaTem)patch.dataRep=fmtHoje();}setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status repasse',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();
   };
   window.locSetData=function(contrato,iso){
     var dataBR=isoToBr(iso);
     var patch={dataPag:dataBR};
     var atual=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]||{};
-    // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava Recebido) → volta pra Pendente.
+    // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava recebido, em
+    // qualquer variante) → volta pra Pendente e limpa o valor recebido/saldo pendente.
     if(dataBR)patch.statusAluguel='Recebido';
-    else if(atual.statusAluguel==='Recebido')patch.statusAluguel='Pendente';
+    else if(locFoiRecebido_(atual)){patch.statusAluguel='Pendente';patch.valorRecebido='';patch.saldoProxMesDesc='';patch.saldoProxMesValor='';}
     setOverride(contrato,patch);gravarSheet(contrato);locRender();
   };
   window.locSetDataRepasse=function(contrato,iso){
@@ -20824,12 +21007,19 @@ window.cpRenderFixas=cpRenderFixas;
         if(ultimo&&ultimo.iptuParcelaTotal>0){
           if(ultimo.iptuParcelaNum<ultimo.iptuParcelaTotal){iptu=ultimo.iptu;iptuParcelaNum=ultimo.iptuParcelaNum+1;iptuParcelaTotal=ultimo.iptuParcelaTotal;}
         }else if(ultimo){iptu=ultimo.iptu;}else{iptu=num(ct.iptuParcela);}
+        // Saldo pendente de "recebido a menor/maior" (ver recebimentoSalvar), mesma lógica do
+        // backend (gerar_mes_loc): entra como item pontual de Outras Cobranças só neste mês novo.
+        var outrasDescNova='';
+        if(ultimo&&ultimo.saldoProxMesValor){
+          var descSaldo=(ultimo.saldoProxMesDesc||'Saldo do mês anterior').replace(/::/g,'-').replace(/\|\|/g,'-');
+          outrasDescNova=descSaldo+'::'+ultimo.saldoProxMesValor+'::pontual::0::0::repasse::0';
+        }
         var lTemp={aluguel:aluguel,multa:0,juros:0,condominio:condominio,iptu:iptu,
           aguaPriv:ultimo?ultimo.aguaPriv:0,gasPriv:ultimo?ultimo.gasPriv:0,aguaComum:ultimo?ultimo.aguaComum:0,gasPiscina:ultimo?ultimo.gasPiscina:0,
           energiaComum:ultimo?ultimo.energiaComum:0,taxaLeitura:ultimo?ultimo.taxaLeitura:0,fundoFerias:ultimo?ultimo.fundoFerias:0,decimoTerceiro:ultimo?ultimo.decimoTerceiro:0,
-          desconto:ultimo?ultimo.desconto:0,descontoIncideTaxa:ultimo?ultimo.descontoIncideTaxa:false,outrasDesc:'',outrasValor:0};
+          desconto:ultimo?ultimo.desconto:0,descontoIncideTaxa:ultimo?ultimo.descontoIncideTaxa:false,outrasDesc:outrasDescNova,outrasValor:0};
         var taxa=calcularTaxa(lTemp,ct);
-        s.extra.push(Object.assign({},lTemp,{id:'',mes:novo,contrato:ct.contrato,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',iptuParcelaNum:iptuParcelaNum,iptuParcelaTotal:iptuParcelaTotal,multa:0,juros:0,outrasDesc:'',outrasValor:0,reciboEnviado:false,dataEnvioRecibo:''}));
+        s.extra.push(Object.assign({},lTemp,{id:'',mes:novo,contrato:ct.contrato,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',iptuParcelaNum:iptuParcelaNum,iptuParcelaTotal:iptuParcelaTotal,multa:0,juros:0,outrasValor:0,reciboEnviado:false,dataEnvioRecibo:'',valorRecebido:'',saldoProxMesDesc:'',saldoProxMesValor:0}));
       });saveState(s);selMes=novo;locRefreshMeses();locRender();
     }
   };
@@ -21916,7 +22106,7 @@ window.cpRenderFixas=cpRenderFixas;
     var meses=mesesDisponiveis();var m=(meses.indexOf(mesAtual())>=0)?mesAtual():meses[meses.length-1];
     var lst=workingList().filter(function(l){return l.mes===m;});
     var alug=0,pend=0,atras=0,repLiq=0;
-    lst.forEach(function(l){alug+=l.aluguel;if(l.statusRep==='Repassado')repLiq+=effRep(l);if(l.statusAluguel==='Atrasado')atras++;else if(l.statusAluguel!=='Recebido')pend++;});
+    lst.forEach(function(l){alug+=l.aluguel;if(l.statusRep==='Repassado')repLiq+=effRep(l);if(l.statusAluguel==='Atrasado')atras++;else if(l.statusAluguel==='Recebido a menor')pend++;else if(!locFoiRecebido_(l))pend++;});
     return {mes:m,alugueis:alug,repasseLiquido:repLiq,pendentes:pend,atrasados:atras,contratos:DATA.contratos.filter(function(c){return c.ativo;}).length,live:live};
   };
 
@@ -21932,7 +22122,7 @@ window.cpRenderFixas=cpRenderFixas;
       var lst=todos.filter(function(l){return l.mes===m;});
       var alug=0,taxa=0,repasse=0;
       lst.forEach(function(l){
-        if(l.statusAluguel==='Recebido'){alug+=l.aluguel;taxa+=l.taxa;}
+        if(locFoiRecebido_(l)){alug+=l.aluguel;taxa+=l.taxa;}
         if(l.statusRep==='Repassado')repasse+=effRep(l);
       });
       return {mes:m,alugueis:alug,taxa:taxa,repasse:repasse};
@@ -21968,7 +22158,7 @@ window.cpRenderFixas=cpRenderFixas;
     var itensAluguel=[],itensRepasse=[],totalAluguel=0,totalTaxa=0,totalRepasse=0;
     lst.forEach(function(l){
       var c=contratosById[l.contrato]||{};
-      if(l.statusAluguel==='Recebido'){
+      if(locFoiRecebido_(l)){
         totalAluguel+=l.aluguel; totalTaxa+=l.taxa;
         itensAluguel.push({contrato:l.contrato,nome:c.locatario||l.contrato,valor:l.aluguel,taxa:l.taxa,ref:l.dataPag||''});
       }
