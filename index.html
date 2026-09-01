@@ -14769,15 +14769,17 @@ window.cpRenderFixas=cpRenderFixas;
             <div class="loc-cfield"><label>Nome da corretora</label><input class="loc-cinput" id="lc-gar-corretora-nome"></div>
             <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-gar-corretora-telefone" maxlength="15" oninput="mascararTelefone(this)"></div>
             <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-gar-corretora-email"></div>
-            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">Coberturas da apólice (limite de valor de cada uma — deixe em branco o que não for coberto)</div>
-            <div class="loc-cfield half"><label>Aluguel — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Multa rescisória — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-multa" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Danos ao imóvel — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-danos" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Conta de energia — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-energia" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Conta de água — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-agua" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Conta de gás — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-gas" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Pintura interna — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-pint-int" type="text" inputmode="decimal" placeholder="0,00"></div>
-            <div class="loc-cfield half"><label>Pintura externa — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-pint-ext" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">Coberturas da apólice (limite de valor de cada uma — deixe em branco o que não for coberto — o campo ao lado mostra quantas vezes o valor do aluguel aquele limite representa)</div>
+            <div class="loc-cfield half"><label>Aluguel — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-aluguel" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-aluguel-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Multa rescisória — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-multa" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-multa-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Danos ao imóvel — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-danos" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-danos-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>IPTU — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-iptu" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-iptu-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Condomínio — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-condominio" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-condominio-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Conta de energia — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-energia" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-energia-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Conta de água — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-agua" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-agua-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Conta de gás — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-gas" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-gas-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Pintura interna — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-pint-int" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-pint-int-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
+            <div class="loc-cfield half"><label>Pintura externa — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-pint-ext" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-pint-ext-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px">—</span></div></div>
           </div>
         </div>
         <div class="loc-cfield full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
@@ -14827,7 +14829,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="IGP-DI">IGP-DI</option>
           <option value="Outro">Outro (definir na hora do aviso)</option>
         </select></div>
-        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
         <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="text" inputmode="decimal" placeholder="0,00"></div>
@@ -17097,6 +17099,7 @@ window.cpRenderFixas=cpRenderFixas;
           senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario'),
           garCorretoraNome:cell(row,mc,'Garantia Corretora Nome'),garCorretoraTelefone:cell(row,mc,'Garantia Corretora Telefone'),garCorretoraEmail:cell(row,mc,'Garantia Corretora Email'),
           garCobAluguel:num(cell(row,mc,'Cobertura Aluguel Limite')),garCobMulta:num(cell(row,mc,'Cobertura Multa Rescisoria Limite')),garCobDanos:num(cell(row,mc,'Cobertura Danos Imovel Limite')),
+          garCobIptu:num(cell(row,mc,'Cobertura IPTU Limite')),garCobCondominio:num(cell(row,mc,'Cobertura Condominio Limite')),
           garCobEnergia:num(cell(row,mc,'Cobertura Energia Limite')),garCobAgua:num(cell(row,mc,'Cobertura Agua Limite')),garCobGas:num(cell(row,mc,'Cobertura Gas Limite')),
           garCobPintInt:num(cell(row,mc,'Cobertura Pintura Interna Limite')),garCobPintExt:num(cell(row,mc,'Cobertura Pintura Externa Limite'))
         };
@@ -17467,10 +17470,29 @@ window.cpRenderFixas=cpRenderFixas;
   // tanto no bloco de informações do controle quanto no card de aviso à corretora.
   function sinCoberturasLista_(c,soComValor){
     var cob=[['Aluguel',c.garCobAluguel],['Multa rescisória',c.garCobMulta],['Danos ao imóvel',c.garCobDanos],
+      ['IPTU',c.garCobIptu],['Condomínio',c.garCobCondominio],
       ['Conta de energia',c.garCobEnergia],['Conta de água',c.garCobAgua],['Conta de gás',c.garCobGas],
       ['Pintura interna',c.garCobPintInt],['Pintura externa',c.garCobPintExt]];
     return soComValor===false?cob:cob.filter(function(x){return num(x[1])>0;});
   }
+  // Atualiza, ao lado de cada campo de limite de cobertura da apólice, quantas vezes o valor do
+  // aluguel aquele limite representa (pedido do usuário, 01/set/2026, 3ª rodada — ex.: aluguel
+  // R$3.100 e cobertura de aluguel R$93.000 = 30x). Chamada a cada digitação em qualquer campo
+  // de cobertura ou no próprio campo de aluguel do contrato.
+  function locGarCobAtualizarMultiplicadores_(){
+    var alugEl=document.getElementById('lc-aluguel');
+    var alug=alugEl?num(alugEl.value):0;
+    ['aluguel','multa','danos','iptu','condominio','energia','agua','gas','pint-int','pint-ext'].forEach(function(k){
+      var inp=document.getElementById('lc-gar-cob-'+k);
+      var out=document.getElementById('lc-gar-cob-'+k+'-x');
+      if(!inp||!out)return;
+      var v=num(inp.value);
+      if(!alug||!v){out.textContent='—';return;}
+      var mult=Math.round((v/alug)*10)/10;
+      out.textContent='= '+String(mult).replace('.',',')+'x aluguel';
+    });
+  }
+  window.locGarCobAtualizarMultiplicadores_=locGarCobAtualizarMultiplicadores_;
   // Discrimina os valores em atraso do contrato item a item, POR VENCIMENTO (não mais um total
   // agregado por categoria) — pedido do usuário (01/set/2026, 2ª rodada): "faltou a descrição
   // completa dos valores em atraso... exemplo: vencimento 15/07/2026 / Aluguel R$ / IPTU R$ /
@@ -20872,8 +20894,9 @@ window.cpRenderFixas=cpRenderFixas;
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
      'lc-gar-corretora-nome','lc-gar-corretora-telefone','lc-gar-corretora-email',
-     'lc-gar-cob-aluguel','lc-gar-cob-multa','lc-gar-cob-danos','lc-gar-cob-energia','lc-gar-cob-agua','lc-gar-cob-gas','lc-gar-cob-pint-int','lc-gar-cob-pint-ext'
+     'lc-gar-cob-aluguel','lc-gar-cob-multa','lc-gar-cob-danos','lc-gar-cob-iptu','lc-gar-cob-condominio','lc-gar-cob-energia','lc-gar-cob-agua','lc-gar-cob-gas','lc-gar-cob-pint-int','lc-gar-cob-pint-ext'
     ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    try{locGarCobAtualizarMultiplicadores_();}catch(e){}
     document.getElementById('lc-conta-recebimento').value='escritorio';
     // Juros de mora: sugere 1% ao mês por padrão (o mais comum em contrato de locação) — só
     // em contrato NOVO; ao editar um já existente, o valor gravado é que prevalece (abaixo).
@@ -21012,11 +21035,14 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-gar-cob-aluguel').value=num(c.garCobAluguel)||'';
     document.getElementById('lc-gar-cob-multa').value=num(c.garCobMulta)||'';
     document.getElementById('lc-gar-cob-danos').value=num(c.garCobDanos)||'';
+    document.getElementById('lc-gar-cob-iptu').value=num(c.garCobIptu)||'';
+    document.getElementById('lc-gar-cob-condominio').value=num(c.garCobCondominio)||'';
     document.getElementById('lc-gar-cob-energia').value=num(c.garCobEnergia)||'';
     document.getElementById('lc-gar-cob-agua').value=num(c.garCobAgua)||'';
     document.getElementById('lc-gar-cob-gas').value=num(c.garCobGas)||'';
     document.getElementById('lc-gar-cob-pint-int').value=num(c.garCobPintInt)||'';
     document.getElementById('lc-gar-cob-pint-ext').value=num(c.garCobPintExt)||'';
+    try{locGarCobAtualizarMultiplicadores_();}catch(e){}
     try{locToggleGarantia();}catch(e){}
     document.getElementById('lc-msg').textContent='';
     try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
@@ -21083,6 +21109,8 @@ window.cpRenderFixas=cpRenderFixas;
       'Cobertura Aluguel Limite':num(document.getElementById('lc-gar-cob-aluguel').value),
       'Cobertura Multa Rescisoria Limite':num(document.getElementById('lc-gar-cob-multa').value),
       'Cobertura Danos Imovel Limite':num(document.getElementById('lc-gar-cob-danos').value),
+      'Cobertura IPTU Limite':num(document.getElementById('lc-gar-cob-iptu').value),
+      'Cobertura Condominio Limite':num(document.getElementById('lc-gar-cob-condominio').value),
       'Cobertura Energia Limite':num(document.getElementById('lc-gar-cob-energia').value),
       'Cobertura Agua Limite':num(document.getElementById('lc-gar-cob-agua').value),
       'Cobertura Gas Limite':num(document.getElementById('lc-gar-cob-gas').value),
@@ -21098,7 +21126,7 @@ window.cpRenderFixas=cpRenderFixas;
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
       fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email'],
       garCorretoraNome:campos['Garantia Corretora Nome'],garCorretoraTelefone:campos['Garantia Corretora Telefone'],garCorretoraEmail:campos['Garantia Corretora Email'],
-      garCobAluguel:campos['Cobertura Aluguel Limite'],garCobMulta:campos['Cobertura Multa Rescisoria Limite'],garCobDanos:campos['Cobertura Danos Imovel Limite'],garCobEnergia:campos['Cobertura Energia Limite'],garCobAgua:campos['Cobertura Agua Limite'],garCobGas:campos['Cobertura Gas Limite'],garCobPintInt:campos['Cobertura Pintura Interna Limite'],garCobPintExt:campos['Cobertura Pintura Externa Limite']
+      garCobAluguel:campos['Cobertura Aluguel Limite'],garCobMulta:campos['Cobertura Multa Rescisoria Limite'],garCobDanos:campos['Cobertura Danos Imovel Limite'],garCobIptu:campos['Cobertura IPTU Limite'],garCobCondominio:campos['Cobertura Condominio Limite'],garCobEnergia:campos['Cobertura Energia Limite'],garCobAgua:campos['Cobertura Agua Limite'],garCobGas:campos['Cobertura Gas Limite'],garCobPintInt:campos['Cobertura Pintura Interna Limite'],garCobPintExt:campos['Cobertura Pintura Externa Limite']
     };
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
