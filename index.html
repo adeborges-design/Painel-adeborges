@@ -14736,6 +14736,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>Telefone do locatário (2)</label><input class="loc-cinput" id="lc-tel-locatario-2" placeholder="(11) 90000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
         <div class="loc-cfield"><label>E-mail do locatário (1)</label><input class="loc-cinput" id="lc-email-locatario-1" placeholder="email@exemplo.com"></div>
         <div class="loc-cfield"><label>E-mail do locatário (2)</label><input class="loc-cinput" id="lc-email-locatario-2" placeholder="email@exemplo.com"></div>
+        <div class="loc-cfield full"><label>Representante do locatário <span style="font-weight:400;color:var(--muted)">(preencha só se o locatário for Pessoa Jurídica — quem assina/recebe avisos em nome da empresa)</span></label><input class="loc-cinput" id="lc-rep-locatario" placeholder="Nome do representante legal"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Dados bancários para pagamento e repasse</div>
         <div class="loc-cfield full"><label>O locatário paga o aluguel em qual conta?</label>
           <select class="loc-cinput" id="lc-conta-recebimento">
@@ -17090,6 +17091,7 @@ window.cpRenderFixas=cpRenderFixas;
         return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
+          repLocatarioNome:cell(row,mc,'Representante Locatario Nome'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
           fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email'),
           senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario'),
@@ -17461,15 +17463,44 @@ window.cpRenderFixas=cpRenderFixas;
     await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_rascunhos',id:id})}).catch(function(){});
     setTimeout(async function(){if(window.carregarRascunhos)await window.carregarRascunhos();sinRenderModal_(contrato);},1200);
   };
+  // Lista das coberturas contratadas na apólice (Seguro Fiança) com limite > 0 — reaproveitada
+  // tanto no bloco de informações do controle quanto no card de aviso à corretora.
+  function sinCoberturasLista_(c,soComValor){
+    var cob=[['Aluguel',c.garCobAluguel],['Multa rescisória',c.garCobMulta],['Danos ao imóvel',c.garCobDanos],
+      ['Conta de energia',c.garCobEnergia],['Conta de água',c.garCobAgua],['Conta de gás',c.garCobGas],
+      ['Pintura interna',c.garCobPintInt],['Pintura externa',c.garCobPintExt]];
+    return soComValor===false?cob:cob.filter(function(x){return num(x[1])>0;});
+  }
+  // Discrimina os valores em atraso do contrato por categoria (aluguel, IPTU, condomínio, água,
+  // luz, gás, outras cobranças/descontos) e lista os meses/vencimentos em aberto — pedido do
+  // usuário (01/set/2026): o aviso enviado à corretora precisa mostrar tudo separado, não só um
+  // total de "aluguel + encargos".
+  function sinCalcularAtrasoDetalhado_(contrato){
+    var c=contratosById[contrato]||{};
+    var atrasados=DATA.lancamentos.filter(function(l){return l.contrato===contrato&&inadLocEstaAtrasado_(l,c);});
+    var cat={aluguel:0,iptu:0,condominio:0,agua:0,luz:0,gas:0,outras:0};
+    var meses=[];
+    atrasados.forEach(function(l){
+      var total=valorCobradoOf(l);
+      var agua=(l.aguaPriv||0)+(l.aguaComum||0), gas=(l.gasPriv||0)+(l.gasPiscina||0);
+      cat.aluguel+=(l.aluguel||0);cat.iptu+=(l.iptu||0);cat.condominio+=(l.condominio||0);cat.agua+=agua;cat.luz+=(l.energiaComum||0);cat.gas+=gas;
+      var somaConhecida=(l.aluguel||0)+(l.iptu||0)+(l.condominio||0)+agua+(l.energiaComum||0)+gas;
+      cat.outras+=(total-somaConhecida);
+      var venc=diaMes(c.venc,l.mes);
+      meses.push({mes:l.mes,venc:venc,dias:venc?diasAtrasoFrom(venc,false):null,total:total});
+    });
+    Object.keys(cat).forEach(function(k){cat[k]=Math.round(cat[k]*100)/100;});
+    meses.sort(function(a,b){return (a.venc&&b.venc)?(a.venc-b.venc):0;});
+    return {cat:cat,meses:meses,totalGeral:Math.round(atrasados.reduce(function(s,l){return s+valorCobradoOf(l);},0)*100)/100};
+  }
   // Bloco de informações específicas do tipo de garantia — mostrado dentro do controle de
-  // inadimplência (pedido do usuário, 01/set/2026): apólice/coberturas/corretora pra Seguro
-  // Fiança, contatos dos fiadores, ou o alerta de que a providência é ação de despejo (caução).
+  // inadimplência (pedido do usuário, 31/ago–01/set/2026): apólice/coberturas/corretora pra
+  // Seguro Fiança, contatos dos fiadores, ou o alerta de que a providência é ação de despejo
+  // (caução).
   function sinInfoExtra_(contrato,c,sinistroId){
     var tipo=c.tipoGarantia||'Seguro Fiança';
     if(tipo==='Seguro Fiança'){
-      var cob=[['Aluguel',c.garCobAluguel],['Multa rescisória',c.garCobMulta],['Danos ao imóvel',c.garCobDanos],
-        ['Conta de energia',c.garCobEnergia],['Conta de água',c.garCobAgua],['Conta de gás',c.garCobGas],
-        ['Pintura interna',c.garCobPintInt],['Pintura externa',c.garCobPintExt]].filter(function(x){return num(x[1])>0;});
+      var cob=sinCoberturasLista_(c);
       var temCorretora=!!(c.garCorretoraNome||c.garCorretoraTelefone||c.garCorretoraEmail);
       return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
         +'<div style="font-weight:700;margin-bottom:6px">📋 Coberturas da apólice</div>'
@@ -17608,23 +17639,37 @@ window.cpRenderFixas=cpRenderFixas;
     sinCardRender_(contrato,destino);
     ov.style.display='flex';
   };
+  // Conteúdo do card de aviso (pedido do usuário, 01/set/2026): precisa trazer TODOS os dados
+  // do contrato, TODAS as coberturas contratadas, os valores em atraso discriminados por
+  // categoria (aluguel, IPTU, condomínio, água, luz, gás — não só um total), os meses/
+  // vencimentos em aberto, telefone E e-mail do locatário, e o nome do representante quando o
+  // locatário é Pessoa Jurídica (inferido pela quantidade de dígitos do CPF/CNPJ, >11 = CNPJ).
   function sinCardConteudo_(contrato,destino){
     var c=contratosById[contrato]||{};
     var dest=sinCardDestinatario_(c,destino);
-    var calc=sinCalcularAtraso_(contrato);
-    var atual=sinAbertoDoContrato_(contrato);
-    var meses=atual?num(atual['Meses Atraso']):calc.meses;
-    var valAlug=atual?num(atual['Valor Aluguel Atraso']):calc.valorAluguel;
-    var valEnc=atual?num(atual['Valor Encargos Atraso']):calc.valorEncargos;
+    var det=sinCalcularAtrasoDetalhado_(contrato);
+    var ehPJLocatario=String(c.cpfLocatario||'').replace(/\D/g,'').length>11;
+    var catLabels=[['aluguel','Aluguel'],['iptu','IPTU'],['condominio','Condomínio'],['agua','Água'],['luz','Luz (energia)'],['gas','Gás'],['outras','Outras cobranças/descontos']];
+    var catLinhas=catLabels.filter(function(x){return det.cat[x[0]];}).map(function(x){return '<div>'+x[1]+' em atraso: <b>'+BRL(det.cat[x[0]])+'</b></div>';}).join('');
+    var mesesLinhas=det.meses.map(function(m){
+      return '<div>'+E(m.mes)+' — venceu em '+(m.venc?m.venc.toLocaleDateString('pt-BR'):'-')+(m.dias?' ('+m.dias+' dia(s) de atraso)':'')+' — '+BRL(m.total)+'</div>';
+    }).join('');
+    var cobTodas=sinCoberturasLista_(c,false);
     return '<div style="font-weight:700;font-size:15px;margin-bottom:2px">AVISO DE INADIMPLÊNCIA — GARANTIA LOCATÍCIA</div>'
       +'<div style="font-size:11px;color:#8a94a6;margin-bottom:10px">Escritório Adenilson Borges</div>'
-      +'<div style="font-size:12.5px;margin-bottom:8px"><b>Para:</b> '+E(dest.nome)+' ('+E(dest.tipo)+')'+(dest.telefone?' · '+E(dest.telefone):'')+'</div>'
-      +'<div style="font-size:12.5px;margin-bottom:2px"><b>Contrato '+E(contrato)+'</b> — '+E(c.end||'')+'</div>'
-      +'<div style="font-size:12.5px;margin-bottom:2px">Locador: '+E(c.locador||'-')+(c.telLocador1?' · '+E(c.telLocador1):'')+'</div>'
-      +'<div style="font-size:12.5px;margin-bottom:8px">Locatário: '+E(c.locatario||'-')+(c.telLocatario1?' · '+E(c.telLocatario1):'')+'</div>'
-      +'<div style="font-size:12.5px;margin-bottom:2px">'+meses+' mês(es) em atraso</div>'
-      +'<div style="font-size:12.5px;margin-bottom:8px">Aluguel em atraso: '+BRL(valAlug)+' · Encargos em atraso: '+BRL(valEnc)+' · <b>Total: '+BRL(valAlug+valEnc)+'</b></div>'
-      +(c.tipoGarantia==='Seguro Fiança'&&c.garApolice?'<div style="font-size:12.5px;margin-bottom:8px">Apólice nº '+E(c.garApolice)+(c.garSeguradora?' — '+E(c.garSeguradora):'')+'</div>':'')
+      +'<div style="font-size:12.5px;margin-bottom:8px"><b>Para:</b> '+E(dest.nome)+' ('+E(dest.tipo)+')'+(dest.telefone?' · '+E(dest.telefone):'')+(dest.email?' · '+E(dest.email):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px"><b>Contrato '+E(contrato)+'</b> — '+E(c.end||'')+(c.cep?' — CEP '+E(c.cep):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px">Aluguel mensal: '+BRL(num(c.aluguel))+(c.vigInicio?' · Vigência: '+E(c.vigInicio)+(c.vigFim?' a '+E(c.vigFim):''):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px">Locador: <b>'+E(c.locador||'-')+'</b>'+(c.telLocador1?' · '+E(c.telLocador1):'')+(c.telLocador2?' / '+E(c.telLocador2):'')+(c.emailLocador1?' · '+E(c.emailLocador1):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px">Locatário: <b>'+E(c.locatario||'-')+'</b>'+(c.telLocatario1?' · '+E(c.telLocatario1):'')+(c.telLocatario2?' / '+E(c.telLocatario2):'')+(c.emailLocatario1?' · '+E(c.emailLocatario1):'')+(c.emailLocatario2?' / '+E(c.emailLocatario2):'')+'</div>'
+      +(ehPJLocatario&&c.repLocatarioNome?'<div style="font-size:12.5px;margin-bottom:8px">Representante do locatário (PJ): <b>'+E(c.repLocatarioNome)+'</b></div>':'<div style="margin-bottom:8px"></div>')
+      +(c.tipoGarantia==='Seguro Fiança'&&(c.garApolice||c.garSeguradora)?'<div style="font-size:12.5px;margin-bottom:8px">Apólice nº '+E(c.garApolice||'-')+(c.garSeguradora?' — '+E(c.garSeguradora):'')+'</div>':'')
+      +'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Valores em atraso (discriminados)</div>'
+      +(catLinhas||'<div style="color:#8a94a6">Nenhum valor em atraso encontrado nos lançamentos.</div>')
+      +'<div style="margin-top:4px;font-weight:700">Total em atraso: '+BRL(det.totalGeral)+' ('+det.meses.length+' mês(es))</div>'
+      +(mesesLinhas?'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Meses/vencimentos em aberto</div>'+mesesLinhas:'')
+      +'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Coberturas contratadas na apólice (limite de indenização)</div>'
+      +cobTodas.map(function(x){return '<div>'+E(x[0])+': '+(num(x[1])>0?'até '+BRL(num(x[1])):'<span style="color:#8a94a6">não contratada</span>')+'</div>';}).join('')
       +'<div style="font-size:12px;color:#8a94a6;margin-top:10px">Favor comunicar'+(destino==='corretora'?' a seguradora':'')+' e retornar com as providências. Emitido em '+new Date().toLocaleDateString('pt-BR')+'.</div>';
   }
   function sinCardRender_(contrato,destino){
@@ -20817,7 +20862,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locCFormTitle').textContent='Novo contrato';
     lcSenhasAtualizarPainel(null);
     ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
-     'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
+     'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2','lc-rep-locatario',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
      'lc-gar-corretora-nome','lc-gar-corretora-telefone','lc-gar-corretora-email',
@@ -20938,6 +20983,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-tel-locatario-2').value=c.telLocatario2||'';
     document.getElementById('lc-email-locatario-1').value=c.emailLocatario1||'';
     document.getElementById('lc-email-locatario-2').value=c.emailLocatario2||'';
+    document.getElementById('lc-rep-locatario').value=c.repLocatarioNome||'';
     document.getElementById('lc-tipo-garantia').value=c.tipoGarantia||'';
     document.getElementById('lc-gar-seguradora').value=c.garSeguradora||'';
     document.getElementById('lc-gar-apolice').value=c.garApolice||'';
@@ -21008,6 +21054,7 @@ window.cpRenderFixas=cpRenderFixas;
       'Telefone Locatario 2':document.getElementById('lc-tel-locatario-2').value.trim(),
       'Email Locatario 1':document.getElementById('lc-email-locatario-1').value.trim(),
       'Email Locatario 2':document.getElementById('lc-email-locatario-2').value.trim(),
+      'Representante Locatario Nome':document.getElementById('lc-rep-locatario').value.trim(),
       'Tipo Garantia':document.getElementById('lc-tipo-garantia').value,
       'Garantia Seguradora':document.getElementById('lc-gar-seguradora').value.trim(),
       'Garantia Nr Apolice':document.getElementById('lc-gar-apolice').value.trim(),
@@ -21041,6 +21088,7 @@ window.cpRenderFixas=cpRenderFixas;
     var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
+      repLocatarioNome:campos['Representante Locatario Nome'],
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
       fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email'],
       garCorretoraNome:campos['Garantia Corretora Nome'],garCorretoraTelefone:campos['Garantia Corretora Telefone'],garCorretoraEmail:campos['Garantia Corretora Email'],
