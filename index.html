@@ -3694,6 +3694,10 @@
             <label>Tribunal e Fórum</label>
             <input type="text" id="ed-tribunal">
           </div>
+          <div class="form-field form-full">
+            <label>Link do Acompanhamento (artefato Claude)</label>
+            <input type="url" id="ed-linkArtefato" placeholder="https://claude.ai/...">
+          </div>
           <div class="form-field">
             <label>Data de Autuação</label>
             <input type="date" id="ed-dataAutuacao">
@@ -4148,6 +4152,10 @@
           <div class="form-field form-full">
             <label>Tribunal e Fórum</label>
             <input type="text" id="cad-tribunal">
+          </div>
+          <div class="form-field form-full">
+            <label>Link do Acompanhamento (artefato Claude)</label>
+            <input type="url" id="cad-linkArtefato" placeholder="https://claude.ai/...">
           </div>
           <div class="form-field">
             <label>Data de Autuação</label>
@@ -5789,6 +5797,7 @@ function parseProcessos(rows) {
     const vara             = get(row, 'Vara',              -1);  // coluna D nova
     const juiz             = get(row, 'Juiz(a)',            -1);
     const tribunal         = get(row, 'Tribunal e Forum',  -1);  // cabeçalho real na planilha é sem acento
+    const linkArtefato     = get(row, 'Link Artefato',    -1);
     const cpfCnpj          = get(row, 'CPF/CNPJ',         6);
     const rg               = get(row, 'RG/ Órgão emissor', 7);
     const estadoCivil      = get(row, 'Estado civil',     8);
@@ -5872,7 +5881,7 @@ function parseProcessos(rows) {
       nro: parseInt(nro),
       _uid: i,
       nome, processo, sistema, chaveAcesso, senhaCliente,
-      vara, juiz, tribunal, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
+      vara, juiz, tribunal, linkArtefato, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
       endereco, bairro, complemento, cep, cidade, estado,
       valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento, datasVencimento,
       formaPagamento, objetoContrato,
@@ -6368,6 +6377,7 @@ function renderCard(p, idx) {
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
         ${p.dataAutuacao ? `<div style="font-size:11px;color:var(--muted)">📅 Autuação: ${formatDate(p.dataAutuacao)}</div>` : ''}
         ${p.chaveAcesso ? `<div style="font-size:11px;color:var(--muted)">🔑 Chave de acesso: ${escHtml(p.chaveAcesso)}</div>` : ''}
+        ${p.linkArtefato ? `<div style="font-size:11px"><a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--eixo-gold);text-decoration:none;font-weight:600">🔗 Acompanhamento (artefato Claude)</a></div>` : ''}
         ${(() => {
           let html = '';
           if (p.processoPrincipal) {
@@ -11854,6 +11864,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-vara').value = p.vara || '';
   document.getElementById('ed-juiz').value = p.juiz || '';
   document.getElementById('ed-tribunal').value = p.tribunal || '';
+  document.getElementById('ed-linkArtefato').value = p.linkArtefato || '';
   document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
   document.getElementById('ed-idoso').checked = (p.idoso || '').toUpperCase() === 'SIM';
   document.getElementById('ed-digital100').checked = (p.digital100 || '').toUpperCase() === 'SIM';
@@ -11982,6 +11993,7 @@ async function salvarEdicao() {
     'Vara': document.getElementById('ed-vara').value,
     'Juiz(a)': document.getElementById('ed-juiz').value,
     'Tribunal e Forum': document.getElementById('ed-tribunal').value,
+    'Link Artefato': document.getElementById('ed-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
     'Idoso': document.getElementById('ed-idoso').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('ed-digital100').checked ? 'Sim' : 'Nao',
@@ -12376,7 +12388,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
@@ -12616,6 +12628,7 @@ async function salvarCadastro() {
     'Vara': document.getElementById('cad-vara').value,
     'Juiz(a)': document.getElementById('cad-juiz').value,
     'Tribunal e Forum': document.getElementById('cad-tribunal').value,
+    'Link Artefato': document.getElementById('cad-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
     'Idoso': document.getElementById('cad-idoso').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('cad-digital100').checked ? 'Sim' : 'Nao',
