@@ -14764,6 +14764,19 @@ window.cpRenderFixas=cpRenderFixas;
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield half"><label>Seguradora</label><input class="loc-cinput" id="lc-gar-seguradora" placeholder="Nome da seguradora"></div>
             <div class="loc-cfield half"><label>Nº da apólice</label><input class="loc-cinput" id="lc-gar-apolice"></div>
+            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">Corretora de seguros (recebe o aviso pra comunicar a seguradora)</div>
+            <div class="loc-cfield"><label>Nome da corretora</label><input class="loc-cinput" id="lc-gar-corretora-nome"></div>
+            <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-gar-corretora-telefone" maxlength="15" oninput="mascararTelefone(this)"></div>
+            <div class="loc-cfield half"><label>E-mail</label><input class="loc-cinput" id="lc-gar-corretora-email"></div>
+            <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">Coberturas da apólice (limite de valor de cada uma — deixe em branco o que não for coberto)</div>
+            <div class="loc-cfield half"><label>Aluguel — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-aluguel" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Multa rescisória — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-multa" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Danos ao imóvel — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-danos" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Conta de energia — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-energia" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Conta de água — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-agua" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Conta de gás — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-gas" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Pintura interna — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-pint-int" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Pintura externa — limite (R$)</label><input class="loc-cinput" id="lc-gar-cob-pint-ext" type="text" inputmode="decimal" placeholder="0,00"></div>
           </div>
         </div>
         <div class="loc-cfield full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
@@ -17079,7 +17092,11 @@ window.cpRenderFixas=cpRenderFixas;
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
           fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email'),
-          senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario')
+          senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario'),
+          garCorretoraNome:cell(row,mc,'Garantia Corretora Nome'),garCorretoraTelefone:cell(row,mc,'Garantia Corretora Telefone'),garCorretoraEmail:cell(row,mc,'Garantia Corretora Email'),
+          garCobAluguel:num(cell(row,mc,'Cobertura Aluguel Limite')),garCobMulta:num(cell(row,mc,'Cobertura Multa Rescisoria Limite')),garCobDanos:num(cell(row,mc,'Cobertura Danos Imovel Limite')),
+          garCobEnergia:num(cell(row,mc,'Cobertura Energia Limite')),garCobAgua:num(cell(row,mc,'Cobertura Agua Limite')),garCobGas:num(cell(row,mc,'Cobertura Gas Limite')),
+          garCobPintInt:num(cell(row,mc,'Cobertura Pintura Interna Limite')),garCobPintExt:num(cell(row,mc,'Cobertura Pintura Externa Limite'))
         };
       });
       var ml=hidx(rl[0]);
@@ -17133,7 +17150,8 @@ window.cpRenderFixas=cpRenderFixas;
               'Data Sinistro Aberto':cell(row,msin,'Data Sinistro Aberto'),'Data Comunicacao Seguradora':cell(row,msin,'Data Comunicacao Seguradora'),'Numero Sinistro':cell(row,msin,'Numero Sinistro'),
               Status:cell(row,msin,'Status')||'Aberto',
               'Valor Aluguel Atraso':num(cell(row,msin,'Valor Aluguel Atraso')),'Valor Encargos Atraso':num(cell(row,msin,'Valor Encargos Atraso')),'Meses Atraso':num(cell(row,msin,'Meses Atraso')),
-              Observacoes:cell(row,msin,'Observacoes'),'Data Criacao':cell(row,msin,'Data Criacao'),'Data Atualizacao':cell(row,msin,'Data Atualizacao')};
+              Observacoes:cell(row,msin,'Observacoes'),'Data Criacao':cell(row,msin,'Data Criacao'),'Data Atualizacao':cell(row,msin,'Data Atualizacao'),
+              'Acao Tipo':cell(row,msin,'Acao Tipo')||''};
           });})();
         } else { window.locSinistros = []; }
       }catch(e4){ window.locSinistros = []; }
@@ -17164,23 +17182,97 @@ window.cpRenderFixas=cpRenderFixas;
   window.locSinistros = window.locSinistros || [];
   window.locSinistrosHist = window.locSinistrosHist || [];
 
-  // ---------- SINISTRO / SEGURO FIANÇA — controle de acionamento da garantia (31/ago/2026) ----------
-  // Registro formal do acionamento da garantia locatícia (Seguro Fiança) num contrato
-  // inadimplente: comunicação à seguradora, número do sinistro, status do caso, e os valores/
-  // meses em atraso — puxados automaticamente de LOC_LANCAMENTOS na hora de abrir o drawer
-  // (editável, caso a seguradora aceite/exija um valor diferente). Linha do tempo própria
-  // (LOC_SINISTROS_HISTORICO, pedido do usuário: "registro" como histórico completo, não só
-  // um campo de observações) e Follow-ups (lembretes com data) reaproveitando 100% a
-  // infraestrutura de Tarefas já existente (Tipo "Sinistro Seguro Fiança", ligado por
-  // "Sinistro ID") — mesmo princípio da regra permanente nº10, sincroniza sozinho com o Google
-  // Agenda. "Conexão com o Gmail" pedida pelo usuário foi esclarecida como só isso: agendar — não
-  // há envio/leitura de e-mail aqui, é o mesmo mecanismo de Follow-up→Agenda das Tarefas normais.
-  var SIN_STATUS=['Aberto','Comunicado à Seguradora','Em Análise','Pago','Negado','Encerrado'];
+  // ---------- CONTROLE DE INADIMPLÊNCIA / ACIONAMENTO DE GARANTIA LOCATÍCIA (31/ago–01/set/2026) ----------
+  // Registro formal do que se faz num contrato inadimplente conforme o TIPO de garantia
+  // cadastrado nele (nem todo contrato é Seguro Fiança — pedido do usuário, 01/set/2026):
+  //   Seguro Fiança            → sinistro junto à seguradora (via corretora)
+  //   Título de Capitalização  → comunicação à empresa emissora do título
+  //   Carta Fiança Bancária    → comunicação ao banco
+  //   Fiadores                 → comunicação aos fiadores
+  //   Caução em Dinheiro/Imóvel→ não há "quem comunicar": a providência é ação de despejo
+  // Continua tudo na MESMA tabela/aba (LOC_SINISTROS + LOC_SINISTROS_HISTORICO) pra não perder
+  // os registros já lançados antes desta mudança — só ganhou a coluna 'Acao Tipo' (o tipo de
+  // garantia no momento do registro) e os rótulos dos campos passaram a mudar conforme o tipo
+  // (sinTipoInfo_). Os campos físicos continuam 'Seguradora'/'Nr Apolice'/'Numero Sinistro' por
+  // baixo mesmo quando rotulados como "Empresa emissora"/"Nº da Proposta"/etc — é só rótulo.
+  // Linha do tempo própria (LOC_SINISTROS_HISTORICO — pedido do usuário: "registro" como
+  // histórico completo, não só um campo de observações) e Follow-ups (lembretes com data)
+  // reaproveitando 100% a infraestrutura de Tarefas já existente (Tipo "Sinistro Seguro
+  // Fiança", ligado por "Sinistro ID") — mesmo princípio da regra permanente nº10, sincroniza
+  // sozinho com o Google Agenda. "Conexão com o Gmail" pedida pelo usuário foi esclarecida como
+  // só isso: agendar — não há envio/leitura de e-mail aqui, é o mesmo mecanismo de
+  // Follow-up→Agenda das Tarefas normais.
+  function sinTipoInfo_(tipoGarantia){
+    var t=tipoGarantia||'Seguro Fiança';
+    var mapa={
+      'Seguro Fiança':{
+        titulo:'Sinistro — Seguro Fiança',
+        labelEntidade:'Seguradora',labelReferencia:'Nº da Apólice',labelData:'Data de comunicação à seguradora',labelNumero:'Nº do Sinistro',
+        mostrarEntidade:true,mostrarNumero:true,
+        status:['Aberto','Comunicado à Seguradora','Em Análise','Pago','Negado','Encerrado'],
+        placeholderNumero:'Preencha assim que a seguradora informar',textoAbrir:'Abrir sinistro',
+        textoEventoAbertura:'Sinistro aberto',textoEventoComunicacao:'Comunicação à seguradora registrada em ',textoEventoNumero:'Número do sinistro informado pela seguradora: '
+      },
+      'Título de Capitalização':{
+        titulo:'Acionamento — Título de Capitalização',
+        labelEntidade:'Empresa emissora do título',labelReferencia:'Nº da Proposta',labelData:'Data de comunicação à empresa',labelNumero:'Nº do Sinistro/Protocolo',
+        mostrarEntidade:true,mostrarNumero:true,
+        status:['Aberto','Comunicado à Empresa','Em Análise','Pago','Negado','Encerrado'],
+        placeholderNumero:'Preencha assim que a empresa informar',textoAbrir:'Abrir acionamento',
+        textoEventoAbertura:'Acionamento do título de capitalização aberto',textoEventoComunicacao:'Comunicação à empresa emissora registrada em ',textoEventoNumero:'Nº do protocolo informado pela empresa: '
+      },
+      'Carta Fiança Bancária':{
+        titulo:'Acionamento — Carta Fiança Bancária',
+        labelEntidade:'Banco',labelReferencia:'Nº da Carta Fiança',labelData:'Data de comunicação ao banco',labelNumero:'Nº do Protocolo',
+        mostrarEntidade:true,mostrarNumero:true,
+        status:['Aberto','Comunicado ao Banco','Em Análise','Pago','Negado','Encerrado'],
+        placeholderNumero:'Preencha assim que o banco informar',textoAbrir:'Abrir acionamento',
+        textoEventoAbertura:'Acionamento da carta fiança bancária aberto',textoEventoComunicacao:'Comunicação ao banco registrada em ',textoEventoNumero:'Nº do protocolo informado pelo banco: '
+      },
+      'Fiadores':{
+        titulo:'Controle de Inadimplência — Fiadores',
+        labelEntidade:'',labelReferencia:'',labelData:'Data de comunicação aos fiadores',labelNumero:'',
+        mostrarEntidade:false,mostrarNumero:false,
+        status:['Aberto','Fiador(es) Comunicado(s)','Negociando','Pago','Encerrado'],
+        placeholderNumero:'',textoAbrir:'Abrir controle',
+        textoEventoAbertura:'Controle de inadimplência aberto (garantia por fiadores)',textoEventoComunicacao:'Comunicação aos fiadores registrada em ',textoEventoNumero:''
+      },
+      'Caução em Dinheiro':{
+        titulo:'Controle de Inadimplência — Caução em Dinheiro',
+        labelEntidade:'',labelReferencia:'',labelData:'Data da notificação extrajudicial',labelNumero:'',
+        mostrarEntidade:false,mostrarNumero:false,
+        status:['Aberto','Notificação Extrajudicial Enviada','Ação de Despejo Ajuizada','Regularizado','Encerrado'],
+        placeholderNumero:'',textoAbrir:'Abrir controle',
+        textoEventoAbertura:'Controle de inadimplência aberto (garantia por caução em dinheiro) — providência: ação de despejo',textoEventoComunicacao:'Notificação extrajudicial registrada em ',textoEventoNumero:''
+      },
+      'Caução em Imóvel':{
+        titulo:'Controle de Inadimplência — Caução em Imóvel',
+        labelEntidade:'',labelReferencia:'',labelData:'Data da notificação extrajudicial',labelNumero:'',
+        mostrarEntidade:false,mostrarNumero:false,
+        status:['Aberto','Notificação Extrajudicial Enviada','Ação de Despejo Ajuizada','Regularizado','Encerrado'],
+        placeholderNumero:'',textoAbrir:'Abrir controle',
+        textoEventoAbertura:'Controle de inadimplência aberto (garantia por caução em imóvel) — providência: ação de despejo',textoEventoComunicacao:'Notificação extrajudicial registrada em ',textoEventoNumero:''
+      }
+    };
+    return mapa[t]||mapa['Seguro Fiança'];
+  }
+  // Título do botão 🚨 em cada linha de contrato/lançamento — muda conforme o tipo de garantia
+  // do contrato, em vez de sempre falar em "sinistro"/"seguradora" (pedido do usuário: nem todo
+  // contrato é Seguro Fiança).
+  function sinBotaoTitulo_(c,sinAberto){
+    var info=sinTipoInfo_(c.tipoGarantia);
+    if(sinAberto){
+      var numTxt=(info.mostrarNumero&&sinAberto['Numero Sinistro'])?(' — '+info.labelNumero.toLowerCase()+' '+sinAberto['Numero Sinistro']):(info.mostrarNumero?' — aguardando '+info.labelNumero.toLowerCase():'');
+      return info.titulo+' em aberto ('+sinAberto.Status+')'+numTxt;
+    }
+    return c.tipoGarantia?('Controle de inadimplência — '+c.tipoGarantia):'Controle de inadimplência — defina o tipo de garantia no cadastro do contrato';
+  }
   function sinCorStatus_(status){
-    if(status==='Pago')return 'var(--green)';
+    if(status==='Pago'||status==='Regularizado')return 'var(--green)';
     if(status==='Encerrado')return 'var(--muted)';
     if(status==='Negado')return 'var(--red)';
-    return 'var(--orange)'; // Aberto, Comunicado à Seguradora, Em Análise
+    if(status==='Ação de Despejo Ajuizada')return 'var(--red)';
+    return 'var(--orange)'; // Aberto, Comunicado..., Em Análise, Negociando, Notificação Enviada
   }
   // Sinistro "em aberto" pra fins de destaque visual na linha do contrato = qualquer status
   // diferente de Encerrado (Pago/Negado ainda merecem atenção até o caso ser formalmente fechado).
@@ -17219,24 +17311,26 @@ window.cpRenderFixas=cpRenderFixas;
     var host=document.getElementById('sinFormHost');if(!host)return;
     host.style.display='block';
     var calc=sinCalcularAtraso_(contrato);
-    var ehSeguroFianca=c.tipoGarantia==='Seguro Fiança';
+    var tipoAtual=s?(s['Acao Tipo']||'Seguro Fiança'):(c.tipoGarantia||'');
+    var info=sinTipoInfo_(tipoAtual);
+    var semTipoDefinido=!s&&!c.tipoGarantia;
     host.innerHTML='<input type="hidden" id="sin-id" value="'+(s?E(s.ID):'')+'">'
       +'<div class="loc-cform" style="padding:0;border:none;background:none">'
-      +(!ehSeguroFianca?'<div class="loc-cfield full" style="color:var(--orange);font-size:12px">⚠️ A garantia cadastrada deste contrato não é Seguro Fiança (é "'+E(c.tipoGarantia||'não informada')+'"). Pode registrar mesmo assim, se for o caso.</div>':'')
-      +'<div class="loc-cfield"><label>Seguradora</label><input class="loc-cinput" id="sin-seguradora" value="'+(s?E(s.Seguradora||''):E(c.garSeguradora||''))+'"></div>'
-      +'<div class="loc-cfield"><label>Nº da Apólice</label><input class="loc-cinput" id="sin-apolice" value="'+(s?E(s['Nr Apolice']||''):E(c.garApolice||''))+'"></div>'
-      +'<div class="loc-cfield"><label>Data de comunicação à seguradora</label><input class="loc-cinput" id="sin-datacom" type="date" value="'+(s&&s['Data Comunicacao Seguradora']?locIsoFromBR(s['Data Comunicacao Seguradora']):'')+'"></div>'
-      +'<div class="loc-cfield"><label>Nº do Sinistro</label><input class="loc-cinput" id="sin-numero" value="'+(s?E(s['Numero Sinistro']||''):'')+'" placeholder="Preencha assim que a seguradora informar"></div>'
+      +(semTipoDefinido?'<div class="loc-cfield full" style="color:var(--orange);font-size:12px">⚠️ Este contrato ainda não tem um Tipo de Garantia definido no cadastro. Editando como Seguro Fiança por padrão — vá em "✎ editar" no contrato e preencha o Tipo de garantia pra este controle usar os campos certos.</div>':'')
+      +(info.mostrarEntidade?'<div class="loc-cfield"><label>'+E(info.labelEntidade)+'</label><input class="loc-cinput" id="sin-seguradora" value="'+(s?E(s.Seguradora||''):E(c.garSeguradora||c.garEmpresaTitulo||c.garBanco||''))+'"></div>':'<input type="hidden" id="sin-seguradora" value="">')
+      +(info.mostrarEntidade?'<div class="loc-cfield"><label>'+E(info.labelReferencia)+'</label><input class="loc-cinput" id="sin-apolice" value="'+(s?E(s['Nr Apolice']||''):E(c.garApolice||c.garNrProposta||c.garNrCarta||''))+'"></div>':'<input type="hidden" id="sin-apolice" value="">')
+      +'<div class="loc-cfield"><label>'+E(info.labelData)+'</label><input class="loc-cinput" id="sin-datacom" type="date" value="'+(s&&s['Data Comunicacao Seguradora']?locIsoFromBR(s['Data Comunicacao Seguradora']):'')+'"></div>'
+      +(info.mostrarNumero?'<div class="loc-cfield"><label>'+E(info.labelNumero)+'</label><input class="loc-cinput" id="sin-numero" value="'+(s?E(s['Numero Sinistro']||''):'')+'" placeholder="'+E(info.placeholderNumero)+'"></div>':'<input type="hidden" id="sin-numero" value="">')
       +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="sin-status">'
-      +SIN_STATUS.map(function(st){return '<option'+((s?s.Status===st:st==='Aberto')?' selected':'')+'>'+st+'</option>';}).join('')
+      +info.status.map(function(st){return '<option'+((s?s.Status===st:st==='Aberto')?' selected':'')+'>'+st+'</option>';}).join('')
       +'</select></div>'
       +'<div class="loc-cfield"><label>Meses em atraso</label><input class="loc-cinput" id="sin-meses" type="number" min="0" value="'+(s?num(s['Meses Atraso']):calc.meses)+'"></div>'
       +'<div class="loc-cfield"><label>Valor de aluguel em atraso (R$)</label><input class="loc-cinput" id="sin-valoraluguel" type="text" inputmode="decimal" value="'+(s?num(s['Valor Aluguel Atraso']):calc.valorAluguel)+'"></div>'
       +'<div class="loc-cfield"><label>Valor de encargos em atraso (R$)</label><input class="loc-cinput" id="sin-valorencargos" type="text" inputmode="decimal" value="'+(s?num(s['Valor Encargos Atraso']):calc.valorEncargos)+'"></div>'
-      +(!s?'<div class="loc-cfield full" style="font-size:11.5px;color:var(--muted)">Meses/valores acima já vieram calculados a partir dos lançamentos em atraso deste contrato — revise e ajuste se a seguradora exigir um valor diferente.</div>':'')
+      +(!s?'<div class="loc-cfield full" style="font-size:11.5px;color:var(--muted)">Meses/valores acima já vieram calculados a partir dos lançamentos em atraso deste contrato — revise e ajuste se necessário.</div>':'')
       +'<div class="loc-cfield full"><label>Observações</label><textarea class="loc-cinput" id="sin-obs" rows="3" style="resize:vertical">'+(s&&s.Observacoes?E(s.Observacoes):'')+'</textarea></div>'
       +'<div class="loc-cfield full" style="display:flex;gap:8px">'
-      +'<button type="button" class="loc-btn primary" onclick="sinSalvar_(\''+contrato+'\')" style="flex:1">'+(s?'Salvar alterações':'Abrir sinistro')+'</button>'
+      +'<button type="button" class="loc-btn primary" onclick="sinSalvar_(\''+contrato+'\')" style="flex:1">'+(s?'Salvar alterações':info.textoAbrir)+'</button>'
       +'<button type="button" class="loc-btn" onclick="document.getElementById(\'sinFormHost\').style.display=\'none\'">Cancelar</button>'
       +'</div></div>';
   };
@@ -17247,6 +17341,8 @@ window.cpRenderFixas=cpRenderFixas;
     var numeroNovo=document.getElementById('sin-numero').value.trim();
     var agora=new Date().toLocaleDateString('pt-BR');
     var existente=id?(window.locSinistros||[]).find(function(x){return String(x.ID)===String(id);}):null;
+    var tipoAtual=existente?(existente['Acao Tipo']||'Seguro Fiança'):(c.tipoGarantia||'Seguro Fiança');
+    var info=sinTipoInfo_(tipoAtual);
     var campos={
       'Contrato':contrato,'Locador':c.locador||'','Locatario':c.locatario||'','Endereco':c.end||'',
       'Seguradora':document.getElementById('sin-seguradora').value.trim(),
@@ -17258,17 +17354,18 @@ window.cpRenderFixas=cpRenderFixas;
       'Valor Aluguel Atraso':num(document.getElementById('sin-valoraluguel').value),
       'Valor Encargos Atraso':num(document.getElementById('sin-valorencargos').value),
       'Observacoes':document.getElementById('sin-obs').value,
-      'Data Atualizacao':agora
+      'Data Atualizacao':agora,
+      'Acao Tipo':tipoAtual
     };
     // Entradas de histórico geradas automaticamente por esta gravação — além do que o usuário
     // registra manualmente na linha do tempo, essas mudanças-chave ficam sempre rastreadas.
     var eventos=[];
     if(!existente){
-      eventos.push('Sinistro aberto'+(campos.Seguradora?(' — seguradora '+campos.Seguradora):''));
+      eventos.push(info.textoEventoAbertura+(campos.Seguradora?(' — '+info.labelEntidade+': '+campos.Seguradora):''));
     }else{
       if(existente.Status!==statusNovo)eventos.push('Status alterado: '+existente.Status+' → '+statusNovo);
-      if(!existente['Numero Sinistro']&&numeroNovo)eventos.push('Número do sinistro informado pela seguradora: '+numeroNovo);
-      if(!existente['Data Comunicacao Seguradora']&&campos['Data Comunicacao Seguradora'])eventos.push('Comunicação à seguradora registrada em '+campos['Data Comunicacao Seguradora']);
+      if(info.mostrarNumero&&!existente['Numero Sinistro']&&numeroNovo)eventos.push(info.textoEventoNumero+numeroNovo);
+      if(!existente['Data Comunicacao Seguradora']&&campos['Data Comunicacao Seguradora'])eventos.push(info.textoEventoComunicacao+campos['Data Comunicacao Seguradora']);
     }
     if(id){
       if(existente)Object.assign(existente,campos);
@@ -17348,17 +17445,67 @@ window.cpRenderFixas=cpRenderFixas;
     await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_rascunhos',id:id})}).catch(function(){});
     setTimeout(async function(){if(window.carregarRascunhos)await window.carregarRascunhos();sinRenderModal_(contrato);},1200);
   };
+  // Bloco de informações específicas do tipo de garantia — mostrado dentro do controle de
+  // inadimplência (pedido do usuário, 01/set/2026): apólice/coberturas/corretora pra Seguro
+  // Fiança, contatos dos fiadores, ou o alerta de que a providência é ação de despejo (caução).
+  function sinInfoExtra_(contrato,c,sinistroId){
+    var tipo=c.tipoGarantia||'Seguro Fiança';
+    if(tipo==='Seguro Fiança'){
+      var cob=[['Aluguel',c.garCobAluguel],['Multa rescisória',c.garCobMulta],['Danos ao imóvel',c.garCobDanos],
+        ['Conta de energia',c.garCobEnergia],['Conta de água',c.garCobAgua],['Conta de gás',c.garCobGas],
+        ['Pintura interna',c.garCobPintInt],['Pintura externa',c.garCobPintExt]].filter(function(x){return num(x[1])>0;});
+      var temCorretora=!!(c.garCorretoraNome||c.garCorretoraTelefone||c.garCorretoraEmail);
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
+        +'<div style="font-weight:700;margin-bottom:6px">📋 Coberturas da apólice</div>'
+        +(cob.length?cob.map(function(x){return '<div>'+E(x[0])+': até '+BRL(num(x[1]))+'</div>';}).join(''):'<div style="color:var(--muted)">Nenhum limite de cobertura cadastrado — preencha em "✎ editar" no contrato.</div>')
+        +'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><b>Corretora:</b> '+(temCorretora?(E(c.garCorretoraNome||'-')+(c.garCorretoraTelefone?' · '+E(c.garCorretoraTelefone):'')+(c.garCorretoraEmail?' · '+E(c.garCorretoraEmail):'')):'<span style="color:var(--muted)">não cadastrada — preencha em "✎ editar" no contrato</span>')+'</div>'
+        +(temCorretora?'<button type="button" class="loc-btn" style="margin-top:8px" onclick="abrirCardGarantia(\''+contrato+'\',\'corretora\')">📨 Enviar aviso à corretora</button>':'')
+        +'</div>';
+    }
+    if(tipo==='Fiadores'){
+      var fs=[];
+      if(c.fiador1Nome)fs.push({n:1,nome:c.fiador1Nome,tel:c.fiador1Telefone,email:c.fiador1Email});
+      if(c.fiador2Nome)fs.push({n:2,nome:c.fiador2Nome,tel:c.fiador2Telefone,email:c.fiador2Email});
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
+        +'<div style="font-weight:700;margin-bottom:6px">👤 Fiadores</div>'
+        +(fs.length?fs.map(function(f){return '<div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Fiador '+f.n+': <b>'+E(f.nome)+'</b>'+(f.tel?' · '+E(f.tel):'')+(f.email?' · '+E(f.email):'')+' <button type="button" class="loc-btn-edit" onclick="abrirCardGarantia(\''+contrato+'\',\'fiador'+f.n+'\')">📨 Avisar</button></div>';}).join(''):'<div style="color:var(--muted)">Nenhum fiador cadastrado no contrato — preencha em "✎ editar".</div>')
+        +'</div>';
+    }
+    if(tipo==='Caução em Dinheiro'||tipo==='Caução em Imóvel'){
+      return '<div style="border:1px solid var(--orange);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
+        +'<div style="font-weight:700;margin-bottom:4px;color:var(--orange)">⚖️ Providência: ação de despejo</div>'
+        +'<div style="color:var(--muted)">Esta garantia não tem seguradora/empresa pra comunicar — a solução é ingressar com ação de despejo. '
+        +(tipo==='Caução em Dinheiro'?('Valor retido em caução: '+BRL(num(c.garValorCaucao))+(c.garCaucaoResponsavel?' (fica com '+E(c.garCaucaoResponsavel)+')':'')):('Imóvel dado em garantia: '+E(c.garImovelDescricao||'não descrito')))
+        +'</div>'
+        +'<button type="button" class="loc-btn" style="margin-top:8px" onclick="sinFollowupFormAbrir_(\''+contrato+'\',\''+(sinistroId?E(sinistroId):'')+'\');var t=document.getElementById(\'sinfp-titulo\');if(t)t.value=\'Ajuizar ação de despejo\';">➕ Follow-up: Ação de despejo</button>'
+        +'</div>';
+    }
+    if(tipo==='Título de Capitalização'){
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
+        +'<div style="font-weight:700;margin-bottom:4px">🏦 Título de capitalização</div>'
+        +'<div>Empresa emissora: '+E(c.garEmpresaTitulo||'não cadastrada')+(c.garNrProposta?' · Proposta nº '+E(c.garNrProposta):'')+'</div>'
+        +'</div>';
+    }
+    if(tipo==='Carta Fiança Bancária'){
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
+        +'<div style="font-weight:700;margin-bottom:4px">🏦 Carta fiança bancária</div>'
+        +'<div>Banco: '+E(c.garBanco||'não cadastrado')+(c.garNrCarta?' · Carta nº '+E(c.garNrCarta):'')+'</div>'
+        +'</div>';
+    }
+    return '';
+  }
   function sinRenderAtual_(contrato,s,hist,followups){
     var cor=sinCorStatus_(s.Status);
     var atrasadoFn=window.rascFollowUpAtrasado||function(){return false;};
     var corFn=window.tarStatusCor_||function(){return 'var(--orange)';};
+    var info=sinTipoInfo_(s['Acao Tipo']||(contratosById[contrato]||{}).tipoGarantia);
     var html='<div style="border:1px solid '+cor+';border-radius:10px;padding:12px;margin-bottom:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
-      +'<div style="font-size:13px"><b style="color:'+cor+'">'+E(s.Status)+'</b>'+(s['Numero Sinistro']?' · Sinistro nº <b>'+E(s['Numero Sinistro'])+'</b>':' · <span style="color:var(--muted)">nº do sinistro ainda não informado</span>')+(s.Seguradora?' · '+E(s.Seguradora):'')+'</div>'
+      +'<div style="font-size:13px"><b style="color:'+cor+'">'+E(s.Status)+'</b>'+(info.mostrarNumero?(s['Numero Sinistro']?' · '+E(info.labelNumero)+' <b>'+E(s['Numero Sinistro'])+'</b>':' · <span style="color:var(--muted)">'+E(info.labelNumero).toLowerCase()+' ainda não informado</span>'):'')+(s.Seguradora?' · '+E(s.Seguradora):'')+'</div>'
       +'<button class="loc-btn-edit" onclick="sinFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\')" title="Editar">✎ Editar</button>'
       +'</div>'
       +'<div style="font-size:12px;color:var(--muted);margin-top:6px">'
-      +(s['Data Comunicacao Seguradora']?'Comunicado à seguradora em '+E(s['Data Comunicacao Seguradora'])+' · ':'')
+      +(s['Data Comunicacao Seguradora']?E(info.labelData)+' '+E(s['Data Comunicacao Seguradora'])+' · ':'')
       +(num(s['Meses Atraso'])?num(s['Meses Atraso'])+' mês(es) em atraso · ':'')
       +'Aluguel em atraso: '+BRL(num(s['Valor Aluguel Atraso']))+' · Encargos em atraso: '+BRL(num(s['Valor Encargos Atraso']))
       +'</div>'
@@ -17366,7 +17513,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>'
       +'<div id="sinFormHost" style="display:none;margin-bottom:12px"></div>'
       +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🕓 Linha do tempo</div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:8px"><input class="loc-cinput" id="sinHistTexto" placeholder="Registrar o que foi feito/falado com a seguradora..." style="flex:1"><button type="button" class="loc-btn" onclick="sinHistFormSalvar_(\''+contrato+'\',\''+E(s.ID)+'\')">Registrar</button></div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:8px"><input class="loc-cinput" id="sinHistTexto" placeholder="Registrar o que foi feito/falado..." style="flex:1"><button type="button" class="loc-btn" onclick="sinHistFormSalvar_(\''+contrato+'\',\''+E(s.ID)+'\')">Registrar</button></div>'
       +(hist.length?'<div style="max-height:160px;overflow-y:auto;margin-bottom:14px">'+hist.map(function(h){
         return '<div style="font-size:12px;padding:5px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">'+E(h.Data)+'</span> — '+E(h.Descricao)+'</div>';
       }).join('')+'</div>':'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Nenhum registro na linha do tempo ainda.</div>')
@@ -17399,15 +17546,128 @@ window.cpRenderFixas=cpRenderFixas;
       if(A!==B)return A-B;
       return String(b['ID']).localeCompare(String(a['ID']),undefined,{numeric:true});
     }):[];
+    var infoTipo=sinTipoInfo_(c.tipoGarantia);
     wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      +'<div style="font-size:16px;font-weight:700">🚨 Sinistro / Seguro Fiança — '+E(c.locatario||'')+' <span style="color:var(--muted);font-weight:400;font-size:13px">(Contrato '+E(contrato)+')</span></div>'
+      +'<div style="font-size:16px;font-weight:700">🚨 Controle de Inadimplência — '+E(c.locatario||'')+' <span style="color:var(--muted);font-weight:400;font-size:13px">(Contrato '+E(contrato)+')</span></div>'
       +'<button class="cp-btn" onclick="sinFechar()">✕</button></div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Locador: <b>'+E(c.locador||'-')+'</b> · Endereço: '+E(c.end||'-')+(c.tipoGarantia?' · Garantia: <b>'+E(c.tipoGarantia)+'</b>':'')+'</div>'
-      +(atual?sinRenderAtual_(contrato,atual,hist,followups):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhum sinistro registrado para este contrato ainda.</div>')
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Locador: <b>'+E(c.locador||'-')+'</b> · Endereço: '+E(c.end||'-')+' · Garantia: <b>'+(c.tipoGarantia?E(c.tipoGarantia):'<span style="color:var(--orange)">não definida no contrato</span>')+'</b></div>'
+      +sinInfoExtra_(contrato,c,atual?atual.ID:'')
+      +(atual?sinRenderAtual_(contrato,atual,hist,followups):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhum registro de inadimplência para este contrato ainda.</div>')
       +(!atual||atual.Status==='Encerrado'
-        ?'<button type="button" class="loc-btn" style="margin-top:12px" onclick="sinFormAbrir_(\''+contrato+'\')">➕ Abrir novo sinistro</button><div id="sinFormHost" style="display:none;margin-top:10px"></div>'
+        ?'<button type="button" class="loc-btn" style="margin-top:12px" onclick="sinFormAbrir_(\''+contrato+'\')">➕ '+E(infoTipo.textoAbrir)+'</button><div id="sinFormHost" style="display:none;margin-top:10px"></div>'
         :'');
   }
+
+  // ---------- CARD DE AVISO — CORRETORA/FIADOR (01/set/2026) ----------
+  // Pedido do usuário: o aviso de inadimplência precisa ser enviado a quem vai repassar a
+  // comunicação (a corretora de seguros, no caso do Seguro Fiança, que comunica a seguradora; ou
+  // o(s) fiador(es), no caso de garantia por fiança) — no mesmo formato "Card" já usado pros
+  // recibos de locação (html2canvas → PNG → WhatsApp via navigator.share), com opção de anexar
+  // uma foto (ex.: comprovante) que vai junto no compartilhamento.
+  var _cardGarFotoFile=null;
+  function sinCardDestinatario_(c,destino){
+    if(destino==='corretora')return {tipo:'Corretora de Seguros',nome:c.garCorretoraNome||'',telefone:c.garCorretoraTelefone||'',email:c.garCorretoraEmail||''};
+    if(destino==='fiador1')return {tipo:'Fiador',nome:c.fiador1Nome||'',telefone:c.fiador1Telefone||'',email:c.fiador1Email||''};
+    if(destino==='fiador2')return {tipo:'Fiador',nome:c.fiador2Nome||'',telefone:c.fiador2Telefone||'',email:c.fiador2Email||''};
+    return {tipo:'',nome:'',telefone:'',email:''};
+  }
+  function sinCardEnsureModal_(){
+    if(document.getElementById('sinCardOverlay'))return;
+    var ov=document.createElement('div');
+    ov.id='sinCardOverlay';
+    ov.style.cssText='display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:980;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML='<div id="sinCardWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:520px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
+    ov.addEventListener('click',function(e){if(e.target===ov)window.sinCardFechar();});
+    document.body.appendChild(ov);
+  }
+  window.sinCardFechar=function(){var ov=document.getElementById('sinCardOverlay');if(ov)ov.style.display='none';_cardGarFotoFile=null;};
+  window.abrirCardGarantia=function(contrato,destino){
+    var c=contratosById[contrato];if(!c)return;
+    var dest=sinCardDestinatario_(c,destino);
+    if(!dest.nome){alert('Cadastre o nome d'+(destino==='corretora'?'a corretora':'o fiador')+' no contrato antes de enviar o aviso ("✎ editar" no contrato).');return;}
+    _cardGarFotoFile=null;
+    sinCardEnsureModal_();
+    var ov=document.getElementById('sinCardOverlay');
+    ov.dataset.contrato=contrato;ov.dataset.destino=destino;
+    sinCardRender_(contrato,destino);
+    ov.style.display='flex';
+  };
+  function sinCardConteudo_(contrato,destino){
+    var c=contratosById[contrato]||{};
+    var dest=sinCardDestinatario_(c,destino);
+    var calc=sinCalcularAtraso_(contrato);
+    var atual=sinAbertoDoContrato_(contrato);
+    var meses=atual?num(atual['Meses Atraso']):calc.meses;
+    var valAlug=atual?num(atual['Valor Aluguel Atraso']):calc.valorAluguel;
+    var valEnc=atual?num(atual['Valor Encargos Atraso']):calc.valorEncargos;
+    return '<div style="font-weight:700;font-size:15px;margin-bottom:2px">AVISO DE INADIMPLÊNCIA — GARANTIA LOCATÍCIA</div>'
+      +'<div style="font-size:11px;color:#8a94a6;margin-bottom:10px">Escritório Adenilson Borges</div>'
+      +'<div style="font-size:12.5px;margin-bottom:8px"><b>Para:</b> '+E(dest.nome)+' ('+E(dest.tipo)+')'+(dest.telefone?' · '+E(dest.telefone):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px"><b>Contrato '+E(contrato)+'</b> — '+E(c.end||'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px">Locador: '+E(c.locador||'-')+(c.telLocador1?' · '+E(c.telLocador1):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:8px">Locatário: '+E(c.locatario||'-')+(c.telLocatario1?' · '+E(c.telLocatario1):'')+'</div>'
+      +'<div style="font-size:12.5px;margin-bottom:2px">'+meses+' mês(es) em atraso</div>'
+      +'<div style="font-size:12.5px;margin-bottom:8px">Aluguel em atraso: '+BRL(valAlug)+' · Encargos em atraso: '+BRL(valEnc)+' · <b>Total: '+BRL(valAlug+valEnc)+'</b></div>'
+      +(c.tipoGarantia==='Seguro Fiança'&&c.garApolice?'<div style="font-size:12.5px;margin-bottom:8px">Apólice nº '+E(c.garApolice)+(c.garSeguradora?' — '+E(c.garSeguradora):'')+'</div>':'')
+      +'<div style="font-size:12px;color:#8a94a6;margin-top:10px">Favor comunicar'+(destino==='corretora'?' a seguradora':'')+' e retornar com as providências. Emitido em '+new Date().toLocaleDateString('pt-BR')+'.</div>';
+  }
+  function sinCardRender_(contrato,destino){
+    var wrap=document.getElementById('sinCardWrap');if(!wrap)return;
+    wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:15px;font-weight:700">📨 Enviar aviso</div><button class="cp-btn" onclick="sinCardFechar()">✕</button></div>'
+      +'<div id="sinCardPreview" style="background:#0d1525;color:#fff;border-radius:10px;padding:16px;margin-bottom:12px">'+sinCardConteudo_(contrato,destino)+'</div>'
+      +'<div style="margin-bottom:10px"><label class="loc-btn" style="display:inline-block;cursor:pointer">📷 '+(_cardGarFotoFile?'Trocar foto':'Anexar foto (opcional)')+'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="sinCardAnexarFoto(this)"></label> '+(_cardGarFotoFile?'<button type="button" class="loc-btn-edit" onclick="sinCardRemoverFoto()">✕ remover foto</button>':'')+'<div id="sinCardFotoStatus" style="font-size:11.5px;color:var(--muted);margin-top:4px">'+(_cardGarFotoFile?'✓ '+E(_cardGarFotoFile.name)+' vai junto no envio':'')+'</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button type="button" class="loc-btn primary" id="btnShareGarWpp" onclick="compartilharCardGarantiaImagem()" style="flex:1">📱 Enviar no WhatsApp</button>'
+      +'<button type="button" class="loc-btn" id="btnSaveGarPng" onclick="salvarCardGarantiaPng()">💾 Salvar PNG</button>'
+      +'</div><div id="sinCardShareStatus"></div>';
+  }
+  window.sinCardAnexarFoto=function(input){
+    if(input.files&&input.files[0]){_cardGarFotoFile=input.files[0];var ov=document.getElementById('sinCardOverlay');sinCardRender_(ov.dataset.contrato,ov.dataset.destino);}
+  };
+  window.sinCardRemoverFoto=function(){_cardGarFotoFile=null;var ov=document.getElementById('sinCardOverlay');sinCardRender_(ov.dataset.contrato,ov.dataset.destino);};
+  function gerarImagemCardGarantiaFile_(){
+    var alvo=document.getElementById('sinCardPreview');
+    return html2canvas(alvo,{scale:3,useCORS:true,backgroundColor:'#0d1525',logging:false}).then(function(canvas){
+      return new Promise(function(resolve){
+        canvas.toBlob(function(blob){resolve(new File([blob],'aviso_garantia_'+new Date().toISOString().slice(0,10)+'.png',{type:'image/png'}));},'image/png');
+      });
+    });
+  }
+  window.compartilharCardGarantiaImagem=function(){
+    var btn=document.getElementById('btnShareGarWpp');var statusEl=document.getElementById('sinCardShareStatus');
+    var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
+    var orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ Gerando...';if(statusEl)statusEl.innerHTML='';
+    gerarImagemCardGarantiaFile_().then(function(file){
+      var files=[file];if(_cardGarFotoFile)files.push(_cardGarFotoFile);
+      if(navigator.canShare&&navigator.canShare({files:files})){
+        navigator.share({files:files,title:'Aviso de Inadimplência'})
+          .then(function(){
+            if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';
+            var atual=sinAbertoDoContrato_(contrato);
+            if(atual)sinHistAdicionar_(atual.ID,'Aviso enviado via WhatsApp a '+(destino==='corretora'?'corretora ('+(contratosById[contrato]||{}).garCorretoraNome:'fiador '+((contratosById[contrato]||{})[destino==='fiador2'?'fiador2Nome':'fiador1Nome']||'')),true);
+          })
+          .catch(function(e){if(e.name!=='AbortError'&&statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';})
+          .finally(function(){btn.disabled=false;btn.innerHTML=orig;});
+      }else{
+        if(statusEl)statusEl.innerHTML='<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
+        btn.disabled=false;btn.innerHTML=orig;
+      }
+    }).catch(function(e){
+      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
+      btn.disabled=false;btn.innerHTML=orig;
+    });
+  };
+  window.salvarCardGarantiaPng=function(){
+    var btn=document.getElementById('btnSaveGarPng');var statusEl=document.getElementById('sinCardShareStatus');
+    var orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ Gerando...';if(statusEl)statusEl.innerHTML='';
+    gerarImagemCardGarantiaFile_().then(function(file){
+      var url=URL.createObjectURL(file);var a=document.createElement('a');a.href=url;a.download=file.name;a.click();URL.revokeObjectURL(url);
+      if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo'+(_cardGarFotoFile?' (a foto anexada precisa ser enviada separadamente).':'.')+'</div>';
+    }).catch(function(e){
+      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
+    }).finally(function(){btn.disabled=false;btn.innerHTML=orig;});
+  };
 
   // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
   // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
@@ -17974,7 +18234,7 @@ window.cpRenderFixas=cpRenderFixas;
       var sinAberto=sinAbertoDoContrato_(l.contrato);
       var sinComNumero=!!(sinAberto&&sinAberto['Numero Sinistro']);
       var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':'';
-      var btnSin='<button class="loc-send-btn'+(sinAberto?' loc-send-btn-sinistro':'')+'" title="'+(sinAberto?'Sinistro em aberto'+(sinComNumero?' — nº '+E(sinAberto['Numero Sinistro']):' — aguardando nº da seguradora'):'Registrar sinistro/inadimplência (garantia locatícia)')+'" onclick="event.stopPropagation();abrirSinistro(\''+E(l.contrato)+'\')">🚨</button> ';
+      var btnSin='<button class="loc-send-btn'+(sinAberto?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAberto))+'" onclick="event.stopPropagation();abrirSinistro(\''+E(l.contrato)+'\')">🚨</button> ';
       return '<tr'+linhaClasseSin+'>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
@@ -20480,7 +20740,7 @@ window.cpRenderFixas=cpRenderFixas;
     tb.innerHTML=listaOrdenada.map(function(c){
       var sinAbertoC=sinAbertoDoContrato_(c.contrato);
       var sinComNumeroC=!!(sinAbertoC&&sinAbertoC['Numero Sinistro']);
-      var btnSinC='<button class="loc-btn-edit'+(sinAbertoC?' loc-send-btn-sinistro':'')+'" title="'+(sinAbertoC?'Sinistro em aberto'+(sinComNumeroC?' — nº '+E(sinAbertoC['Numero Sinistro']):' — aguardando nº da seguradora'):'Registrar sinistro/inadimplência (garantia locatícia)')+'" onclick="abrirSinistro(\''+E(c.contrato)+'\')">🚨 sinistro</button> ';
+      var btnSinC='<button class="loc-btn-edit'+(sinAbertoC?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAbertoC))+'" onclick="abrirSinistro(\''+E(c.contrato)+'\')">🚨 garantia</button> ';
       return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':'')+'>'+
         '<td class="loc-num">'+E(c.contrato)+'</td>'+
         '<td>'+E(c.locador||'-')+'</td>'+
@@ -20543,7 +20803,9 @@ window.cpRenderFixas=cpRenderFixas;
     ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
-     'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email'
+     'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
+     'lc-gar-corretora-nome','lc-gar-corretora-telefone','lc-gar-corretora-email',
+     'lc-gar-cob-aluguel','lc-gar-cob-multa','lc-gar-cob-danos','lc-gar-cob-energia','lc-gar-cob-agua','lc-gar-cob-gas','lc-gar-cob-pint-int','lc-gar-cob-pint-ext'
     ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('lc-conta-recebimento').value='escritorio';
     // Juros de mora: sugere 1% ao mês por padrão (o mais comum em contrato de locação) — só
@@ -20676,6 +20938,17 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-fiador2-nome').value=c.fiador2Nome||'';
     document.getElementById('lc-fiador2-telefone').value=c.fiador2Telefone||'';
     document.getElementById('lc-fiador2-email').value=c.fiador2Email||'';
+    document.getElementById('lc-gar-corretora-nome').value=c.garCorretoraNome||'';
+    document.getElementById('lc-gar-corretora-telefone').value=c.garCorretoraTelefone||'';
+    document.getElementById('lc-gar-corretora-email').value=c.garCorretoraEmail||'';
+    document.getElementById('lc-gar-cob-aluguel').value=num(c.garCobAluguel)||'';
+    document.getElementById('lc-gar-cob-multa').value=num(c.garCobMulta)||'';
+    document.getElementById('lc-gar-cob-danos').value=num(c.garCobDanos)||'';
+    document.getElementById('lc-gar-cob-energia').value=num(c.garCobEnergia)||'';
+    document.getElementById('lc-gar-cob-agua').value=num(c.garCobAgua)||'';
+    document.getElementById('lc-gar-cob-gas').value=num(c.garCobGas)||'';
+    document.getElementById('lc-gar-cob-pint-int').value=num(c.garCobPintInt)||'';
+    document.getElementById('lc-gar-cob-pint-ext').value=num(c.garCobPintExt)||'';
     try{locToggleGarantia();}catch(e){}
     document.getElementById('lc-msg').textContent='';
     try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
@@ -20734,7 +21007,18 @@ window.cpRenderFixas=cpRenderFixas;
       'Fiador1 Email':document.getElementById('lc-fiador1-email').value.trim(),
       'Fiador2 Nome':document.getElementById('lc-fiador2-nome').value.trim(),
       'Fiador2 Telefone':document.getElementById('lc-fiador2-telefone').value.trim(),
-      'Fiador2 Email':document.getElementById('lc-fiador2-email').value.trim()
+      'Fiador2 Email':document.getElementById('lc-fiador2-email').value.trim(),
+      'Garantia Corretora Nome':document.getElementById('lc-gar-corretora-nome').value.trim(),
+      'Garantia Corretora Telefone':document.getElementById('lc-gar-corretora-telefone').value.trim(),
+      'Garantia Corretora Email':document.getElementById('lc-gar-corretora-email').value.trim(),
+      'Cobertura Aluguel Limite':num(document.getElementById('lc-gar-cob-aluguel').value),
+      'Cobertura Multa Rescisoria Limite':num(document.getElementById('lc-gar-cob-multa').value),
+      'Cobertura Danos Imovel Limite':num(document.getElementById('lc-gar-cob-danos').value),
+      'Cobertura Energia Limite':num(document.getElementById('lc-gar-cob-energia').value),
+      'Cobertura Agua Limite':num(document.getElementById('lc-gar-cob-agua').value),
+      'Cobertura Gas Limite':num(document.getElementById('lc-gar-cob-gas').value),
+      'Cobertura Pintura Interna Limite':num(document.getElementById('lc-gar-cob-pint-int').value),
+      'Cobertura Pintura Externa Limite':num(document.getElementById('lc-gar-cob-pint-ext').value)
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
@@ -20742,7 +21026,9 @@ window.cpRenderFixas=cpRenderFixas;
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
-      fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email']
+      fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email'],
+      garCorretoraNome:campos['Garantia Corretora Nome'],garCorretoraTelefone:campos['Garantia Corretora Telefone'],garCorretoraEmail:campos['Garantia Corretora Email'],
+      garCobAluguel:campos['Cobertura Aluguel Limite'],garCobMulta:campos['Cobertura Multa Rescisoria Limite'],garCobDanos:campos['Cobertura Danos Imovel Limite'],garCobEnergia:campos['Cobertura Energia Limite'],garCobAgua:campos['Cobertura Agua Limite'],garCobGas:campos['Cobertura Gas Limite'],garCobPintInt:campos['Cobertura Pintura Interna Limite'],garCobPintExt:campos['Cobertura Pintura Externa Limite']
     };
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
@@ -22105,6 +22391,12 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '01/set/2026', itens: [
+      'O botão "🚨" (agora rotulado "🚨 garantia" na lista de Contratos) passou a se adaptar ao Tipo de Garantia de cada contrato — Seguro Fiança, Título de Capitalização, Carta Fiança Bancária, Fiadores ou Caução — em vez de falar sempre em "sinistro"/"seguradora".',
+      'Novo em Contratos (quando a garantia é Seguro Fiança): campos para as coberturas da apólice (aluguel, multa rescisória, danos ao imóvel, contas de energia/água/gás, pintura interna/externa, cada uma com limite de valor) e dados da corretora (nome, telefone, e-mail). Tudo isso aparece automaticamente dentro do controle de inadimplência.',
+      'Contratos com Fiadores mostram os contatos dos fiadores no controle de inadimplência; contratos com Caução em Dinheiro/Imóvel mostram um aviso de que a providência é ação de despejo, com atalho pra criar um follow-up disso.',
+      'Novo botão "📨 Enviar aviso" (à corretora ou aos fiadores) — gera um card com os dados do contrato/atraso/apólice e envia por WhatsApp (com opção de anexar uma foto), no mesmo formato dos recibos de locação. O envio fica registrado sozinho na linha do tempo.'
+    ]},
     { data: '31/ago/2026 (2)', itens: [
       'Novo em Gestão de Locações e Repasses: botão "🚨" em cada contrato controla o acionamento da garantia locatícia (Seguro Fiança) num caso de inadimplência — seguradora, apólice, data de comunicação, nº do sinistro e status, com meses/valores em atraso já calculados automaticamente a partir dos lançamentos.',
       'Assim que o Nº do Sinistro é informado, a linha do contrato pisca em vermelho na lista (alerta bem chamativo) e um aviso aparece também na tela inicial.',
@@ -22634,7 +22926,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Tarefas e negociação rápida</div>'
       +MP+'Logo acima da lista, a caixinha "🗒️ Tarefas" mostra lembretes pendentes deste módulo. "+ Negociação rápida (vira Contrato)" anota Locador e Locatário separados (preenche só quem já tiver — cobre também um locatário ainda procurando imóvel); "→ Contrato" na própria tarefa abre o cadastro de contrato já preenchido quando fechar negócio.</div>'
       +MH+'Sinistro / Seguro Fiança (inadimplência)</div>'
-      +MP+'O botão <b>🚨</b> ao lado do recibo de aluguel, em cada linha da tabela de lançamentos, abre o controle de acionamento da garantia locatícia daquele contrato. Ao abrir pela primeira vez, o sistema já sugere os meses e valores (aluguel + encargos) em atraso, calculados a partir dos lançamentos — você só confirma ou ajusta. Preencha Seguradora, Nº da Apólice (vem do cadastro do contrato quando a garantia é Seguro Fiança), Data de comunicação à seguradora, Status (Aberto → Comunicado à Seguradora → Em Análise → Pago/Negado → Encerrado) e o Nº do Sinistro assim que a seguradora informar. <b>Assim que o Nº do Sinistro é preenchido, a linha inteira do contrato pisca em vermelho na lista</b> — alerta bem chamativo, difícil de passar batido. Enquanto o sinistro estiver em qualquer status diferente de "Encerrado", o botão 🚨 já fica vermelho e um aviso aparece também na tela inicial (Home).</div>'
+      +MP+'O botão <b>🚨</b> (na lista de Contratos aparece como "🚨 garantia"; em Lançamentos, ao lado do recibo de aluguel) abre o <b>controle de inadimplência</b> daquele contrato — e se adapta ao Tipo de Garantia cadastrado nele: Seguro Fiança (sinistro junto à seguradora), Título de Capitalização (comunicação à empresa emissora), Carta Fiança Bancária (comunicação ao banco), Fiadores (comunicação aos fiadores) ou Caução em Dinheiro/Imóvel (a providência aqui é ação de despejo — o sistema já sugere um follow-up disso). Ao abrir pela primeira vez, o sistema já sugere os meses e valores (aluguel + encargos) em atraso, calculados a partir dos lançamentos — você só confirma ou ajusta. Quando o contrato ainda não tem Tipo de Garantia definido, o sistema avisa e trata como Seguro Fiança até você preencher em "✎ editar".<br><br>'
+      +MP+'<b>Seguro Fiança:</b> em "✎ editar" no contrato, cadastre as coberturas da apólice (aluguel, multa rescisória, danos ao imóvel, contas de energia/água/gás, pintura interna/externa — cada uma com o limite de valor) e os dados da corretora (nome, telefone, e-mail). Tudo isso aparece automaticamente dentro do controle de inadimplência, junto com um botão <b>"📨 Enviar aviso à corretora"</b> — gera um card com os dados do contrato, do atraso e da apólice, pronto pra enviar por WhatsApp (com opção de anexar uma foto), no mesmo formato dos recibos de locação. Preencha Nº da Apólice, Data de comunicação, Status (Aberto → Comunicado à Seguradora → Em Análise → Pago/Negado → Encerrado) e o Nº do Sinistro assim que a seguradora informar. <b>Assim que o Nº do Sinistro é preenchido, a linha inteira do contrato pisca em vermelho na lista</b> — alerta bem chamativo, difícil de passar batido.<br><br>'
+      +MP+'<b>Fiadores:</b> o controle mostra os contatos de cada fiador cadastrado no contrato, com um botão "📨 Avisar" pra cada um (mesmo card/WhatsApp da corretora). <b>Caução em Dinheiro/Imóvel:</b> não há seguradora/empresa pra comunicar — o controle já avisa que a providência é ação de despejo e oferece um atalho pra criar o follow-up correspondente. Enquanto o controle estiver em qualquer status diferente de "Encerrado", o botão 🚨 já fica vermelho e um aviso aparece também na tela inicial (Home).</div>'
       +MP+'Dentro do sinistro, a <b>Linha do tempo</b> guarda um registro histórico de tudo que for feito (mudanças de status, comunicações com a seguradora, anotações) com data e hora — é o "processo" do sinistro documentado passo a passo. Os <b>Follow-ups</b> (lembretes com data) reaproveitam o mesmo mecanismo das Tarefas normais: sincronizam sozinhos com o Google Agenda assim que uma data de follow-up é marcada (mesmo princípio do Follow-up de um processo, em Processos) — não há envio ou leitura de e-mail aqui, é só agenda mesmo.</div>',
 
     imoveis: MH+'Visão geral</div>'
@@ -23343,16 +23637,18 @@ window.cpRenderFixas=cpRenderFixas;
           hlLoc+='<div class="ha-tit venc">🏠 '+la.itens.length+' aluguel(éis) em atraso ('+la.mes+')</div>'+la.itens.slice(0,8).map(function(i){return '<div class="ha-item"><b>'+E(i.locatario)+'</b> — '+BRLf(i.aluguel)+' (venc. dia '+E(i.venc)+' · '+E(i.status)+')</div>';}).join('');
         }
       }
-      // Sinistros de garantia locatícia (Seguro Fiança) em aberto — pedido do usuário (31/ago/2026):
-      // avisar na Home, não só na cor da linha em Locações. Os com nº do sinistro já informado
+      // Controles de inadimplência/garantia locatícia em aberto (Seguro Fiança, Título de
+      // Capitalização, Carta Fiança, Fiadores ou Caução) — pedido do usuário (31/ago—01/set/2026):
+      // avisar na Home, não só na cor da linha em Locações. Os com nº/protocolo já informado
       // entram destacados primeiro (é o mesmo critério de destaque visual usado na lista).
       var sinAbertos=(window.locSinistros||[]).filter(function(s){return s.Status!=='Encerrado';});
       if(sinAbertos.length){
         temAvisoLoc=true;
         sinAbertos.sort(function(a,b){var A=a['Numero Sinistro']?0:1,B=b['Numero Sinistro']?0:1;return A-B;});
-        resumoLocPartes.push('🚨 '+sinAbertos.length+' sinistro(s) de garantia em aberto');
-        hlLoc+='<div class="ha-tit" style="color:var(--red);margin-top:'+(hlLoc?'12px':'0')+'">🚨 '+sinAbertos.length+' sinistro(s) de garantia locatícia em aberto</div>'+sinAbertos.slice(0,8).map(function(s){
-          return '<div class="ha-item"><b>'+E(s.Locatario||'-')+'</b> — '+E(s.Status)+(s['Numero Sinistro']?' · nº '+E(s['Numero Sinistro']):' · aguardando nº da seguradora')+'</div>';
+        resumoLocPartes.push('🚨 '+sinAbertos.length+' controle(s) de inadimplência em aberto');
+        hlLoc+='<div class="ha-tit" style="color:var(--red);margin-top:'+(hlLoc?'12px':'0')+'">🚨 '+sinAbertos.length+' controle(s) de inadimplência/garantia locatícia em aberto</div>'+sinAbertos.slice(0,8).map(function(s){
+          var infoS=(typeof sinTipoInfo_==='function')?sinTipoInfo_(s['Acao Tipo']):null;
+          return '<div class="ha-item"><b>'+E(s.Locatario||'-')+'</b> — '+E(s.Status)+(s['Numero Sinistro']?' · '+E(infoS?infoS.labelNumero:'nº')+' '+E(s['Numero Sinistro']):(infoS&&infoS.mostrarNumero?' · aguardando '+E(infoS.labelNumero).toLowerCase():''))+'</div>';
         }).join('');
       }
       if(!temAvisoLoc){setAlertBox('homeAlertLoc',null);}
