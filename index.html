@@ -17471,27 +17471,31 @@ window.cpRenderFixas=cpRenderFixas;
       ['Pintura interna',c.garCobPintInt],['Pintura externa',c.garCobPintExt]];
     return soComValor===false?cob:cob.filter(function(x){return num(x[1])>0;});
   }
-  // Discrimina os valores em atraso do contrato por categoria (aluguel, IPTU, condomínio, água,
-  // luz, gás, outras cobranças/descontos) e lista os meses/vencimentos em aberto — pedido do
-  // usuário (01/set/2026): o aviso enviado à corretora precisa mostrar tudo separado, não só um
-  // total de "aluguel + encargos".
+  // Discrimina os valores em atraso do contrato item a item, POR VENCIMENTO (não mais um total
+  // agregado por categoria) — pedido do usuário (01/set/2026, 2ª rodada): "faltou a descrição
+  // completa dos valores em atraso... exemplo: vencimento 15/07/2026 / Aluguel R$ / IPTU R$ /
+  // Seguro Fiança R$ / --- / vencimento 15/08/2026 / ...". Cada mês em atraso vira um bloco com
+  // a lista de itens realmente cobrados naquele vencimento (aluguel, IPTU, condomínio, água,
+  // gás, energia, taxa de leitura, fundo de férias, 13º, e qualquer "Outra Cobrança" cadastrada
+  // — como um Seguro Fiança pago pelo escritório e recuperado do inquilino em parcelas), na
+  // mesma visão que o inquilino já vê no recibo mensal (reciboLocItensCondo(l,'inquilino')).
+  // Multa e juros ficam de fora da lista por pedido explícito do usuário.
   function sinCalcularAtrasoDetalhado_(contrato){
     var c=contratosById[contrato]||{};
     var atrasados=DATA.lancamentos.filter(function(l){return l.contrato===contrato&&inadLocEstaAtrasado_(l,c);});
-    var cat={aluguel:0,iptu:0,condominio:0,agua:0,luz:0,gas:0,outras:0};
-    var meses=[];
-    atrasados.forEach(function(l){
-      var total=valorCobradoOf(l);
-      var agua=(l.aguaPriv||0)+(l.aguaComum||0), gas=(l.gasPriv||0)+(l.gasPiscina||0);
-      cat.aluguel+=(l.aluguel||0);cat.iptu+=(l.iptu||0);cat.condominio+=(l.condominio||0);cat.agua+=agua;cat.luz+=(l.energiaComum||0);cat.gas+=gas;
-      var somaConhecida=(l.aluguel||0)+(l.iptu||0)+(l.condominio||0)+agua+(l.energiaComum||0)+gas;
-      cat.outras+=(total-somaConhecida);
+    var meses=atrasados.map(function(l){
+      var itens=[];
+      if(l.aluguel)itens.push(['Aluguel',l.aluguel]);
+      if(l.iptu)itens.push(['IPTU',l.iptu]);
+      reciboLocItensCondo(l,'inquilino').forEach(function(it){if(it[1])itens.push([it[0],it[1]]);});
+      if(l.desconto)itens.push(['Desconto',-l.desconto]);
+      var total=Math.round(itens.reduce(function(s,it){return s+it[1];},0)*100)/100;
       var venc=diaMes(c.venc,l.mes);
-      meses.push({mes:l.mes,venc:venc,dias:venc?diasAtrasoFrom(venc,false):null,total:total});
+      return {mes:l.mes,venc:venc,dias:venc?diasAtrasoFrom(venc,false):null,itens:itens,total:total};
     });
-    Object.keys(cat).forEach(function(k){cat[k]=Math.round(cat[k]*100)/100;});
     meses.sort(function(a,b){return (a.venc&&b.venc)?(a.venc-b.venc):0;});
-    return {cat:cat,meses:meses,totalGeral:Math.round(atrasados.reduce(function(s,l){return s+valorCobradoOf(l);},0)*100)/100};
+    var totalGeral=Math.round(meses.reduce(function(s,m){return s+m.total;},0)*100)/100;
+    return {meses:meses,totalGeral:totalGeral};
   }
   // Bloco de informações específicas do tipo de garantia — mostrado dentro do controle de
   // inadimplência (pedido do usuário, 31/ago–01/set/2026): apólice/coberturas/corretora pra
@@ -17649,11 +17653,14 @@ window.cpRenderFixas=cpRenderFixas;
     var dest=sinCardDestinatario_(c,destino);
     var det=sinCalcularAtrasoDetalhado_(contrato);
     var ehPJLocatario=String(c.cpfLocatario||'').replace(/\D/g,'').length>11;
-    var catLabels=[['aluguel','Aluguel'],['iptu','IPTU'],['condominio','Condomínio'],['agua','Água'],['luz','Luz (energia)'],['gas','Gás'],['outras','Outras cobranças/descontos']];
-    var catLinhas=catLabels.filter(function(x){return det.cat[x[0]];}).map(function(x){return '<div>'+x[1]+' em atraso: <b>'+BRL(det.cat[x[0]])+'</b></div>';}).join('');
     var mesesLinhas=det.meses.map(function(m){
-      return '<div>'+E(m.mes)+' — venceu em '+(m.venc?m.venc.toLocaleDateString('pt-BR'):'-')+(m.dias?' ('+m.dias+' dia(s) de atraso)':'')+' — '+BRL(m.total)+'</div>';
-    }).join('');
+      var itensHtml=m.itens.map(function(it){return '<div style="display:flex;justify-content:space-between;gap:10px"><span>'+E(it[0])+'</span><span>'+BRL(it[1])+'</span></div>';}).join('');
+      return '<div style="margin-top:8px">'
+        +'<div style="font-weight:700">Vencimento '+(m.venc?m.venc.toLocaleDateString('pt-BR'):E(m.mes))+(m.dias?' — '+m.dias+' dia(s) de atraso':'')+'</div>'
+        +(itensHtml||'<div style="color:#8a94a6">Sem itens cobrados neste mês.</div>')
+        +'<div style="border-top:1px dashed #45536b;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;gap:10px;font-weight:700"><span>Subtotal</span><span>'+BRL(m.total)+'</span></div>'
+        +'</div>';
+    }).join('<div style="border-top:1px solid #29394f;margin:8px 0"></div>');
     var cobTodas=sinCoberturasLista_(c,false);
     return '<div style="font-weight:700;font-size:15px;margin-bottom:2px">AVISO DE INADIMPLÊNCIA — GARANTIA LOCATÍCIA</div>'
       +'<div style="font-size:11px;color:#8a94a6;margin-bottom:10px">Escritório Adenilson Borges</div>'
@@ -17664,10 +17671,9 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div style="font-size:12.5px;margin-bottom:2px">Locatário: <b>'+E(c.locatario||'-')+'</b>'+(c.telLocatario1?' · '+E(c.telLocatario1):'')+(c.telLocatario2?' / '+E(c.telLocatario2):'')+(c.emailLocatario1?' · '+E(c.emailLocatario1):'')+(c.emailLocatario2?' / '+E(c.emailLocatario2):'')+'</div>'
       +(ehPJLocatario&&c.repLocatarioNome?'<div style="font-size:12.5px;margin-bottom:8px">Representante do locatário (PJ): <b>'+E(c.repLocatarioNome)+'</b></div>':'<div style="margin-bottom:8px"></div>')
       +(c.tipoGarantia==='Seguro Fiança'&&(c.garApolice||c.garSeguradora)?'<div style="font-size:12.5px;margin-bottom:8px">Apólice nº '+E(c.garApolice||'-')+(c.garSeguradora?' — '+E(c.garSeguradora):'')+'</div>':'')
-      +'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Valores em atraso (discriminados)</div>'
-      +(catLinhas||'<div style="color:#8a94a6">Nenhum valor em atraso encontrado nos lançamentos.</div>')
-      +'<div style="margin-top:4px;font-weight:700">Total em atraso: '+BRL(det.totalGeral)+' ('+det.meses.length+' mês(es))</div>'
-      +(mesesLinhas?'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Meses/vencimentos em aberto</div>'+mesesLinhas:'')
+      +'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Valores em atraso (discriminados por vencimento)</div>'
+      +(mesesLinhas||'<div style="color:#8a94a6">Nenhum valor em atraso encontrado nos lançamentos.</div>')
+      +'<div style="border-top:1px solid #29394f;margin-top:8px;padding-top:6px;display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:13px"><span>Total em atraso ('+det.meses.length+' mês(es))</span><span>'+BRL(det.totalGeral)+'</span></div>'
       +'<div style="border-top:1px solid #29394f;margin:8px 0;padding-top:8px;font-size:12.5px;font-weight:700">Coberturas contratadas na apólice (limite de indenização)</div>'
       +cobTodas.map(function(x){return '<div>'+E(x[0])+': '+(num(x[1])>0?'até '+BRL(num(x[1])):'<span style="color:#8a94a6">não contratada</span>')+'</div>';}).join('')
       +'<div style="font-size:12px;color:#8a94a6;margin-top:10px">Favor comunicar'+(destino==='corretora'?' a seguradora':'')+' e retornar com as providências. Emitido em '+new Date().toLocaleDateString('pt-BR')+'.</div>';
