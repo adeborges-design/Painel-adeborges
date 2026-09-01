@@ -2624,6 +2624,252 @@
      porque tem uma regra específica liberando só ele. -->
 <button id="printEscapeBtn" type="button" onclick="window.sairModoImpressao_()" style="display:none;position:fixed;top:12px;right:12px;z-index:2147483647;background:#1a2a4a;color:#fff;border:none;border-radius:20px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35)">✕ Voltar ao sistema</button>
 <script>
+  // ================= ShareKit (01/set/2026, 7ª rodada) =================
+  // Padrão único de compartilhamento pra TODO o sistema — Processos, Locações, Honorários,
+  // Garantia Locatícia e qualquer módulo novo que vier depois. Antes disso, cada módulo tinha
+  // sua própria cópia colada à mão das mesmas ~5 funções (gerar imagem do card via html2canvas,
+  // compartilhar/salvar PNG, copiar texto, abrir WhatsApp, ler em voz alta) — 100% duplicado,
+  // só trocando nomes de variável. Pedido do usuário: "temos que fazer um padrão para todos os
+  // módulos". A partir de agora, QUALQUER card/documento novo usa só isto — ver receita completa
+  // no resumo_projeto.md ("Padrão de compartilhamento — ShareKit").
+  //
+  // Existem 2 "formatos" de tela no sistema, e o ShareKit cobre os dois:
+  //   PADRÃO A — "Card de Atualização" (visual, estilo WhatsApp, fundo escuro #0d1525/#0f1923):
+  //     usado pelos cards de Processos/Locação/Honorários/Garantia. Botões típicos:
+  //     📸 Compartilhar como foto | 💬 Enviar texto padrão | ↓ Salvar PNG | Copiar texto.
+  //   PADRÃO B — "Documento" (recibo/aviso/relatório, fundo claro #ffffff, pensado pra impressão):
+  //     usado por recibos de aluguel, informes de repasse, avisos e relatórios. Botões típicos:
+  //     📱 WhatsApp | ✉️ E-mail | 📸 Foto | 🖨 Imprimir/PDF | 🔊 Ouvir.
+  //
+  // Cada módulo continua responsável só pelo que É de fato específico dele: o HTML do card/
+  // documento, e uma função que preenche esse HTML com os dados + gera o texto plano (pro
+  // WhatsApp/copiar/e-mail/ouvir). Tudo o resto — gerar a imagem, compartilhar, salvar, copiar,
+  // abrir o wa.me, tocar a fala — é o ShareKit.
+  window.ShareKit = (function () {
+
+    // Tira um screenshot (html2canvas) de um elemento e devolve como File PNG, pronto pra
+    // navigator.share ou download. `opts.bg` — cor de fundo (padrão A usa '#0d1525' ou
+    // '#0f1923'; padrão B usa '#ffffff'). `opts.html2canvas` — overrides extras pro html2canvas.
+    function gerarImagemFile(el, filename, opts) {
+      opts = opts || {};
+      var extra = opts.html2canvas || {};
+      var cfg = {
+        scale: opts.scale || 3,
+        useCORS: true,
+        backgroundColor: opts.bg || '#0d1525',
+        logging: false
+      };
+      if (opts.ajustarFonte !== false) {
+        cfg.windowWidth = el.scrollWidth;
+        cfg.windowHeight = el.scrollHeight;
+        cfg.onclone = function (doc) {
+          var clone = el.id && doc.getElementById(el.id);
+          if (clone) {
+            clone.style.fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
+            clone.style.wordSpacing = '0.06em';
+            clone.style.letterSpacing = '0.01em';
+          }
+          if (extra.onclone) extra.onclone(doc);
+        };
+      }
+      for (var k in extra) if (k !== 'onclone') cfg[k] = extra[k];
+      return html2canvas(el, cfg).then(function (canvas) {
+        return new Promise(function (resolve) {
+          canvas.toBlob(function (blob) {
+            resolve(new File([blob], filename, { type: 'image/png' }));
+          }, 'image/png');
+        });
+      });
+    }
+
+    // Cache simples de imagem por "chave" (ex.: contrato+mês, ou id do card aberto): ao abrir
+    // o modal, chama preAquecer(chave) — gera a imagem em background (80ms de folga pro DOM
+    // assentar) pra já estar pronta quando o usuário clicar em algum botão de envio. obter()
+    // devolve a imagem do cache, ou gera na hora se ainda não tiver.
+    function criarCache(gerarFn) {
+      var cache = null, chaveCache = null;
+      return {
+        preAquecer: function (chave) {
+          chaveCache = chave; cache = null;
+          setTimeout(function () {
+            if (chaveCache !== chave) return;
+            gerarFn().then(function (file) { if (chaveCache === chave) cache = file; }).catch(function () {});
+          }, 80);
+        },
+        obter: function () {
+          if (cache) return Promise.resolve(cache);
+          return gerarFn().then(function (file) { cache = file; return file; });
+        },
+        limpar: function () { cache = null; chaveCache = null; }
+      };
+    }
+
+    // Envolve uma ação (fn) com o ciclo padrão de UI de um botão: desabilita, mostra "⏳
+    // Gerando...", restaura no final, e escreve o resultado (✓/erro/aviso) no elemento de
+    // status. `fn` recebe um objeto {ok,erro,aviso} pra reportar o resultado.
+    function comBotao(btnId, statusElId, fn) {
+      return function () {
+        var btn = btnId && document.getElementById(btnId);
+        var statusEl = statusElId && document.getElementById(statusElId);
+        var orig = btn && btn.innerHTML;
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Gerando...'; }
+        if (statusEl) statusEl.innerHTML = '';
+        function restaurar() { if (btn) { btn.disabled = false; btn.innerHTML = orig; } }
+        var ui = {
+          ok: function (msg) { if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ ' + msg + '</div>'; },
+          erro: function (msg) { if (statusEl) statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + msg + '</div>'; },
+          aviso: function (msg) { if (statusEl) statusEl.innerHTML = '<div style="color:#e07c3a;font-size:12px;margin-top:6px">' + msg + '</div>'; }
+        };
+        var r;
+        try { r = fn(ui); } catch (e) { ui.erro(e && e.message || String(e)); restaurar(); return; }
+        if (r && r.then) r.catch(function (e) { ui.erro(e && e.message || String(e)); }).then(restaurar);
+        else restaurar();
+      };
+    }
+
+    // Botão "📸 Compartilhar como foto" — usa o Web Share API (funciona em celular: abre o
+    // menu nativo com WhatsApp/E-mail/etc. já com a imagem anexada). No desktop, o navegador
+    // não suporta compartilhar arquivo — mostra aviso orientando a usar "Salvar PNG" e enviar
+    // manualmente. `opts.getExtraFiles` — função opcional que devolve arquivos extras pra ir
+    // junto (ex.: foto de comprovante anexada pelo usuário, usada no card de Garantia).
+    function compartilharImagem(getFile, opts) {
+      opts = opts || {};
+      return function (ui) {
+        return getFile().then(function (file) {
+          var files = [file];
+          if (opts.getExtraFiles) { var ex = opts.getExtraFiles(); if (ex) files = files.concat(ex); }
+          if (navigator.canShare && navigator.canShare({ files: files })) {
+            return navigator.share({ files: files, title: opts.titulo || 'Compartilhar' })
+              .then(function () { ui.ok('Compartilhado.'); if (opts.aoEnviar) opts.aoEnviar(); })
+              .catch(function (e) { if (e.name !== 'AbortError') ui.erro(e.message); });
+          } else {
+            ui.aviso('Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.');
+          }
+        });
+      };
+    }
+
+    // Botão "↓ Salvar PNG na galeria" — baixa a imagem do card/documento como arquivo.
+    function salvarPng(getFile, opts) {
+      opts = opts || {};
+      return function (ui) {
+        return getFile().then(function (file) {
+          var url = URL.createObjectURL(file);
+          var a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
+          URL.revokeObjectURL(url);
+          ui.ok((typeof opts.msg === 'function' ? opts.msg() : opts.msg) || 'PNG salvo na galeria.');
+          if (opts.aoEnviar) opts.aoEnviar();
+        });
+      };
+    }
+
+    // Botão "📸 Foto" do Padrão B (recibo/aviso/relatório) — mesma ideia do "Compartilhar como
+    // foto", mas sem barra de status própria (documento já tem seus próprios botões diretos).
+    function enviarImagemDireto(getFile, opts) {
+      opts = opts || {};
+      return function () {
+        return getFile().then(function (file) {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            return navigator.share({ files: [file], title: opts.titulo || 'Documento' }).catch(function () {});
+          } else {
+            var url = URL.createObjectURL(file);
+            var a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
+            URL.revokeObjectURL(url);
+          }
+        }).then(function () { if (opts.aoEnviar) opts.aoEnviar(); });
+      };
+    }
+
+    // "Copiar texto" — copia pro clipboard e mostra um toast de confirmação no canto da tela.
+    function copiarTexto(getTexto, opts) {
+      opts = opts || {};
+      return function () {
+        var txt = getTexto();
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(function () {
+          var tmp = document.createElement('div');
+          tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+          tmp.textContent = opts.msg || 'Texto copiado!';
+          document.body.appendChild(tmp);
+          setTimeout(function () { tmp.remove(); }, 2000);
+          if (opts.aoEnviar) opts.aoEnviar();
+        });
+      };
+    }
+
+    // "💬 Enviar texto padrão" / "📱 WhatsApp" — abre o wa.me com o texto pronto. Se
+    // `getTelefone` devolver um número, já abre a conversa direto com esse contato (senão abre
+    // o seletor genérico de "enviar para").
+    function enviarWhatsapp(getTexto, getTelefone, opts) {
+      opts = opts || {};
+      return function () {
+        var txt = getTexto();
+        if (!txt) return;
+        var tel = getTelefone ? String(getTelefone() || '').replace(/[^\d]/g, '') : '';
+        var url = tel ? ('https://wa.me/55' + tel + '?text=' + encodeURIComponent(txt)) : ('https://wa.me/?text=' + encodeURIComponent(txt));
+        window.open(url, '_blank');
+        if (opts.aoEnviar) opts.aoEnviar();
+      };
+    }
+
+    // "✉️ E-mail" — abre o cliente de e-mail (via abrirEmailFlex, já existente) com assunto e
+    // corpo prontos (asteriscos de negrito do WhatsApp removidos, já que e-mail não usa isso).
+    function enviarEmail(getAssunto, getTexto, opts) {
+      opts = opts || {};
+      return function () {
+        window.abrirEmailFlex(getAssunto(), getTexto().replace(/\*/g, ''));
+        if (opts.aoEnviar) opts.aoEnviar();
+      };
+    }
+
+    // "🖨 Imprimir/PDF" — usa o mecanismo de impressão já existente (imprimirComClasse_: aplica
+    // uma classe "printing-*" no body que isola só aquele documento na tela, chama window.print()
+    // e depois limpa sozinho).
+    function imprimir(printClass, delay, opts) {
+      opts = opts || {};
+      return function () {
+        window.imprimirComClasse_(printClass, delay || 300);
+        if (opts.aoEnviar) opts.aoEnviar();
+      };
+    }
+
+    // "🔊 Ouvir" — lê o texto em voz alta (Web Speech API), útil pra conferir o conteúdo antes
+    // de mandar. Clicar de novo enquanto fala para a leitura (toggle). `getTexto` deve devolver
+    // o texto já "limpo" ou puro markdown do WhatsApp (asteriscos/quebras de linha são
+    // removidos automaticamente aqui pra não atrapalhar a fala).
+    function ouvir(getTexto, btnId) {
+      return function () {
+        var btn = btnId && document.getElementById(btnId);
+        if (!('speechSynthesis' in window)) { alert('Seu navegador não suporta leitura em voz alta.'); return; }
+        if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); if (btn) btn.textContent = '🔊 Ouvir'; return; }
+        var texto = getTexto().replace(/\*/g, '').replace(/\n+/g, '. ');
+        var utt = new SpeechSynthesisUtterance(texto);
+        utt.lang = 'pt-BR';
+        utt.onend = function () { if (btn) btn.textContent = '🔊 Ouvir'; };
+        utt.onerror = function () { if (btn) btn.textContent = '🔊 Ouvir'; };
+        if (btn) btn.textContent = '⏸ Parar';
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utt);
+      };
+    }
+
+    return {
+      gerarImagemFile: gerarImagemFile,
+      criarCache: criarCache,
+      comBotao: comBotao,
+      compartilharImagem: compartilharImagem,
+      salvarPng: salvarPng,
+      enviarImagemDireto: enviarImagemDireto,
+      copiarTexto: copiarTexto,
+      enviarWhatsapp: enviarWhatsapp,
+      enviarEmail: enviarEmail,
+      imprimir: imprimir,
+      ouvir: ouvir
+    };
+  })();
+  // ================= fim ShareKit =================
+</script>
+<script>
   // Botão de emergência acima: remove qualquer classe "printing-*" do body na marra, mesmo que
   // o fechamento automático (afterprint/visibilitychange/Esc/timeout, em imprimirComClasse_)
   // não tenha disparado por algum motivo — evita ter que recarregar a página inteira.
@@ -4362,6 +4608,7 @@
         </svg>
         📸 Compartilhar como foto
       </button>
+      <button class="btn-share" id="btnShareWppTexto" onclick="shareWhatsApp()">💬 Enviar texto padrão</button>
       <button class="btn-share btn-share-png" id="btnSavePng" onclick="salvarCardPng()">
         ↓ Salvar PNG na galeria
       </button>
@@ -7542,122 +7789,39 @@ function abrirCardAtendimento(uid) {
   // no WhatsApp (navigator.share) seja disparado quase instantaneamente
   // ao clicar - navegadores exigem que share() ocorra dentro do gesto
   // do usuario, e a geracao da imagem pode ser lenta demais para isso.
-  _atendImgCache = null;
-  _atendImgCacheUid = uid;
-  setTimeout(function() {
-    if (document.getElementById('modalCard').dataset.uid !== String(uid)) return;
-    gerarImagemCardFile().then(function(file) {
-      if (document.getElementById('modalCard').dataset.uid === String(uid)) {
-        _atendImgCache = file;
-      }
-    }).catch(function(){});
-  }, 80);
+  _atendImgCache_.preAquecer(uid);
 }
 
-let _atendImgCache = null;
-let _atendImgCacheUid = null;
-
-function getAtendImagemCardFile() {
-  if (_atendImgCache) return Promise.resolve(_atendImgCache);
-  return gerarImagemCardFile().then(function(file) {
-    _atendImgCache = file;
-    return file;
-  });
-}
+// Card de Processos usando o padrão comum de compartilhamento (ShareKit — ver comentário
+// no topo do arquivo, logo após os <script> de html2canvas/jspdf). Só o que é específico
+// deste card fica aqui: onde pegar a imagem (elemento #atendCard) e como montar o texto.
+const _atendImgCache_ = ShareKit.criarCache(gerarImagemCardFile);
+function getAtendImagemCardFile() { return _atendImgCache_.obter(); }
 
 function gerarImagemCardFile() {
   const alvo = document.getElementById('atendCard');
   const nome = (document.getElementById('cardNome').textContent || 'card')
     .replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
-
-  return html2canvas(alvo, {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: '#0f1923',
-    logging: false,
-    windowWidth: alvo.scrollWidth,
-    windowHeight: alvo.scrollHeight,
-    onclone: function(doc) {
-      const el = doc.getElementById('atendCard');
-      if (el) {
-        el.style.fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
-        el.style.wordSpacing = '0.06em';
-        el.style.letterSpacing = '0.01em';
-      }
-    }
-  }).then(function(canvas) {
-    return new Promise(function(resolve) {
-      canvas.toBlob(function(blob) {
-        const filename = 'atualizacao_' + nome + '_' + new Date().toISOString().slice(0,10) + '.png';
-        resolve(new File([blob], filename, { type: 'image/png' }));
-      }, 'image/png');
-    });
-  });
+  const filename = 'atualizacao_' + nome + '_' + new Date().toISOString().slice(0, 10) + '.png';
+  return ShareKit.gerarImagemFile(alvo, filename, { bg: '#0f1923' });
 }
 
 // Botao 1: Compartilhar como foto (abre WhatsApp no celular)
-function compartilharCardImagem() {
-  const btn = document.getElementById('btnShareWpp');
-  const statusEl = document.getElementById('cardShareStatus');
-  const orig = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Gerando...';
-  if (statusEl) statusEl.innerHTML = '';
-
-  getAtendImagemCardFile().then(function(file) {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Atualizacao Processual' })
-        .then(function() {
-          if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> Compartilhado.</div>';
-          atendAutoLog('Card enviado');
-        })
-        .catch(function(e) {
-          if (e.name !== 'AbortError' && statusEl)
-            statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + e.message + '</div>';
-        })
-        .finally(function() { btn.disabled = false; btn.innerHTML = orig; });
-    } else {
-      // Desktop: avisar que so funciona no celular
-      if (statusEl) statusEl.innerHTML = '<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
-      btn.disabled = false;
-      btn.innerHTML = orig;
-    }
-  }).catch(function(e) {
-    if (statusEl) statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + e.message + '</div>';
-    btn.disabled = false;
-    btn.innerHTML = orig;
-  });
-}
+const compartilharCardImagem = ShareKit.comBotao('btnShareWpp', 'cardShareStatus',
+  ShareKit.compartilharImagem(getAtendImagemCardFile, { titulo: 'Atualizacao Processual', aoEnviar: function () { atendAutoLog('Card enviado'); } }));
 
 // Botao 2: Salvar PNG na galeria
-function salvarCardPng() {
-  const btn = document.getElementById('btnSavePng');
-  const statusEl = document.getElementById('cardShareStatus');
-  const orig = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Gerando...';
-  if (statusEl) statusEl.innerHTML = '';
+const salvarCardPng = ShareKit.comBotao('btnSavePng', 'cardShareStatus',
+  ShareKit.salvarPng(getAtendImagemCardFile, { aoEnviar: function () { atendAutoLog('Card enviado'); } }));
 
-  getAtendImagemCardFile().then(function(file) {
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url; a.download = file.name; a.click();
-    URL.revokeObjectURL(url);
-    if (statusEl) statusEl.innerHTML = '<div style="color:#4caf7d;font-size:12px;margin-top:6px"> PNG salvo na galeria.</div>';
-    atendAutoLog('Card enviado');
-  }).catch(function(e) {
-    if (statusEl) statusEl.innerHTML = '<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: ' + e.message + '</div>';
-  }).finally(function() {
-    btn.disabled = false;
-    btn.innerHTML = orig;
-  });
+function _atendCardProcesso_() {
+  const uid = document.getElementById('modalCard').dataset.uid;
+  return allProcessos.find(x => x._uid === parseInt(uid));
 }
 
-function shareWhatsApp() {
-  const uid = document.getElementById('modalCard').dataset.uid;
-  const p = allProcessos.find(x => x._uid === parseInt(uid));
-  if (!p) return;
-
+const shareWhatsApp = ShareKit.enviarWhatsapp(function () {
+  const p = _atendCardProcesso_();
+  if (!p) return '';
   let txt = '*ATUALIZACAO PROCESSUAL*\n';
   txt += '_Escritorio Adenilson Borges_\n\n';
   txt += '*CLIENTE*\n' + p.nome + '\n';
@@ -7669,23 +7833,19 @@ function shareWhatsApp() {
   if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\n*O QUE FAREMOS:*\n' + p.proximoPassoAdv + '\n';
   if (p.providCliente && p.providCliente.length > 2) txt += '\n*O QUE O CLIENTE PRECISA:*\n' + p.providCliente + '\n';
   if (p.dataAudi && p.dataAudi.length > 3) {
-    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
+    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0, 5) : '';
     txt += '\nAUDIENCIA MARCADA:\n' + formatDate(p.dataAudi) + hora + '\n';
     if (p.localAudi) txt += '\nLocal: ' + p.localAudi;
     txt += '\n';
   }
   txt += AVISO_GOLPE_TEXTO;
   txt += '\nDuvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
+  return txt;
+}, null, { aoEnviar: function () { atendAutoLog('Card enviado'); } });
 
-  const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
-  window.open(url, '_blank');
-}  // fim shareWhatsApp
-
-function copyCardText() {
-  const uid = document.getElementById('modalCard').dataset.uid;
-  const p = allProcessos.find(x => x._uid === parseInt(uid));
-  if (!p) return;
-
+const copyCardText = ShareKit.copiarTexto(function () {
+  const p = _atendCardProcesso_();
+  if (!p) return '';
   let txt = 'ATUALIZACAO PROCESSUAL - Escritorio Adenilson Borges\n\n';
   txt += 'CLIENTE: ' + p.nome + '\n';
   if (p.processo) txt += 'Processo nr. ' + p.processo + '\n';
@@ -7694,20 +7854,12 @@ function copyCardText() {
   if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) txt += '\nO QUE FAREMOS:\n' + p.proximoPassoAdv + '\n';
   if (p.providCliente && p.providCliente.length > 2) txt += '\nO QUE O CLIENTE PRECISA:\n' + p.providCliente + '\n';
   if (p.dataAudi && p.dataAudi.length > 3) {
-    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0,5) : '';
+    const hora = p.horAudi ? ' as ' + p.horAudi.substring(0, 5) : '';
     txt += '\nAUDIENCIA: ' + formatDate(p.dataAudi) + hora;
     if (p.localAudi) txt += ' - ' + p.localAudi;
   }
-
-  navigator.clipboard.writeText(txt).then(() => {
-    const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
-    tmp.textContent = 'Texto copiado!';
-    document.body.appendChild(tmp);
-    setTimeout(() => tmp.remove(), 2000);
-    atendAutoLog('Card enviado');
-  });
-}
+  return txt;
+}, { aoEnviar: function () { atendAutoLog('Card enviado'); } });
 
 // --- BACKUP DE CONFIGURAÇÃO NA PLANILHA (limites/datas de cartão, saldos em conta) ------------
 // O localStorage sozinho não é confiável a longo prazo (navegador pode evictar dados de sites
@@ -12748,7 +12900,8 @@ function honAtualizarEstadoFiltros_(){
 // parcelas em atraso montada em window._honAvisoParcelas[k]). Não manda nada sozinho — só
 // prepara o card, quem decide se envia (e como) é você.
 var CONTA_ESCRITORIO_HON={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
-var _cardHonImgCache=null,_cardHonImgCacheKey=null;
+// Card de Honorários usando o padrão comum de compartilhamento (ShareKit).
+var _cardHonImgCache_=ShareKit.criarCache(gerarImagemCardHonFile);
 window.abrirCardHonorarios=function(k,idx){
   idx=idx||0;
   var d=(window._honAvisoData||{})[k];
@@ -12768,75 +12921,20 @@ window.abrirCardHonorarios=function(k,idx){
   if(d.senhaCliente){secSenha.style.display='';document.getElementById('cardHonSenha').textContent=d.senhaCliente;}
   else{secSenha.style.display='none';}
   modal.classList.add('open');
-  _cardHonImgCache=null;_cardHonImgCacheKey=k+'|'+idx;
-  var chaveAtual=_cardHonImgCacheKey;
-  setTimeout(function(){
-    if(_cardHonImgCacheKey!==chaveAtual)return;
-    gerarImagemCardHonFile().then(function(file){
-      if(_cardHonImgCacheKey===chaveAtual)_cardHonImgCache=file;
-    }).catch(function(){});
-  },80);
+  _cardHonImgCache_.preAquecer(k+'|'+idx);
 };
-function getCardHonImagemFile(){
-  if(_cardHonImgCache)return Promise.resolve(_cardHonImgCache);
-  return gerarImagemCardHonFile().then(function(file){_cardHonImgCache=file;return file;});
-}
+function getCardHonImagemFile(){ return _cardHonImgCache_.obter(); }
 function gerarImagemCardHonFile(){
   var alvo=document.getElementById('atendCardHon');
   var modal=document.getElementById('modalCardHon');
   var nome=String((modal&&modal.dataset.k)||'honorarios').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'').toLowerCase();
-  return html2canvas(alvo,{
-    scale:3,useCORS:true,backgroundColor:'#0f1923',logging:false,
-    windowWidth:alvo.scrollWidth,windowHeight:alvo.scrollHeight,
-    onclone:function(doc){
-      var el=doc.getElementById('atendCardHon');
-      if(el){el.style.fontFamily="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";el.style.wordSpacing='0.06em';el.style.letterSpacing='0.01em';}
-    }
-  }).then(function(canvas){
-    return new Promise(function(resolve){
-      canvas.toBlob(function(blob){
-        var filename='honorarios_'+nome+'_'+new Date().toISOString().slice(0,10)+'.png';
-        resolve(new File([blob],filename,{type:'image/png'}));
-      },'image/png');
-    });
-  });
+  var filename='honorarios_'+nome+'_'+new Date().toISOString().slice(0,10)+'.png';
+  return ShareKit.gerarImagemFile(alvo,filename,{bg:'#0f1923'});
 }
-window.compartilharCardHonImagem=function(){
-  var btn=document.getElementById('btnShareHonWpp');
-  var statusEl=document.getElementById('cardHonShareStatus');
-  var orig=btn.innerHTML;
-  btn.disabled=true;btn.innerHTML='⏳ Gerando...';
-  if(statusEl)statusEl.innerHTML='';
-  getCardHonImagemFile().then(function(file){
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({files:[file],title:'Honorários em aberto'})
-        .then(function(){if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';})
-        .catch(function(e){if(e.name!=='AbortError'&&statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';})
-        .finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-    }else{
-      if(statusEl)statusEl.innerHTML='<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
-      btn.disabled=false;btn.innerHTML=orig;
-    }
-  }).catch(function(e){
-    if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-    btn.disabled=false;btn.innerHTML=orig;
-  });
-};
-window.salvarCardHonPng=function(){
-  var btn=document.getElementById('btnSaveHonPng');
-  var statusEl=document.getElementById('cardHonShareStatus');
-  var orig=btn.innerHTML;
-  btn.disabled=true;btn.innerHTML='⏳ Gerando...';
-  if(statusEl)statusEl.innerHTML='';
-  getCardHonImagemFile().then(function(file){
-    var url=URL.createObjectURL(file);
-    var a=document.createElement('a');a.href=url;a.download=file.name;a.click();
-    URL.revokeObjectURL(url);
-    if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo na galeria.</div>';
-  }).catch(function(e){
-    if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-  }).finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-};
+window.compartilharCardHonImagem=ShareKit.comBotao('btnShareHonWpp','cardHonShareStatus',
+  ShareKit.compartilharImagem(getCardHonImagemFile,{titulo:'Honorários em aberto'}));
+window.salvarCardHonPng=ShareKit.comBotao('btnSaveHonPng','cardHonShareStatus',
+  ShareKit.salvarPng(getCardHonImagemFile));
 function montarTextoCardHon_(formatoWpp){
   var modal=document.getElementById('modalCardHon');
   var k=modal.dataset.k,idx=parseInt(modal.dataset.idx)||0;
@@ -12860,25 +12958,10 @@ function montarTextoCardHon_(formatoWpp){
   txt+='ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
   return txt;
 }
-window.enviarCardHonWppTexto=function(){
-  var modal=document.getElementById('modalCardHon');
-  var k=modal.dataset.k;
-  var d=(window._honAvisoData||{})[k]||{};
-  var txt=montarTextoCardHon_(true);
-  var tel=String(d.telefone||'').replace(/[^\d]/g,'');
-  var url=tel?('https://wa.me/55'+tel+'?text='+encodeURIComponent(txt)):('https://wa.me/?text='+encodeURIComponent(txt));
-  window.open(url,'_blank');
-};
-window.copyCardHonText=function(){
-  var txt=montarTextoCardHon_(false);
-  navigator.clipboard.writeText(txt).then(function(){
-    var tmp=document.createElement('div');
-    tmp.style.cssText='position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
-    tmp.textContent='Texto copiado!';
-    document.body.appendChild(tmp);
-    setTimeout(function(){tmp.remove();},2000);
-  });
-};
+window.enviarCardHonWppTexto=ShareKit.enviarWhatsapp(
+  function(){return montarTextoCardHon_(true);},
+  function(){var modal=document.getElementById('modalCardHon');var d=(window._honAvisoData||{})[modal.dataset.k]||{};return d.telefone;});
+window.copyCardHonText=ShareKit.copiarTexto(function(){return montarTextoCardHon_(false);});
 function honMatchesFilters(rows,cliente,proc){
  var busca=((document.getElementById('honBusca')?document.getElementById('honBusca').value:'')||'').toLowerCase().trim();
  var filtroForma=(document.getElementById('honFiltroForma')?document.getElementById('honFiltroForma').value:'')||'';
@@ -17825,48 +17908,26 @@ window.cpRenderFixas=cpRenderFixas;
     if(input.files&&input.files[0]){_cardGarFotoFile=input.files[0];var ov=document.getElementById('sinCardOverlay');sinCardRender_(ov.dataset.contrato,ov.dataset.destino);}
   };
   window.sinCardRemoverFoto=function(){_cardGarFotoFile=null;var ov=document.getElementById('sinCardOverlay');sinCardRender_(ov.dataset.contrato,ov.dataset.destino);};
+  // Card de Aviso — Corretora/Fiador usando o padrão comum de compartilhamento (ShareKit).
   function gerarImagemCardGarantiaFile_(){
     var alvo=document.getElementById('sinCardPreview');
-    return html2canvas(alvo,{scale:3,useCORS:true,backgroundColor:'#0d1525',logging:false}).then(function(canvas){
-      return new Promise(function(resolve){
-        canvas.toBlob(function(blob){resolve(new File([blob],'aviso_garantia_'+new Date().toISOString().slice(0,10)+'.png',{type:'image/png'}));},'image/png');
-      });
-    });
+    var filename='aviso_garantia_'+new Date().toISOString().slice(0,10)+'.png';
+    return ShareKit.gerarImagemFile(alvo,filename,{bg:'#0d1525'});
   }
-  window.compartilharCardGarantiaImagem=function(){
-    var btn=document.getElementById('btnShareGarWpp');var statusEl=document.getElementById('sinCardShareStatus');
-    var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
-    var orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ Gerando...';if(statusEl)statusEl.innerHTML='';
-    gerarImagemCardGarantiaFile_().then(function(file){
-      var files=[file];if(_cardGarFotoFile)files.push(_cardGarFotoFile);
-      if(navigator.canShare&&navigator.canShare({files:files})){
-        navigator.share({files:files,title:'Aviso de Inadimplência'})
-          .then(function(){
-            if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';
-            var atual=sinAbertoDoContrato_(contrato);
-            if(atual)sinHistAdicionar_(atual.ID,'Aviso enviado via WhatsApp a '+(destino==='corretora'?'corretora ('+(contratosById[contrato]||{}).garCorretoraNome:'fiador '+((contratosById[contrato]||{})[destino==='fiador2'?'fiador2Nome':'fiador1Nome']||'')),true);
-          })
-          .catch(function(e){if(e.name!=='AbortError'&&statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';})
-          .finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-      }else{
-        if(statusEl)statusEl.innerHTML='<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
-        btn.disabled=false;btn.innerHTML=orig;
+  window.compartilharCardGarantiaImagem=ShareKit.comBotao('btnShareGarWpp','sinCardShareStatus',
+    ShareKit.compartilharImagem(gerarImagemCardGarantiaFile_,{
+      titulo:'Aviso de Inadimplência',
+      getExtraFiles:function(){return _cardGarFotoFile?[_cardGarFotoFile]:null;},
+      aoEnviar:function(){
+        var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
+        var atual=sinAbertoDoContrato_(contrato);
+        if(atual)sinHistAdicionar_(atual.ID,'Aviso enviado via WhatsApp a '+(destino==='corretora'?'corretora ('+(contratosById[contrato]||{}).garCorretoraNome:'fiador '+((contratosById[contrato]||{})[destino==='fiador2'?'fiador2Nome':'fiador1Nome']||'')),true);
       }
-    }).catch(function(e){
-      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-      btn.disabled=false;btn.innerHTML=orig;
-    });
-  };
-  window.salvarCardGarantiaPng=function(){
-    var btn=document.getElementById('btnSaveGarPng');var statusEl=document.getElementById('sinCardShareStatus');
-    var orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ Gerando...';if(statusEl)statusEl.innerHTML='';
-    gerarImagemCardGarantiaFile_().then(function(file){
-      var url=URL.createObjectURL(file);var a=document.createElement('a');a.href=url;a.download=file.name;a.click();URL.revokeObjectURL(url);
-      if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo'+(_cardGarFotoFile?' (a foto anexada precisa ser enviada separadamente).':'.')+'</div>';
-    }).catch(function(e){
-      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-    }).finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-  };
+    }));
+  window.salvarCardGarantiaPng=ShareKit.comBotao('btnSaveGarPng','sinCardShareStatus',
+    ShareKit.salvarPng(gerarImagemCardGarantiaFile_,{
+      msg:function(){return 'PNG salvo'+(_cardGarFotoFile?' (a foto anexada precisa ser enviada separadamente).':'.');}
+    }));
 
   // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
   // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
@@ -19097,7 +19158,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('modalAnotacoes').classList.remove('open');
     window.abrirCardLocacao(contrato,audiencia,msgAtual.trim()||novaAtual.trim());
   };
-  var _cardLocImgCache=null,_cardLocImgCacheKey=null;
+  // Card de Locação usando o padrão comum de compartilhamento (ShareKit).
+  var _cardLocImgCache_=ShareKit.criarCache(gerarImagemCardLocFile);
   window.abrirCardLocacao=function(contrato,audiencia,mensagem){
     audiencia=(audiencia==='locador')?'locador':'locatario';
     var ehLocador=audiencia==='locador';
@@ -19126,75 +19188,20 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cardLocPreviewSub').textContent=(ehLocador?(c.locador||''):(c.locatario||''))+' — pré-visualização';
     modal.classList.add('open');
 
-    _cardLocImgCache=null;_cardLocImgCacheKey=contrato+'|'+audiencia+'|'+(mensagem||'');
-    var chaveAtual=_cardLocImgCacheKey;
-    setTimeout(function(){
-      if(_cardLocImgCacheKey!==chaveAtual)return;
-      gerarImagemCardLocFile().then(function(file){
-        if(_cardLocImgCacheKey===chaveAtual)_cardLocImgCache=file;
-      }).catch(function(){});
-    },80);
+    _cardLocImgCache_.preAquecer(contrato+'|'+audiencia+'|'+(mensagem||''));
   };
-  function getCardLocImagemFile(){
-    if(_cardLocImgCache)return Promise.resolve(_cardLocImgCache);
-    return gerarImagemCardLocFile().then(function(file){_cardLocImgCache=file;return file;});
-  }
+  function getCardLocImagemFile(){ return _cardLocImgCache_.obter(); }
   function gerarImagemCardLocFile(){
     var alvo=document.getElementById('atendCardLoc');
     var contrato=document.getElementById('modalCardLoc').dataset.contrato||'card';
     var nome=String(contrato).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'').toLowerCase();
-    return html2canvas(alvo,{
-      scale:3,useCORS:true,backgroundColor:'#0f1923',logging:false,
-      windowWidth:alvo.scrollWidth,windowHeight:alvo.scrollHeight,
-      onclone:function(doc){
-        var el=doc.getElementById('atendCardLoc');
-        if(el){el.style.fontFamily="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";el.style.wordSpacing='0.06em';el.style.letterSpacing='0.01em';}
-      }
-    }).then(function(canvas){
-      return new Promise(function(resolve){
-        canvas.toBlob(function(blob){
-          var filename='locacao_'+nome+'_'+new Date().toISOString().slice(0,10)+'.png';
-          resolve(new File([blob],filename,{type:'image/png'}));
-        },'image/png');
-      });
-    });
+    var filename='locacao_'+nome+'_'+new Date().toISOString().slice(0,10)+'.png';
+    return ShareKit.gerarImagemFile(alvo,filename,{bg:'#0f1923'});
   }
-  window.compartilharCardLocImagem=function(){
-    var btn=document.getElementById('btnShareLocWpp');
-    var statusEl=document.getElementById('cardLocShareStatus');
-    var orig=btn.innerHTML;
-    btn.disabled=true;btn.innerHTML='⏳ Gerando...';
-    if(statusEl)statusEl.innerHTML='';
-    getCardLocImagemFile().then(function(file){
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:'Atualização de Locação'})
-          .then(function(){if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ Compartilhado.</div>';})
-          .catch(function(e){if(e.name!=='AbortError'&&statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';})
-          .finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-      }else{
-        if(statusEl)statusEl.innerHTML='<div style="color:#e07c3a;font-size:12px;margin-top:6px">Use "Salvar PNG" e envie pelo WhatsApp no celular. O compartilhamento direto funciona apenas em dispositivos móveis.</div>';
-        btn.disabled=false;btn.innerHTML=orig;
-      }
-    }).catch(function(e){
-      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-      btn.disabled=false;btn.innerHTML=orig;
-    });
-  };
-  window.salvarCardLocPng=function(){
-    var btn=document.getElementById('btnSaveLocPng');
-    var statusEl=document.getElementById('cardLocShareStatus');
-    var orig=btn.innerHTML;
-    btn.disabled=true;btn.innerHTML='⏳ Gerando...';
-    if(statusEl)statusEl.innerHTML='';
-    getCardLocImagemFile().then(function(file){
-      var url=URL.createObjectURL(file);
-      var a=document.createElement('a');a.href=url;a.download=file.name;a.click();
-      URL.revokeObjectURL(url);
-      if(statusEl)statusEl.innerHTML='<div style="color:#4caf7d;font-size:12px;margin-top:6px">✓ PNG salvo na galeria.</div>';
-    }).catch(function(e){
-      if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:6px">Erro: '+e.message+'</div>';
-    }).finally(function(){btn.disabled=false;btn.innerHTML=orig;});
-  };
+  window.compartilharCardLocImagem=ShareKit.comBotao('btnShareLocWpp','cardLocShareStatus',
+    ShareKit.compartilharImagem(getCardLocImagemFile,{titulo:'Atualização de Locação'}));
+  window.salvarCardLocPng=ShareKit.comBotao('btnSaveLocPng','cardLocShareStatus',
+    ShareKit.salvarPng(getCardLocImagemFile));
   function montarTextoCardLoc_(formatoWpp){
     var modal=document.getElementById('modalCardLoc');
     var contrato=modal.dataset.contrato;
@@ -19213,28 +19220,16 @@ window.cpRenderFixas=cpRenderFixas;
     txt+='\nDúvidas? Ligue ou envie mensagem.\nADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
     return txt;
   }
-  window.enviarCardLocWppTexto=function(){
-    var modal=document.getElementById('modalCardLoc');
-    var contrato=modal.dataset.contrato;
-    var audiencia=modal.dataset.audiencia||'locatario';
-    var ehLocador=audiencia==='locador';
-    var c=contratosById[contrato]||{};
-    var txt=montarTextoCardLoc_(true);
-    var telRaw=ehLocador?(c.telLocador1||c.telLocador2||''):(c.telLocatario1||c.telLocatario2||'');
-    var tel=String(telRaw).replace(/[^\d]/g,'');
-    var url=tel?('https://wa.me/55'+tel+'?text='+encodeURIComponent(txt)):('https://wa.me/?text='+encodeURIComponent(txt));
-    window.open(url,'_blank');
-  };
-  window.copyCardLocText=function(){
-    var txt=montarTextoCardLoc_(false);
-    navigator.clipboard.writeText(txt).then(function(){
-      var tmp=document.createElement('div');
-      tmp.style.cssText='position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
-      tmp.textContent='Texto copiado!';
-      document.body.appendChild(tmp);
-      setTimeout(function(){tmp.remove();},2000);
+  window.enviarCardLocWppTexto=ShareKit.enviarWhatsapp(
+    function(){return montarTextoCardLoc_(true);},
+    function(){
+      var modal=document.getElementById('modalCardLoc');
+      var contrato=modal.dataset.contrato;
+      var ehLocador=(modal.dataset.audiencia||'locatario')==='locador';
+      var c=contratosById[contrato]||{};
+      return ehLocador?(c.telLocador1||c.telLocador2||''):(c.telLocatario1||c.telLocatario2||'');
     });
-  };
+  window.copyCardLocText=ShareKit.copiarTexto(function(){return montarTextoCardLoc_(false);});
   // "Gerar follow-up" a partir do próprio card: fecha o card (sem voltar pra Anotações agora — o
   // destino é direto o formulário de Tarefas) e abre o rascunho pré-preenchido.
   // window._anotRetorno continua valendo (foi setado quando o card foi aberto a partir das
@@ -19261,7 +19256,8 @@ window.cpRenderFixas=cpRenderFixas;
   });
 
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
-  var _reciboLocContrato=null, _reciboLocTipo=null, _reciboLocImgCache=null;
+  var _reciboLocContrato=null, _reciboLocTipo=null;
+  var _reciboLocImgCache_=ShareKit.criarCache(function(){return gerarReciboLocImagemFile();});
   var CONTA_ESCRITORIO={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
   // ---------- OUTRAS COBRANÇAS (lista com vários itens; valor negativo desconta do
   // repasse, positivo soma) — resolve o caso de contas de luz/água/IPTU que você paga
@@ -20591,7 +20587,7 @@ window.cpRenderFixas=cpRenderFixas;
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!w){alert('Não há lançamento deste contrato no mês selecionado.');return;}
     var c=contratosById[contrato]||{};
-    _reciboLocContrato=contrato; _reciboLocTipo=tipo; _reciboLocImgCache=null;
+    _reciboLocContrato=contrato; _reciboLocTipo=tipo;
 
     var titulo,badgeHtml,valoresHtml,totalLabel,totalValor,totalRodape,contaTitulo,contaHtml,disclaimer,vencSection;
     var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel acima, mês de referência indicado.</div>';
@@ -20710,21 +20706,14 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
 
     document.getElementById('modalReciboLoc').classList.add('open');
-    setTimeout(function(){
-      if(_reciboLocContrato!==contrato||_reciboLocTipo!==tipo)return;
-      gerarReciboLocImagemFile().then(function(file){if(_reciboLocContrato===contrato&&_reciboLocTipo===tipo)_reciboLocImgCache=file;}).catch(function(){});
-    },80);
+    _reciboLocImgCache_.preAquecer(contrato+'|'+tipo);
   };
+  // Recibo/Informe de Locação usando o padrão comum de compartilhamento (ShareKit).
   function gerarReciboLocImagemFile(){
     var cardEl=document.getElementById('reciboLocCard');
-    return html2canvas(cardEl,{scale:3,useCORS:true,backgroundColor:'#0d1525'}).then(function(canvas){
-      return new Promise(function(res){canvas.toBlob(function(b){res(new File([b],'recibo-locacao.png',{type:'image/png'}));},'image/png');});
-    });
+    return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525'});
   }
-  function getReciboLocImagemFile(){
-    if(_reciboLocImgCache)return Promise.resolve(_reciboLocImgCache);
-    return gerarReciboLocImagemFile().then(function(file){_reciboLocImgCache=file;return file;});
-  }
+  function getReciboLocImagemFile(){ return _reciboLocImgCache_.obter(); }
   function _reciboLocTexto(){
     var contrato=_reciboLocContrato; if(!contrato)return '';
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return '';
@@ -20820,45 +20809,17 @@ window.cpRenderFixas=cpRenderFixas;
     logAuditoria_('Recibo de aluguel enviado',_reciboLocContrato,'Mês '+(selMes||'—'));
     locRender();
   }
-  window.enviarReciboLocWpp=function(){
-    window.open('https://wa.me/?text='+encodeURIComponent(_reciboLocTexto()),'_blank');
-    locMarcarReciboEnviado_();
-  };
-  // Leitura em voz alta do recibo/informe antes de enviar — conferência rápida por voz.
-  window.ouvirReciboLoc=function(){
-    var btn=document.getElementById('reciboLocOuvirBtn');
-    if(!('speechSynthesis' in window)){ alert('Seu navegador não suporta leitura em voz alta.'); return; }
-    if(window.speechSynthesis.speaking){ window.speechSynthesis.cancel(); if(btn)btn.textContent='🔊 Ouvir'; return; }
-    var texto=_reciboLocTexto().replace(/\*/g,'').replace(/\n+/g,'. ');
-    var utt=new SpeechSynthesisUtterance(texto);
-    utt.lang='pt-BR';
-    utt.onend=function(){ if(btn)btn.textContent='🔊 Ouvir'; };
-    utt.onerror=function(){ if(btn)btn.textContent='🔊 Ouvir'; };
-    if(btn)btn.textContent='⏸ Parar';
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utt);
-  };
-  window.enviarReciboLocEmail=function(){
-    var assunto=(_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');
-    abrirEmailFlex(assunto,_reciboLocTexto().replace(/\*/g,''));
-    locMarcarReciboEnviado_();
-  };
-  window.enviarReciboLocImagem=function(){
-    getReciboLocImagemFile().then(function(file){
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:'Recibo de Locação'}).catch(function(){});
-      } else {
-        var url=URL.createObjectURL(file);
-        var a=document.createElement('a');a.href=url;a.download=file.name;a.click();
-        URL.revokeObjectURL(url);
-      }
-    });
-    locMarcarReciboEnviado_();
-  };
+  // Botões do recibo/informe (padrão B — ShareKit), todos marcando o recibo como enviado.
+  window.enviarReciboLocWpp=ShareKit.enviarWhatsapp(_reciboLocTexto, null, {aoEnviar:locMarcarReciboEnviado_});
+  window.ouvirReciboLoc=ShareKit.ouvir(_reciboLocTexto, 'reciboLocOuvirBtn');
+  window.enviarReciboLocEmail=ShareKit.enviarEmail(
+    function(){return (_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');},
+    _reciboLocTexto, {aoEnviar:locMarcarReciboEnviado_});
+  window.enviarReciboLocImagem=ShareKit.enviarImagemDireto(getReciboLocImagemFile,
+    {titulo:'Recibo de Locação', aoEnviar:locMarcarReciboEnviado_});
   window.imprimirReciboLoc=function(){
     document.getElementById('modalReciboLoc').classList.add('open');
-    imprimirComClasse_('printing-recibo-loc', 300);
-    locMarcarReciboEnviado_();
+    ShareKit.imprimir('printing-recibo-loc', 300, {aoEnviar:locMarcarReciboEnviado_})();
   };
   document.addEventListener('DOMContentLoaded',function(){
     var mrl=document.getElementById('modalReciboLoc');
