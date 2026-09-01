@@ -17379,6 +17379,22 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('sinFormHost').style.display='none';
     setTimeout(async function(){await carregarAlugueis();sinRenderModal_(contrato);},1200);
   };
+  // Exclui um registro de sinistro/controle de inadimplência lançado por engano (pedido do
+  // usuário, 01/set/2026) — apaga também a linha do tempo (LOC_SINISTROS_HISTORICO) ligada a
+  // ele, pra não deixar histórico órfão. Os follow-ups/Tarefas ligados ficam intactos (o usuário
+  // pode excluí-los à parte, na própria lista de follow-ups, se quiser).
+  window.sinExcluir_=async function(contrato,id){
+    if(!confirm('Excluir este registro de inadimplência? Isso também apaga a linha do tempo dele. Não pode ser desfeito.'))return;
+    await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_sinistro',id:id})}).catch(function(){});
+    var hist=(window.locSinistrosHist||[]).filter(function(h){return String(h['Sinistro ID'])===String(id);});
+    for(var i=0;i<hist.length;i++){
+      await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_sinistroHist',id:hist[i].ID})}).catch(function(){});
+    }
+    window.locSinistros=(window.locSinistros||[]).filter(function(s){return String(s.ID)!==String(id);});
+    window.locSinistrosHist=(window.locSinistrosHist||[]).filter(function(h){return String(h['Sinistro ID'])!==String(id);});
+    sinRenderModal_(contrato);
+    setTimeout(function(){carregarAlugueis();},1200);
+  };
   window.sinHistAdicionar_=async function(sinistroId,descricao,silencioso){
     if(!sinistroId||!descricao)return;
     var agora=new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -17502,7 +17518,7 @@ window.cpRenderFixas=cpRenderFixas;
     var html='<div style="border:1px solid '+cor+';border-radius:10px;padding:12px;margin-bottom:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
       +'<div style="font-size:13px"><b style="color:'+cor+'">'+E(s.Status)+'</b>'+(info.mostrarNumero?(s['Numero Sinistro']?' · '+E(info.labelNumero)+' <b>'+E(s['Numero Sinistro'])+'</b>':' · <span style="color:var(--muted)">'+E(info.labelNumero).toLowerCase()+' ainda não informado</span>'):'')+(s.Seguradora?' · '+E(s.Seguradora):'')+'</div>'
-      +'<button class="loc-btn-edit" onclick="sinFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\')" title="Editar">✎ Editar</button>'
+      +'<span><button class="loc-btn-edit" onclick="sinFormAbrir_(\''+contrato+'\',\''+E(s.ID)+'\')" title="Editar">✎ Editar</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="sinExcluir_(\''+contrato+'\',\''+E(s.ID)+'\')" title="Excluir este registro (ex.: lançado por engano)">🗑️ Excluir</button></span>'
       +'</div>'
       +'<div style="font-size:12px;color:var(--muted);margin-top:6px">'
       +(s['Data Comunicacao Seguradora']?E(info.labelData)+' '+E(s['Data Comunicacao Seguradora'])+' · ':'')
