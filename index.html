@@ -16799,12 +16799,14 @@ window.cpRenderFixas=cpRenderFixas;
 <style>
   .modal-cobr-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.55);z-index:960;align-items:center;justify-content:center}
   .modal-cobr-overlay.open{display:flex}
-  .cobr-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(560px,92vw);max-height:88vh;overflow-y:auto}
+  .cobr-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(980px,96vw);max-height:92vh;overflow-y:auto}
   .cobr-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
   .cobr-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--accent)}
-  .cobr-body{padding:16px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px;max-height:70vh;overflow-y:auto}
-  .cobr-secao{font-family:'DM Serif Display',serif;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent2);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:6px}
-  .cobr-body .full{grid-column:1/-1}
+  .cobr-body{padding:16px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;max-height:80vh;overflow-y:auto}
+  .cobr-secao{font-family:'DM Serif Display',serif;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent2);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:6px;grid-column:1/-1}
+  .cobr-body .full,.cobr-body #cobr-outras-lista,.cobr-body .loc-note{grid-column:1/-1}
+  .cobr-item-linha{grid-column:1/-1}
+  @media(max-width:900px){.cobr-body{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:520px){.cobr-body{grid-template-columns:1fr}}
 </style>
 
@@ -20553,7 +20555,8 @@ window.cpRenderFixas=cpRenderFixas;
     // Se o imóvel tem coproprietários cadastrados, o informe de repasse (não o recibo do
     // inquilino) é dividido: cada proprietário recebe o seu percentual, com IR calculado
     // quando marcado. Guarda os dados p/ o seletor poder trocar de proprietário sem reabrir.
-    var owners=(tipo!=='aluguel')?(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato;}):[];
+    var allOwnersRecibo=(window.locCoprop||[]).filter(function(o){return o.Contrato===contrato;});
+    var owners=(tipo!=='aluguel')?allOwnersRecibo:[];
     _reciboLocOwners=owners; _reciboLocW=w; _reciboLocC=c; _reciboLocContratoNum=contrato;
     var ownerSelectorHtml='';
     if(owners.length){
@@ -20584,7 +20587,9 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>'
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
-      +(owners.length?ownerSelectorHtml:'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>')
+      +(owners.length?ownerSelectorHtml:(tipo==='aluguel'&&allOwnersRecibo.length
+        ?'<div class="parc-section"><div class="parc-section-label">Locador'+(allOwnersRecibo.length>1?'es (coproprietários)':'')+'</div><div class="parc-box">'+allOwnersRecibo.map(function(o){return E(o.Nome||'—')+' — '+num(o.Percentual)+'%<br>CPF/CNPJ: '+E(o.CPF_CNPJ||'—');}).join('<hr style="border-color:var(--border);margin:6px 0">')+'</div></div>'
+        :'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>'))
       +'<div class="parc-section"><div class="parc-section-label">'+tenantsLabel+'</div><div class="parc-box">'+tenantsBoxHtml+'</div></div>'
       // Garantia locatícia removida por pedido do usuário — não aparece mais em nenhum dos dois
       // documentos (nem recibo ao locatário, nem informe ao locador).
