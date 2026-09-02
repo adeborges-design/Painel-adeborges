@@ -16112,6 +16112,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="denuncia_vazia">7. Denúncia vazia — fim do contrato, locador não tem interesse em continuar</option>
           <option value="reajuste_anual">8. Reajuste anual do aluguel</option>
           <option value="atraso_locador">9. Aviso ao locador — aluguel em atraso, monitorando</option>
+          <option value="confirmacao_recebimento">10. Confirmação de recebimento do aluguel — quitação total/parcial</option>
         </select></div>
         <div id="avisoExtrasWrap"></div>
       </div>
@@ -16999,6 +17000,11 @@ window.cpRenderFixas=cpRenderFixas;
   // índice), pra o texto do aviso não recalcular errado em cima do aluguel que já foi atualizado.
   // Fica nulo no uso normal (aviso aberto manualmente pela barra de Correspondências).
   var _avisoReajusteContext=null;
+  // Mesma ideia do _avisoReajusteContext, só que pro aviso "Confirmação de recebimento"
+  // (02/set/2026): carrega valor cobrado/recebido/diferença do mês que acabou de ser marcado
+  // como recebido, pra abrir a Correspondência já com o texto de quitação total ou parcial
+  // pronto — ver abrirConfirmacaoRecebimentoLoc_.
+  var _avisoConfirmacaoContext=null;
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
   function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
@@ -20502,6 +20508,33 @@ window.cpRenderFixas=cpRenderFixas;
         'Informamos que o aluguel do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', locatário '+(c.locatario||'—')+', encontra-se em atraso.',
         'Estamos monitorando a situação e adotando as providências de cobrança cabíveis, e manteremos V.Sa. informado(a) sobre a evolução do caso.'
       ];
+    }},
+    // Confirmação de recebimento do aluguel — quitação total ou parcial (02/set/2026). Aberta
+    // automaticamente logo depois que o usuário confirma o recebimento (marca Recebido, ou
+    // Recebido a menor/a maior no modal de recebimento) — ver abrirConfirmacaoRecebimentoLoc_ e
+    // os 3 pontos que chamam essa função (recebimentoSalvar, locSetStatusAluguel, locSetData).
+    // ex vem de _avisoConfirmacaoContext: {mesRef, valorRecebido, valorCobrado, diferenca,
+    // acaoTexto}. diferenca>0 = recebeu a menos (quitação parcial); diferenca<0 = recebeu a mais
+    // (quitação total + crédito); diferenca===0 = quitação total, bateu certinho.
+    confirmacao_recebimento:{ label:'Confirmação de recebimento do aluguel', corpo:function(c,ex){
+      ex=ex||{};
+      var mesRef=ex.mesRef||'';
+      var recebido=num(ex.valorRecebido);
+      var cobrado=num(ex.valorCobrado);
+      var diff=num(ex.diferenca);
+      var linhas=['Prezado(a) '+(c.locatario||'Locatário')+','];
+      if(!diff){
+        linhas.push('Confirmamos o recebimento do aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', mês de referência '+mesRef+', no valor de '+BRL(recebido)+'.');
+        linhas.push('Damos, por meio deste, plena e total quitação quanto ao pagamento deste mês de referência, nada mais havendo a reclamar a este título.');
+      }else if(diff>0){
+        linhas.push('Confirmamos o recebimento PARCIAL do aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', mês de referência '+mesRef+', no valor de '+BRL(recebido)+'.');
+        linhas.push('O valor devido para este mês de referência era de '+BRL(cobrado)+', restando em aberto o saldo de '+BRL(diff)+'.');
+        linhas.push('Este pagamento dá quitação apenas PARCIAL, permanecendo em aberto o saldo remanescente acima indicado'+(ex.acaoTexto?', '+ex.acaoTexto+'.':'.'));
+      }else{
+        linhas.push('Confirmamos o recebimento do aluguel referente ao imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', mês de referência '+mesRef+', no valor de '+BRL(recebido)+', superior ao valor devido de '+BRL(cobrado)+'.');
+        linhas.push('Damos plena quitação quanto ao valor devido neste mês de referência, restando um crédito de '+BRL(-diff)+' em seu favor, a ser considerado no próximo lançamento.');
+      }
+      return linhas;
     }}
   };
   function avisoTitularidade(c,servico,concessionaria){
@@ -20532,6 +20565,7 @@ window.cpRenderFixas=cpRenderFixas;
     // Contexto de um reajuste recém-aplicado só vale enquanto o aviso continuar aberto pro
     // MESMO contrato e tipo "reajuste_anual" — qualquer troca de contrato/tipo invalida.
     if(_avisoReajusteContext&&(tipo!=='reajuste_anual'||contratoNum!==_avisoReajusteContext.contrato))_avisoReajusteContext=null;
+    if(_avisoConfirmacaoContext&&(tipo!=='confirmacao_recebimento'||contratoNum!==_avisoConfirmacaoContext.contrato))_avisoConfirmacaoContext=null;
     if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';return;}
     if(def.extras){
       if(!extrasWrap.querySelector('.aviso-extras-linha')){
@@ -20548,6 +20582,7 @@ window.cpRenderFixas=cpRenderFixas;
     }
     var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
     if(_avisoReajusteContext){ex.valorAnterior=_avisoReajusteContext.valorAnterior;ex.valorNovo=_avisoReajusteContext.valorNovo;ex.jaAplicado=true;ex.integral=_avisoReajusteContext.integral;}
+    if(_avisoConfirmacaoContext){ex.mesRef=_avisoConfirmacaoContext.mesRef;ex.valorRecebido=_avisoConfirmacaoContext.valorRecebido;ex.valorCobrado=_avisoConfirmacaoContext.valorCobrado;ex.diferenca=_avisoConfirmacaoContext.diferenca;ex.acaoTexto=_avisoConfirmacaoContext.acaoTexto;}
     var paragrafos=def.corpo(c,ex);
     var destinatarioLabel=def.paraLocador?'Locador':'Locatário';
     var destinatarioNome=def.paraLocador?(c.locador||'—'):(c.locatario||'—');
@@ -20870,6 +20905,18 @@ window.cpRenderFixas=cpRenderFixas;
     gravarSheet(contrato,prox);
     return true;
   }
+  // Abre a Correspondência já pronta com a confirmação de recebimento (quitação total ou
+  // parcial), logo depois que o usuário confirma o recebimento do aluguel — pedido do usuário
+  // (02/set/2026): "quando eu recebo o pix... confirmo o recebimento, preciso disparar uma
+  // mensagem ao locatário confirmando que recebi o valor dando quitação Total ou Parcial".
+  // Não envia nada sozinho — só abre a tela de Correspondências já preenchida (mesmo padrão do
+  // aviso automático de Reajuste anual, ver _avisoReajusteContext/locReajusteAplicar), com o
+  // texto pronto pra revisar/editar e mandar por WhatsApp ou e-mail, ou simplesmente fechar sem
+  // enviar se não for o caso.
+  function abrirConfirmacaoRecebimentoLoc_(contrato,mes,valorRecebido,valorCobrado,diferenca,acaoTexto){
+    _avisoConfirmacaoContext={contrato:contrato,mesRef:mesExtenso(mes),valorRecebido:valorRecebido,valorCobrado:valorCobrado,diferenca:diferenca,acaoTexto:acaoTexto||''};
+    avisoAbrir(contrato,'confirmacao_recebimento');
+  }
   window.abrirModalRecebimento=function(contrato,statusEscolhido){
     var w=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
     if(!w){locRender();return;}
@@ -20926,8 +20973,14 @@ window.cpRenderFixas=cpRenderFixas;
     gravarSheet(contrato);
     logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+statusFinal+(diff?' (diferença de '+BRL(Math.abs(diff))+', ação: '+(acao==='multa'?'multa/juros agora':(acao==='proxmes'?'cobrar no mês seguinte':'só registrar'))+')':''));
     document.getElementById('modalRecebimento').classList.remove('open');
+    // Ação "multa/juros agora" abre a calculadora de Encargos em seguida — a confirmação de
+    // recebimento não é aberta automaticamente nesse caso (o valor da multa ainda não foi
+    // calculado); pode ser aberta manualmente depois em Correspondências, já com o contrato
+    // pronto pra selecionar.
     if(diff!==0&&acao==='multa'){locRender();abrirModalCobrancas(contrato);return;}
     locRender();
+    var acaoTextoMsg=diff===0?'':(acao==='proxmes'?'valor que será cobrado no lançamento do mês seguinte deste contrato':'saldo que permanece em aberto, a ser tratado oportunamente');
+    abrirConfirmacaoRecebimentoLoc_(contrato,w.mes,recebido,valorCobradoOf(w),diff,acaoTextoMsg);
   };
   document.addEventListener('DOMContentLoaded',function(){
     var mr=document.getElementById('modalRecebimento');
@@ -20941,9 +20994,17 @@ window.cpRenderFixas=cpRenderFixas;
   // (não faz sentido carregar esse resquício se o usuário mudou de ideia).
   window.locSetStatusAluguel=function(contrato,val){
     if(val==='Recebido a menor'||val==='Recebido a maior'){abrirModalRecebimento(contrato,val);return;}
+    var atualAntes=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]||{};
+    var jaEraRecebido=atualAntes.statusAluguel==='Recebido';
     var patch={statusAluguel:val,valorRecebido:'',saldoProxMesDesc:'',saldoProxMesValor:''};
     if(val==='Recebido'){var cur=(state().overrides[selMes+'|'+contrato]||{});var jaTem=cur.dataPag||(lancDoMes(contrato)||{}).dataPag;if(!jaTem)patch.dataPag=fmtHoje();}
     setOverride(contrato,patch);gravarSheet(contrato);logAuditoria_('Status aluguel',contrato,'Mês '+(selMes||'—')+' → '+val);locRender();
+    // Confirmação de recebimento (quitação total) — só abre sozinha quando o status MUDA pra
+    // Recebido agora, não em toda re-renderização/seleção repetida do mesmo valor.
+    if(val==='Recebido'&&!jaEraRecebido){
+      var wNovo=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+      if(wNovo)abrirConfirmacaoRecebimentoLoc_(contrato,wNovo.mes,valorCobradoOf(wNovo),valorCobradoOf(wNovo),0,'');
+    }
   };
   window.locSetStatusRepasse=function(contrato,val){
     var atual=workingList().filter(function(l){return l.mes===selMes&&l.contrato===contrato;})[0];
@@ -20954,11 +21015,18 @@ window.cpRenderFixas=cpRenderFixas;
     var dataBR=isoToBr(iso);
     var patch={dataPag:dataBR};
     var atual=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]||{};
+    var jaEraRecebido=atual.statusAluguel==='Recebido';
     // Preencheu a data → já marca como Recebido sozinho. Apagou a data (e estava recebido, em
     // qualquer variante) → volta pra Pendente e limpa o valor recebido/saldo pendente.
     if(dataBR)patch.statusAluguel='Recebido';
     else if(locFoiRecebido_(atual)){patch.statusAluguel='Pendente';patch.valorRecebido='';patch.saldoProxMesDesc='';patch.saldoProxMesValor='';}
     setOverride(contrato,patch);gravarSheet(contrato);locRender();
+    // Confirmação de recebimento (quitação total) — mesma automação de locSetStatusAluguel,
+    // pra quando o usuário confirma o recebimento preenchendo a data em vez do seletor de status.
+    if(dataBR&&!jaEraRecebido){
+      var wNovo=(workingList()||[]).filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0];
+      if(wNovo)abrirConfirmacaoRecebimentoLoc_(contrato,wNovo.mes,valorCobradoOf(wNovo),valorCobradoOf(wNovo),0,'');
+    }
   };
   window.locSetDataRepasse=function(contrato,iso){
     var dataBR=isoToBr(iso);
