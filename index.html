@@ -3933,12 +3933,30 @@
         <div class="form-section-title">💰 Honorários</div>
         <div class="form-grid form-grid-3">
           <div class="form-field">
+            <label>Forma de Cálculo dos Honorários</label>
+            <select id="ed-formaCalcHon" onchange="honToggleFormaCalculo('ed')">
+              <option value="">Valor fixo</option>
+              <option value="Percentual">Percentual do valor a receber</option>
+              <option value="Misto">Fixo + Percentual (ex.: benefícios + %)</option>
+            </select>
+          </div>
+          <div class="form-field">
             <label>Valor Total (R$)</label>
             <input type="text" inputmode="decimal" id="ed-honorarios">
           </div>
           <div class="form-field">
             <label>Nº de Parcelas</label>
             <input type="number" id="ed-parcelas" min="1">
+          </div>
+          <div class="form-field form-full" id="ed-formaCalcWrap" style="display:none;background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente).</div>
+            <div class="form-grid form-grid-3" style="padding:0">
+              <div class="form-field"><label>Percentual (%)</label><input type="text" inputmode="decimal" id="ed-percentualHon" placeholder="Ex.: 30"></div>
+              <div class="form-field"><label>Nº de Benefícios (opcional)</label><input type="text" inputmode="decimal" id="ed-numBeneficiosHon" placeholder="Ex.: 3"></div>
+              <div class="form-field"><label>Valor de Cada Benefício (R$) (opcional)</label><input type="text" inputmode="decimal" id="ed-valorBeneficioHon" placeholder="0,00"></div>
+              <div class="form-field"><label>Valor a Receber do Processo (R$)</label><input type="text" inputmode="decimal" id="ed-valorAReceberHon" placeholder="0,00"></div>
+              <div class="form-field" style="align-self:end"><button type="button" class="loc-btn" onclick="honCalcularFormula('ed')">🔄 Calcular Valor Total</button></div>
+            </div>
           </div>
           <div class="form-field">
             <label>Valor da Entrada (R$)</label>
@@ -4313,12 +4331,30 @@
         <div class="form-section-title">💰 Honorários</div>
         <div class="form-grid form-grid-3">
           <div class="form-field">
+            <label>Forma de Cálculo dos Honorários</label>
+            <select id="cad-formaCalcHon" onchange="honToggleFormaCalculo('cad')">
+              <option value="">Valor fixo</option>
+              <option value="Percentual">Percentual do valor a receber</option>
+              <option value="Misto">Fixo + Percentual (ex.: benefícios + %)</option>
+            </select>
+          </div>
+          <div class="form-field">
             <label>Valor Total (R$)</label>
             <input type="text" inputmode="decimal" id="cad-honorarios">
           </div>
           <div class="form-field">
             <label>Nº de Parcelas</label>
             <input type="number" id="cad-parcelas" min="1">
+          </div>
+          <div class="form-field form-full" id="cad-formaCalcWrap" style="display:none;background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente).</div>
+            <div class="form-grid form-grid-3" style="padding:0">
+              <div class="form-field"><label>Percentual (%)</label><input type="text" inputmode="decimal" id="cad-percentualHon" placeholder="Ex.: 30"></div>
+              <div class="form-field"><label>Nº de Benefícios (opcional)</label><input type="text" inputmode="decimal" id="cad-numBeneficiosHon" placeholder="Ex.: 3"></div>
+              <div class="form-field"><label>Valor de Cada Benefício (R$) (opcional)</label><input type="text" inputmode="decimal" id="cad-valorBeneficioHon" placeholder="0,00"></div>
+              <div class="form-field"><label>Valor a Receber do Processo (R$)</label><input type="text" inputmode="decimal" id="cad-valorAReceberHon" placeholder="0,00"></div>
+              <div class="form-field" style="align-self:end"><button type="button" class="loc-btn" onclick="honCalcularFormula('cad')">🔄 Calcular Valor Total</button></div>
+            </div>
           </div>
           <div class="form-field">
             <label>Valor da Entrada (R$)</label>
@@ -5867,6 +5903,14 @@ function parseProcessos(rows) {
     const tutelaDeferida        = get(row, 'Antecipacao Tutela Deferida', -1);
     const desinteresseConciliacao = get(row, 'Autor Desinteresse Conciliacao', -1);
     const justicaGratuita       = get(row, 'Justica Gratuita', -1);
+    // Honorários por fórmula (02/set/2026): quando "Forma Calculo Honorarios" é 'Percentual' ou
+    // 'Misto', o "Valor dos Honorários" acima é o RESULTADO calculado a partir destes campos —
+    // ver honCalcularFormula(). Campos novos/opcionais, por isso índice de fallback -1.
+    const formaCalcHon      = get(row, 'Forma Calculo Honorarios', -1);
+    const percentualHon     = get(row, 'Percentual Honorarios', -1);
+    const numBeneficiosHon  = get(row, 'Numero Beneficios Honorarios', -1);
+    const valorBeneficioHon = brNumStr(get(row, 'Valor Beneficio Honorarios', -1));
+    const valorAReceberHon  = brNumStr(get(row, 'Valor a Receber Processo', -1));
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -5888,6 +5932,7 @@ function parseProcessos(rows) {
       endereco, bairro, complemento, cep, cidade, estado,
       valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento, datasVencimento,
       formaPagamento, objetoContrato,
+      formaCalcHon, percentualHon, numBeneficiosHon, valorBeneficioHon, valorAReceberHon,
       tipoProcuracao, poderesEspeciais,
       rendaMensal, numDependentes,
       outra, parte, ramo, tipo, status: st,
@@ -11275,6 +11320,32 @@ function parseData(str) {
   return null;
 }
 
+// Honorários por fórmula (% do valor a receber, com ou sem benefícios fixos) — 02/set/2026.
+// Pedido do usuário: "precisa criar uma forma de cadastrar quando os honorarios são: exemplo
+// 30% do valor a receber, ou 03 beneficios mais 10% do valor recebido". Mostra/esconde o
+// bloco de fórmula (Percentual/Nº Benefícios/Valor do Benefício/Valor a Receber) conforme a
+// "Forma de Cálculo" escolhida — usado tanto no cadastro (prefixo 'cad') quanto na edição
+// (prefixo 'ed') de processo, já que "Valor dos Honorários" é definido lá (fonte única, copiada
+// pra cada lançamento em honPreencherContrato quando um pagamento é lançado).
+function honToggleFormaCalculo(prefixo){
+  var v=document.getElementById(prefixo+'-formaCalcHon').value;
+  var wrap=document.getElementById(prefixo+'-formaCalcWrap');
+  if(wrap)wrap.style.display=v?'':'none';
+}
+// Calcula o Valor Total dos honorários a partir da fórmula: (Nº de Benefícios × Valor de Cada
+// Benefício) + (Percentual% × Valor a Receber do Processo). Cobre os dois exemplos do usuário:
+// "30% do valor a receber" (só percentual, benefícios em branco = parte fixa zero) e "3
+// benefícios mais 10% do valor recebido" (nº benefícios=3, valor benefício=valor de cada um,
+// percentual=10, valor a receber=o total do processo). Não salva sozinho — só preenche o campo
+// "Valor Total", que continua editável (o usuário pode ajustar antes de salvar o processo).
+function honCalcularFormula(prefixo){
+  var pct=numFlex(document.getElementById(prefixo+'-percentualHon').value)||0;
+  var nBen=numFlex(document.getElementById(prefixo+'-numBeneficiosHon').value)||0;
+  var vBen=numFlex(document.getElementById(prefixo+'-valorBeneficioHon').value)||0;
+  var vReceber=numFlex(document.getElementById(prefixo+'-valorAReceberHon').value)||0;
+  var total=Math.round((nBen*vBen+(pct/100)*vReceber)*100)/100;
+  document.getElementById(prefixo+'-honorarios').value=total?total.toFixed(2):'';
+}
 function honPreencherContrato() {
   const uid = parseInt(document.getElementById('hon-processo').value);
   const p = allProcessos.find(x => x._uid === uid);
@@ -11916,6 +11987,12 @@ function abrirEdicao(uid) {
   document.getElementById('ed-formaPag').value = p.formaPagamento || '';
   document.getElementById('ed-objeto').value = p.objetoContrato || '';
   document.getElementById('ed-datasVenc').value = p.datasVencimento || '';
+  document.getElementById('ed-formaCalcHon').value = p.formaCalcHon || '';
+  document.getElementById('ed-percentualHon').value = p.percentualHon || '';
+  document.getElementById('ed-numBeneficiosHon').value = p.numBeneficiosHon || '';
+  document.getElementById('ed-valorBeneficioHon').value = p.valorBeneficioHon || '';
+  document.getElementById('ed-valorAReceberHon').value = p.valorAReceberHon || '';
+  honToggleFormaCalculo('ed');
 
   document.getElementById('edicaoStatus').textContent = '';
   document.getElementById('modalEdicao').classList.add('open');
@@ -12027,6 +12104,11 @@ async function salvarEdicao() {
     'Horário Audiência': document.getElementById('ed-horAudi').value,
     'Local da Audiência': document.getElementById('ed-localAudi').value,
     'Valor dos Honorários': numFlex(document.getElementById('ed-honorarios').value),
+    'Forma Calculo Honorarios': document.getElementById('ed-formaCalcHon').value,
+    'Percentual Honorarios': numFlex(document.getElementById('ed-percentualHon').value),
+    'Numero Beneficios Honorarios': numFlex(document.getElementById('ed-numBeneficiosHon').value),
+    'Valor Beneficio Honorarios': numFlex(document.getElementById('ed-valorBeneficioHon').value),
+    'Valor a Receber Processo': numFlex(document.getElementById('ed-valorAReceberHon').value),
     'Número de parcelas': document.getElementById('ed-parcelas').value,
     'Valor da parcela de entrada': numFlex(document.getElementById('ed-entrada').value),
     'Valor da Parcela': numFlex(document.getElementById('ed-valorParcela').value),
@@ -12402,10 +12484,13 @@ function abrirCadastro() {
   togglePessoaJuridica('cad');
   var _bcr = document.getElementById('cad-buscaClienteResultados'); if (_bcr) { _bcr.style.display='none'; _bcr.innerHTML=''; }
   var _ppr = document.getElementById('cad-processoPrincipalResultados'); if (_ppr) { _ppr.style.display='none'; _ppr.innerHTML=''; }
-  ['cad-honorarios','cad-parcelas','cad-entrada','cad-valorParcela'].forEach(id => {
+  ['cad-honorarios','cad-parcelas','cad-entrada','cad-valorParcela',
+   'cad-percentualHon','cad-numBeneficiosHon','cad-valorBeneficioHon','cad-valorAReceberHon'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  document.getElementById('cad-formaCalcHon').value = '';
+  honToggleFormaCalculo('cad');
   ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -12650,6 +12735,11 @@ async function salvarCadastro() {
     'Link Tribunal': document.getElementById('cad-linkTrib').value,
     'Pasta Drive': document.getElementById('cad-pastaDrive').value,
     'Valor dos Honorários': numFlex(document.getElementById('cad-honorarios').value),
+    'Forma Calculo Honorarios': document.getElementById('cad-formaCalcHon').value,
+    'Percentual Honorarios': numFlex(document.getElementById('cad-percentualHon').value),
+    'Numero Beneficios Honorarios': numFlex(document.getElementById('cad-numBeneficiosHon').value),
+    'Valor Beneficio Honorarios': numFlex(document.getElementById('cad-valorBeneficioHon').value),
+    'Valor a Receber Processo': numFlex(document.getElementById('cad-valorAReceberHon').value),
     'Número de parcelas': document.getElementById('cad-parcelas').value,
     'Valor da parcela de entrada': numFlex(document.getElementById('cad-entrada').value),
     'Valor da Parcela': numFlex(document.getElementById('cad-valorParcela').value),
@@ -12876,11 +12966,14 @@ var css='.hv-sumwrap{margin-bottom:16px}'
 // Ícone do calendário/relógio (o "abrir seletor" nos campos de data/hora) precisa de cor
 // diferente em cada tema: no claro, o ícone nativo (escuro) já é bem visível sobre o fundo
 // claro dos campos — não pode ser invertido, senão vira branco sobre claro e some (era
-// exatamente esse o bug: o filtro de inversão antigo era aplicado sempre, os dois temas).
-// No escuro, sim, precisa inverter pra ficar claro sobre o fundo escuro do campo.
+// exatamente esse o bug original: o filtro de inversão antigo era aplicado sempre, nos dois
+// temas). No escuro, o `html.dark-mode{color-scheme:dark}` (ver acima) já faz o NAVEGADOR
+// desenhar o ícone nativo claro sozinho, sem precisar de filtro nenhum — aplicar filter:invert(1)
+// por cima disso inverte um ícone que já está claro, ficando escuro de novo e sumindo sobre o
+// fundo escuro do campo (bug corrigido em 02/set/2026, 12ª rodada: dupla inversão).
 +'input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webkit-calendar-picker-indicator{filter:none;opacity:.85;cursor:pointer;border-radius:4px;padding:2px}'
 +'input[type="date"]::-webkit-calendar-picker-indicator:hover,input[type="time"]::-webkit-calendar-picker-indicator:hover{opacity:1;background:rgba(22,35,58,0.08)}'
-+'html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:1}'
++'html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator{filter:none;opacity:1}'
 +'html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator:hover,html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator:hover{background:rgba(255,255,255,0.14)}'
 +'@media(max-width:900px){.hv-sumwrap .hv-sum{grid-template-columns:repeat(2,1fr)}}'
 // Cartões de resumo clicáveis (mesmo padrão de Processos/Locações: clicar num card filtra a
