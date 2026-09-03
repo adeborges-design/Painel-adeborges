@@ -3949,7 +3949,7 @@
             <input type="number" id="ed-parcelas" min="1">
           </div>
           <div class="form-field form-full" id="ed-formaCalcWrap" style="display:none;background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
-            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente).</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente). Pra parcelar o recebimento (ex.: 3 benefícios em 6 parcelas), preencha também o campo "Nº de Parcelas" acima — o sistema divide o Valor Total calculado por ele. Mesmo sem o Valor a Receber ainda, o processo já aparece no módulo Honorários com um aviso de "fórmula pendente".</div>
             <div class="form-grid form-grid-3" style="padding:0">
               <div class="form-field"><label>Percentual (%)</label><input type="text" inputmode="decimal" id="ed-percentualHon" placeholder="Ex.: 30"></div>
               <div class="form-field"><label>Nº de Benefícios (opcional)</label><input type="text" inputmode="decimal" id="ed-numBeneficiosHon" placeholder="Ex.: 3"></div>
@@ -4347,7 +4347,7 @@
             <input type="number" id="cad-parcelas" min="1">
           </div>
           <div class="form-field form-full" id="cad-formaCalcWrap" style="display:none;background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px">
-            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente).</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:8px">Preencha a fórmula (ex.: 30% do valor a receber, ou 3 benefícios + 10%). Quando souber o valor que o cliente vai receber no processo, informe-o abaixo e clique em "Calcular" — o Valor Total acima é preenchido sozinho (dá pra editar depois se for negociado diferente). Pra parcelar o recebimento (ex.: 3 benefícios em 6 parcelas), preencha também o campo "Nº de Parcelas" acima — o sistema divide o Valor Total calculado por ele. Mesmo sem o Valor a Receber ainda, o processo já aparece no módulo Honorários com um aviso de "fórmula pendente".</div>
             <div class="form-grid form-grid-3" style="padding:0">
               <div class="form-field"><label>Percentual (%)</label><input type="text" inputmode="decimal" id="cad-percentualHon" placeholder="Ex.: 30"></div>
               <div class="form-field"><label>Nº de Benefícios (opcional)</label><input type="text" inputmode="decimal" id="cad-numBeneficiosHon" placeholder="Ex.: 3"></div>
@@ -13124,12 +13124,27 @@ window.renderVencimentos=function(){
  // que o advogado desse baixa manualmente na 1a parcela.
  (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
   var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
-  if(!vTotalP&&!nParcP)return;
+  // Honorários por fórmula (03/set/2026): um processo com "Percentual"/"Misto" configurado mas
+  // ainda sem Valor Total calculado (porque o "Valor a Receber do Processo" ainda não é
+  // conhecido — ver honCalcularFormula) tinha vTotalP=0 e nParcP=0 e sumia inteiramente daqui,
+  // mesmo tendo uma fórmula de honorários cadastrada — bug reportado pelo usuário ("Fiz o
+  // lançamento e não constou no modulo de honorários"). Agora esse caso também entra, com um
+  // aviso de "fórmula pendente" no lugar do cronograma, em vez de sumir silenciosamente.
+  var temFormula=!!p.formaCalcHon;
+  if(!vTotalP&&!nParcP&&!temFormula)return;
   var k=gkey(p.processo,p.nome);
   if(groups[k])return;
-  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':(nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único',
+  var tipoFormula='';
+  if(temFormula){
+   var pctTxt=(nbr(p.percentualHon)||0)+'%';
+   tipoFormula=(p.formaCalcHon==='Misto'&&nbr(p.numBeneficiosHon))
+    ?(nbr(p.numBeneficiosHon)+' benef.+'+pctTxt)
+    :(pctTxt+' a receber');
+  }
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':tipoFormula||((nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único'),
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
-   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||''}];
+   'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||'',
+   '_formulaPendente':(temFormula&&!vTotalP)}];
  });
  var cards=[],totAtraso=0,tot30=0,totSaldo=0,totRepasse=0,totalGrupos=Object.keys(groups).length;
  Object.keys(groups).forEach(function(k){
@@ -13192,7 +13207,11 @@ window.renderVencimentos=function(){
   if(honFiltroAtivo==='saldo'&&!(saldo>0))return;
   var extras=pags.filter(function(r){return usados.indexOf(r)<0;});
   extras.forEach(function(r){linhas+='<div class="hv-row"><span class="ref">'+esc(r['Parcela Referencia']||'-')+'</span><span class="dt">'+esc(r['Data Pagamento']||'')+'</span><span class="vl">'+fmr(nbr(r['Valor Recebido']))+'</span><span class="st"><span class="hon-badge hv-badge-paga">PAGA</span></span>'+acoesFor(r['ID'])+'</div>';});
-  if(!plano.length&&!extras.length)linhas='<div class="hv-row"><span style="color:var(--muted)">Sem dados do contrato - edite o lancamento e preencha valor total, numero de parcelas, valor da parcela e dia de vencimento.</span></div>';
+  if(!plano.length&&!extras.length){
+   linhas=h0['_formulaPendente']
+    ?'<div class="hv-row"><span style="color:var(--muted)">Honorários por fórmula ('+esc(tipo)+') — ainda sem valor final. Edite o processo e informe o "Valor a Receber do Processo" pra calcular o Valor Total (botão 🔄 Calcular), e o "Nº de Parcelas" se quiser parcelar o recebimento (ex.: 3 benefícios em 6 parcelas).</span></div>'
+    :'<div class="hv-row"><span style="color:var(--muted)">Sem dados do contrato - edite o lancamento e preencha valor total, numero de parcelas, valor da parcela e dia de vencimento.</span></div>';
+  }
   var repRows=rows.filter(function(r){return r['Quem Recebeu']==='Parceiro'&&String(r['Status Repasse']||'').toLowerCase().indexOf('pend')===0;});
   var repH='';
   if(repRows.length){repH='<div class="hv-repasse">'+repRows.map(function(r){return '⚠️ A repassar a <b>'+esc(r['Parceiro']||'parceiro')+'</b>: '+fmr(nbr(r['Valor Repasse Parceiro']))+' <button class="btn-hon-parceiro" onclick="abrirCardRepasse(\''+escAttr(r['ID'])+'\')">Card repasse</button>';}).join('<br>')+'</div>';}
