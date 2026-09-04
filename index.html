@@ -3724,6 +3724,9 @@
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-desinteresseConciliacao" style="width:15px;height:15px"> 🔴 Autor manifesta desinteresse na conciliação</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-justicaGratuita" style="width:15px;height:15px"> 🔴 Justiça Gratuita</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-peticaoUrgente" style="width:15px;height:15px"> 🔴 Petição Urgente</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-intervencaoMP" style="width:15px;height:15px"> 🔴 Intervenção do Ministério Público</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-pericia" style="width:15px;height:15px"> 🔴 Perícia</label>
           </div>
           <div class="form-field">
             <label>Ramo do Direito</label>
@@ -4201,6 +4204,9 @@
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-desinteresseConciliacao" style="width:15px;height:15px"> 🔴 Autor manifesta desinteresse na conciliação</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-justicaGratuita" style="width:15px;height:15px"> 🔴 Justiça Gratuita</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-peticaoUrgente" style="width:15px;height:15px"> 🔴 Petição Urgente</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-intervencaoMP" style="width:15px;height:15px"> 🔴 Intervenção do Ministério Público</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-pericia" style="width:15px;height:15px"> 🔴 Perícia</label>
           </div>
           <div class="form-field">
             <label>Ramo do Direito</label>
@@ -5942,6 +5948,9 @@ function parseProcessos(rows) {
     const tutelaDeferida        = get(row, 'Antecipacao Tutela Deferida', -1);
     const desinteresseConciliacao = get(row, 'Autor Desinteresse Conciliacao', -1);
     const justicaGratuita       = get(row, 'Justica Gratuita', -1);
+    const peticaoUrgente        = get(row, 'Peticao Urgente', -1);
+    const intervencaoMP         = get(row, 'Intervencao Ministerio Publico', -1);
+    const pericia                = get(row, 'Pericia', -1);
     // Honorários por fórmula (02/set/2026): quando "Forma Calculo Honorarios" é 'Percentual' ou
     // 'Misto', o "Valor dos Honorários" acima é o RESULTADO calculado a partir destes campos —
     // ver honCalcularFormula(). Campos novos/opcionais, por isso índice de fallback -1.
@@ -5984,6 +5993,7 @@ function parseProcessos(rows) {
       advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
       narrativaFatos, providAdv,
       dataAutuacao, idoso, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
+      peticaoUrgente, intervencaoMP, pericia,
       processoPrincipal,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
@@ -6460,6 +6470,9 @@ function renderCard(p, idx) {
           ${(p.tutelaDeferida||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Antecipação de Tutela - Deferida</span>' : ''}
           ${(p.desinteresseConciliacao||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Autor manifesta desinteresse na conciliação</span>' : ''}
           ${(p.justicaGratuita||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Justiça Gratuita</span>' : ''}
+          ${(p.peticaoUrgente||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Petição Urgente</span>' : ''}
+          ${(p.intervencaoMP||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Intervenção do Ministério Público</span>' : ''}
+          ${(p.pericia||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Perícia</span>' : ''}
           ${p.linkArtefato ? `<a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="badge" style="background:rgba(200,169,110,0.16);color:var(--eixo-gold);border-color:rgba(200,169,110,0.4);text-decoration:none;cursor:pointer">🔗 Acompanhamento</a>` : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
@@ -11993,6 +12006,9 @@ function abrirEdicao(uid) {
   document.getElementById('ed-tutelaDeferida').checked = (p.tutelaDeferida || '').toUpperCase() === 'SIM';
   document.getElementById('ed-desinteresseConciliacao').checked = (p.desinteresseConciliacao || '').toUpperCase() === 'SIM';
   document.getElementById('ed-justicaGratuita').checked = (p.justicaGratuita || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-peticaoUrgente').checked = (p.peticaoUrgente || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-intervencaoMP').checked = (p.intervencaoMP || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-pericia').checked = (p.pericia || '').toUpperCase() === 'SIM';
   document.getElementById('ed-ramo').value = p.ramo || '';
   document.getElementById('ed-tipo').value = p.tipo || '';
   document.getElementById('ed-parte').value = p.parte || '';
@@ -12128,6 +12144,9 @@ async function salvarEdicao() {
     'Antecipacao Tutela Deferida': document.getElementById('ed-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('ed-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
     'Justica Gratuita': document.getElementById('ed-justicaGratuita').checked ? 'Sim' : 'Nao',
+    'Peticao Urgente': document.getElementById('ed-peticaoUrgente').checked ? 'Sim' : 'Nao',
+    'Intervencao Ministerio Publico': document.getElementById('ed-intervencaoMP').checked ? 'Sim' : 'Nao',
+    'Pericia': document.getElementById('ed-pericia').checked ? 'Sim' : 'Nao',
     'Ramo do Direito': document.getElementById('ed-ramo').value,
     'Tipo de Acao': document.getElementById('ed-tipo').value,
     'Parte': document.getElementById('ed-parte').value,
@@ -12550,6 +12569,9 @@ function abrirCadastro() {
   document.getElementById('cad-tutelaDeferida').checked = false;
   document.getElementById('cad-desinteresseConciliacao').checked = false;
   document.getElementById('cad-justicaGratuita').checked = false;
+  document.getElementById('cad-peticaoUrgente').checked = false;
+  document.getElementById('cad-intervencaoMP').checked = false;
+  document.getElementById('cad-pericia').checked = false;
 
   document.getElementById('cadastroStatus').textContent = '';
   document.getElementById('modalCadastro').classList.add('open');
@@ -12771,6 +12793,9 @@ async function salvarCadastro() {
     'Antecipacao Tutela Deferida': document.getElementById('cad-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('cad-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
     'Justica Gratuita': document.getElementById('cad-justicaGratuita').checked ? 'Sim' : 'Nao',
+    'Peticao Urgente': document.getElementById('cad-peticaoUrgente').checked ? 'Sim' : 'Nao',
+    'Intervencao Ministerio Publico': document.getElementById('cad-intervencaoMP').checked ? 'Sim' : 'Nao',
+    'Pericia': document.getElementById('cad-pericia').checked ? 'Sim' : 'Nao',
     'Ramo do Direito': document.getElementById('cad-ramo').value,
     'Tipo de Acao': document.getElementById('cad-tipo').value,
     'Parte': document.getElementById('cad-parte').value,
