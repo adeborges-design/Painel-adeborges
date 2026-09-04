@@ -265,6 +265,11 @@
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+  /* Título "Tarefas" pulsando em cor quando o widget do módulo tem algum follow-up atrasado —
+     chama atenção mesmo com a caixinha recolhida (cortina). */
+  @keyframes tarWidgetPulse { 0%,100%{color:var(--accent)} 50%{color:var(--red)} }
+  .tar-widget-pulse { animation: tarWidgetPulse 1.4s ease-in-out infinite; }
+
   /* Feedback visual quando o usuário clica fora de um formulário de cadastro — em vez de
      fechar e perder o que foi digitado, a caixa "treme" avisando que precisa usar o X/Cancelar. */
   @keyframes formShake {
@@ -2364,6 +2369,17 @@
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  .atend-box.destaque-prazo {
+    border-color: rgba(214,69,65,0.4);
+    background: rgba(214,69,65,0.08);
+  }
+
+  .atend-prazo-data {
+    font-size: 15px;
+    font-weight: 700;
+    color: #c23b36;
   }
 
   .atend-footer {
@@ -4628,6 +4644,13 @@
           <div class="atend-box destaque-cliente" id="cardCliente"></div>
         </div>
 
+        <div class="atend-section" id="cardPrazoSection" style="display:none">
+          <div class="atend-section-label">Prazo do Cliente</div>
+          <div class="atend-box destaque-prazo">
+            <div class="atend-prazo-data" id="cardPrazoData"></div>
+          </div>
+        </div>
+
         <div class="atend-section" id="cardAudienciaSection" style="display:none">
           <div class="atend-section-label">Audiência Marcada</div>
           <div class="atend-box destaque-audiencia">
@@ -5219,6 +5242,16 @@ window.tarStatusCor_ = tarStatusCor_;
 // Redesenha TODOS os widgets de módulo já montados na tela (checa se o container existe antes —
 // como as telas ficam sempre no DOM, isso atualiza até as que não estão visíveis no momento,
 // então quando o usuário abrir aquele módulo os dados já estão prontos).
+// Estado de "cortina" (recolhido/expandido) de cada widget de Tarefas — persiste no navegador
+// para não recolher/expandir sozinho a cada atualização da tela.
+function tarWidgetColapsado_(containerId){
+  try{ var v=localStorage.getItem('tarWidgetColapsado_'+containerId); return v===null?true:v==='1'; }catch(e){ return true; }
+}
+window.tarWidgetToggle_=function(containerId){
+  var novo=!tarWidgetColapsado_(containerId);
+  try{ localStorage.setItem('tarWidgetColapsado_'+containerId, novo?'1':'0'); }catch(e){}
+  window.tarefasWidgetsAtualizar();
+};
 window.tarefasWidgetsAtualizar=function(){
   (window.TAR_MODULOS_REGISTRO||[]).forEach(function(m){
     var el=document.getElementById(m.container);
@@ -5229,14 +5262,20 @@ window.tarefasWidgetsAtualizar=function(){
       if(A!==B)return A-B;
       return String(b['ID']).localeCompare(String(a['ID']));
     });
+    var temAtrasado=lista.some(function(r){return rascFollowUpAtrasado(r);});
+    var colapsado=tarWidgetColapsado_(m.container);
     var addBtnsHtml=(m.addBtns||[]).map(function(b){
-      return '<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="tarefaNovaRapida_(\''+b.tipo+'\')">'+b.label+'</button>';
+      return '<button class="loc-btn" style="padding:4px 10px;font-size:11.5px" onclick="event.stopPropagation();tarefaNovaRapida_(\''+b.tipo+'\')">'+b.label+'</button>';
     }).join(' ');
-    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
-      +'<div style="font-weight:700;font-size:13px;color:var(--accent)">🗒️ Tarefas'+(lista.length?' ('+lista.length+')':'')+'</div>'
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:'+(colapsado?'0':'6px')+';cursor:pointer" onclick="tarWidgetToggle_(\''+m.container+'\')">'
+      +'<div style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px"><span style="color:var(--muted);font-size:11px;transition:transform .15s;display:inline-block;transform:rotate('+(colapsado?'-90deg':'0deg')+')">▾</span><span class="'+(temAtrasado?'tar-widget-pulse':'')+'" style="color:var(--accent)">🗒️ Tarefas'+(lista.length?' ('+lista.length+')':'')+'</span></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+addBtnsHtml+'</div></div>';
     if(!lista.length){
-      el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2)">'+head+'<div style="font-size:12px;color:var(--muted)">Nenhuma tarefa pendente.</div></div>';
+      el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2)">'+head+(colapsado?'':'<div style="font-size:12px;color:var(--muted)">Nenhuma tarefa pendente.</div>')+'</div>';
+      return;
+    }
+    if(colapsado){
+      el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2)">'+head+'</div>';
       return;
     }
     el.innerHTML='<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin:6px 0;background:var(--surface2);max-height:220px;overflow-y:auto">'+head
@@ -7823,6 +7862,15 @@ function abrirCardAtendimento(uid) {
     clienteSection.style.display = '';
   } else {
     clienteSection.style.display = 'none';
+  }
+
+  // Prazo do Cliente (data limite para o cliente providenciar algo)
+  const prazoSection = document.getElementById('cardPrazoSection');
+  if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
+    document.getElementById('cardPrazoData').textContent = 'Prazo: ' + formatDate(p.dataPrazoCliente);
+    prazoSection.style.display = '';
+  } else {
+    prazoSection.style.display = 'none';
   }
 
   // Audiencia (cols R, S, T)
