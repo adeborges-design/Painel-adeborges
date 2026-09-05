@@ -22819,6 +22819,14 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="home-alertas" id="homeAlertRascunhos"></div>
       </div>
+      <div class="home-module">
+        <div class="home-card" onclick="openFerramentasHome()">
+          <div class="arrow">→</div>
+          <div class="ic">🔗</div>
+          <div class="ctitle">Ferramentas</div>
+          <div class="cdesc">Atalhos para calculadoras, PDF, assinatura, INSS, registros e certidões</div>
+        </div>
+      </div>
     </div>
     <div class="home-config" id="homeConfigMsg"></div>
   </div>
@@ -22866,6 +22874,93 @@ window.cpRenderFixas=cpRenderFixas;
   </div>
 </div>
 
+<!-- FERRAMENTAS — módulo de atalhos externos (calculadoras, PDF, assinatura, INSS, registros,
+     certidões). Só links de saída (target=_blank), nenhum dado é enviado a esses sites e nenhuma
+     credencial fica salva aqui — cada ferramenta continua exigindo login/senha nela mesma. -->
+<div class="hon-overlay" id="ferramentasOverlay" style="z-index:905">
+  <div class="hon-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskFer"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskFer)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Ferramentas</span>
+    </div>
+    <div class="hon-title">🔗 Ferramentas</div>
+    <span class="user-menu-slot"></span>
+    <button class="btn-sync" onclick="goHome()">✕ Fechar</button>
+  </div>
+  <div class="hon-body">
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:18px">Atalhos para sites usados no dia a dia do escritório. Cada um abre em nova aba — login e senha continuam sendo feitos no próprio site, nada é salvo aqui.</div>
+    <div id="ferramentasGrid"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var FERRAMENTAS = [
+    { grupo: '🧮 Cálculo processual', itens: [
+      { nome: 'Cálculo Exato', url: 'https://calculoexato.com.br/', desc: 'Atualização monetária, juros e cálculos judiciais diversos' },
+      { nome: 'Contador de Prazo', url: 'https://www.contadordeprazo.com.br/', desc: 'Calculadora de prazo processual (ferramenta privada, conferir sempre no processo)' }
+    ]},
+    { grupo: '📄 Documentos e PDF', itens: [
+      { nome: 'iLovePDF', url: 'https://www.ilovepdf.com/pt', desc: 'Juntar, converter, comprimir e editar PDF' },
+      { nome: 'Smallpdf', url: 'https://smallpdf.com/pt', desc: 'Converter, comprimir, editar e assinar PDF' }
+    ]},
+    { grupo: '✍️ Assinatura eletrônica', itens: [
+      { nome: 'Portal de Assinaturas OAB', url: 'https://oab.portaldeassinaturas.com.br/', desc: 'Assinatura eletrônica de documentos para advogados (parceria OAB)' },
+      { nome: 'OAB Digital', url: 'https://digital.oab.org.br/', desc: 'Certificado digital e-CPF/OAB e serviços digitais da OAB' }
+    ]},
+    { grupo: '🏛️ INSS e OAB/SP', itens: [
+      { nome: 'Meu INSS / INSS Digital', url: 'https://meu.inss.gov.br/', desc: 'Peticionamento eletrônico do INSS (acesso credenciado via convênio OAB/SP)' },
+      { nome: 'OAB/SP — Serviços', url: 'https://www.oabsp.org.br/servicos', desc: 'Portal de serviços da OAB/SP (inclui credenciamento ao INSS Digital)' }
+    ]},
+    { grupo: '🏦 Consulta patrimonial', itens: [
+      { nome: 'Registrato (Bacen)', url: 'https://registrato.bcb.gov.br/', desc: 'Consulta de contas, relacionamentos bancários e patrimônio financeiro por CPF/CNPJ (login gov.br)' }
+    ]},
+    { grupo: '📜 Registros e certidões civis', itens: [
+      { nome: 'ONR — Registro de Imóveis Eletrônico', url: 'https://www.onr.org.br/', desc: 'Central nacional de registro eletrônico de imóveis' },
+      { nome: 'Registro Civil', url: 'https://www.registrocivil.org.br/', desc: 'Certidões de nascimento, casamento e óbito' }
+    ]},
+    { grupo: '🏘️ Imobiliário', itens: [
+      { nome: 'CRECI-SP', url: 'https://www.crecisp.gov.br/', desc: 'Conselho Regional de Corretores de Imóveis de São Paulo' }
+    ]},
+    { grupo: '🏙️ Prefeitura de São Paulo', itens: [
+      { nome: 'Prefeitura de São Paulo', url: 'https://www.prefeitura.sp.gov.br/', desc: 'Portal de serviços ao cidadão da Prefeitura de SP' },
+      { nome: 'IPTU — 2ª via/consulta', url: 'https://iptu.prefeitura.sp.gov.br/', desc: 'Consulta e emissão de 2ª via do IPTU' }
+    ]},
+    { grupo: '📑 Certidões negativas', itens: [
+      { nome: 'Certidões Federais (Receita/PGFN)', url: 'https://servicos.receitafederal.gov.br/servico/certidoes/', desc: 'Certidão de débitos relativos a tributos federais e Dívida Ativa da União' },
+      { nome: 'CNDT — Certidão Trabalhista', url: 'https://cndt-certidao.tst.jus.br/', desc: 'Certidão Negativa de Débitos Trabalhistas (TST)' },
+      { nome: 'e-SAJ TJSP — Certidões', url: 'https://esaj.tjsp.jus.br/esaj/portal.do?servico=810000', desc: 'Certidões judiciais de 1ª e 2ª instância do TJSP' },
+      { nome: 'Justiça Federal — Certidão unificada', url: 'https://certidao-unificada.cjf.jus.br/', desc: 'Certidão judicial unificada, válida em todos os TRFs' }
+    ]}
+  ];
+  function ferE(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+  function ferRender(){
+    var el = document.getElementById('ferramentasGrid');
+    if (!el) return;
+    el.innerHTML = FERRAMENTAS.map(function(g){
+      return '<div class="fc-card">'
+        + '<div class="fc-head"><div class="fc-title">' + ferE(g.grupo) + '</div></div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">'
+        + g.itens.map(function(it){
+            return '<a href="' + ferE(it.url) + '" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--accent, #c8a96e)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'
+            + '<div style="font-weight:600;font-size:13.5px;margin-bottom:4px">↗ ' + ferE(it.nome) + '</div>'
+            + '<div style="font-size:11.5px;color:var(--muted);line-height:1.4">' + ferE(it.desc) + '</div>'
+            + '</a>';
+          }).join('')
+        + '</div></div>';
+    }).join('');
+  }
+  window.openFerramentasHome = function(){
+    ['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','homeOverlay'].forEach(function(id){
+      var e = document.getElementById(id); if (e) e.classList.remove('open');
+    });
+    document.getElementById('ferramentasOverlay').classList.add('open');
+    ferRender();
+  };
+})();
+</script>
+
 <script>
 (function(){
   var BRLf=function(v){return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -22910,7 +23005,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.renderNotifBell=renderNotifBell;
 
-  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','ferramentasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
