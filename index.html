@@ -22899,7 +22899,14 @@ window.cpRenderFixas=cpRenderFixas;
   var FERRAMENTAS = [
     { grupo: '🧮 Cálculo processual', itens: [
       { nome: 'Cálculo Exato', url: 'https://calculoexato.com.br/', desc: 'Atualização monetária, juros e cálculos judiciais diversos' },
-      { nome: 'Contador de Prazo', url: 'https://www.contadordeprazo.com.br/', desc: 'Calculadora de prazo processual (ferramenta privada, conferir sempre no processo)' }
+      { nome: 'Contador de Prazo', url: 'https://www.contadordeprazo.com.br/', desc: 'Calculadora de prazo processual (ferramenta privada, conferir sempre no processo)' },
+      { nome: 'Prazo Fácil', url: 'https://prazofacil.com.br/', desc: 'Calculadora de prazos processuais' },
+      { nome: 'Aurum — Calculadora de Prazos', url: 'https://www.aurum.com.br/calculadora-de-prazos-processuais/', desc: 'Calculadora de prazos processuais com base no CPC' },
+      { nome: 'Legalcloud', url: 'https://legalcloud.com.br/', desc: 'Software de gestão jurídica com contagem automática de prazos processuais' }
+    ]},
+    { grupo: '📈 Índices econômicos e correção monetária', itens: [
+      { nome: 'IBGE — Indicadores', url: 'https://www.ibge.gov.br/indicadores', desc: 'Índices oficiais (IPCA, INPC e outros) do IBGE' },
+      { nome: 'Debit — Indicadores Econômicos', url: 'https://www.debit.com.br/tabelas/indicadores-economicos', desc: 'Tabelas de índices (IGP-M, INPC, IPCA, taxas de juros) e calculadoras de correção monetária' }
     ]},
     { grupo: '📄 Documentos e PDF', itens: [
       { nome: 'iLovePDF', url: 'https://www.ilovepdf.com/pt', desc: 'Juntar, converter, comprimir e editar PDF' },
@@ -22916,8 +22923,11 @@ window.cpRenderFixas=cpRenderFixas;
     { grupo: '🏦 Consulta patrimonial', itens: [
       { nome: 'Registrato (Bacen)', url: 'https://registrato.bcb.gov.br/', desc: 'Consulta de contas, relacionamentos bancários e patrimônio financeiro por CPF/CNPJ (login gov.br)' }
     ]},
-    { grupo: '📜 Registros e certidões civis', itens: [
+    { grupo: '📜 Registro de Imóveis e Registro Civil', itens: [
       { nome: 'ONR — Registro de Imóveis Eletrônico', url: 'https://www.onr.org.br/', desc: 'Central nacional de registro eletrônico de imóveis' },
+      { nome: 'RI Digital (ONR)', url: 'https://ridigital.org.br/', desc: 'Plataforma nacional de acesso eletrônico aos serviços de Registro de Imóveis' },
+      { nome: 'RIB — Registro de Imóveis do Brasil', url: 'https://www.registrodeimoveis.org.br/', desc: 'Entidade nacional dos registradores de imóveis (RIB/IRIB)' },
+      { nome: 'ARISP', url: 'https://arisp.com.br/', desc: 'Associação dos Registradores Imobiliários de São Paulo' },
       { nome: 'Registro Civil', url: 'https://www.registrocivil.org.br/', desc: 'Certidões de nascimento, casamento e óbito' }
     ]},
     { grupo: '🏘️ Imobiliário', itens: [
@@ -22932,6 +22942,11 @@ window.cpRenderFixas=cpRenderFixas;
       { nome: 'CNDT — Certidão Trabalhista', url: 'https://cndt-certidao.tst.jus.br/', desc: 'Certidão Negativa de Débitos Trabalhistas (TST)' },
       { nome: 'e-SAJ TJSP — Certidões', url: 'https://esaj.tjsp.jus.br/esaj/portal.do?servico=810000', desc: 'Certidões judiciais de 1ª e 2ª instância do TJSP' },
       { nome: 'Justiça Federal — Certidão unificada', url: 'https://certidao-unificada.cjf.jus.br/', desc: 'Certidão judicial unificada, válida em todos os TRFs' }
+    ]},
+    { grupo: '⚖️ Tribunais — Consulta Processual', itens: [
+      { nome: 'TRF3', url: 'https://www.trf3.jus.br/', desc: 'Tribunal Regional Federal da 3ª Região' },
+      { nome: 'PJe TRT2 — Consulta Processual', url: 'https://pje.trt2.jus.br/consultaprocessual/', desc: 'Consulta processual da Justiça do Trabalho de São Paulo (TRT2)' },
+      { nome: 'e-SAJ/eproc TJSP — Consulta Unificada', url: 'https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar', desc: 'Consulta processual unificada do TJSP (1ª e 2ª instância)' }
     ]}
   ];
   function ferE(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
