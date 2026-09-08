@@ -16352,6 +16352,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
       <button class="btn-parc-wpp" onclick="avisoEnviarWhats()">📱 WhatsApp</button>
       <button class="btn-parc-email" onclick="avisoEnviarEmail()">✉️ E-mail</button>
+      <button class="btn-parc-img" onclick="avisoEnviarImagem()">📸 Foto</button>
       <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
     </div>
@@ -20867,6 +20868,18 @@ window.cpRenderFixas=cpRenderFixas;
   };
   window.avisoImprimir=function(){
     imprimirComClasse_('printing-aviso-loc', 200);
+  };
+  // "📸 Foto" — mesmo padrao ja usado no recibo de locacao (ShareKit.enviarImagemDireto):
+  // tira um screenshot do card do aviso (#avisoCard) e abre o compartilhamento nativo
+  // (celular) ou baixa o PNG (desktop). Faltava so' neste card de Correspondencias.
+  function gerarAvisoImagemFile(){
+    var el=document.getElementById('avisoCard');
+    return ShareKit.gerarImagemFile(el,'aviso-locatario-locador.png',{bg:'#0d1525'});
+  }
+  window.avisoEnviarImagem=function(){
+    var texto=avisoMontarTexto();
+    if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    return ShareKit.enviarImagemDireto(gerarAvisoImagemFile,{titulo:'Aviso ao Locatário/Locador'})();
   };
 
   window.abrirReciboLoc=function(contrato,tipo){
