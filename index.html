@@ -965,6 +965,12 @@
     padding: 32px;
     width: 480px;
     max-width: 90vw;
+    /* "Configurar planilha" cresceu bastante (lembretes, backup, senha) e passou a esticar
+       além da altura da tela, sem como rolar até o botão "Salvar" a não ser diminuindo o
+       zoom do navegador. Limita a altura do card e deixa o CONTEÚDO rolar por dentro dele
+       — o card fica sempre inteiro na tela, com scroll interno quando precisa. */
+    max-height: 90vh;
+    overflow-y: auto;
   }
 
   .modal h2 {
