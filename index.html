@@ -2843,6 +2843,33 @@
       };
     }
 
+    // "🖼️ Copiar imagem" — copia o PNG do card/documento direto pro clipboard (Clipboard API,
+    // navigator.clipboard.write + ClipboardItem), pra colar (Ctrl+V) direto no CORPO de um
+    // e-mail ou conversa — sem passar pela tela de compartilhamento nativa do "📸 Foto" (que só
+    // deixa anexar/enviar, não copiar) nem precisar salvar o PNG antes. Funciona em navegador
+    // desktop (Chrome/Edge); onde não há suporte, orienta a usar "📸 Foto"/"Salvar PNG".
+    function copiarImagem(getFile, opts) {
+      opts = opts || {};
+      return function () {
+        if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) {
+          alert('Este navegador não permite copiar a imagem direto. Use "📸 Foto" ou "Salvar PNG" e anexe manualmente.');
+          return;
+        }
+        return getFile().then(function (file) {
+          return navigator.clipboard.write([new ClipboardItem({ 'image/png': file })]);
+        }).then(function () {
+          var tmp = document.createElement('div');
+          tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+          tmp.textContent = opts.msg || 'Imagem copiada! Cole com Ctrl+V no corpo do e-mail.';
+          document.body.appendChild(tmp);
+          setTimeout(function () { tmp.remove(); }, 2500);
+          if (opts.aoEnviar) opts.aoEnviar();
+        }).catch(function (e) {
+          alert('Não consegui copiar a imagem (' + (e && e.message || e) + '). Use "📸 Foto" ou "Salvar PNG" e anexe manualmente.');
+        });
+      };
+    }
+
     // "Copiar texto" — copia pro clipboard e mostra um toast de confirmação no canto da tela.
     function copiarTexto(getTexto, opts) {
       opts = opts || {};
@@ -2923,6 +2950,7 @@
       compartilharImagem: compartilharImagem,
       salvarPng: salvarPng,
       enviarImagemDireto: enviarImagemDireto,
+      copiarImagem: copiarImagem,
       copiarTexto: copiarTexto,
       enviarWhatsapp: enviarWhatsapp,
       enviarEmail: enviarEmail,
@@ -16673,6 +16701,7 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="btn-parc-wpp" onclick="enviarReciboLocWpp()">📱 WhatsApp</button>
         <button class="btn-parc-email" onclick="enviarReciboLocEmail()">✉️ E-mail</button>
         <button class="btn-parc-img" onclick="enviarReciboLocImagem()">📸 Foto</button>
+        <button class="loc-btn" title="Copia a imagem do recibo/informe pra colar (Ctrl+V) direto no corpo do e-mail" onclick="copiarImagemReciboLoc()">🖼️ Copiar imagem</button>
         <button class="loc-btn" onclick="copiarContatoReciboLoc_()">📋 Copiar contato</button>
         <button class="btn-recibo-print" style="flex:none" onclick="imprimirReciboLoc()">🖨 Imprimir/PDF</button>
       </div>
@@ -21260,6 +21289,8 @@ window.cpRenderFixas=cpRenderFixas;
     _reciboLocTexto, {aoEnviar:locMarcarReciboEnviado_});
   window.enviarReciboLocImagem=ShareKit.enviarImagemDireto(getReciboLocImagemFile,
     {titulo:'Recibo de Locação', aoEnviar:locMarcarReciboEnviado_});
+  window.copiarImagemReciboLoc=ShareKit.copiarImagem(getReciboLocImagemFile,
+    {msg:'Imagem copiada! Cole com Ctrl+V no corpo do e-mail.', aoEnviar:locMarcarReciboEnviado_});
   window.imprimirReciboLoc=function(){
     document.getElementById('modalReciboLoc').classList.add('open');
     ShareKit.imprimir('printing-recibo-loc', 300, {aoEnviar:locMarcarReciboEnviado_})();
