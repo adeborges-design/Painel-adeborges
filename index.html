@@ -13583,7 +13583,10 @@ function upBanner(){
  ).join('\n')+'\n\nclique para abrir o Controle de Honorários';
 }
 if(typeof renderHonorarios==='function'){var _r=window.renderHonorarios;window.renderHonorarios=function(){_r();try{addBtns();upBanner();}catch(e){console.error('v4',e);}};}
-window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId&&typeof carregarHonorarios==='function')carregarHonorarios();}catch(e){}},3500);});
+// Removido (causa de HTTP 429 "muitas requisições"): este mesmo carregarHonorarios() já é
+// disparado no carregamento inicial da página pelo init() de Início (junto com Contas,
+// Locações, Acordos, Comissões e Imóveis, tudo em rajada) — chamar de novo aqui, 3,5s depois,
+// duplicava as requisições à API do Google Sheets a cada carregamento da página sem necessidade.
 })();
 </script>
 
@@ -14654,7 +14657,10 @@ window.cpEstornarFatura=async function(faturaId,nome){
 };
 window.cpEstornarDrill=async function(id,nome){await cpEstornar(id);setTimeout(async function(){try{await cpSyncFatura(nome);}catch(e){}try{cpRenderDrill(nome);}catch(e){}try{renderContas();}catch(e){}},1900);};
 if(typeof abrirHonorarios==='function'){var _a=window.abrirHonorarios;window.abrirHonorarios=function(){_a();try{carregarContas();}catch(e){}};}
-window.addEventListener('load',function(){setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId)carregarContas();}catch(e){}},4500);});
+// Removido (causa de HTTP 429 "muitas requisições"): este mesmo carregarContas() já é
+// disparado no carregamento inicial da página pelo init() de Início — chamar de novo aqui,
+// 4,5s depois, duplicava as requisições à API do Google Sheets a cada carregamento da página
+// sem necessidade (junto com o carregarHonorarios() duplicado, removido pelo mesmo motivo).
 window.addEventListener('load',function(){setTimeout(function(){try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}},3000);});
 // Rede de segurança extra: força gravar limites/datas de cartão e saldos em conta assim que a aba/
 // navegador começa a fechar, cobrindo qualquer campo que por algum motivo não tenha disparado o
@@ -25460,8 +25466,28 @@ window.cpRenderFixas=cpRenderFixas;
 
   function init(){
     injectNav(); patchCarregarContas(); patchCloses(); fmtData();
-    // dispara carregamentos p/ popular o dashboard (se configurado)
-    setTimeout(function(){try{var c=(typeof getConfig==='function')?getConfig():null;if(c&&c.apiKey&&c.sheetId){if(typeof loadFromSheets==='function')loadFromSheets();if(typeof carregarHonorarios==='function')carregarHonorarios();if(typeof carregarContas==='function')carregarContas();if(typeof carregarAlugueis==='function')carregarAlugueis();if(typeof carregarAcordos==='function')carregarAcordos();if(typeof carregarComissoes==='function')carregarComissoes();if(typeof carregarImoveis==='function')carregarImoveis();}}catch(e){}},800);
+    // Dispara carregamentos p/ popular o dashboard (se configurado). Cada um destes módulos faz
+    // várias requisições separadas à API do Google Sheets (uma por aba/intervalo) — disparar os
+    // 7 de uma vez, todos no mesmo instante (800ms), gerava uma rajada de dezenas de requisições
+    // simultâneas a cada carregamento de página, o que é a causa mais provável do erro HTTP 429
+    // ("too many requests") relatado. Espaçados em ~600ms cada, o total de requisições continua
+    // o mesmo, mas sem o pico de concorrência que estoura o limite por segundo do Google.
+    (function(){
+      var c=(typeof getConfig==='function')?getConfig():null;
+      if(!c||!c.apiKey||!c.sheetId)return;
+      var carregamentos=[
+        function(){if(typeof loadFromSheets==='function')loadFromSheets();},
+        function(){if(typeof carregarHonorarios==='function')carregarHonorarios();},
+        function(){if(typeof carregarContas==='function')carregarContas();},
+        function(){if(typeof carregarAlugueis==='function')carregarAlugueis();},
+        function(){if(typeof carregarAcordos==='function')carregarAcordos();},
+        function(){if(typeof carregarComissoes==='function')carregarComissoes();},
+        function(){if(typeof carregarImoveis==='function')carregarImoveis();}
+      ];
+      carregamentos.forEach(function(fn,i){
+        setTimeout(function(){try{fn();}catch(e){}},800+i*600);
+      });
+    })();
     // agenda não depende da planilha (Sheets), só do Apps Script — carrega direto
     setTimeout(function(){try{carregarAgenda();}catch(e){}},600);
     // atualiza números periodicamente enquanto o Início estiver aberto
