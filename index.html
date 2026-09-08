@@ -21193,15 +21193,19 @@ window.cpRenderFixas=cpRenderFixas;
     return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525'});
   }
   function getReciboLocImagemFile(){ return _reciboLocImgCache_.obter(); }
-  // Versão específica pro "🖼️ Copiar imagem" (colar Ctrl+V no corpo do e-mail no DESKTOP):
-  // usa a mesma escala (3x) do "📸 Foto"/WhatsApp, pensada pra tela de celular (onde a imagem
-  // é vista pequena, então precisa de mais pixels pra não ficar borrada ao dar zoom). Colada
-  // num e-mail no computador, essa mesma imagem sai enorme (3x a largura do cartão) — maior que
-  // a caixa de composição, então aparece cortada/espremida. Escala 1.6 dá uma imagem nítida em
-  // tela de computador (retina incluso) sem estourar a largura normal de um corpo de e-mail.
+  // Versão específica pro "🖼️ Copiar imagem" (colar Ctrl+V no corpo do e-mail no DESKTOP).
+  // Tentativa anterior (reduzir a escala pra 1,6x) piorou — colou AINDA menor no Gmail. Ou
+  // seja, não é a imagem sendo grande demais que atrapalha: o Chrome/Windows aparentemente
+  // marca a imagem copiada com uma densidade baseada no devicePixelRatio da tela no momento da
+  // captura, e o Gmail encolhe a exibição proporcionalmente a essa densidade pra manter o
+  // "tamanho físico". Por isso agora multiplicamos a escala pelo devicePixelRatio da tela do
+  // usuário — compensa esse encolhimento em vez de lutar contra ele. Mínimo de 3x (igual ao
+  // "📸 Foto") pra nunca ficar pior do que já era antes desta tentativa.
   function gerarReciboLocImagemFileParaEmail_(){
     var cardEl=document.getElementById('reciboLocCard');
-    return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525',scale:1.6});
+    var dpr=window.devicePixelRatio||1;
+    var escala=Math.max(3,2*dpr);
+    return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525',scale:escala});
   }
   function _reciboLocTexto(){
     var contrato=_reciboLocContrato; if(!contrato)return '';
