@@ -1714,6 +1714,12 @@
   }
   .parc-linha-total .parc-linha-label { color: var(--text); font-weight: 600; }
 
+  .parc-contato-chip {
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(107,163,224,0.5);
+  }
+  .parc-contato-chip:hover { color: #90B8F0; }
+
   .parc-tarefa-box {
     background: rgba(200,169,110,0.08);
     border: 2px solid rgba(200,169,110,0.3);
@@ -17232,6 +17238,10 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-recibo-loc .parc-section { margin-bottom:8px !important; }
   body.printing-recibo-loc .parc-linha { padding:3px 0 !important; }
   body.printing-recibo-loc .parc-footer { padding:8px 20px !important; }
+  /* "Contato para envio" é utilidade de tela (visualizar/copiar WhatsApp e e-mail antes de
+     enviar) — no papel/PDF impresso pro cliente não faz sentido e só tomaria espaço da
+     página única já ajustada acima. */
+  body.printing-recibo-loc .contato-envio-section { display:none !important; }
   @page reciboloc {
     size: A4;
     margin: 1.2cm;
@@ -19677,6 +19687,44 @@ window.cpRenderFixas=cpRenderFixas;
       +(conta.conta?'<div>Conta: <strong>'+E(conta.conta)+'</strong></div>':'')
       +(conta.pix?'<div>Chave Pix: <strong>'+E(conta.pix)+'</strong></div>':'');
   }
+  // Contato de quem vai RECEBER o recibo/informe (o locatário no recibo de aluguel, o
+  // locador no informe de repasse) — usuário pediu pra aparecer no próprio documento pra
+  // poder visualizar e copiar o WhatsApp/e-mail direto na hora de enviar, sem precisar abrir
+  // o contrato em outra tela. Cada valor é clicável (copia pro clipboard, com feedback "✓").
+  function reciboLocContatoHtml(tels,emails){
+    var listaTel=(tels||[]).filter(function(v){return v;});
+    var listaEmail=(emails||[]).filter(function(v){return v;});
+    if(!listaTel.length&&!listaEmail.length){
+      return '<div style="color:#8fadd4">Sem WhatsApp/e-mail cadastrado — edite o contrato em 📋 Contratos.</div>';
+    }
+    var linhas=[];
+    listaTel.forEach(function(t,i){
+      linhas.push('<div>📱 WhatsApp'+(listaTel.length>1?' '+(i+1):'')+': <strong class="parc-contato-chip" onclick="copiarContatoRecibo_(this)" title="Clique para copiar">'+E(t)+'</strong></div>');
+    });
+    listaEmail.forEach(function(e,i){
+      linhas.push('<div>✉️ E-mail'+(listaEmail.length>1?' '+(i+1):'')+': <strong class="parc-contato-chip" onclick="copiarContatoRecibo_(this)" title="Clique para copiar">'+E(e)+'</strong></div>');
+    });
+    return linhas.join('');
+  }
+  window.copiarContatoRecibo_=function(el){
+    var valor=el.textContent, orig=valor;
+    var mostrarOk=function(){ el.textContent='✓ copiado'; setTimeout(function(){el.textContent=orig;},900); };
+    var fallback=function(){
+      try{
+        var ta=document.createElement('textarea');
+        ta.value=valor; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        var ok=document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      }catch(e){return false;}
+    };
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(valor).then(mostrarOk).catch(function(){ if(fallback())mostrarOk(); else alert('Não consegui copiar. Selecione o texto na tela.'); });
+    } else {
+      if(fallback())mostrarOk(); else alert('Não consegui copiar. Selecione o texto na tela.');
+    }
+  };
   var MESES_EXTENSO=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   function mesExtenso(mesStr){
     var p=String(mesStr||'').split('/'); if(p.length!==2)return mesStr||'';
@@ -21040,6 +21088,12 @@ window.cpRenderFixas=cpRenderFixas;
       ? tenants.map(function(t){return E(t.Nome)+' — CPF/CNPJ: '+E(t.CPF_CNPJ||'—');}).join('<br>')
       : E(c.locatario||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocatario||'—');
     var tenantsLabel='Locatário'+(tenants.length>1?'s (responsáveis solidários)':'');
+    // Contato de quem vai receber ESTE documento (locatário no recibo de aluguel; locador no
+    // informe de repasse — mesmo quando há coproprietários, já que o cadastro de coproprietário
+    // não guarda telefone/e-mail próprio, só o do locador principal do contrato).
+    var destContatoTels=tipo==='aluguel'?[c.telLocatario1,c.telLocatario2]:[c.telLocador1,c.telLocador2];
+    var destContatoEmails=tipo==='aluguel'?[c.emailLocatario1,c.emailLocatario2]:[c.emailLocador1,c.emailLocador2];
+    var contatoEnvioSection='<div class="parc-section contato-envio-section"><div class="parc-section-label">Contato para envio</div><div class="parc-box">'+reciboLocContatoHtml(destContatoTels,destContatoEmails)+'</div></div>';
 
     document.getElementById('reciboLocCard').innerHTML=
       '<div class="parc-header">'
@@ -21048,6 +21102,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>'
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'')+'</div><div class="parc-processo-num">Contrato nº '+E(contrato)+' — Ref. '+E(w.mes)+'</div></div>'
+      +contatoEnvioSection
       +(owners.length?ownerSelectorHtml:(tipo==='aluguel'&&allOwnersRecibo.length
         ?'<div class="parc-section"><div class="parc-section-label">Locador'+(allOwnersRecibo.length>1?'es (coproprietários)':'')+'</div><div class="parc-box">'+allOwnersRecibo.map(function(o){return E(o.Nome||'—')+' — '+num(o.Percentual)+'%<br>CPF/CNPJ: '+E(o.CPF_CNPJ||'—');}).join('<hr style="border-color:var(--border);margin:6px 0">')+'</div></div>'
         :'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-box">'+E(c.locador||'—')+'<br>CPF/CNPJ: '+E(c.cpfLocador||'—')+'</div></div>'))
