@@ -1682,6 +1682,38 @@
     line-height: 1.7;
   }
 
+  /* Linha de valor (label + quantia), usada dentro de .parc-box nos recibos/informes/
+     relatórios — label à esquerda, valor alinhado à direita com algarismos tabulares, e um
+     traço pontilhado separando cada item. Antes cada linha era um <div>Rótulo: <strong>
+     valor</strong></div> corrido, sem alinhamento nem espaçamento entre itens — difícil de
+     ler numa lista com vários itens (era exatamente o "Valores" do Demonstrativo/Recibo de
+     Aluguel que o usuário pediu pra melhorar). */
+  .parc-linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    padding: 5px 0;
+    border-bottom: 1px dashed rgba(91,141,238,0.14);
+  }
+  .parc-linha:first-child { padding-top: 0; }
+  .parc-linha:last-child { border-bottom: none; padding-bottom: 0; }
+  .parc-linha-label { color: var(--muted); }
+  .parc-linha-valor {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .parc-linha-valor.neg { color: var(--red); }
+  .parc-linha-total {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(91,141,238,0.3);
+    border-bottom: none;
+  }
+  .parc-linha-total .parc-linha-label { color: var(--text); font-weight: 600; }
+
   .parc-tarefa-box {
     background: rgba(200,169,110,0.08);
     border: 2px solid rgba(200,169,110,0.3);
@@ -16636,7 +16668,6 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="btn-parc-email" onclick="enviarReciboLocEmail()">✉️ E-mail</button>
         <button class="btn-parc-img" onclick="enviarReciboLocImagem()">📸 Foto</button>
         <button class="btn-recibo-print" style="flex:none" onclick="imprimirReciboLoc()">🖨 Imprimir/PDF</button>
-        <button id="reciboLocOuvirBtn" class="btn-recibo-print" style="flex:none" title="Ouvir o texto do recibo/informe antes de enviar" onclick="ouvirReciboLoc()">🔊 Ouvir</button>
       </div>
     </div>
   </div>
@@ -17382,9 +17413,19 @@ window.cpRenderFixas=cpRenderFixas;
     return '';
   }
   function locDtBRfromInput(v){if(!v)return '';var p=v.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+  // Uma linha de "Valores" nos recibos/informes/relatórios: rótulo à esquerda, quantia à
+  // direita (algarismos tabulares), com traço separando da linha seguinte — ver .parc-linha
+  // no CSS. `sinal` é '+', '-', '=' (linha de subtotal, com destaque) ou '' (sem sinal —
+  // usado no valor-base, ex.: "Aluguel").
+  function linhaValor(desc,valor,sinal){
+    sinal=sinal||'';
+    var neg=sinal==='-'||(sinal!=='='&&valor<0);
+    var prefixo=sinal?('('+sinal+') '):'';
+    var totalCls=sinal==='='?' parc-linha-total':'';
+    return '<div class="parc-linha'+totalCls+'"><span class="parc-linha-label">'+prefixo+desc+'</span><span class="parc-linha-valor'+(neg?' neg':'')+'">'+(neg?'-':'')+BRL(Math.abs(valor))+'</span></div>';
+  }
   function itemComSinal(desc,valor){
-    var neg=valor<0;
-    return '<div>('+(neg?'−':'+')+') '+desc+': <strong>'+(neg?'-':'')+BRL(Math.abs(valor))+'</strong></div>';
+    return linhaValor(desc,valor,valor<0?'-':'+');
   }
   function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   function num(v){v=String(v==null?'':v).trim();if(!v)return 0;if(v.indexOf('/')>=0)return 0;/* célula corrompida (data) => inválida */if(v.indexOf(',')>=0&&v.indexOf('.')>=0){v=v.replace(/\./g,'').replace(',','.');}else if(v.indexOf(',')>=0){v=v.replace(',','.');}var n=parseFloat(v);return isNaN(n)?0:n;}
@@ -19659,15 +19700,15 @@ window.cpRenderFixas=cpRenderFixas;
 
     var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação da participação de '+pct+'% de '+E(owner.Nome)+' no aluguel e nos encargos do imóvel, mês de referência indicado.</div>';
     var valoresHtml=introValores
-      +(alugShare?'<div>Aluguel recebido ('+pct+'%): <strong>'+BRL(alugShare)+'</strong></div>':'')
-      +(taxaShare?'<div>(−) Taxa de administração ('+pct+'%): <strong>-'+BRL(taxaShare)+'</strong></div>':'')
-      +(retemIR?'<div>(−) IRRF retido na fonte: <strong>-'+BRL(irValor)+'</strong></div>':'')
-      +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">(=) Líquido do aluguel: <strong>'+BRL(liquidoAluguel)+'</strong></div>'
-      +(multaShare?'<div>(+) Multa ('+pct+'%): <strong>'+BRL(multaShare)+'</strong></div>':'')
-      +(jurosShare?'<div>(+) Juros ('+pct+'%): <strong>'+BRL(jurosShare)+'</strong></div>':'')
+      +(alugShare?linhaValor('Aluguel recebido ('+pct+'%)',alugShare,''):'')
+      +(taxaShare?linhaValor('Taxa de administração ('+pct+'%)',taxaShare,'-'):'')
+      +(retemIR?linhaValor('IRRF retido na fonte',irValor,'-'):'')
+      +linhaValor('Líquido do aluguel',liquidoAluguel,'=')
+      +(multaShare?linhaValor('Multa ('+pct+'%)',multaShare,'+'):'')
+      +(jurosShare?linhaValor('Juros ('+pct+'%)',jurosShare,'+'):'')
       +linhasEncargos.map(function(it){return itemComSinal(it.desc+' ('+pct+'%)',it.valor);}).join('')
-      +(iptuShare?'<div>(+) IPTU ('+pct+'%): <strong>'+BRL(iptuShare)+'</strong></div>':'')
-      +(descontoShare?'<div>(−) Desconto ('+pct+'%): <strong>-'+BRL(descontoShare)+'</strong></div>':'');
+      +(iptuShare?linhaValor('IPTU ('+pct+'%)',iptuShare,'+'):'')
+      +(descontoShare?linhaValor('Desconto ('+pct+'%)',descontoShare,'-'):'');
     var contaHtml=reciboLocContaHtml({titular:owner.Nome||'',banco:owner.Banco||'',agencia:owner.Agencia||'',conta:owner.Conta||'',pix:owner.Pix||''});
     var totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong>'+(retemIR?' — já com IRRF retido sobre o aluguel':'')+'</div>';
     var liquido=Math.round((liquidoAluguel+encargosShare)*100)/100;
@@ -20601,13 +20642,13 @@ window.cpRenderFixas=cpRenderFixas;
       var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel acima, mês de referência indicado.</div>';
       valoresHtml=introValores
-        +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
-        +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
-        +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
-        +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
+        +(w.aluguel?linhaValor('Aluguel recebido',w.aluguel,''):'')
+        +(w.multa?linhaValor('Multa',w.multa,'+'):'')
+        +(w.juros?linhaValor('Juros',w.juros,'+'):'')
+        +linhaValor('Taxa de administração',w.taxa,'-')
         +linhasCondoRep
-        +(w.iptu?'<div>(+) '+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
+        +(w.iptu?linhaValor(iptuLabel_(w),w.iptu,'+'):'')
+        +(w.desconto?linhaValor('Desconto',w.desconto,'-'):'');
       totalLabel='Total repassado'; totalValor=effRep(w);
       totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
       contaHtml=reciboLocContaHtml({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
@@ -20909,13 +20950,13 @@ window.cpRenderFixas=cpRenderFixas;
       totalLabel='Total a ser pago';
       var linhasCondo=itensCondoInquilino.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
-        +(w.aluguel?'<div>Aluguel: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
-        +(w.multa?'<div>Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
-        +(w.juros?'<div>Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
+        +(w.aluguel?linhaValor('Aluguel',w.aluguel,''):'')
+        +(w.multa?linhaValor('Multa',w.multa,'+'):'')
+        +(w.juros?linhaValor('Juros',w.juros,'+'):'')
         +linhasCondo
-        +(w.iptu?'<div>'+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.desconto?'<div>Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'')
-        +(totalIRCoprop?'<div>(−) IRRF retido na fonte pelo locatário — '+E(nomesIR.join(', '))+': <strong>-'+BRL(totalIRCoprop)+'</strong></div>':'');
+        +(w.iptu?linhaValor(iptuLabel_(w),w.iptu,'+'):'')
+        +(w.desconto?linhaValor('Desconto',w.desconto,'-'):'')
+        +(totalIRCoprop?linhaValor('IRRF retido na fonte pelo locatário — '+E(nomesIR.join(', ')),totalIRCoprop,'-'):'');
       var vencData=reciboLocVencimentoStr(w,c);
       var pctMulta=num(c.multaAtrasoPct);
       totalRodape='';
@@ -20936,13 +20977,13 @@ window.cpRenderFixas=cpRenderFixas;
       var itensCondoLocador=reciboLocItensCondo(w,true);
       var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
-        +(w.aluguel?'<div>Aluguel recebido: <strong>'+BRL(w.aluguel)+'</strong></div>':'')
-        +(w.multa?'<div>(+) Multa: <strong>'+BRL(w.multa)+'</strong></div>':'')
-        +(w.juros?'<div>(+) Juros: <strong>'+BRL(w.juros)+'</strong></div>':'')
-        +'<div>(−) Taxa de administração: <strong>-'+BRL(w.taxa)+'</strong></div>'
+        +(w.aluguel?linhaValor('Aluguel recebido',w.aluguel,''):'')
+        +(w.multa?linhaValor('Multa',w.multa,'+'):'')
+        +(w.juros?linhaValor('Juros',w.juros,'+'):'')
+        +linhaValor('Taxa de administração',w.taxa,'-')
         +linhasCondoRep
-        +(w.iptu?'<div>(+) '+iptuLabel_(w)+': <strong>'+BRL(w.iptu)+'</strong></div>':'')
-        +(w.desconto?'<div>(−) Desconto: <strong>-'+BRL(w.desconto)+'</strong></div>':'');
+        +(w.iptu?linhaValor(iptuLabel_(w),w.iptu,'+'):'')
+        +(w.desconto?linhaValor('Desconto',w.desconto,'-'):'');
       totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
       contaTitulo='Dados bancários do locador (repasse)';
       contaHtml=reciboLocContaHtml({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
@@ -21112,7 +21153,6 @@ window.cpRenderFixas=cpRenderFixas;
   }
   // Botões do recibo/informe (padrão B — ShareKit), todos marcando o recibo como enviado.
   window.enviarReciboLocWpp=ShareKit.enviarWhatsapp(_reciboLocTexto, null, {aoEnviar:locMarcarReciboEnviado_});
-  window.ouvirReciboLoc=ShareKit.ouvir(_reciboLocTexto, 'reciboLocOuvirBtn');
   window.enviarReciboLocEmail=ShareKit.enviarEmail(
     function(){return (_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');},
     _reciboLocTexto, {aoEnviar:locMarcarReciboEnviado_});
