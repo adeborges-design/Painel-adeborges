@@ -2065,6 +2065,11 @@
     line-height: 1.8;
     color: #000000;
     cursor: text;
+    /* Justificado por padrão pra qualquer bloco novo criado ao editar (o Enter do
+       navegador insere <div>/<p> sem classe) — elementos que já definem seu proprio
+       text-align (cabecalho centralizado, data à direita, assinatura) continuam
+       valendo, porque um text-align proprio sempre vence o herdado daqui. */
+    text-align: justify;
   }
 
   .doc-body[contenteditable="true"]:hover {
@@ -2348,7 +2353,10 @@
   .atend-box.destaque-cliente {
     border-color: rgba(217,119,47,0.35);
     background: rgba(217,119,47,0.08);
-    color: #a85b1f;
+    /* Antes era um laranja fixo (#a85b1f) escuro demais pra ler no tema escuro (fundo
+       navy escuro + texto marrom-alaranjado escuro = baixo contraste). Usa a variavel
+       --orange, que ja tem um tom mais claro definido especificamente pro dark mode. */
+    color: var(--orange);
     font-weight: 600;
   }
 
@@ -7332,6 +7340,43 @@ function abrirDoc(tipo, uid) {
   // Focar no documento apos abrir
   setTimeout(() => docBody.focus(), 300);
 }
+
+// Cola sempre como texto puro dentro do documento editável (procuração, contrato,
+// declaração de hipossuficiência, petição): sem isto, colar de outra fonte (Word,
+// WhatsApp, e-mail) traz a formatação de origem (alinhamento, fonte, cor) junto, o que
+// desconfigura o documento e quebra a justificação do texto. Ligado uma unica vez aqui
+// fora do abrirDoc (que roda a cada abertura) pra nao empilhar listener repetido.
+(function () {
+  var docBodyPaste = document.getElementById('docBody');
+  if (!docBodyPaste) return;
+  docBodyPaste.addEventListener('paste', function (ev) {
+    ev.preventDefault();
+    var texto = (ev.clipboardData || window.clipboardData).getData('text/plain');
+    if (!texto) return;
+    if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+      document.execCommand('insertText', false, texto);
+      return;
+    }
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    var linhas = texto.split(/\r\n|\r|\n/);
+    var frag = document.createDocumentFragment();
+    linhas.forEach(function (linha, i) {
+      frag.appendChild(document.createTextNode(linha));
+      if (i < linhas.length - 1) frag.appendChild(document.createElement('br'));
+    });
+    var ultimoNo = frag.lastChild;
+    range.insertNode(frag);
+    if (ultimoNo) {
+      range.setStartAfter(ultimoNo);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+})();
 
 function gerarPeticao(p) {
   var adv = getAdvogadoInfo();
