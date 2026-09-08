@@ -19707,6 +19707,12 @@ window.cpRenderFixas=cpRenderFixas;
     });
     return linhas.join('');
   }
+  // Assunto padrão do e-mail deste recibo/informe — mesmo texto usado no botão "✉️ E-mail"
+  // (que já preenche o assunto sozinho) e disponível pra copiar quando o envio é feito por
+  // fora (ex.: anexando a "📸 Foto" manualmente num e-mail, onde não há preenchimento automático).
+  function reciboLocAssuntoEmail_(tipo,contrato,mes){
+    return (tipo==='aluguel'?'Demonstrativo / Recibo de Aluguel':'Informe de Repasse')+' — Contrato nº '+contrato+' — Ref. '+mes;
+  }
   window.copiarContatoRecibo_=function(el){
     var valor=el.textContent, orig=valor;
     var mostrarOk=function(){ el.textContent='✓ copiado'; setTimeout(function(){el.textContent=orig;},900); };
@@ -21105,13 +21111,19 @@ window.cpRenderFixas=cpRenderFixas;
     // não guarda telefone/e-mail próprio, só o do locador principal do contrato).
     var destContatoTels=tipo==='aluguel'?[c.telLocatario1,c.telLocatario2]:[c.telLocador1,c.telLocador2];
     var destContatoEmails=tipo==='aluguel'?[c.emailLocatario1,c.emailLocatario2]:[c.emailLocador1,c.emailLocador2];
-    var contatoEnvioSection='<div class="parc-section contato-envio-section"><div class="parc-section-label">Contato para envio</div><div class="parc-box">'+reciboLocContatoHtml(destContatoTels,destContatoEmails)+'</div></div>';
+    var assuntoEmail=reciboLocAssuntoEmail_(tipo,contrato,w.mes);
+    var contatoEnvioSection='<div class="parc-section contato-envio-section"><div class="parc-section-label">Contato para envio</div><div class="parc-box">'
+      +reciboLocContatoHtml(destContatoTels,destContatoEmails)
+      +'<div>📧 Assunto do e-mail: <strong class="parc-contato-chip" onclick="copiarContatoRecibo_(this)" title="Clique para copiar">'+E(assuntoEmail)+'</strong></div>'
+      +'</div></div>';
     // Texto puro (sem HTML) do mesmo contato, pro botão "📋 Copiar contato" — copia tudo de uma
-    // vez (WhatsApp + e-mail), sem precisar clicar em cada linha dentro do cartão nem passar
-    // pela tela de envio do WhatsApp/Foto (que já dispara o compartilhamento direto).
+    // vez (WhatsApp + e-mail + assunto sugerido do e-mail), sem precisar clicar em cada linha
+    // dentro do cartão nem passar pela tela de envio do WhatsApp/Foto (que já dispara o
+    // compartilhamento direto, sem opção de copiar texto).
     _reciboLocContatoTexto=[]
       .concat(destContatoTels.filter(function(v){return v;}).map(function(t){return 'WhatsApp: '+t;}))
       .concat(destContatoEmails.filter(function(v){return v;}).map(function(e){return 'E-mail: '+e;}))
+      .concat(['Assunto do e-mail: '+assuntoEmail])
       .join('\n');
 
     document.getElementById('reciboLocCard').innerHTML=
@@ -21244,7 +21256,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Botões do recibo/informe (padrão B — ShareKit), todos marcando o recibo como enviado.
   window.enviarReciboLocWpp=ShareKit.enviarWhatsapp(_reciboLocTexto, null, {aoEnviar:locMarcarReciboEnviado_});
   window.enviarReciboLocEmail=ShareKit.enviarEmail(
-    function(){return (_reciboLocTipo==='aluguel'?'Demonstrativo / Recibo de Aluguel — ':'Informe de Repasse — ')+(_reciboLocContrato||'');},
+    function(){return reciboLocAssuntoEmail_(_reciboLocTipo,_reciboLocContrato||'',(_reciboLocW&&_reciboLocW.mes)||'');},
     _reciboLocTexto, {aoEnviar:locMarcarReciboEnviado_});
   window.enviarReciboLocImagem=ShareKit.enviarImagemDireto(getReciboLocImagemFile,
     {titulo:'Recibo de Locação', aoEnviar:locMarcarReciboEnviado_});
