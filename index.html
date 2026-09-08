@@ -16673,6 +16673,7 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="btn-parc-wpp" onclick="enviarReciboLocWpp()">📱 WhatsApp</button>
         <button class="btn-parc-email" onclick="enviarReciboLocEmail()">✉️ E-mail</button>
         <button class="btn-parc-img" onclick="enviarReciboLocImagem()">📸 Foto</button>
+        <button class="loc-btn" onclick="copiarContatoReciboLoc_()">📋 Copiar contato</button>
         <button class="btn-recibo-print" style="flex:none" onclick="imprimirReciboLoc()">🖨 Imprimir/PDF</button>
       </div>
     </div>
@@ -19725,6 +19726,17 @@ window.cpRenderFixas=cpRenderFixas;
       if(fallback())mostrarOk(); else alert('Não consegui copiar. Selecione o texto na tela.');
     }
   };
+  // Botão "📋 Copiar contato" da barra de ações do recibo/informe — copia WhatsApp + e-mail de
+  // uma vez só. Existe porque "📸 Foto" abre direto a tela de compartilhamento nativa do
+  // Windows/Android (só imagem, sem opção de copiar texto) — pra copiar o contato é preciso
+  // este botão (ou clicar em cada linha dentro do cartão), não dá pra copiar a partir da tela
+  // de compartilhamento da Foto.
+  window.copiarContatoReciboLoc_=function(){
+    if(!_reciboLocContatoTexto){alert('Sem WhatsApp/e-mail cadastrado para copiar — edite o contrato em 📋 Contratos.');return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(_reciboLocContatoTexto).then(function(){alert('Contato copiado!\n\n'+_reciboLocContatoTexto);}).catch(function(){alert('Não consegui copiar. Selecione o texto na tela.');});
+    }else{alert('Selecione o texto na tela e copie manualmente.');}
+  };
   var MESES_EXTENSO=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   function mesExtenso(mesStr){
     var p=String(mesStr||'').split('/'); if(p.length!==2)return mesStr||'';
@@ -19736,7 +19748,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(!dia||p.length!==2)return '';
     return (dia.length===1?'0'+dia:dia)+'/'+p[0]+'/'+p[1];
   }
-  var _reciboLocOwners=[],_reciboLocW=null,_reciboLocC=null,_reciboLocContratoNum=null;
+  var _reciboLocOwners=[],_reciboLocW=null,_reciboLocC=null,_reciboLocContratoNum=null,_reciboLocContatoTexto='';
   // Monta os valores do informe de repasse para UM proprietário específico: sua fatia
   // percentual do repasse total do imóvel, com IR descontado se marcado para ele.
   // Monta os valores do informe de repasse para UM proprietário específico. O IR incide
@@ -21094,6 +21106,13 @@ window.cpRenderFixas=cpRenderFixas;
     var destContatoTels=tipo==='aluguel'?[c.telLocatario1,c.telLocatario2]:[c.telLocador1,c.telLocador2];
     var destContatoEmails=tipo==='aluguel'?[c.emailLocatario1,c.emailLocatario2]:[c.emailLocador1,c.emailLocador2];
     var contatoEnvioSection='<div class="parc-section contato-envio-section"><div class="parc-section-label">Contato para envio</div><div class="parc-box">'+reciboLocContatoHtml(destContatoTels,destContatoEmails)+'</div></div>';
+    // Texto puro (sem HTML) do mesmo contato, pro botão "📋 Copiar contato" — copia tudo de uma
+    // vez (WhatsApp + e-mail), sem precisar clicar em cada linha dentro do cartão nem passar
+    // pela tela de envio do WhatsApp/Foto (que já dispara o compartilhamento direto).
+    _reciboLocContatoTexto=[]
+      .concat(destContatoTels.filter(function(v){return v;}).map(function(t){return 'WhatsApp: '+t;}))
+      .concat(destContatoEmails.filter(function(v){return v;}).map(function(e){return 'E-mail: '+e;}))
+      .join('\n');
 
     document.getElementById('reciboLocCard').innerHTML=
       '<div class="parc-header">'
