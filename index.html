@@ -21501,6 +21501,10 @@ window.cpRenderFixas=cpRenderFixas;
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">'+(busca?'Nenhum contrato encontrado para "'+E(busca)+'".':'Sem contratos.')+'</td></tr>';
   }
+  // O campo de busca (#locContratosBusca) chama esta função por um atributo oninput no HTML,
+  // que é avaliado no escopo global — sem esta linha, a função só existia dentro do IIFE deste
+  // script e a busca falhava silenciosamente (ReferenceError no console, lista nunca filtrava).
+  window.locRenderContratos=locRenderContratos;
   window.locExcluirContrato=function(id,contrato){
     var qtdLanc=0;
     try{ qtdLanc=workingList().filter(function(l){return l.contrato===contrato;}).length; }catch(e){}
