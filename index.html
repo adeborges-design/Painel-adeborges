@@ -21193,6 +21193,16 @@ window.cpRenderFixas=cpRenderFixas;
     return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525'});
   }
   function getReciboLocImagemFile(){ return _reciboLocImgCache_.obter(); }
+  // Versão específica pro "🖼️ Copiar imagem" (colar Ctrl+V no corpo do e-mail no DESKTOP):
+  // usa a mesma escala (3x) do "📸 Foto"/WhatsApp, pensada pra tela de celular (onde a imagem
+  // é vista pequena, então precisa de mais pixels pra não ficar borrada ao dar zoom). Colada
+  // num e-mail no computador, essa mesma imagem sai enorme (3x a largura do cartão) — maior que
+  // a caixa de composição, então aparece cortada/espremida. Escala 1.6 dá uma imagem nítida em
+  // tela de computador (retina incluso) sem estourar a largura normal de um corpo de e-mail.
+  function gerarReciboLocImagemFileParaEmail_(){
+    var cardEl=document.getElementById('reciboLocCard');
+    return ShareKit.gerarImagemFile(cardEl,'recibo-locacao.png',{bg:'#0d1525',scale:1.6});
+  }
   function _reciboLocTexto(){
     var contrato=_reciboLocContrato; if(!contrato)return '';
     var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===contrato;})[0]; if(!w)return '';
@@ -21295,7 +21305,7 @@ window.cpRenderFixas=cpRenderFixas;
     _reciboLocTexto, {aoEnviar:locMarcarReciboEnviado_});
   window.enviarReciboLocImagem=ShareKit.enviarImagemDireto(getReciboLocImagemFile,
     {titulo:'Recibo de Locação', aoEnviar:locMarcarReciboEnviado_});
-  window.copiarImagemReciboLoc=ShareKit.copiarImagem(getReciboLocImagemFile,
+  window.copiarImagemReciboLoc=ShareKit.copiarImagem(gerarReciboLocImagemFileParaEmail_,
     {msg:'Imagem copiada! Cole com Ctrl+V no corpo do e-mail.', aoEnviar:locMarcarReciboEnviado_});
   window.imprimirReciboLoc=function(){
     document.getElementById('modalReciboLoc').classList.add('open');
