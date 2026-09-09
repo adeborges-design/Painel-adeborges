@@ -713,6 +713,7 @@
   .badge-semAtuacao { background: rgba(200,140,60,0.18); color: #e0a860; border-color: rgba(200,140,60,0.4); }
   .badge-suspenso { background: rgba(150,120,220,0.18); color: #b3a0ec; border-color: rgba(150,120,220,0.4); }
   .badge-alerta-proc { background: rgba(224,84,84,0.16); color: var(--red); border-color: rgba(224,84,84,0.4); font-weight: 600; }
+  .badge-segundograu { background: rgba(91,141,238,0.16); color: var(--blue); border-color: rgba(91,141,238,0.4); font-weight: 600; }
   .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
   .processo-card-extinto:hover { opacity: 1; }
   .processo-card-semAtuacao { background: repeating-linear-gradient(135deg, rgba(200,140,60,0.08), rgba(200,140,60,0.08) 10px, rgba(200,140,60,0.14) 10px, rgba(200,140,60,0.14) 20px) !important; opacity: 0.85; }
@@ -3803,6 +3804,7 @@
           </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idosoOctogenario" style="width:15px;height:15px"> 🔴 Idoso - maior de 80 anos (prioridade especial — art. 71, §5º, Estatuto do Idoso)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-desinteresseConciliacao" style="width:15px;height:15px"> 🔴 Autor manifesta desinteresse na conciliação</label>
@@ -4027,6 +4029,39 @@
           <div class="form-field">
             <label>Local</label>
             <input type="text" id="ed-localAudi">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⚖️ Segunda Instância (Recurso ao TJ/TRF)</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field form-full" style="padding-top:2px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-segundoGrau" style="width:15px;height:15px"> ⚖️ Processo remetido ao 2º Grau (TJ/TRF)</label>
+          </div>
+          <div class="form-field">
+            <label>Data de Remessa ao Tribunal</label>
+            <input type="date" id="ed-segundoGrauData">
+          </div>
+          <div class="form-field">
+            <label>Classe do Recurso</label>
+            <input type="text" id="ed-segundoGrauRecurso" placeholder="Ex.: Apelação, Agravo de Instrumento">
+          </div>
+          <div class="form-field">
+            <label>Nº no Tribunal (se diferente)</label>
+            <input type="text" id="ed-segundoGrauNumero" placeholder="Ex.: 1003999-80.2024.8.26.0008/TJSP">
+          </div>
+          <div class="form-field">
+            <label>Câmara / Órgão Julgador</label>
+            <input type="text" id="ed-segundoGrauCamara" placeholder="Ex.: 4ª Câmara de Direito Privado">
+          </div>
+          <div class="form-field">
+            <label>Desembargador(a) Relator(a)</label>
+            <input type="text" id="ed-segundoGrauRelator">
+          </div>
+          <div class="form-field form-full">
+            <label>Observações do 2º Grau</label>
+            <textarea id="ed-segundoGrauObs" rows="3" placeholder="Anotações sobre o andamento no tribunal — julgamento, acórdão, embargos, etc."></textarea>
           </div>
         </div>
       </div>
@@ -4283,6 +4318,7 @@
           </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idosoOctogenario" style="width:15px;height:15px"> 🔴 Idoso - maior de 80 anos (prioridade especial — art. 71, §5º, Estatuto do Idoso)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-desinteresseConciliacao" style="width:15px;height:15px"> 🔴 Autor manifesta desinteresse na conciliação</label>
@@ -6027,6 +6063,7 @@ function parseProcessos(rows) {
     const providAdv         = get(row, 'Providências e Observações ao Advogado', -1);
     const dataAutuacao      = get(row, 'Data de Autuacao', -1);
     const idoso             = get(row, 'Idoso', -1);
+    const idosoOctogenario  = get(row, 'Idoso Maior 80 Anos', -1);
     const digital100        = get(row, 'Opcao Juizo Digital', -1);
     const tutelaDeferida        = get(row, 'Antecipacao Tutela Deferida', -1);
     const desinteresseConciliacao = get(row, 'Autor Desinteresse Conciliacao', -1);
@@ -6034,6 +6071,16 @@ function parseProcessos(rows) {
     const peticaoUrgente        = get(row, 'Peticao Urgente', -1);
     const intervencaoMP         = get(row, 'Intervencao Ministerio Publico', -1);
     const pericia                = get(row, 'Pericia', -1);
+    // Segunda Instância (04/set/2026): controle de quando o processo é remetido ao TJ/TRF em
+    // grau de recurso — câmara/órgão julgador, desembargador(a) relator(a) e data de remessa,
+    // pra não precisar abrir a consulta do eproc toda vez que precisar dessa informação.
+    const segundoGrau          = get(row, 'Segundo Grau', -1);
+    const segundoGrauData      = get(row, 'Segundo Grau Data Remessa', -1);
+    const segundoGrauRecurso   = get(row, 'Segundo Grau Recurso', -1);
+    const segundoGrauNumero    = get(row, 'Segundo Grau Numero', -1);
+    const segundoGrauCamara    = get(row, 'Segundo Grau Camara', -1);
+    const segundoGrauRelator   = get(row, 'Segundo Grau Relator', -1);
+    const segundoGrauObs       = get(row, 'Segundo Grau Observacoes', -1);
     // Honorários por fórmula (02/set/2026): quando "Forma Calculo Honorarios" é 'Percentual' ou
     // 'Misto', o "Valor dos Honorários" acima é o RESULTADO calculado a partir destes campos —
     // ver honCalcularFormula(). Campos novos/opcionais, por isso índice de fallback -1.
@@ -6075,8 +6122,9 @@ function parseProcessos(rows) {
       telParceiro, emailParceiro,
       advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
       narrativaFatos, providAdv,
-      dataAutuacao, idoso, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
+      dataAutuacao, idoso, idosoOctogenario, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
       peticaoUrgente, intervencaoMP, pericia,
+      segundoGrau, segundoGrauData, segundoGrauRecurso, segundoGrauNumero, segundoGrauCamara, segundoGrauRelator, segundoGrauObs,
       processoPrincipal,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
@@ -6511,6 +6559,23 @@ function renderCard(p, idx) {
       </div>`;
   }
 
+  // Segunda instância (04/set/2026) - câmara, relator e data de remessa ao TJ/TRF, quando
+  // o processo já foi remetido em grau de recurso.
+  let segundoGrauHtml = '';
+  if ((p.segundoGrau||'').toUpperCase() === 'SIM') {
+    const linhasSg = [];
+    if (p.segundoGrauRecurso) linhasSg.push(escHtml(p.segundoGrauRecurso));
+    if (p.segundoGrauCamara) linhasSg.push(escHtml(p.segundoGrauCamara));
+    if (p.segundoGrauRelator) linhasSg.push('Rel. ' + escHtml(p.segundoGrauRelator));
+    if (p.segundoGrauNumero) linhasSg.push('Nº TJ: ' + escHtml(p.segundoGrauNumero));
+    segundoGrauHtml = `
+      <div class="atualizacao-box" style="border-color:rgba(91,141,238,0.35)">
+        <strong style="color:var(--blue)">⚖️ 2º Grau${p.segundoGrauData ? ' — remetido em ' + formatDate(p.segundoGrauData) : ''}</strong>
+        ${linhasSg.length ? '<br>' + linhasSg.join(' · ') : ''}
+        ${p.segundoGrauObs ? `<br><span style="color:var(--muted);font-size:11px">${escHtml(p.segundoGrauObs)}</span>` : ''}
+      </div>`;
+  }
+
   // Providencias
   let providHtml = '';
   if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
@@ -6549,6 +6614,7 @@ function renderCard(p, idx) {
           ${(p.status||'').toUpperCase() === 'RENUNCIA' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Renúncia</span>' : ''}
           ${p.status === 'REVOGADO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Procuração Revogada</span>' : ''}
           ${(p.idoso||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Idoso</span>' : ''}
+          ${(p.idosoOctogenario||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Idoso - maior de 80 anos</span>' : ''}
           ${(p.digital100||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Opção por Juízo 100% Digital</span>' : ''}
           ${(p.tutelaDeferida||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Antecipação de Tutela - Deferida</span>' : ''}
           ${(p.desinteresseConciliacao||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Autor manifesta desinteresse na conciliação</span>' : ''}
@@ -6556,6 +6622,7 @@ function renderCard(p, idx) {
           ${(p.peticaoUrgente||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Petição Urgente</span>' : ''}
           ${(p.intervencaoMP||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Intervenção do Ministério Público</span>' : ''}
           ${(p.pericia||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Perícia</span>' : ''}
+          ${(p.segundoGrau||'').toUpperCase() === 'SIM' ? '<span class="badge badge-urgencia badge-segundograu">⚖️ 2º Grau</span>' : ''}
           ${p.linkArtefato ? `<a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="badge" style="background:rgba(200,169,110,0.16);color:var(--eixo-gold);border-color:rgba(200,169,110,0.4);text-decoration:none;cursor:pointer">🔗 Acompanhamento</a>` : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
@@ -6595,6 +6662,7 @@ function renderCard(p, idx) {
         <!-- DETALHE EXPANDIDO -->
         <div class="processo-detail">
           ${audienciaHtml}
+          ${segundoGrauHtml}
           ${providHtml}
 
           <div class="detail-grid">
@@ -12122,6 +12190,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-linkArtefato').value = p.linkArtefato || '';
   document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
   document.getElementById('ed-idoso').checked = (p.idoso || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-idosoOctogenario').checked = (p.idosoOctogenario || '').toUpperCase() === 'SIM';
   document.getElementById('ed-digital100').checked = (p.digital100 || '').toUpperCase() === 'SIM';
   document.getElementById('ed-tutelaDeferida').checked = (p.tutelaDeferida || '').toUpperCase() === 'SIM';
   document.getElementById('ed-desinteresseConciliacao').checked = (p.desinteresseConciliacao || '').toUpperCase() === 'SIM';
@@ -12129,6 +12198,13 @@ function abrirEdicao(uid) {
   document.getElementById('ed-peticaoUrgente').checked = (p.peticaoUrgente || '').toUpperCase() === 'SIM';
   document.getElementById('ed-intervencaoMP').checked = (p.intervencaoMP || '').toUpperCase() === 'SIM';
   document.getElementById('ed-pericia').checked = (p.pericia || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-segundoGrau').checked = (p.segundoGrau || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-segundoGrauData').value = dataParaInput(p.segundoGrauData);
+  document.getElementById('ed-segundoGrauRecurso').value = p.segundoGrauRecurso || '';
+  document.getElementById('ed-segundoGrauNumero').value = p.segundoGrauNumero || '';
+  document.getElementById('ed-segundoGrauCamara').value = p.segundoGrauCamara || '';
+  document.getElementById('ed-segundoGrauRelator').value = p.segundoGrauRelator || '';
+  document.getElementById('ed-segundoGrauObs').value = p.segundoGrauObs || '';
   document.getElementById('ed-ramo').value = p.ramo || '';
   document.getElementById('ed-tipo').value = p.tipo || '';
   document.getElementById('ed-parte').value = p.parte || '';
@@ -12260,6 +12336,7 @@ async function salvarEdicao() {
     'Link Artefato': document.getElementById('ed-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
     'Idoso': document.getElementById('ed-idoso').checked ? 'Sim' : 'Nao',
+    'Idoso Maior 80 Anos': document.getElementById('ed-idosoOctogenario').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('ed-digital100').checked ? 'Sim' : 'Nao',
     'Antecipacao Tutela Deferida': document.getElementById('ed-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('ed-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
@@ -12267,6 +12344,13 @@ async function salvarEdicao() {
     'Peticao Urgente': document.getElementById('ed-peticaoUrgente').checked ? 'Sim' : 'Nao',
     'Intervencao Ministerio Publico': document.getElementById('ed-intervencaoMP').checked ? 'Sim' : 'Nao',
     'Pericia': document.getElementById('ed-pericia').checked ? 'Sim' : 'Nao',
+    'Segundo Grau': document.getElementById('ed-segundoGrau').checked ? 'Sim' : 'Nao',
+    'Segundo Grau Data Remessa': inputParaData(document.getElementById('ed-segundoGrauData').value),
+    'Segundo Grau Recurso': document.getElementById('ed-segundoGrauRecurso').value,
+    'Segundo Grau Numero': document.getElementById('ed-segundoGrauNumero').value,
+    'Segundo Grau Camara': document.getElementById('ed-segundoGrauCamara').value,
+    'Segundo Grau Relator': document.getElementById('ed-segundoGrauRelator').value,
+    'Segundo Grau Observacoes': document.getElementById('ed-segundoGrauObs').value,
     'Ramo do Direito': document.getElementById('ed-ramo').value,
     'Tipo de Acao': document.getElementById('ed-tipo').value,
     'Parte': document.getElementById('ed-parte').value,
@@ -12909,6 +12993,7 @@ async function salvarCadastro() {
     'Link Artefato': document.getElementById('cad-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
     'Idoso': document.getElementById('cad-idoso').checked ? 'Sim' : 'Nao',
+    'Idoso Maior 80 Anos': document.getElementById('cad-idosoOctogenario').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('cad-digital100').checked ? 'Sim' : 'Nao',
     'Antecipacao Tutela Deferida': document.getElementById('cad-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('cad-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
