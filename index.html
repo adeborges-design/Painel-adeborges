@@ -572,23 +572,27 @@
 
   .search-input-wrap svg {
     position: absolute;
-    left: 12px;
+    left: 11px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--muted);
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
 
+  /* Campos de busca/filtro menores (09/set/2026): estavam ocupando espaço vertical maior do
+     que precisavam no topo das listas (Processos, Locações, Honorários, Contas, Acordos,
+     Comissões, Imóveis...) — reduzido o padding/altura em todos de uma vez, já que todos
+     usam esta mesma classe compartilhada .search-input. */
   .search-input {
     width: 100%;
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 10px 12px 10px 38px;
-    border-radius: 10px;
+    padding: 7px 10px 7px 34px;
+    border-radius: 9px;
     font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     outline: none;
     transition: border-color 0.2s;
   }
@@ -714,6 +718,8 @@
   .badge-suspenso { background: rgba(150,120,220,0.18); color: #b3a0ec; border-color: rgba(150,120,220,0.4); }
   .badge-alerta-proc { background: rgba(224,84,84,0.16); color: var(--red); border-color: rgba(224,84,84,0.4); font-weight: 600; }
   .badge-segundograu { background: rgba(91,141,238,0.16); color: var(--blue); border-color: rgba(91,141,238,0.4); font-weight: 600; }
+  .badge-reconvencao { background: rgba(224,153,84,0.16); color: var(--orange); border-color: rgba(224,153,84,0.4); font-weight: 600; }
+  .badge-situacao { background: rgba(120,120,130,0.14); color: var(--muted); border-color: rgba(120,120,130,0.35); }
   .processo-card-extinto { background: repeating-linear-gradient(135deg, rgba(90,90,100,0.10), rgba(90,90,100,0.10) 10px, rgba(90,90,100,0.16) 10px, rgba(90,90,100,0.16) 20px) !important; opacity: 0.82; }
   .processo-card-extinto:hover { opacity: 1; }
   .processo-card-semAtuacao { background: repeating-linear-gradient(135deg, rgba(200,140,60,0.08), rgba(200,140,60,0.08) 10px, rgba(200,140,60,0.14) 10px, rgba(200,140,60,0.14) 20px) !important; opacity: 0.85; }
@@ -873,9 +879,40 @@
 
   .detail-actions {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
     margin-top: 12px;
   }
+
+  /* Blocos de botões por função (09/set/2026): antes os ~16 botões da barra de ações do
+     card (Editar, Partes, Nota interna, Recibo, Petição...) ficavam todos numa fileira só,
+     sem nenhuma separação visual, e "vazavam" pra fora do card (scroll horizontal escondido
+     lá embaixo — ver topScrollVarrer_). Agrupados agora em 4 blocos por assunto (Gestão do
+     processo · Peças e documentos · Cliente · Andamento), cada um com fundo/borda sutil na
+     cor do grupo, e quebrando linha (flex-wrap) em vez de vazar. */
+  .btn-group-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 5px 7px;
+    border-radius: 10px;
+  }
+
+  .btn-group-label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 1px;
+  }
+
+  .btn-group-gestao    { background: rgba(91,141,238,0.06);  border: 1px solid rgba(91,141,238,0.16); }
+  .btn-group-pecas     { background: rgba(200,169,110,0.06); border: 1px solid rgba(200,169,110,0.16); }
+  .btn-group-cliente   { background: rgba(76,175,125,0.06);  border: 1px solid rgba(76,175,125,0.16); }
+  .btn-group-andamento { background: rgba(224,124,58,0.06);  border: 1px solid rgba(224,124,58,0.16); }
 
   .btn-action {
     display: flex;
@@ -1993,6 +2030,24 @@
   .form-field textarea { resize: vertical; min-height: 72px; }
 
   .form-field select option { background: var(--surface2); }
+
+  /* Campo "Cliente já cadastrado?" do Novo Processo (09/set/2026): ficou sem nenhum estilo
+     (só width:100%, sem padding/fonte) porque não está dentro de um .form-field como os
+     demais campos do formulário — o texto do placeholder ficava espremido/cortado, "muito
+     estreito" (feedback do usuário ao ver a tela ao vivo). Reaproveita o mesmo visual dos
+     outros campos do formulário. */
+  .cliente-busca-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .cliente-busca-input:focus { border-color: var(--accent); }
 
   /* Botão "copiar" injetado ao lado de cada campo dos cadastros (Processos e Locações) — ver
      adicionarBotoesCopiarCampos()/copiarValorCampo_() mais abaixo. Genérico, não fica preso a
@@ -3136,7 +3191,7 @@
     <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
       <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskProc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskProc)"/></svg></span>O</span>
       <span class="eixo-sep"></span>
-      <span class="eixo-mod">Processos</span>
+      <span class="eixo-mod">Gestão de Processos</span>
     </div>
     <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
   </div>
@@ -3298,7 +3353,7 @@
 
     <!-- LISTA -->
     <div class="processos-header">
-      <div class="processos-title">Processos</div>
+      <div class="processos-title">Gestão de Processos</div>
       <div class="processos-count" id="processosCount">—</div>
     </div>
 
@@ -3783,7 +3838,7 @@
             </select>
           </div>
           <div class="form-field">
-            <label>Vara</label>
+            <label>Órgão Julgador/Vara</label>
             <input type="text" id="ed-vara">
           </div>
           <div class="form-field">
@@ -3904,7 +3959,7 @@
             </select>
           </div>
           <div class="form-field">
-            <label>Tipo de Ação</label>
+            <label>Classe da Ação</label>
             <input type="text" id="ed-tipo" placeholder="Ex.: Cobrança, Divórcio..." list="topicosAcaoOptions">
           </div>
           <div class="form-field">
@@ -3969,6 +4024,18 @@
       <div class="form-section">
         <div class="form-section-title">📋 Andamento Processual</div>
         <div class="form-grid">
+          <div class="form-field">
+            <label>Situação</label>
+            <select id="ed-situacao">
+              <option value="">Selecione...</option>
+              <option>Em movimento</option>
+              <option>Movimento - Remetido ao TJ</option>
+              <option>Aguardando decisão</option>
+              <option>Aguardando cumprimento</option>
+              <option>Parado / sem movimentação</option>
+              <option>Arquivado provisoriamente</option>
+            </select>
+          </div>
           <div class="form-field form-full">
             <label>Última Atualização / Situação Atual</label>
             <textarea id="ed-ultima" rows="4"></textarea>
@@ -4062,6 +4129,37 @@
           <div class="form-field form-full">
             <label>Observações do 2º Grau</label>
             <textarea id="ed-segundoGrauObs" rows="3" placeholder="Anotações sobre o andamento no tribunal — julgamento, acórdão, embargos, etc."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">↩️ Reconvenção</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field form-full" style="padding-top:2px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-reconvencao" style="width:15px;height:15px" onchange="document.getElementById('ed-reconvencaoWrap').style.display=this.checked?'':'none'"> ↩️ Há reconvenção neste processo</label>
+          </div>
+          <div id="ed-reconvencaoWrap" class="form-grid form-grid-3" style="display:none;grid-column:1/-1;padding:0">
+            <div class="form-field">
+              <label>Data de Protocolo da Reconvenção</label>
+              <input type="date" id="ed-reconvencaoData">
+            </div>
+            <div class="form-field">
+              <label>Situação da Reconvenção</label>
+              <select id="ed-reconvencaoStatus">
+                <option value="">Selecione...</option>
+                <option>Em andamento</option>
+                <option>Julgada procedente</option>
+                <option>Julgada improcedente</option>
+                <option>Julgada parcialmente procedente</option>
+                <option>Extinta</option>
+                <option>Acordo</option>
+              </select>
+            </div>
+            <div class="form-field form-full">
+              <label>Observações da Reconvenção</label>
+              <textarea id="ed-reconvencaoObs" rows="3" placeholder="Pedido da reconvenção, andamento, decisão, etc."></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -4164,7 +4262,7 @@
       <div class="form-section" style="background:var(--surface2);border-radius:10px;padding:14px 16px">
         <div class="form-section-title">🔍 Cliente já cadastrado?</div>
         <div style="position:relative">
-          <input type="text" id="cad-buscaCliente" placeholder="Digite o nome ou CPF/CNPJ para preencher os dados automaticamente..." oninput="buscarClienteExistente(this.value)" autocomplete="off" style="width:100%">
+          <input type="text" id="cad-buscaCliente" class="cliente-busca-input" placeholder="Digite o nome ou CPF/CNPJ para preencher os dados automaticamente..." oninput="buscarClienteExistente(this.value)" autocomplete="off" style="width:100%">
           <div id="cad-buscaClienteResultados" class="cad-busca-resultados"></div>
         </div>
       </div>
@@ -4297,7 +4395,7 @@
             </select>
           </div>
           <div class="form-field">
-            <label>Vara</label>
+            <label>Órgão Julgador/Vara</label>
             <input type="text" id="cad-vara">
           </div>
           <div class="form-field">
@@ -4418,7 +4516,7 @@
             </select>
           </div>
           <div class="form-field">
-            <label>Tipo de Ação</label>
+            <label>Classe da Ação</label>
             <input type="text" id="cad-tipo" placeholder="Ex.: Cobrança, Divórcio..." list="topicosAcaoOptions">
           </div>
           <div class="form-field">
@@ -4428,6 +4526,18 @@
           <div class="form-field">
             <label>Outra Parte</label>
             <input type="text" id="cad-outra">
+          </div>
+          <div class="form-field">
+            <label>Situação</label>
+            <select id="cad-situacao">
+              <option value="">Selecione...</option>
+              <option>Em movimento</option>
+              <option>Movimento - Remetido ao TJ</option>
+              <option>Aguardando decisão</option>
+              <option>Aguardando cumprimento</option>
+              <option>Parado / sem movimentação</option>
+              <option>Arquivado provisoriamente</option>
+            </select>
           </div>
           <div class="form-field">
             <label>Status</label>
@@ -6081,6 +6191,15 @@ function parseProcessos(rows) {
     const segundoGrauCamara    = get(row, 'Segundo Grau Camara', -1);
     const segundoGrauRelator   = get(row, 'Segundo Grau Relator', -1);
     const segundoGrauObs       = get(row, 'Segundo Grau Observacoes', -1);
+    // Reconvenção (09/set/2026): controle de quando o réu apresenta reconvenção no processo —
+    // situação do pedido reconvencional e observações, pra não precisar caçar isso nos autos.
+    const reconvencao          = get(row, 'Reconvencao', -1);
+    const reconvencaoData      = get(row, 'Reconvencao Data', -1);
+    const reconvencaoStatus    = get(row, 'Reconvencao Status', -1);
+    const reconvencaoObs       = get(row, 'Reconvencao Observacoes', -1);
+    // Situação (09/set/2026): estágio geral do andamento (ex.: "Em movimento", "Movimento -
+    // Remetido ao TJ"), visível já na primeira tela de edição, sem precisar abrir o eproc.
+    const situacao              = get(row, 'Situacao', -1);
     // Honorários por fórmula (02/set/2026): quando "Forma Calculo Honorarios" é 'Percentual' ou
     // 'Misto', o "Valor dos Honorários" acima é o RESULTADO calculado a partir destes campos —
     // ver honCalcularFormula(). Campos novos/opcionais, por isso índice de fallback -1.
@@ -6125,6 +6244,8 @@ function parseProcessos(rows) {
       dataAutuacao, idoso, idosoOctogenario, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
       peticaoUrgente, intervencaoMP, pericia,
       segundoGrau, segundoGrauData, segundoGrauRecurso, segundoGrauNumero, segundoGrauCamara, segundoGrauRelator, segundoGrauObs,
+      reconvencao, reconvencaoData, reconvencaoStatus, reconvencaoObs,
+      situacao,
       processoPrincipal,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
@@ -6576,6 +6697,17 @@ function renderCard(p, idx) {
       </div>`;
   }
 
+  // Reconvenção (09/set/2026) - situação do pedido reconvencional apresentado pelo réu.
+  let reconvencaoHtml = '';
+  if ((p.reconvencao||'').toUpperCase() === 'SIM') {
+    reconvencaoHtml = `
+      <div class="atualizacao-box" style="border-color:rgba(224,153,84,0.35)">
+        <strong style="color:var(--orange)">↩️ Reconvenção${p.reconvencaoData ? ' — protocolada em ' + formatDate(p.reconvencaoData) : ''}</strong>
+        ${p.reconvencaoStatus ? '<br>' + escHtml(p.reconvencaoStatus) : ''}
+        ${p.reconvencaoObs ? `<br><span style="color:var(--muted);font-size:11px">${escHtml(p.reconvencaoObs)}</span>` : ''}
+      </div>`;
+  }
+
   // Providencias
   let providHtml = '';
   if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
@@ -6606,6 +6738,7 @@ function renderCard(p, idx) {
         <div class="processo-top">
           <span class="processo-nome">${escHtml(p.nome)}</span>
           <span class="badge badge-ramo">${escHtml(p.ramo || p.tipo)}</span>
+          ${p.situacao ? `<span class="badge badge-situacao">${escHtml(p.situacao)}</span>` : ''}
           ${urgBadge ? `<span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>` : ''}
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
           ${(p.status||'').toUpperCase() === 'SUSPENSO' ? '<span class="badge badge-urgencia badge-suspenso">⏸ Suspenso</span>' : ''}
@@ -6623,6 +6756,7 @@ function renderCard(p, idx) {
           ${(p.intervencaoMP||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Intervenção do Ministério Público</span>' : ''}
           ${(p.pericia||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Perícia</span>' : ''}
           ${(p.segundoGrau||'').toUpperCase() === 'SIM' ? '<span class="badge badge-urgencia badge-segundograu">⚖️ 2º Grau</span>' : ''}
+          ${(p.reconvencao||'').toUpperCase() === 'SIM' ? '<span class="badge badge-urgencia badge-reconvencao">↩️ Reconvenção</span>' : ''}
           ${p.linkArtefato ? `<a href="${escHtml(p.linkArtefato)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="badge" style="background:rgba(200,169,110,0.16);color:var(--eixo-gold);border-color:rgba(200,169,110,0.4);text-decoration:none;cursor:pointer">🔗 Acompanhamento</a>` : ''}
         </div>
         <div class="processo-numero">${escHtml(p.processo) || '(sem número)'}</div>
@@ -6663,6 +6797,7 @@ function renderCard(p, idx) {
         <div class="processo-detail">
           ${audienciaHtml}
           ${segundoGrauHtml}
+          ${reconvencaoHtml}
           ${providHtml}
 
           <div class="detail-grid">
@@ -6719,135 +6854,147 @@ function renderCard(p, idx) {
           </div>` : ''}
 
           <div class="detail-actions">
-            ${p.advParc && p.advParc.length > 2 ? `
-            <button class="btn-action" style="background:rgba(155,109,255,0.12);border-color:rgba(155,109,255,0.3);color:var(--purple);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardParceiro(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-              Parceiro
-            </button>` : ''}
-            <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.35);color:var(--blue);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEdicao(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Editar
-            </button>
-            <button class="btn-action" style="background:rgba(200,169,110,0.10);border-color:rgba(200,169,110,0.35);color:var(--accent2);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();ptAbrir(this.dataset.uid)" title="Cadastrar 2 ou mais autores/réus com qualificação completa">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-              Partes
-            </button>
-            <button class="btn-action" style="background:rgba(224,124,58,0.12);border-color:rgba(224,124,58,0.35);color:var(--orange);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirNotaInterna(this.dataset.uid)" title="Anotação só para uso interno — não aparece pro cliente">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
-              </svg>
-              Nota interna
-            </button>
-            <button class="btn-action" style="background:rgba(200,169,110,0.08);border-color:rgba(200,169,110,0.3);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirRecibo(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-              Recibo
-            </button>
-            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('procuracao', this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              Procuracao
-            </button>
-            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('gratuidade', this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              Gratuidade
-            </button>
-            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('peticao', this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              Petição
-            </button>
-            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('contrato', this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-              </svg>
-              Contrato
-            </button>
-            <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDocumentos(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-              </svg>
-              Documentos
-            </button>
-            <button class="btn-action" style="background:rgba(200,169,110,0.1);border-color:rgba(200,169,110,0.35);color:var(--accent2);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEntregas(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z"/>
-              </svg>
-              Entregas
-            </button>
-            <button class="btn-action" style="background:rgba(200,169,110,0.15);border-color:rgba(200,169,110,0.4);color:var(--accent);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardAtendimento(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
-              </svg>
-              Gerar card cliente
-            </button>
-            <button class="btn-action" style="background:rgba(76,175,125,0.12);border-color:rgba(76,175,125,0.35);color:var(--green);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirLinkCliente(this.dataset.uid)" title="Link somente-leitura para o cliente acompanhar o andamento sozinho, sem senha">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-              </svg>
-              Link do cliente
-            </button>
-            <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.3);color:var(--blue);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirAtendimentos(this.dataset.uid)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
-              </svg>
-              Atendimentos
-            </button>
-            <button class="btn-action" style="background:rgba(200,169,110,0.12);border-color:rgba(200,169,110,0.35);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirFollowupsProcesso(this.dataset.uid)" title="Follow-ups deste processo — cria lembretes que sincronizam com o Google Agenda">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              Follow-up
-            </button>
-            ${p.processo && p.sistema === 'ESAJ' ? `
-            <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              ESAJ
-            </a>` : ''}
-            ${p.processo && p.sistema === 'EPROC' ? `
-            <a class="btn-action" href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}" target="_blank">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              EPROC
-            </a>` : ''}
-            ${p.processo && p.sistema === 'PJE' ? `
-            <a class="btn-action" href="https://pje.trt2.jus.br/consultaprocessual/detalhe-processo/${encodeURIComponent(p.processo)}" target="_blank">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              PJE
-            </a>` : ''}
-            ${p.processo && p.sistema === 'TRF3' ? `
-            <a class="btn-action" href="https://www.trf3.jus.br/pje/acesso-ao-sistema" target="_blank">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              TRF3
-            </a>` : ''}
-            <button class="btn-action" onclick="event.stopPropagation();copyNumero('${escAttr(p.processo)}')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-              </svg>
-              Copiar número
-            </button>
+            <div class="btn-group-row btn-group-gestao">
+              <span class="btn-group-label">Gestão</span>
+              <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.35);color:var(--blue);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEdicao(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Editar
+              </button>
+              <button class="btn-action" style="background:rgba(200,169,110,0.10);border-color:rgba(200,169,110,0.35);color:var(--accent2);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();ptAbrir(this.dataset.uid)" title="Cadastrar 2 ou mais autores/réus com qualificação completa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Partes
+              </button>
+              <button class="btn-action" style="background:rgba(224,124,58,0.12);border-color:rgba(224,124,58,0.35);color:var(--orange);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirNotaInterna(this.dataset.uid)" title="Anotação só para uso interno — não aparece pro cliente">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+                </svg>
+                Nota interna
+              </button>
+              ${p.advParc && p.advParc.length > 2 ? `
+              <button class="btn-action" style="background:rgba(155,109,255,0.12);border-color:rgba(155,109,255,0.3);color:var(--purple);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardParceiro(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Parceiro
+              </button>` : ''}
+            </div>
+            <div class="btn-group-row btn-group-pecas">
+              <span class="btn-group-label">Peças/Docs</span>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('peticao', this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Petição
+              </button>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('contrato', this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+                Contrato
+              </button>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('procuracao', this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Procuracao
+              </button>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDoc('gratuidade', this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Gratuidade
+              </button>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirDocumentos(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                </svg>
+                Documentos
+              </button>
+              <button class="btn-action" style="background:rgba(200,169,110,0.08);border-color:rgba(200,169,110,0.3);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirRecibo(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Recibo
+              </button>
+            </div>
+            <div class="btn-group-row btn-group-cliente">
+              <span class="btn-group-label">Cliente</span>
+              <button class="btn-action" style="background:rgba(200,169,110,0.15);border-color:rgba(200,169,110,0.4);color:var(--accent);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirCardAtendimento(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                </svg>
+                Gerar card cliente
+              </button>
+              <button class="btn-action" style="background:rgba(76,175,125,0.12);border-color:rgba(76,175,125,0.35);color:var(--green);font-weight:600;" data-uid="${p._uid}" onclick="event.stopPropagation();abrirLinkCliente(this.dataset.uid)" title="Link somente-leitura para o cliente acompanhar o andamento sozinho, sem senha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                </svg>
+                Link do cliente
+              </button>
+              <button class="btn-action" style="background:rgba(91,141,238,0.12);border-color:rgba(91,141,238,0.3);color:var(--blue);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirAtendimentos(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+                </svg>
+                Atendimentos
+              </button>
+            </div>
+            <div class="btn-group-row btn-group-andamento">
+              <span class="btn-group-label">Andamento</span>
+              <button class="btn-action" style="background:rgba(200,169,110,0.12);border-color:rgba(200,169,110,0.35);color:var(--accent);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirFollowupsProcesso(this.dataset.uid)" title="Follow-ups deste processo — cria lembretes que sincronizam com o Google Agenda">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Follow-up
+              </button>
+              <button class="btn-action" style="background:rgba(200,169,110,0.1);border-color:rgba(200,169,110,0.35);color:var(--accent2);" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEntregas(this.dataset.uid)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z"/>
+                </svg>
+                Entregas
+              </button>
+              ${p.processo && p.sistema === 'ESAJ' ? `
+              <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                ESAJ
+              </a>` : ''}
+              ${p.processo && p.sistema === 'EPROC' ? `
+              <a class="btn-action" href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                EPROC
+              </a>` : ''}
+              ${p.processo && p.sistema === 'PJE' ? `
+              <a class="btn-action" href="https://pje.trt2.jus.br/consultaprocessual/detalhe-processo/${encodeURIComponent(p.processo)}" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                PJE
+              </a>` : ''}
+              ${p.processo && p.sistema === 'TRF3' ? `
+              <a class="btn-action" href="https://www.trf3.jus.br/pje/acesso-ao-sistema" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                TRF3
+              </a>` : ''}
+              <button class="btn-action" onclick="event.stopPropagation();copyNumero('${escAttr(p.processo)}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+                Copiar número
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -12205,6 +12352,11 @@ function abrirEdicao(uid) {
   document.getElementById('ed-segundoGrauCamara').value = p.segundoGrauCamara || '';
   document.getElementById('ed-segundoGrauRelator').value = p.segundoGrauRelator || '';
   document.getElementById('ed-segundoGrauObs').value = p.segundoGrauObs || '';
+  document.getElementById('ed-reconvencao').checked = (p.reconvencao || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-reconvencaoData').value = dataParaInput(p.reconvencaoData);
+  document.getElementById('ed-reconvencaoStatus').value = p.reconvencaoStatus || '';
+  document.getElementById('ed-reconvencaoObs').value = p.reconvencaoObs || '';
+  document.getElementById('ed-reconvencaoWrap').style.display = (p.reconvencao || '').toUpperCase() === 'SIM' ? '' : 'none';
   document.getElementById('ed-ramo').value = p.ramo || '';
   document.getElementById('ed-tipo').value = p.tipo || '';
   document.getElementById('ed-parte').value = p.parte || '';
@@ -12224,6 +12376,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-providAdv').value = p.providAdv || '';
 
   // Preencher campos - Andamento Processual
+  document.getElementById('ed-situacao').value = p.situacao || '';
   document.getElementById('ed-ultima').value = p.ultima || '';
   document.getElementById('ed-status').value = p.status || 'ATIVO';
   document.getElementById('ed-proxAdv').value = p.proximoPassoAdv || '';
@@ -12351,6 +12504,10 @@ async function salvarEdicao() {
     'Segundo Grau Camara': document.getElementById('ed-segundoGrauCamara').value,
     'Segundo Grau Relator': document.getElementById('ed-segundoGrauRelator').value,
     'Segundo Grau Observacoes': document.getElementById('ed-segundoGrauObs').value,
+    'Reconvencao': document.getElementById('ed-reconvencao').checked ? 'Sim' : 'Nao',
+    'Reconvencao Data': inputParaData(document.getElementById('ed-reconvencaoData').value),
+    'Reconvencao Status': document.getElementById('ed-reconvencaoStatus').value,
+    'Reconvencao Observacoes': document.getElementById('ed-reconvencaoObs').value,
     'Ramo do Direito': document.getElementById('ed-ramo').value,
     'Tipo de Acao': document.getElementById('ed-tipo').value,
     'Parte': document.getElementById('ed-parte').value,
@@ -12364,6 +12521,7 @@ async function salvarEdicao() {
     'Advogado Adversário Email': document.getElementById('ed-advAdvEmail').value,
     'Narrativa dos Fatos': document.getElementById('ed-narrativaFatos').value,
     'Providências e Observações ao Advogado': document.getElementById('ed-providAdv').value,
+    'Situacao': document.getElementById('ed-situacao').value,
     'Última Atualizacao': document.getElementById('ed-ultima').value,
     'Status': document.getElementById('ed-status').value,
     'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
@@ -12771,7 +12929,7 @@ function abrirCadastro() {
   });
   document.getElementById('cad-formaCalcHon').value = '';
   honToggleFormaCalculo('cad');
-  ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag'].forEach(id => {
+  ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag','cad-situacao'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -13014,6 +13172,7 @@ async function salvarCadastro() {
     'Tipo de Acao': document.getElementById('cad-tipo').value,
     'Parte': document.getElementById('cad-parte').value,
     'Outra Parte': document.getElementById('cad-outra').value,
+    'Situacao': document.getElementById('cad-situacao').value,
     'Status': document.getElementById('cad-status').value,
     'Advogado Parceiro': document.getElementById('cad-advParc').value,
     'Última Atualizacao': document.getElementById('cad-ultima').value,
@@ -16481,7 +16640,7 @@ window.cpRenderFixas=cpRenderFixas;
       <select class="loc-cinput" id="manualPainelSelect" onchange="manualMostrar()" style="width:100%">
         <option value="sumario">📑 Sumário</option>
         <option value="dashboard">1. 🏠 Painel Inicial (Dashboard)</option>
-        <option value="processos">2. ⚖️ Processos</option>
+        <option value="processos">2. ⚖️ Gestão de Processos</option>
         <option value="honorarios">3. 💰 Honorários</option>
         <option value="contas">4. 💳 Contas a Pagar</option>
         <option value="atendimentos">5. 📞 Atendimentos</option>
@@ -23073,7 +23232,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-card proc" onclick="openProcessos()">
           <div class="arrow">→</div>
           <div class="ic">⚖️</div>
-          <div class="ctitle">Processos</div>
+          <div class="ctitle">Gestão de Processos</div>
           <div class="cdesc">Andamentos, prazos e audiências</div>
           <div class="cnums">
             <div class="cnum cnum-clickable" onclick="event.stopPropagation();openProcessos()" title="Ver todos os processos ativos"><div class="v" id="hc-proc-total" style="color:var(--accent2)">—</div><div class="l">casos ativos</div><span class="cnum-spark-wrap" id="spark-proc-total"></span></div>
@@ -23416,7 +23575,7 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="home-user-dropdown">'+
         '<button class="home-user-item" onclick="goHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Início</button>'+
         '<div class="home-user-divider"></div>'+
-        '<button class="home-user-item" onclick="openProcessos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Processos</button>'+
+        '<button class="home-user-item" onclick="openProcessos();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Gestão de Processos</button>'+
         '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Gestão de Locações e Repasses</button>'+
@@ -23859,7 +24018,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Ordem numerada dos módulos, usada no Sumário, no seletor e na geração do PDF.
   var MANUAL_ORDEM=[
     {key:'dashboard',    titulo:'Painel Inicial (Dashboard)'},
-    {key:'processos',    titulo:'Processos'},
+    {key:'processos',    titulo:'Gestão de Processos'},
     {key:'honorarios',   titulo:'Honorários'},
     {key:'contas',        titulo:'Contas a Pagar'},
     {key:'atendimentos', titulo:'Atendimentos'},
@@ -24928,7 +25087,7 @@ window.cpRenderFixas=cpRenderFixas;
     ap.forEach(function(p){
       var hay=[p.nome,p.processo,p.tipo,p.outra,parteContrariaTexto(p),p.ramo].join(' ').toLowerCase();
       if(hay.indexOf(termo)>=0){
-        out.push({modulo:'Processos',icone:'⚖️',titulo:p.nome||'(sem nome)',sub:[p.processo,p.tipo].filter(Boolean).join(' — ')});
+        out.push({modulo:'Gestão de Processos',icone:'⚖️',titulo:p.nome||'(sem nome)',sub:[p.processo,p.tipo].filter(Boolean).join(' — ')});
       }
     });
 
@@ -24968,7 +25127,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(termo.length<2){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Digite ao menos 2 letras…</div>';return;}
     var res=window.buscaGlobalColetar_(termo);
     if(!res.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Nada encontrado para "'+E(termo)+'".</div>';return;}
-    var COR_MOD={'Processos':'var(--purple)','Honorários':'var(--orange)','Locações e Repasses':'var(--accent)','Acordos':'var(--accent2)'};
+    var COR_MOD={'Gestão de Processos':'var(--purple)','Honorários':'var(--orange)','Locações e Repasses':'var(--accent)','Acordos':'var(--accent2)'};
     el.innerHTML=res.map(function(r,i){
       var cor=COR_MOD[r.modulo]||'var(--accent)';
       return '<div class="busca-global-item" onclick="buscaGlobalIrPara('+i+')" style="padding:10px 6px;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;gap:10px;align-items:flex-start">'
@@ -24987,7 +25146,7 @@ window.cpRenderFixas=cpRenderFixas;
     var termo=window.__buscaGlobalTermo||'';
     var modal=document.getElementById('modalBuscaGlobal');
     if(modal)modal.classList.remove('open');
-    if(r.modulo==='Processos'){
+    if(r.modulo==='Gestão de Processos'){
       openProcessos();
       setTimeout(function(){var el=document.getElementById('searchInput');if(el){el.value=termo;renderProcessos();}},50);
     } else if(r.modulo==='Honorários'){
@@ -25357,7 +25516,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['acordos','acordo'],label:'Acordos',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
     {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
     {kw:['imoveis','imoveis disponiveis','catalogo de imoveis'],label:'Imóveis Disponíveis',run:function(){voiceCloseAllOverlays();if(typeof window.abrirImoveis==='function')window.abrirImoveis();}},
-    {kw:['processos','processo'],label:'Processos',run:function(){voiceCloseAllOverlays();}},
+    {kw:['processos','processo','gestao de processos'],label:'Gestão de Processos',run:function(){voiceCloseAllOverlays();}},
     {kw:['inicio','pagina inicial','tela inicial','dashboard','home'],label:'Início',run:function(){voiceCloseAllOverlays();if(typeof window.goHome==='function')window.goHome();}},
     {kw:['manual','ajuda','como usar'],label:'Manual',run:function(){if(typeof window.abrirManual==='function')window.abrirManual();}},
     {kw:['novo cadastro','cadastrar cliente','novo cliente','nova pessoa'],label:'Novo Cadastro',run:function(){if(typeof abrirCadastro==='function')abrirCadastro();}},
@@ -25527,7 +25686,7 @@ window.cpRenderFixas=cpRenderFixas;
   // microfone. Reaproveita os mesmos alvos de VOICE_COMMANDS (por label), pra não
   // duplicar a lógica de qual botão abre o quê.
   var VOICE_KEY_MAP={
-    '1':'Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
+    '1':'Gestão de Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
     '6':'Notas Rápidas','7':'Tarefas','8':'Início','9':'Busca'
   };
   document.addEventListener('keydown',function(e){
