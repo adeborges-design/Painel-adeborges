@@ -3891,6 +3891,7 @@
           </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-menorIdade" style="width:15px;height:15px"> 🔴 Menor de Idade / Adolescente (prioridade — ECA, Lei nº 8.069/1990; art. 1.048, II, CPC)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idosoOctogenario" style="width:15px;height:15px"> 🔴 Idoso - maior de 80 anos (prioridade especial — art. 71, §5º, Estatuto do Idoso)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
@@ -4448,6 +4449,7 @@
           </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-menorIdade" style="width:15px;height:15px"> 🔴 Menor de Idade / Adolescente (prioridade — ECA, Lei nº 8.069/1990; art. 1.048, II, CPC)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idosoOctogenario" style="width:15px;height:15px"> 🔴 Idoso - maior de 80 anos (prioridade especial — art. 71, §5º, Estatuto do Idoso)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-digital100" style="width:15px;height:15px"> 🔴 Opção por Juízo 100% Digital</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-tutelaDeferida" style="width:15px;height:15px"> 🔴 Antecipação de Tutela - Deferida</label>
@@ -6205,6 +6207,7 @@ function parseProcessos(rows) {
     const providAdv         = get(row, 'Providências e Observações ao Advogado', -1);
     const dataAutuacao      = get(row, 'Data de Autuacao', -1);
     const idoso             = get(row, 'Idoso', -1);
+    const menorIdade         = get(row, 'Menor Idade', -1);
     const idosoOctogenario  = get(row, 'Idoso Maior 80 Anos', -1);
     const digital100        = get(row, 'Opcao Juizo Digital', -1);
     const tutelaDeferida        = get(row, 'Antecipacao Tutela Deferida', -1);
@@ -6273,7 +6276,7 @@ function parseProcessos(rows) {
       telParceiro, emailParceiro,
       advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
       narrativaFatos, providAdv,
-      dataAutuacao, idoso, idosoOctogenario, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
+      dataAutuacao, idoso, idosoOctogenario, menorIdade, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
       peticaoUrgente, intervencaoMP, pericia,
       segundoGrau, segundoGrauData, segundoGrauRecurso, segundoGrauNumero, segundoGrauCamara, segundoGrauRelator, segundoGrauObs,
       reconvencao, reconvencaoData, reconvencaoStatus, reconvencaoObs,
@@ -6780,6 +6783,7 @@ function renderCard(p, idx) {
           ${p.status === 'REVOGADO' ? '<span class="badge badge-urgencia badge-semAtuacao">📤 Procuração Revogada</span>' : ''}
           ${(p.idoso||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Idoso</span>' : ''}
           ${(p.idosoOctogenario||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Idoso - maior de 80 anos</span>' : ''}
+          ${(p.menorIdade||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Menor de Idade / Adolescente</span>' : ''}
           ${(p.digital100||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Opção por Juízo 100% Digital</span>' : ''}
           ${(p.tutelaDeferida||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Antecipação de Tutela - Deferida</span>' : ''}
           ${(p.desinteresseConciliacao||'').toUpperCase() === 'SIM' ? '<span class="badge badge-alerta-proc">Autor manifesta desinteresse na conciliação</span>' : ''}
@@ -7353,23 +7357,55 @@ function campo(val, fallback) {
 // Verifica se é Pessoa Jurídica de forma tolerante a acento/maiúsculas/espaços —
 // o valor vem e volta da planilha, então uma comparação exata com 'Jurídica' é frágil
 // (mesmo problema já visto em 'Observações', 'Tipo de Ação' etc. antes de corrigidos).
-function ehPessoaJuridica(p) {
+// Normaliza o "Tipo de Pessoa" da parte em 4 categorias: 'fisica' | 'juridica' | 'entidade' | 'menor'.
+// 'entidade' cobre Ministério Público, INSS, Fazenda Pública, autarquias, municípios etc. —
+// tecnicamente pessoa jurídica de direito PÚBLICO, o que muda a qualificação na peça (não tem
+// "contrato/estatuto social" nem é "de direito privado" — ver qualificacaoParte()).
+// 'menor' cobre menor de idade/adolescente — precisa de assistência/representação pelos pais
+// ou responsável legal (não tem CPF de representante "cargo", e sim "responsável legal").
+function tipoParteNormalizado(p) {
   var t = String((p && p.tipoPessoa) || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (t.indexOf('jurid') === 0 || t === 'pj') return true;
-  if (t.indexOf('fisic') === 0 || t === 'pf') return false;
+  if (t.indexOf('entidade') === 0) return 'entidade';
+  if (t.indexOf('menor') === 0 || t.indexOf('adolescente') === 0) return 'menor';
+  if (t.indexOf('jurid') === 0 || t === 'pj') return 'juridica';
+  if (t.indexOf('fisic') === 0 || t === 'pf') return 'fisica';
   // "Tipo de Pessoa" nunca foi definido (processo cadastrado antes deste campo existir):
   // tenta inferir pela quantidade de dígitos do CPF/CNPJ. CPF tem sempre 11 dígitos;
   // qualquer coisa acima disso (CNPJ tem 14, mas tolera erro de digitação) é tratada como empresa.
   var digitos = String((p && p.cpfCnpj) || '').replace(/\D/g, '');
-  return digitos.length > 11;
+  return digitos.length > 11 ? 'juridica' : 'fisica';
+}
+
+// Verifica se é Pessoa Jurídica de forma tolerante a acento/maiúsculas/espaços —
+// o valor vem e volta da planilha, então uma comparação exata com 'Jurídica' é frágil
+// (mesmo problema já visto em 'Observações', 'Tipo de Ação' etc. antes de corrigidos).
+// "Entidade" também entra aqui pra fins de QUAIS CAMPOS mostrar/usar (CNPJ + representante) —
+// a qualificação por extenso continua distinta, ver qualificacaoParte().
+function ehPessoaJuridica(p) {
+  var tipo = tipoParteNormalizado(p);
+  return tipo === 'juridica' || tipo === 'entidade';
 }
 
 function qualificacaoParte(p) {
-  if (ehPessoaJuridica(p)) {
+  var tipo = tipoParteNormalizado(p);
+  if (tipo === 'entidade') {
+    return `${campo(p.nome)}, pessoa jurídica de direito público, inscrita no CNPJ sob o nr. ${campo(p.cpfCnpj)},
+      com sede na ${campo(enderecoCompleto(p))}, neste ato representada por seu(sua) ${campo(p.repCargo, 'representante legal')}, ${campo(p.repNome)},
+      portador(a) do RG nr. ${campo(p.repRg)} e CPF/MF nr. ${campo(p.repCpf)},
+      e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
+  }
+  if (tipo === 'juridica') {
     return `${campo(p.nome)}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nr. ${campo(p.cpfCnpj)},
       com sede na ${campo(enderecoCompleto(p))}, neste ato representada, na forma de seu contrato/estatuto social,
       por seu(sua) ${campo(p.repCargo, 'representante legal')}, ${campo(p.repNome)},
       portador(a) do RG nr. ${campo(p.repRg)} e CPF/MF nr. ${campo(p.repCpf)},
+      e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
+  }
+  if (tipo === 'menor') {
+    return `${campo(p.nome)}, menor de idade, nascido(a) em ${campo(p.dataNasc)},
+      neste ato representado(a)/assistido(a) por seu(sua) ${campo(p.repCargo, 'responsável legal')}, ${campo(p.repNome)},
+      portador(a) do RG nr. ${campo(p.repRg)} e CPF/MF nr. ${campo(p.repCpf)},
+      residente e domiciliado(a) na ${campo(enderecoCompleto(p))},
       e-mail: ${campo(p.email)}, telefone: ${campo(p.telefone)}`;
   }
   return `${campo(p.nome)}, ${campo(p.estadoCivil)}, ${campo(p.profissao)},
@@ -7509,15 +7545,15 @@ window.ptAdicionarLinha = function (dados) {
   const polo = dados['Polo'] || 'Autor';
   const nosso = String(dados['Nosso Cliente'] || (dados.ID ? 'Não' : 'Sim')).trim().toLowerCase() === 'sim';
   const tipoP = dados['Tipo de Pessoa'] || 'Física';
-  const jur = tipoP === 'Jurídica';
+  const jur = tipoP === 'Jurídica' || tipoP === 'Entidade';
   const dispPf = jur ? 'none' : 'contents';
   const dispPj = jur ? '' : 'none';
   div.innerHTML =
     '<input type="hidden" class="pt-id" value="' + escHtml(dados.ID || '') + '">'
     + '<div class="loc-cform" style="padding:0;border:none;background:none">'
-    + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo"><option value="Autor"' + (polo === 'Autor' ? ' selected' : '') + '>Autor</option><option value="Réu"' + (polo === 'Réu' ? ' selected' : '') + '>Réu</option></select></div>'
+    + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo"><option value="Autor"' + (polo === 'Autor' ? ' selected' : '') + '>Autor</option><option value="Réu"' + (polo === 'Réu' ? ' selected' : '') + '>Réu</option><option value="Outra Parte"' + (polo === 'Outra Parte' ? ' selected' : '') + '>Outra Parte</option></select></div>'
     + '<div class="loc-cfield"><label>Nosso cliente?</label><select class="loc-cinput pt-nosso"><option value="Sim"' + (nosso ? ' selected' : '') + '>Sim</option><option value="Não"' + (!nosso ? ' selected' : '') + '>Não</option></select></div>'
-    + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa" onchange="ptToggleTipoPessoa(this)"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option></select></div>'
+    + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa" onchange="ptToggleTipoPessoa(this)"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option><option value="Entidade"' + (tipoP === 'Entidade' ? ' selected' : '') + '>Entidade</option></select></div>'
     + '<div class="loc-cfield full"><label>Nome / Razão social</label><input class="loc-cinput pt-nome" value="' + escHtml(dados['Nome'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>CPF/CNPJ</label><input class="loc-cinput pt-cpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="' + escHtml(dados['CPF/CNPJ'] || '') + '"></div>'
     + '<div class="pt-pf-fields" style="display:' + dispPf + '">'
@@ -7539,7 +7575,7 @@ window.ptAdicionarLinha = function (dados) {
     + '<div class="loc-cfield"><label>Nº dependentes (p/ hipossuf.)</label><input class="loc-cinput pt-dependentes" value="' + escHtml(dados['Numero Dependentes'] || '') + '"></div>'
     + '</div>'
     + '<div class="pt-pj-fields" style="display:' + dispPj + ';grid-column:1/-1">'
-    + '<div class="loc-cfield full" style="border-top:1px dashed var(--border2);padding-top:10px;margin-top:2px"><label style="opacity:.8">Representante legal (só se Pessoa Jurídica)</label></div>'
+    + '<div class="loc-cfield full" style="border-top:1px dashed var(--border2);padding-top:10px;margin-top:2px"><label style="opacity:.8">Representante legal (Pessoa Jurídica ou Entidade)</label></div>'
     + '<div class="loc-cfield"><label>Nome do representante</label><input class="loc-cinput pt-repnome" value="' + escHtml(dados['Representante Nome'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>CPF do representante</label><input class="loc-cinput pt-repcpf" maxlength="18" oninput="mascararCPFCNPJ(this)" value="' + escHtml(dados['Representante CPF'] || '') + '"></div>'
     + '<div class="loc-cfield"><label>RG do representante</label><input class="loc-cinput pt-reprg" value="' + escHtml(dados['Representante RG'] || '') + '"></div>'
@@ -7553,7 +7589,11 @@ window.ptAdicionarLinha = function (dados) {
 window.ptToggleTipoPessoa = function (selEl) {
   const linha = selEl.closest('.pt-linha');
   if (!linha) return;
-  const juridica = selEl.value === 'Jurídica';
+  // "Entidade" (Ministério Público, INSS, Fazenda Pública, autarquias etc.) usa os mesmos
+  // campos de "Jurídica" na tela (CNPJ + representante) — a diferença de qualificação na
+  // peça (pessoa jurídica de direito público, sem "contrato/estatuto social") é tratada em
+  // qualificacaoParte(), não aqui.
+  const juridica = selEl.value === 'Jurídica' || selEl.value === 'Entidade';
   linha.querySelectorAll('.pt-pf-fields').forEach(function (el) { el.style.display = juridica ? 'none' : 'contents'; });
   linha.querySelectorAll('.pt-pj-fields').forEach(function (el) { el.style.display = juridica ? '' : 'none'; });
 };
@@ -12378,6 +12418,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
   document.getElementById('ed-idoso').checked = (p.idoso || '').toUpperCase() === 'SIM';
   document.getElementById('ed-idosoOctogenario').checked = (p.idosoOctogenario || '').toUpperCase() === 'SIM';
+  document.getElementById('ed-menorIdade').checked = (p.menorIdade || '').toUpperCase() === 'SIM';
   document.getElementById('ed-digital100').checked = (p.digital100 || '').toUpperCase() === 'SIM';
   document.getElementById('ed-tutelaDeferida').checked = (p.tutelaDeferida || '').toUpperCase() === 'SIM';
   document.getElementById('ed-desinteresseConciliacao').checked = (p.desinteresseConciliacao || '').toUpperCase() === 'SIM';
@@ -12530,6 +12571,7 @@ async function salvarEdicao() {
     'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
     'Idoso': document.getElementById('ed-idoso').checked ? 'Sim' : 'Nao',
     'Idoso Maior 80 Anos': document.getElementById('ed-idosoOctogenario').checked ? 'Sim' : 'Nao',
+    'Menor Idade': document.getElementById('ed-menorIdade').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('ed-digital100').checked ? 'Sim' : 'Nao',
     'Antecipacao Tutela Deferida': document.getElementById('ed-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('ed-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
@@ -12976,6 +13018,7 @@ function abrirCadastro() {
   document.getElementById('cad-status').value = 'ATIVO';
   document.getElementById('cad-dataNasc').value = '';
   document.getElementById('cad-idoso').checked = false;
+  document.getElementById('cad-menorIdade').checked = false;
   document.getElementById('cad-digital100').checked = false;
   document.getElementById('cad-tutelaDeferida').checked = false;
   document.getElementById('cad-desinteresseConciliacao').checked = false;
@@ -13201,6 +13244,7 @@ async function salvarCadastro() {
     'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
     'Idoso': document.getElementById('cad-idoso').checked ? 'Sim' : 'Nao',
     'Idoso Maior 80 Anos': document.getElementById('cad-idosoOctogenario').checked ? 'Sim' : 'Nao',
+    'Menor Idade': document.getElementById('cad-menorIdade').checked ? 'Sim' : 'Nao',
     'Opcao Juizo Digital': document.getElementById('cad-digital100').checked ? 'Sim' : 'Nao',
     'Antecipacao Tutela Deferida': document.getElementById('cad-tutelaDeferida').checked ? 'Sim' : 'Nao',
     'Autor Desinteresse Conciliacao': document.getElementById('cad-desinteresseConciliacao').checked ? 'Sim' : 'Nao',
