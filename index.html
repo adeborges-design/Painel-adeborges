@@ -7160,7 +7160,7 @@ function renderCard(p, idx) {
                 EPROC
               </a>` : ''}
               ${p.processo && p.sistema === 'PJE' ? `
-              <a class="btn-action" href="https://pje.trt2.jus.br/consultaprocessual/detalhe-processo/${encodeURIComponent(p.processo)}" target="_blank">
+              <a class="btn-action" href="https://pje.trt2.jus.br/primeirograu/login.seam" target="_blank" title="Login PJe TRT2 (certificado/token) — a consulta pública não mostra os autos completos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
@@ -23691,8 +23691,8 @@ window.cpRenderFixas=cpRenderFixas;
     ]},
     { grupo: '⚖️ Tribunais — Consulta Processual', itens: [
       { nome: 'TRF3', url: 'https://www.trf3.jus.br/', desc: 'Tribunal Regional Federal da 3ª Região' },
-      { nome: 'PJe TRT2 — Consulta Processual', url: 'https://pje.trt2.jus.br/consultaprocessual/', desc: 'Consulta processual pública da Justiça do Trabalho de São Paulo (TRT2) — sem login' },
-      { nome: 'PJe TRT2 — Login (1º Grau)', url: 'https://pje.trt2.jus.br/primeirograu/login.seam', desc: 'Acesso autenticado (certificado digital/token) ao PJe do TRT2, 1º grau — visualiza autos completos' },
+      { nome: 'PJe TRT2 — Login (1º Grau)', url: 'https://pje.trt2.jus.br/primeirograu/login.seam', desc: 'Acesso autenticado (certificado digital/token) ao PJe do TRT2, 1º grau — visualiza os autos completos' },
+      { nome: 'PJe TRT2 — Consulta Processual', url: 'https://pje.trt2.jus.br/consultaprocessual/', desc: 'Consulta pública da Justiça do Trabalho de São Paulo (TRT2), sem login — não mostra os autos completos' },
       { nome: 'e-SAJ/eproc TJSP — Consulta Unificada', url: 'https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar', desc: 'Consulta processual unificada do TJSP (1ª e 2ª instância)' }
     ]}
   ];
