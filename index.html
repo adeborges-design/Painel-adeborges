@@ -862,6 +862,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .capa-valor-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-top: 1px;
+  }
   @media (max-width: 640px) {
     .capa-linha { grid-template-columns: 1fr; gap: 6px; }
   }
@@ -3922,6 +3928,10 @@
             <label>Juiz(a)</label>
             <input type="text" id="ed-juiz" placeholder="Nome do(a) magistrado(a)">
           </div>
+          <div class="form-field">
+            <label>Juiz Atuante</label>
+            <input type="text" id="ed-juizAtuante" placeholder="Quando diferente do(a) titular (juiz auxiliar/substituto atuando no caso)">
+          </div>
           <div class="form-field form-full">
             <label>Tribunal e Fórum</label>
             <input type="text" id="ed-tribunal">
@@ -4479,6 +4489,10 @@
           <div class="form-field">
             <label>Juiz(a)</label>
             <input type="text" id="cad-juiz" placeholder="Nome do(a) magistrado(a)">
+          </div>
+          <div class="form-field">
+            <label>Juiz Atuante</label>
+            <input type="text" id="cad-juizAtuante" placeholder="Quando diferente do(a) titular (juiz auxiliar/substituto atuando no caso)">
           </div>
           <div class="form-field form-full">
             <label>Tribunal e Fórum</label>
@@ -6188,6 +6202,7 @@ function parseProcessos(rows) {
     const sistema          = get(row, 'Sistema',          3);
     const vara             = get(row, 'Vara',              -1);  // coluna D nova
     const juiz             = get(row, 'Juiz(a)',            -1);
+    const juizAtuante       = get(row, 'Juiz Atuante',      -1);
     const tribunal         = get(row, 'Tribunal e Forum',  -1);  // cabeçalho real na planilha é sem acento
     const linkArtefato     = get(row, 'Link Artefato',    -1);
     const cpfCnpj          = get(row, 'CPF/CNPJ',         6);
@@ -6305,7 +6320,7 @@ function parseProcessos(rows) {
       nro: parseInt(nro),
       _uid: i,
       nome, processo, sistema, chaveAcesso, senhaCliente,
-      vara, juiz, tribunal, linkArtefato, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
+      vara, juiz, juizAtuante, tribunal, linkArtefato, cpfCnpj, rg, estadoCivil, profissao, dataNasc,
       endereco, bairro, complemento, cep, cidade, estado,
       valorHonorarios, numParcelas, valorEntrada, valorParcela, diaVencimento, datasVencimento,
       formaPagamento, objetoContrato,
@@ -6781,6 +6796,10 @@ function familiaChipStyle_(colorTok) {
 // que ainda não são campos do sistema.
 function capaProcessoHtml_(p, fam) {
   const campo = (label, valor) => `<div class="capa-campo"><span class="capa-label">${escHtml(label)}</span><span class="capa-valor">${valor ? escHtml(valor) : '—'}</span></div>`;
+  // Juiz(a) titular + juiz(a) atuante (09/set/2026) — quando o processo tramita com um(a)
+  // magistrado(a) diferente do(a) titular da vara (substituto/auxiliar mutirão etc.), mostra as
+  // duas linhas empilhadas no mesmo campo, igual à capa do eproc.
+  const campoJuiz = (juiz, atuante) => `<div class="capa-campo"><span class="capa-label">Juiz(a)</span><span class="capa-valor">${juiz ? escHtml(juiz) : '—'}</span>${atuante ? `<span class="capa-valor capa-valor-sub">Atuante: ${escHtml(atuante)}</span>` : ''}</div>`;
   const varaJuizo = [p.vara, p.tribunal].filter(Boolean).join(' — ');
   return `
     <div class="capa-processo" style="${familiaChipStyle_(fam.color) ? `border-color:color-mix(in srgb, var(--${fam.color}) 40%, var(--border));background:color-mix(in srgb, var(--${fam.color}) 7%, var(--surface2))` : ''}">
@@ -6791,7 +6810,7 @@ function capaProcessoHtml_(p, fam) {
       </div>
       <div class="capa-linha">
         ${campo('Vara / Juízo', varaJuizo)}
-        ${campo('Juiz(a)', p.juiz)}
+        ${campoJuiz(p.juiz, p.juizAtuante)}
         ${campo('Data de Autuação', p.dataAutuacao ? formatDate(p.dataAutuacao) : '')}
       </div>
     </div>`;
@@ -12536,6 +12555,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-sistema').value = p.sistema || '';
   document.getElementById('ed-vara').value = p.vara || '';
   document.getElementById('ed-juiz').value = p.juiz || '';
+  document.getElementById('ed-juizAtuante').value = p.juizAtuante || '';
   document.getElementById('ed-tribunal').value = p.tribunal || '';
   document.getElementById('ed-linkArtefato').value = p.linkArtefato || '';
   document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
@@ -12689,6 +12709,7 @@ async function salvarEdicao() {
     'Sistema': document.getElementById('ed-sistema').value,
     'Vara': document.getElementById('ed-vara').value,
     'Juiz(a)': document.getElementById('ed-juiz').value,
+    'Juiz Atuante': document.getElementById('ed-juizAtuante').value,
     'Tribunal e Forum': document.getElementById('ed-tribunal').value,
     'Link Artefato': document.getElementById('ed-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
@@ -13116,7 +13137,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
@@ -13362,6 +13383,7 @@ async function salvarCadastro() {
     'Sistema': document.getElementById('cad-sistema').value,
     'Vara': document.getElementById('cad-vara').value,
     'Juiz(a)': document.getElementById('cad-juiz').value,
+    'Juiz Atuante': document.getElementById('cad-juizAtuante').value,
     'Tribunal e Forum': document.getElementById('cad-tribunal').value,
     'Link Artefato': document.getElementById('cad-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
