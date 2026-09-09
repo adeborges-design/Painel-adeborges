@@ -6794,6 +6794,25 @@ function familiaChipStyle_(colorTok) {
 // campos que já existem no cadastro (Classe da Ação, Vara, Juiz(a), Data de Autuação,
 // Situação) — sem Competência/Localizador(es)/Processos relacionados, que o eproc mostra mas
 // que ainda não são campos do sistema.
+// URL de consulta/login do sistema do processo, por p.sistema (09/set/2026). Reaproveitada tanto
+// pelo campo "Sistema / ID" (que agora é clicável) quanto pelos botões de atalho do tribunal.
+function sistemaLinkUrl_(p) {
+  if (!p.processo) return null;
+  if (p.sistema === 'ESAJ') {
+    return `https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO`;
+  }
+  if (p.sistema === 'EPROC') {
+    return `https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}`;
+  }
+  if (p.sistema === 'PJE') {
+    return 'https://pje.trt2.jus.br/primeirograu/login.seam';
+  }
+  if (p.sistema === 'TRF3') {
+    return 'https://www.trf3.jus.br/pje/acesso-ao-sistema';
+  }
+  return null;
+}
+
 function capaProcessoHtml_(p, fam) {
   const campo = (label, valor) => `<div class="capa-campo"><span class="capa-label">${escHtml(label)}</span><span class="capa-valor">${valor ? escHtml(valor) : '—'}</span></div>`;
   // Juiz(a) titular + juiz(a) atuante (09/set/2026) — quando o processo tramita com um(a)
@@ -6981,7 +7000,7 @@ function renderCard(p, idx) {
           <div class="detail-grid">
             <div class="detail-block">
               <div class="detail-label">Sistema / ID</div>
-              <div class="detail-value">${escHtml(p.sistema) || '-'} ${p.id ? `- ${escHtml(p.id)}` : ''}</div>
+              <div class="detail-value">${sistemaLinkUrl_(p) ? `<a href="${sistemaLinkUrl_(p)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none" title="Abrir consulta/login no ${escHtml(p.sistema)}">${escHtml(p.sistema)} ↗</a>` : (escHtml(p.sistema) || '-')} ${p.id ? `- ${escHtml(p.id)}` : ''}</div>
             </div>
             <div class="detail-block">
               <div class="detail-label">Parte contrária</div>
@@ -7145,29 +7164,29 @@ function renderCard(p, idx) {
                 </svg>
                 Entregas
               </button>
-              ${p.processo && p.sistema === 'ESAJ' ? `
-              <a class="btn-action" href="https://esaj.tjsp.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&numeroDigitoAnoUnificado=${encodeURIComponent(p.processo.split('-')[0])}&foroNumeroUnificado=${encodeURIComponent((p.processo.split('.').pop()||''))}&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.processo)}&dadosConsulta.tipoNuProcesso=UNIFICADO" target="_blank" onclick="event.stopPropagation()">
+              ${p.processo && p.sistema === 'ESAJ' && sistemaLinkUrl_(p) ? `
+              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" onclick="event.stopPropagation()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
                 ESAJ
               </a>` : ''}
-              ${p.processo && p.sistema === 'EPROC' ? `
-              <a class="btn-action" href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}" target="_blank" onclick="event.stopPropagation()">
+              ${p.processo && p.sistema === 'EPROC' && sistemaLinkUrl_(p) ? `
+              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" onclick="event.stopPropagation()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
                 EPROC
               </a>` : ''}
-              ${p.processo && p.sistema === 'PJE' ? `
-              <a class="btn-action" href="https://pje.trt2.jus.br/primeirograu/login.seam" target="_blank" title="Login PJe TRT2 (certificado/token) — a consulta pública não mostra os autos completos" onclick="event.stopPropagation()">
+              ${p.processo && p.sistema === 'PJE' && sistemaLinkUrl_(p) ? `
+              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" title="Login PJe TRT2 (certificado/token) — a consulta pública não mostra os autos completos" onclick="event.stopPropagation()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
                 PJE
               </a>` : ''}
-              ${p.processo && p.sistema === 'TRF3' ? `
-              <a class="btn-action" href="https://www.trf3.jus.br/pje/acesso-ao-sistema" target="_blank" onclick="event.stopPropagation()">
+              ${p.processo && p.sistema === 'TRF3' && sistemaLinkUrl_(p) ? `
+              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" onclick="event.stopPropagation()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
