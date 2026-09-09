@@ -12680,8 +12680,17 @@ function buscarClienteExistente(termo) {
   resultados.forEach(p => {
     const item = document.createElement('div');
     item.className = 'cad-busca-item';
+    // Mostrar telefone/e-mail no resultado (04/set/2026): antes só aparecia nome + CPF + processo,
+    // e ao clicar o sistema já copiava telefone/e-mail/endereço do cliente selecionado pro
+    // cadastro novo sem chance de conferir antes. Com nomes parecidos (ex.: "Marcos Antônio" e
+    // "Marcos Soares") ou vários clientes cadastrados em sequência, era fácil clicar no item
+    // errado da lista e levar o contato de um cliente pro cadastro de outro sem perceber — foi
+    // a causa raiz de vários casos de telefone/e-mail trocados entre clientes. Mostrando o
+    // contato aqui, dá pra conferir visualmente antes de clicar.
+    const contato = [p.telefone, p.email].filter(Boolean).join(' · ');
     item.innerHTML = '<strong>' + escHtml(p.nome) + '</strong>' + (p.cpfCnpj ? ' — ' + escHtml(p.cpfCnpj) : '')
-      + '<div class="cad-busca-sub">' + escHtml(p.processo || '(sem processo)') + (p.tipo ? ' · ' + escHtml(p.tipo) : '') + '</div>';
+      + '<div class="cad-busca-sub">' + escHtml(p.processo || '(sem processo)') + (p.tipo ? ' · ' + escHtml(p.tipo) : '') + '</div>'
+      + (contato ? '<div class="cad-busca-sub" style="color:var(--muted)">' + escHtml(contato) + '</div>' : '');
     item.addEventListener('click', () => preencherClienteExistente(p));
     box.appendChild(item);
   });
