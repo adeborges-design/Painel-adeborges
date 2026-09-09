@@ -34,6 +34,8 @@
     --blue: #3b7dd8;
     --purple: #7d5cd6;
     --eixo-gold: #9c8455;
+    --rose: #b5548a;
+    --teal: #2f9d8f;
     --eixo-icon2: #0d1f35;
   }
 
@@ -54,6 +56,8 @@
     --blue: #6ba3e0;
     --purple: #a58ce8;
     --eixo-gold: #c8a96e;
+    --rose: #d97fb0;
+    --teal: #4fc2b4;
     --eixo-icon2: #ffffff;
   }
   html.dark-mode { color-scheme: dark; }
@@ -819,6 +823,47 @@
     font-size: 13px;
     color: var(--text);
     line-height: 1.5;
+  }
+
+  /* "Capa do processo" (09/set/2026) — quadro no topo do detalhe do card, no estilo da tela de
+     consulta processual do eproc: fundo levemente tingido pela família da classe, com os campos
+     em grade de rótulo pequeno (caixa alta) + valor. Cor vem inline (familiaCardStyle_/
+     capaProcessoHtml_); sem família (classe cível padrão), fica neutro como o "branco" do eproc. */
+  .capa-processo {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .capa-linha {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .capa-campo { min-width: 0; }
+  .capa-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .capa-valor {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  @media (max-width: 640px) {
+    .capa-linha { grid-template-columns: 1fr; gap: 6px; }
   }
 
   .providencias-box {
@@ -6511,6 +6556,45 @@ function ramoOculto_(r) {
   return RAMO_OCULTOS.includes(String(r || '').trim().toLowerCase());
 }
 
+// Família de classe processual (09/set/2026), inspirada no padrão de cores por classe do eproc
+// (INFOEPROC nº 31/32 — TJSP), mas com paleta própria do Eixo e reduzida às famílias que
+// aparecem na prática cível/tributária/imobiliária do escritório (o eproc tem 13 cores, a
+// maioria irrelevante aqui — ações criminais, infracionais etc.). Classifica pelo texto livre
+// de "Classe da Ação" (p.tipo), com fallback pro Ramo do Direito quando o texto não bate com
+// nada. Cada família tem uma cor (mesmo token usado nos badges de urgência/status do sistema,
+// pra não introduzir uma paleta nova) — usada no card da lista (fundo leve) e na "capa do
+// processo" do detalhe.
+const FAMILIA_CLASSE_MAP_ = [
+  { key: 'execucao',   label: 'Execução / Cumprimento de Sentença', color: 'yellow',
+    re: /cumprimento de sentenc|execuc[aã]o de t[ií]tulo|execuc[aã]o hipotecari|execuc[aã]o extrajudicial|execuc[aã]o provis[oó]ria/ },
+  { key: 'fiscal',     label: 'Execução Fiscal / Tributário', color: 'orange',
+    re: /execuc[aã]o fiscal|embargos [aà] execuc[aã]o fiscal|tributari|anulat[oó]ria fiscal|certid[aã]o de d[ií]vida ativa/ },
+  { key: 'juizado',    label: 'Juizado Especial', color: 'eixo-gold',
+    re: /juizado especial/ },
+  { key: 'familia',    label: 'Família / Sucessões', color: 'rose',
+    re: /invent[aá]rio|partilha|div[oó]rcio|separac[aã]o|guarda|aliment|sucess|curatela|interdic[aã]o|uni[aã]o est[aá]vel|tutela\b(?!.*antecipada)(?!.*cautelar)/ },
+  { key: 'recursal',   label: 'Recursos', color: 'blue',
+    re: /apelac[aã]o|agravo|embargos de declarac|embargos infringentes|recurso especial|recurso extraordin[aá]rio|remessa necess[aá]ria|recurso in[o]minado/ },
+  { key: 'cautelar',   label: 'Cautelar / Tutela de Urgência', color: 'purple',
+    re: /cautelar|tutela antecipada|tutela de urg[eê]ncia|liminar|arresto|sequestro|busca e apreens[aã]o|arrolamento de bens/ },
+  { key: 'imobiliario',label: 'Locação / Posse', color: 'green',
+    re: /despejo|locac[aã]o|consignat[oó]ria de alugu|reintegrac[aã]o.*posse|manutenc[aã]o.*posse|usucapi[aã]o|imiss[aã]o na posse/ },
+  { key: 'mandseg',    label: 'Mandado de Segurança / Writs', color: 'teal',
+    re: /mandado de seguranc|habeas data|ac[aã]o popular|mandado de injunc/ },
+];
+function familiaClasse_(tipo, ramo) {
+  const norm = String(tipo || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for (const f of FAMILIA_CLASSE_MAP_) {
+    if (f.re.test(norm)) return f;
+  }
+  // Sem match pelo texto da classe: fallback simples pelo ramo do direito.
+  const ramoNorm = String(ramo || '').toLowerCase();
+  if (ramoNorm.includes('tribut')) return FAMILIA_CLASSE_MAP_.find(f => f.key === 'fiscal');
+  if (ramoNorm.includes('imobili')) return FAMILIA_CLASSE_MAP_.find(f => f.key === 'imobiliario');
+  if (ramoNorm.includes('fam[ií]lia') || ramoNorm.includes('familia')) return FAMILIA_CLASSE_MAP_.find(f => f.key === 'familia');
+  return { key: 'civel', label: 'Cível (procedimento comum)', color: null };
+}
+
 function buildRamoFilter() {
   const ramos = [...new Set(
     allProcessos.map(p => normalizarRamo_(p.ramo)).filter(Boolean).filter(r => !ramoOculto_(r))
@@ -6676,7 +6760,45 @@ function renderProcessos() {
   container.innerHTML = list.map((p, idx) => renderCard(p, idx)).join('');
 }
 
+// Estilo inline por família de classe (09/set/2026) — em vez de criar uma classe CSS fixa por
+// família (9 combinações), monta o style a partir do token de cor via color-mix(), igual ao
+// padrão já usado pros boxes de 2º Grau/Reconvenção (style inline com a cor do caso). Sem cor
+// (família "cível" padrão) retorna string vazia = sem tingimento, como o "branco" do eproc.
+function familiaCardStyle_(colorTok) {
+  if (!colorTok) return '';
+  return `border-top:3px solid var(--${colorTok});background:color-mix(in srgb, var(--${colorTok}) 5%, var(--surface))`;
+}
+function familiaChipStyle_(colorTok) {
+  if (!colorTok) return '';
+  return `background:color-mix(in srgb, var(--${colorTok}) 16%, transparent);color:var(--${colorTok});border-color:color-mix(in srgb, var(--${colorTok}) 45%, transparent)`;
+}
+
+// "Capa do processo" (09/set/2026) — bloco no topo do detalhe do card, nos moldes da tela de
+// consulta processual do eproc (INFOEPROC nº 31/32): número, classe da ação, vara/juízo,
+// juiz(a), data de autuação e situação, num quadro colorido pela família da classe. Só usa
+// campos que já existem no cadastro (Classe da Ação, Vara, Juiz(a), Data de Autuação,
+// Situação) — sem Competência/Localizador(es)/Processos relacionados, que o eproc mostra mas
+// que ainda não são campos do sistema.
+function capaProcessoHtml_(p, fam) {
+  const campo = (label, valor) => `<div class="capa-campo"><span class="capa-label">${escHtml(label)}</span><span class="capa-valor">${valor ? escHtml(valor) : '—'}</span></div>`;
+  const varaJuizo = [p.vara, p.tribunal].filter(Boolean).join(' — ');
+  return `
+    <div class="capa-processo" style="${familiaChipStyle_(fam.color) ? `border-color:color-mix(in srgb, var(--${fam.color}) 40%, var(--border));background:color-mix(in srgb, var(--${fam.color}) 7%, var(--surface2))` : ''}">
+      <div class="capa-linha">
+        ${campo('Nº do processo', p.processo)}
+        ${campo('Classe da Ação', p.tipo)}
+        ${campo('Situação', p.situacao)}
+      </div>
+      <div class="capa-linha">
+        ${campo('Vara / Juízo', varaJuizo)}
+        ${campo('Juiz(a)', p.juiz)}
+        ${campo('Data de Autuação', p.dataAutuacao ? formatDate(p.dataAutuacao) : '')}
+      </div>
+    </div>`;
+}
+
 function renderCard(p, idx) {
+  const fam = familiaClasse_(p.tipo, p.ramo);
   const urgBadge = {
     critico: 'badge-critico',
     urgente: 'badge-urgente',
@@ -6766,13 +6888,13 @@ function renderCard(p, idx) {
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
-    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}${['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase()) ? ' processo-card-semAtuacao' : ''}${(p.status||'').toUpperCase() === 'SUSPENSO' ? ' processo-card-suspenso' : ''}" id="card-${p._uid}" style="animation-delay:${delay}s"
+    <div class="processo-card${p.status === 'EXTINTO' ? ' processo-card-extinto' : ''}${['SUBSTABELECIDO','RENUNCIA','REVOGADO'].includes((p.status||'').toUpperCase()) ? ' processo-card-semAtuacao' : ''}${(p.status||'').toUpperCase() === 'SUSPENSO' ? ' processo-card-suspenso' : ''}" id="card-${p._uid}" title="${escHtml(fam.label)}" style="animation-delay:${delay}s;${familiaCardStyle_(fam.color)}"
          onclick="toggleCard(${p._uid})">
       <div class="priority-bar priority-${p.urgencia}"></div>
       <div class="processo-body">
         <div class="processo-top">
           <span class="processo-nome">${escHtml(p.nome)}</span>
-          <span class="badge badge-ramo">${escHtml(p.ramo || p.tipo)}</span>
+          <span class="badge badge-ramo" style="${familiaChipStyle_(fam.color)}" title="${escHtml(fam.label)}">${escHtml(p.ramo || p.tipo)}</span>
           ${p.situacao ? `<span class="badge badge-situacao">${escHtml(p.situacao)}</span>` : ''}
           ${urgBadge ? `<span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>` : ''}
           ${p.status === 'MONITORAR' ? '<span class="badge badge-urgencia badge-monitorar">Monitorar</span>' : ''}
@@ -6831,6 +6953,7 @@ function renderCard(p, idx) {
 
         <!-- DETALHE EXPANDIDO -->
         <div class="processo-detail">
+          ${capaProcessoHtml_(p, fam)}
           ${audienciaHtml}
           ${segundoGrauHtml}
           ${reconvencaoHtml}
