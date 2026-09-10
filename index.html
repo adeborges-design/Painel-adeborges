@@ -7604,13 +7604,21 @@ function partesDoProcesso(p, polo) {
 // nenhuma parte marcada "Nosso cliente: Sim", cai pros autores cadastrados; se não houver nem isso,
 // cai no comportamento antigo (o cliente único gravado direto no cadastro do processo) — sem quebrar
 // processos já cadastrados antes desta função existir.
+// Correção (10/set/2026): antes, faltando "Nosso Cliente: Sim" e faltando parte com Polo "Autor",
+// a função caía para TODAS as partes cadastradas — incluindo Réu/Outra Parte. Resultado: cadastrar
+// só a parte Ré em "Partes do processo" (sem marcar Autor nem Nosso Cliente) fazia a Procuração,
+// o Contrato de Honorários e a Declaração de Gratuidade saírem em nome da parte RÉ. Agora só cai
+// para partes SEM Polo definido (processos legados, cadastrados antes de existir esse campo) —
+// Réu e "Outra Parte" nunca substituem o cliente; na ausência de qualquer parte utilizável, cai
+// para o campo único "cliente" gravado direto no cadastro do processo (comportamento antigo).
 function clientesDoProcesso(p) {
   const todas = partesDoProcesso(p, null);
   const nossos = todas.filter(function (x) { return x.nossoCliente; });
   if (nossos.length) return nossos;
   const autores = todas.filter(function (x) { return String(x.polo || '').toLowerCase() === 'autor'; });
   if (autores.length) return autores;
-  if (todas.length) return todas;
+  const semPolo = todas.filter(function (x) { return !String(x.polo || '').trim(); });
+  if (semPolo.length) return semPolo;
   return [p];
 }
 // Réus/parte contrária, para a qualificação da Petição. Sem nenhuma parte cadastrada em "Partes
