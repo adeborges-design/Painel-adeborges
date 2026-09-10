@@ -15906,7 +15906,7 @@ window.cpRenderFixas=cpRenderFixas;
     <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
       <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskAcc"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskAcc)"/></svg></span>O</span>
       <span class="eixo-sep"></span>
-      <span class="eixo-mod">Acordos</span>
+      <span class="eixo-mod">Acordos e Repasses</span>
     </div>
     <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
     <div class="loc-title">💰 Acordos com a Parte Contrária</div>
@@ -16905,7 +16905,7 @@ window.cpRenderFixas=cpRenderFixas;
         <option value="contas">4. 💳 Contas a Pagar</option>
         <option value="atendimentos">5. 📞 Atendimentos</option>
         <option value="entregas">6. 📦 Entregas</option>
-        <option value="acordos">7. 🤝 Acordos com a Parte Contrária</option>
+        <option value="acordos">7. 🤝 Gestão de Acordos e Repasses</option>
         <option value="locacoes">8. 🏘️ Gestão de Locações e Repasses</option>
         <option value="rascunhos">9. 🗂️ Tarefas</option>
         <option value="glossario">10. 📘 Glossário</option>
@@ -23518,7 +23518,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="home-card loc" onclick="openAcordosHome()">
           <div class="arrow">→</div>
           <div class="ic">💰</div>
-          <div class="ctitle">Acordos</div>
+          <div class="ctitle">Gestão de Acordos e Repasses</div>
           <div class="cdesc">Valores da parte contrária, honorários e repasse ao cliente</div>
           <div class="cnums">
             <div class="cnum cnum-clickable" onclick="event.stopPropagation();abrirAcordos()" title="Recebido da parte contrária no mês"><div class="v" id="hc-acc-receb" style="color:var(--green)">—</div><div class="l">recebido no mês</div><span class="cnum-spark-wrap" id="spark-acc-receb"></span></div>
@@ -23844,7 +23844,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="abrirHonorarios();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Honorários</button>'+
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Gestão de Locações e Repasses</button>'+
-        '<button class="home-user-item" onclick="openAcordosHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Acordos</button>'+
+        '<button class="home-user-item" onclick="openAcordosHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Gestão de Acordos e Repasses</button>'+
         '<button class="home-user-item" onclick="abrirComissoes();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8l4 4-4 4M3 12h18"/></svg>Comissões Imobiliárias</button>'+
         '<button class="home-user-item" onclick="openImoveisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>Imóveis Disponíveis</button>'+
         '<div class="home-user-divider"></div>'+
@@ -24288,7 +24288,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'contas',        titulo:'Contas a Pagar'},
     {key:'atendimentos', titulo:'Atendimentos'},
     {key:'entregas',      titulo:'Entregas'},
-    {key:'acordos',       titulo:'Acordos com a Parte Contrária'},
+    {key:'acordos',       titulo:'Gestão de Acordos e Repasses'},
     {key:'locacoes',      titulo:'Gestão de Locações e Repasses'},
     {key:'imoveis',       titulo:'Imóveis Disponíveis'},
     {key:'comissoes',     titulo:'Comissões Imobiliárias'},
@@ -25376,7 +25376,7 @@ window.cpRenderFixas=cpRenderFixas;
     acc.forEach(function(c){
       var hay=[c['Cliente'],c['Parte Contraria'],c['Nr Processo']].join(' ').toLowerCase();
       if(hay.indexOf(termo)>=0){
-        out.push({modulo:'Acordos',icone:'🤝',titulo:c['Cliente']||'(sem nome)',sub:[c['Parte Contraria']?'Réu: '+c['Parte Contraria']:'',c['Nr Processo']].filter(Boolean).join(' — ')});
+        out.push({modulo:'Acordos e Repasses',icone:'🤝',titulo:c['Cliente']||'(sem nome)',sub:[c['Parte Contraria']?'Réu: '+c['Parte Contraria']:'',c['Nr Processo']].filter(Boolean).join(' — ')});
       }
     });
 
@@ -25392,7 +25392,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(termo.length<2){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Digite ao menos 2 letras…</div>';return;}
     var res=window.buscaGlobalColetar_(termo);
     if(!res.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">Nada encontrado para "'+E(termo)+'".</div>';return;}
-    var COR_MOD={'Gestão de Processos':'var(--purple)','Honorários':'var(--orange)','Locações e Repasses':'var(--accent)','Acordos':'var(--accent2)'};
+    var COR_MOD={'Gestão de Processos':'var(--purple)','Honorários':'var(--orange)','Locações e Repasses':'var(--accent)','Acordos e Repasses':'var(--accent2)'};
     el.innerHTML=res.map(function(r,i){
       var cor=COR_MOD[r.modulo]||'var(--accent)';
       return '<div class="busca-global-item" onclick="buscaGlobalIrPara('+i+')" style="padding:10px 6px;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;gap:10px;align-items:flex-start">'
@@ -25420,7 +25420,7 @@ window.cpRenderFixas=cpRenderFixas;
     } else if(r.modulo==='Locações e Repasses'){
       openAlugueisHome();
       setTimeout(function(){var el=document.getElementById('locSearchInput');if(el){el.value=termo;if(typeof locRender==='function')locRender();}},50);
-    } else if(r.modulo==='Acordos'){
+    } else if(r.modulo==='Acordos e Repasses'){
       if(typeof window.abrirAcordos==='function')window.abrirAcordos();
       setTimeout(function(){var el=document.getElementById('accBusca');if(el){el.value=termo;if(typeof window.accRender==='function')window.accRender();}},50);
     }
@@ -25778,7 +25778,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['notas rapidas','nota rapida','notas'],label:'Notas Rápidas',run:function(){if(typeof window.notasAbrir==='function')window.notasAbrir();}},
     {kw:['honorarios'],label:'Honorários',run:function(){voiceCloseAllOverlays();if(typeof abrirHonorarios==='function')abrirHonorarios();}},
     {kw:['locacoes','locacao','alugueis','aluguel'],label:'Gestão de Locações e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
-    {kw:['acordos','acordo'],label:'Acordos',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
+    {kw:['acordos','acordo'],label:'Gestão de Acordos e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
     {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
     {kw:['imoveis','imoveis disponiveis','catalogo de imoveis'],label:'Imóveis Disponíveis',run:function(){voiceCloseAllOverlays();if(typeof window.abrirImoveis==='function')window.abrirImoveis();}},
     {kw:['processos','processo','gestao de processos'],label:'Gestão de Processos',run:function(){voiceCloseAllOverlays();}},
@@ -25951,7 +25951,7 @@ window.cpRenderFixas=cpRenderFixas;
   // microfone. Reaproveita os mesmos alvos de VOICE_COMMANDS (por label), pra não
   // duplicar a lógica de qual botão abre o quê.
   var VOICE_KEY_MAP={
-    '1':'Gestão de Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Acordos',
+    '1':'Gestão de Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Gestão de Acordos e Repasses',
     '6':'Notas Rápidas','7':'Tarefas','8':'Início','9':'Busca'
   };
   document.addEventListener('keydown',function(e){
