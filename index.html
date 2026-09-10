@@ -15847,8 +15847,11 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="cobr-secao full">Aluguel deste mês</div>
         <div class="loc-cfield full">
-          <label>Aluguel (R$) <span style="font-weight:400;color:var(--muted)">— pré-preenchido com o valor atual; deixe 0,00 se este mês for só multa rescisória/outras cobranças (contrato encerrado)</span></label>
+          <label>Aluguel (R$) <span style="font-weight:400;color:var(--muted)">— pré-preenchido com o valor do último mês lançado deste contrato (não com o valor atual do cadastro); deixe 0,00 se este mês for só multa rescisória/outras cobranças (contrato encerrado)</span></label>
           <input class="loc-cinput" id="cobr-aluguel-mes" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()">
+          <div id="cobr-aluguel-alerta" style="display:none;margin-top:6px;padding:8px 10px;border-radius:6px;background:rgba(230,160,40,0.12);border:1px solid rgba(230,160,40,0.4);font-size:12px;color:var(--yellow, #e0a028)">
+            ⚠️ O aluguel cadastrado no contrato é <strong id="cobr-aluguel-alerta-valor"></strong>, diferente do valor preenchido acima (veio do último lançamento, que pode estar desatualizado se houve reajuste). <button type="button" class="loc-btn" style="padding:3px 10px;font-size:11px;margin-left:4px" onclick="cobrUsarAluguelContrato()">Usar valor do contrato</button>
+          </div>
         </div>
         <div class="cobr-secao full">Condomínio</div>
         <div class="loc-cfield"><label>Cota de condomínio (R$)</label><input class="loc-cinput" id="cobr-condominio" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
@@ -19561,6 +19564,34 @@ window.cpRenderFixas=cpRenderFixas;
     var wrap=document.getElementById('cobr-iptu-parcelas-wrap');
     if(wrap)wrap.style.display=sel.value==='parcelado'?'block':'none';
   };
+  // Alerta de aluguel desatualizado (10/set/2026) — o campo "Aluguel deste mês" é pré-preenchido
+  // com o valor do ÚLTIMO LANÇAMENTO do contrato (histórico), não com o valor atual do cadastro
+  // (ct.aluguel) — ver locGerarProximoMes. Isso é proposital pra não reescrever meses passados,
+  // mas quando o usuário aplica um reajuste editando só o cadastro do contrato, os lançamentos já
+  // gerados (e os próximos, que copiam do último) continuam com o valor ANTIGO até alguém notar —
+  // o que já causou cobrança a menor pro cliente (BUG relatado: valor enviado ao locatário maior
+  // que o lançado no sistema). Mostra um aviso comparando com o valor atual do contrato, com botão
+  // pra aplicar de um clique, em vez de deixar passar batido.
+  function cobrChecarAluguelDivergente_(contrato){
+    var alerta=document.getElementById('cobr-aluguel-alerta');
+    if(!alerta)return;
+    var c=contratosById[contrato]||{};
+    var atual=num(c.aluguel);
+    var preenchido=num(document.getElementById('cobr-aluguel-mes').value);
+    if(atual>0&&Math.abs(atual-preenchido)>=0.01){
+      document.getElementById('cobr-aluguel-alerta-valor').textContent='R$ '+atual.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      alerta.style.display='block';
+    }else{
+      alerta.style.display='none';
+    }
+  }
+  window.cobrUsarAluguelContrato=function(){
+    var contrato=document.getElementById('cobr-contrato').value;
+    var c=contratosById[contrato]||{};
+    document.getElementById('cobr-aluguel-mes').value=num(c.aluguel).toFixed(2);
+    document.getElementById('cobr-aluguel-alerta').style.display='none';
+    cobrAtualizarPreview();
+  };
   // Meses (de trás pra frente) em que ESTE contrato específico já tem lançamento — usado pra
   // popular o seletor de "duplicar valores de outro mês" no modal de Encargos.
   function mesesContratoDisponiveis_(contrato){
@@ -19575,6 +19606,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-contrato').value=contrato;
     document.getElementById('cobrContratoLabel').textContent=contrato+' — '+(c.locatario||'');
     document.getElementById('cobr-aluguel-mes').value=(l.aluguel!=null?l.aluguel:0).toFixed(2);
+    cobrChecarAluguelDivergente_(contrato);
     COBR_CAMPOS_NUM.forEach(function(p){document.getElementById(p[0]).value=l[p[1]]||'';});
     document.getElementById('cobr-iptu-parcela-num').value=l.iptuParcelaNum||'';
     document.getElementById('cobr-iptu-parcela-total').value=l.iptuParcelaTotal||'';
@@ -19605,6 +19637,7 @@ window.cpRenderFixas=cpRenderFixas;
     if(!origem){alert('Não foi possível encontrar o lançamento de '+mesOrigem+' pra esse contrato.');return;}
     if(!confirm('Isso vai SUBSTITUIR os valores preenchidos agora no formulário (aluguel, condomínio, IPTU, outras cobranças e desconto) pelos de '+mesExtenso(mesOrigem)+'. Multa e juros não são copiados. Revise tudo antes de clicar em "Salvar". Continuar?'))return;
     document.getElementById('cobr-aluguel-mes').value=(origem.aluguel!=null?origem.aluguel:0).toFixed(2);
+    cobrChecarAluguelDivergente_(contrato);
     COBR_CAMPOS_NUM.forEach(function(p){
       if(p[1]==='multa'||p[1]==='juros')return;
       document.getElementById(p[0]).value=origem[p[1]]||'';
