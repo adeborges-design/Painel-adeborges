@@ -9308,6 +9308,14 @@ window.accNovoContrato = function () {
   document.getElementById('accCFormTitle').textContent = 'Novo acordo';
   document.getElementById('ac-msg').textContent = '';
   document.getElementById('accContratosSection').classList.remove('loc-hidden'); document.getElementById('btnAccContratos').classList.add('active');
+  document.getElementById('accFormWrap').classList.remove('loc-hidden');
+};
+
+// Fecha só o formulário de cadastro/edição, mantendo a lista de "Acordos cadastrados" aberta
+// (10/set/2026) — evita que o botão "Acordos cadastrados" pareça abrir direto uma tela de
+// "Novo acordo" quando na verdade o usuário só queria ver a lista dos já cadastrados.
+window.accFecharFormulario = function () {
+  document.getElementById('accFormWrap').classList.add('loc-hidden');
 };
 
 window.accEditarContrato = function (id) {
@@ -9342,6 +9350,7 @@ window.accEditarContrato = function (id) {
   document.getElementById('accCFormTitle').textContent = 'Editar acordo';
   document.getElementById('ac-msg').textContent = '';
   document.getElementById('accContratosSection').classList.remove('loc-hidden'); document.getElementById('btnAccContratos').classList.add('active');
+  document.getElementById('accFormWrap').classList.remove('loc-hidden');
 };
 
 window.accSalvarContrato = function () {
@@ -15953,6 +15962,7 @@ window.cpRenderFixas=cpRenderFixas;
 
     <!-- ACORDOS CADASTRADOS -->
     <div id="accContratosSection" class="loc-hidden">
+      <div id="accFormWrap" class="loc-hidden">
       <div class="loc-section-title" id="accCFormTitle">Novo acordo</div>
       <div class="loc-cform">
         <input type="hidden" id="ac-id">
@@ -15995,8 +16005,10 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cform-actions">
           <span class="msg" id="ac-msg"></span>
           <button class="loc-btn" onclick="accNovoContrato()">Limpar</button>
+          <button class="loc-btn" onclick="accFecharFormulario()">Fechar formulário</button>
           <button class="loc-btn primary" onclick="accSalvarContrato()">💾 Salvar acordo</button>
         </div>
+      </div>
       </div>
       <div class="loc-table-wrap">
         <table class="loc-table"><thead><tr><th>Processo</th><th>Cliente</th><th>Parte Contrária</th><th style="text-align:right">Valor Total</th><th style="text-align:center">Parcelas</th><th style="text-align:center">Honorários (%)</th><th style="text-align:right">Recebido</th><th style="text-align:right">Repassado</th><th style="text-align:center">Ativo</th><th></th></tr></thead>
