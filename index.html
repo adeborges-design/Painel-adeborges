@@ -24199,6 +24199,10 @@ window.cpRenderFixas=cpRenderFixas;
   window.renderNotifBell=renderNotifBell;
 
   function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','captacaoOverlay','comOverlay','imovOverlay','ferramentasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  // Exposta em window: o módulo de Captação de Clientes (script separado, outra IIFE) chama
+  // closeOverlays() direto — sem isto dava "closeOverlays is not defined" e o botão "Captação
+  // de Clientes" não abria nada (ReferenceError silencioso, sem nenhum feedback na tela).
+  window.closeOverlays=closeOverlays;
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
