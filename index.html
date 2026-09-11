@@ -985,6 +985,33 @@
   }
   .dp-add-btn:hover { opacity: .9; }
 
+  /* Blocos editáveis direto no card (11/set/2026): Prazo do cliente, Última movimentação,
+     Próximo passo do advogado, O que o cliente está providenciando, Anotação interna — os 5
+     blocos que o Dr. Adenilson pediu pra editar sem precisar abrir "Editar Cadastro". Mesmo
+     padrão de "salva e atualiza só esse pedaço da tela" já usado em Despesas do Processo. */
+  .proc-inline-box { position: relative; }
+  .proc-inline-editbtn {
+    position: absolute; top: 8px; right: 10px;
+    background: none; border: none; cursor: pointer;
+    font-size: 12.5px; opacity: .6; padding: 2px 4px; line-height: 1;
+  }
+  .proc-inline-editbtn:hover { opacity: 1; }
+  .proc-inline-edit { display: none; margin-top: 6px; }
+  .proc-inline-box.is-editing .proc-inline-view { display: none; }
+  .proc-inline-box.is-editing .proc-inline-edit { display: block; }
+  .proc-inline-input {
+    width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 6px;
+    border: 1px solid var(--border2, var(--border)); background: var(--surface, transparent);
+    color: var(--text); font-size: 12.5px; font-family: inherit; resize: vertical; margin-bottom: 6px;
+  }
+  .proc-inline-actions { display: flex; gap: 6px; }
+  .proc-inline-save, .proc-inline-cancel {
+    padding: 6px 12px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .proc-inline-save { background: var(--accent); color: #fff; }
+  .proc-inline-save:hover { opacity: .9; }
+  .proc-inline-cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2, var(--border)); }
+
   .detail-actions {
     display: flex;
     flex-direction: column;
@@ -6957,6 +6984,154 @@ function capaProcessoHtml_(p, fam) {
     </div>`;
 }
 
+// Blocos editáveis direto no card (11/set/2026): Prazo do Cliente, Última Movimentação,
+// Próximo Passo do Advogado, O que o Cliente está providenciando e Anotação Interna — os 5
+// blocos que o Dr. Adenilson pediu pra poder editar sem abrir "Editar Cadastro". Mesmo padrão
+// de "salva e re-renderiza só esse pedaço da tela" já usado em Despesas do Processo: grava via
+// a ação genérica 'atualizar' (sem ação nova no backend) e troca só o outerHTML daquele bloco.
+function prazoClienteBoxHtml_(p) {
+  var temValor = p.dataPrazoCliente && p.dataPrazoCliente.length > 3;
+  return `
+  <div class="providencias-box proc-inline-box" id="procbox-prazoCliente-${p._uid}" onclick="event.stopPropagation()">
+    <div class="proc-inline-view">
+      <div class="label">Prazo do cliente - aguardando providência</div>
+      <div class="text">${temValor ? `Data limite: <strong>${formatDate(p.dataPrazoCliente)}</strong>` : '<span style="color:var(--muted)">Nenhum prazo do cliente definido.</span>'}</div>
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'prazoCliente')">✏️</button>
+    </div>
+    <div class="proc-inline-edit">
+      <input type="date" class="proc-inline-input" id="procin-prazoCliente-${p._uid}" value="${dataParaInput(p.dataPrazoCliente || '')}">
+      <div class="proc-inline-actions">
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'prazoCliente')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'prazoCliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+function ultimaMovBoxHtml_(p) {
+  var temValor = p.ultima && p.ultima.length > 2;
+  return `
+  <div class="atualizacao-box proc-inline-box" id="procbox-ultimaMov-${p._uid}" onclick="event.stopPropagation()">
+    <div class="proc-inline-view">
+      <strong>Última movimentacao:</strong><br>${temValor ? escHtml(p.ultima) : '<span style="color:var(--muted)">Nenhuma movimentação registrada.</span>'}
+      ${temValor && p.dataAtua ? `<br><span style="color:var(--muted);font-size:11px">${formatDate(p.dataAtua)}</span>` : ''}
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'ultimaMov')">✏️</button>
+    </div>
+    <div class="proc-inline-edit">
+      <textarea class="proc-inline-input" rows="3" id="procin-ultimaMov-${p._uid}-texto" placeholder="Última movimentação...">${escHtml(p.ultima || '')}</textarea>
+      <input type="date" class="proc-inline-input" id="procin-ultimaMov-${p._uid}-data" value="${dataParaInput(p.dataAtua || '')}">
+      <div class="proc-inline-actions">
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'ultimaMov')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'ultimaMov')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+function proxPassoBoxHtml_(p) {
+  var temValor = p.proximoPassoAdv && p.proximoPassoAdv.length > 2;
+  return `
+  <div class="atualizacao-box proc-inline-box" id="procbox-proxPasso-${p._uid}" style="border-left:3px solid var(--blue);padding-left:10px" onclick="event.stopPropagation()">
+    <div class="proc-inline-view">
+      <strong style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer):</strong><br>${temValor ? escHtml(p.proximoPassoAdv) : '<span style="color:var(--muted)">Nada definido ainda.</span>'}
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'proxPasso')">✏️</button>
+    </div>
+    <div class="proc-inline-edit">
+      <textarea class="proc-inline-input" rows="3" id="procin-proxPasso-${p._uid}" placeholder="O que o advogado precisa fazer...">${escHtml(p.proximoPassoAdv || '')}</textarea>
+      <div class="proc-inline-actions">
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'proxPasso')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'proxPasso')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+function provClienteBoxHtml_(p) {
+  var temValor = p.providCliente && p.providCliente.length > 2;
+  return `
+  <div class="atualizacao-box proc-inline-box" id="procbox-providCliente-${p._uid}" style="border-left:3px solid var(--green);padding-left:10px" onclick="event.stopPropagation()">
+    <div class="proc-inline-view">
+      <strong style="color:var(--green)">🧑 O que o cliente está providenciando:</strong><br>${temValor ? escHtml(p.providCliente) : '<span style="color:var(--muted)">Nada definido ainda.</span>'}
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'providCliente')">✏️</button>
+    </div>
+    <div class="proc-inline-edit">
+      <textarea class="proc-inline-input" rows="3" id="procin-providCliente-${p._uid}" placeholder="O que o cliente precisa providenciar...">${escHtml(p.providCliente || '')}</textarea>
+      <div class="proc-inline-actions">
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'providCliente')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'providCliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+function notaInternaBoxHtml_(p) {
+  var temValor = p.obs && p.obs.length > 2;
+  return `
+  <div class="nota-interna-box proc-inline-box" id="procbox-notaInterna-${p._uid}" style="margin-top:8px" onclick="event.stopPropagation()">
+    <div class="proc-inline-view">
+      <div class="nota-interna-tag">🔒 Anotação interna · não vai para o cliente</div>
+      ${temValor ? escHtml(p.obs) : '<span style="color:var(--muted)">Nenhuma anotação interna.</span>'}
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'notaInterna')">✏️</button>
+    </div>
+    <div class="proc-inline-edit">
+      <textarea class="proc-inline-input" rows="3" id="procin-notaInterna-${p._uid}" placeholder="Anotação só para uso interno do escritório...">${escHtml(p.obs || '')}</textarea>
+      <div class="proc-inline-actions">
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'notaInterna')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'notaInterna')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+var PROC_BOX_RENDER_ = {
+  prazoCliente: prazoClienteBoxHtml_,
+  ultimaMov: ultimaMovBoxHtml_,
+  proxPasso: proxPassoBoxHtml_,
+  providCliente: provClienteBoxHtml_,
+  notaInterna: notaInternaBoxHtml_
+};
+window.procBoxAbrirEdicao_ = function(uid, campo) {
+  var el = document.getElementById('procbox-' + campo + '-' + uid);
+  if (!el) return;
+  el.classList.add('is-editing');
+  var first = el.querySelector('.proc-inline-edit textarea, .proc-inline-edit input');
+  if (first) first.focus();
+};
+window.procBoxCancelarEdicao_ = function(uid, campo) {
+  var el = document.getElementById('procbox-' + campo + '-' + uid);
+  if (!el) return;
+  el.classList.remove('is-editing');
+};
+window.procBoxSalvar_ = function(uid, campo) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); });
+  if (!p) return;
+  var campos = {};
+  if (campo === 'prazoCliente') {
+    var v1 = inputParaData(document.getElementById('procin-prazoCliente-' + uid).value);
+    p.dataPrazoCliente = v1;
+    campos['dataPrazoCliente'] = v1;
+  } else if (campo === 'ultimaMov') {
+    var vt = document.getElementById('procin-ultimaMov-' + uid + '-texto').value.trim();
+    var vd = inputParaData(document.getElementById('procin-ultimaMov-' + uid + '-data').value);
+    p.ultima = vt;
+    p.dataAtua = vd;
+    campos['Última Atualização'] = vt;
+    campos['Data Atualização'] = vd;
+  } else if (campo === 'proxPasso') {
+    var vp = document.getElementById('procin-proxPasso-' + uid).value.trim();
+    p.proximoPassoAdv = vp;
+    campos['proximoPassoAdv'] = vp;
+  } else if (campo === 'providCliente') {
+    var vc = document.getElementById('procin-providCliente-' + uid).value.trim();
+    p.providCliente = vc;
+    campos['Providências para o Cliente Atender'] = vc;
+  } else if (campo === 'notaInterna') {
+    var vn = document.getElementById('procin-notaInterna-' + uid).value.trim();
+    p.obs = vn;
+    campos['Observações'] = vn;
+  } else return;
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: campos }) }).catch(function(){});
+  var boxId = 'procbox-' + campo + '-' + uid;
+  var el = document.getElementById(boxId);
+  var renderFn = PROC_BOX_RENDER_[campo];
+  if (el && renderFn) el.outerHTML = renderFn(p);
+};
+
 // Bloco "Despesas do Processo" (11/set/2026): custas, diligências, perícia, cópias etc.
 // lançadas ao longo do processo, com data/descrição/valor — soma automática do total. Grava
 // no mesmo campo único "Despesas Processo" via a ação genérica "atualizar" (sem sheet/ação
@@ -7085,45 +7260,6 @@ function renderCard(p, idx) {
       </div>`;
   }
 
-  // Providencias
-  let providHtml = '';
-  if (p.dataPrazoCliente && p.dataPrazoCliente.length > 3) {
-    providHtml = `
-      <div class="providencias-box">
-        <div class="label">Prazo do cliente - aguardando providência</div>
-        <div class="text">Data limite: <strong>${formatDate(p.dataPrazoCliente)}</strong></div>
-      </div>`;
-  }
-
-  // Última atualizacao
-  let ultimaHtml = '';
-  if (p.ultima && p.ultima.length > 2) {
-    ultimaHtml = `
-      <div class="atualizacao-box">
-        <strong>Última movimentacao:</strong><br>${escHtml(p.ultima)}
-        ${p.dataAtua ? `<br><span style="color:var(--muted);font-size:11px">${formatDate(p.dataAtua)}</span>` : ''}
-      </div>`;
-  }
-
-  // Próximo Passo do Advogado / O que o Cliente está providenciando (11/set/2026) - mesmos
-  // campos já usados no card compartilhável com o cliente (proximoPassoAdv/providCliente,
-  // editáveis em "Editar Cadastro" > Próximos Passos), agora também exibidos direto no card
-  // interno do processo, no mesmo padrão visual de "Última movimentação".
-  let proximoPassoHtml = '';
-  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) {
-    proximoPassoHtml = `
-      <div class="atualizacao-box" style="border-left:3px solid var(--blue);padding-left:10px">
-        <strong style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer):</strong><br>${escHtml(p.proximoPassoAdv)}
-      </div>`;
-  }
-  let providClienteBoxHtml = '';
-  if (p.providCliente && p.providCliente.length > 2) {
-    providClienteBoxHtml = `
-      <div class="atualizacao-box" style="border-left:3px solid var(--green);padding-left:10px">
-        <strong style="color:var(--green)">🧑 O que o cliente está providenciando:</strong><br>${escHtml(p.providCliente)}
-      </div>`;
-  }
-
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
@@ -7196,7 +7332,7 @@ function renderCard(p, idx) {
           ${audienciaHtml}
           ${segundoGrauHtml}
           ${reconvencaoHtml}
-          ${providHtml}
+          ${prazoClienteBoxHtml_(p)}
 
           <div class="detail-grid">
             <div class="detail-block">
@@ -7238,17 +7374,13 @@ function renderCard(p, idx) {
             </div>` : ''}
           </div>
 
-          ${ultimaHtml}
+          ${ultimaMovBoxHtml_(p)}
 
-          ${proximoPassoHtml}
+          ${proxPassoBoxHtml_(p)}
 
-          ${providClienteBoxHtml}
+          ${provClienteBoxHtml_(p)}
 
-          ${p.obs && p.obs.length > 2 && p.obs !== p.ultima ? `
-          <div class="nota-interna-box" style="margin-top:8px">
-            <div class="nota-interna-tag">🔒 Anotação interna · não vai para o cliente</div>
-            ${escHtml(p.obs)}
-          </div>` : ''}
+          ${notaInternaBoxHtml_(p)}
 
           ${despesasProcBlocoHtml_(p)}
 
