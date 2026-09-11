@@ -351,7 +351,12 @@
 
   // ============ PASSO: COMO TERMINOU ============
   function renderMotivo(){
-    if (dados['Ainda Trabalha']==='Sim') { dados['Como Terminou']='Ainda trabalho lá'; ir(1); return ''; }
+    // Se ainda trabalha na empresa, este passo não se aplica — pula sozinho pro próximo.
+    // O avanço é adiado (setTimeout) pra não disparar renderPasso() *dentro* da própria
+    // chamada de passo.render() em andamento: a chamada externa ainda ia sobrescrever o
+    // conteúdo certo (já desenhado pelo ir(1) síncrono) com o '' retornado aqui, deixando a
+    // tela em branco pra quem responde "ainda trabalho lá" — corrigido em 11/set/2026.
+    if (dados['Ainda Trabalha']==='Sim') { dados['Como Terminou']='Ainda trabalho lá'; setTimeout(function(){ ir(1); }, 0); return ''; }
     return ''
       +'<div class="step-title">Como foi a saída?</div>'
       +'<p class="step-sub">Escolha a opção mais parecida com o que aconteceu.</p>'
