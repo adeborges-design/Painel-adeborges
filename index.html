@@ -18329,6 +18329,26 @@ window.cpRenderFixas=cpRenderFixas;
   // Diferença entre o que foi cobrado e o que foi recebido: positiva = faltou (recebido a
   // menor), negativa = sobrou (recebido a maior), zero = bateu certinho.
   function diferencaRecebidoOf(l){return Math.round((valorCobradoOf(l)-valorRecebidoOf(l))*100)/100;}
+  // Linha extra nos informes de repasse/recibos (11/set/2026): quando o status é "Recebido a
+  // menor"/"Recebido a maior", o TOTAL já sai ajustado pela diferença (effRep desconta/soma via
+  // diferencaRecebidoOf), mas até aqui os informes mostravam só "Aluguel recebido" no valor
+  // CHEIO (cobrado) sem nenhuma linha explicando o motivo do total não bater com a soma das
+  // linhas visíveis — o locador via um total menor sem entender por quê. Mostra a diferença como
+  // linha própria, com o texto certo conforme sobrou ou faltou.
+  function diferencaRecebidoLinhaHtml_(w){
+    if(w.statusAluguel!=='Recebido a menor'&&w.statusAluguel!=='Recebido a maior')return '';
+    var diff=diferencaRecebidoOf(w);
+    if(!diff)return '';
+    var menor=diff>0;
+    return linhaValor(menor?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês',Math.abs(diff),menor?'-':'+');
+  }
+  function diferencaRecebidoTexto_(w){
+    if(w.statusAluguel!=='Recebido a menor'&&w.statusAluguel!=='Recebido a maior')return '';
+    var diff=diferencaRecebidoOf(w);
+    if(!diff)return '';
+    var menor=diff>0;
+    return '('+(menor?'−':'+')+') '+(menor?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês')+': '+BRL(Math.abs(diff))+'\n';
+  }
 
   // Repasse SEMPRE calculado pela fórmula — não existe mais valor manual/travado aqui de
   // propósito: por segurança, o que aparece na coluna Repasse tem que coincidir sempre com o
@@ -21376,7 +21396,7 @@ window.cpRenderFixas=cpRenderFixas;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||''};
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||'',statusAluguel:w.statusAluguel,diferencaRecebido:diferencaRecebidoOf(w)};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -21415,6 +21435,7 @@ window.cpRenderFixas=cpRenderFixas;
         +'</div>'
         +'<div style="margin-bottom:2px">Contrato nº <strong>'+E(l.contrato)+'</strong></div>'
         +linhaValor('Aluguel',l.aluguel,'')
+        +((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido?linhaValor(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês',Math.abs(l.diferencaRecebido),l.diferencaRecebido>0?'-':'+'):'')
         +(l.taxa?linhaValor('Taxa de administração',l.taxa,'-'):'')
         +(l.multa?linhaValor('Multa',l.multa,'+'):'')
         +(l.juros?linhaValor('Juros',l.juros,'+'):'')
@@ -21476,6 +21497,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.statusRep==='Repassado'?'✅':'⏳')+'\n';
       txt+='Contrato nº '+l.contrato+'\n';
       txt+='Aluguel: '+BRL(l.aluguel)+'\n';
+      if((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido)txt+='('+(l.diferencaRecebido>0?'−':'+')+') '+(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês')+': '+BRL(Math.abs(l.diferencaRecebido))+'\n';
       if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
       l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
       if(l.iptu)txt+='(+) '+iptuLabel_(l)+': '+BRL(l.iptu)+'\n';
@@ -21926,13 +21948,15 @@ window.cpRenderFixas=cpRenderFixas;
       var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
         +(w.aluguel?linhaValor('Aluguel recebido',w.aluguel,''):'')
+        +diferencaRecebidoLinhaHtml_(w)
         +(w.multa?linhaValor('Multa',w.multa,'+'):'')
         +(w.juros?linhaValor('Juros',w.juros,'+'):'')
         +linhaValor('Taxa de administração',w.taxa,'-')
         +linhasCondoRep
         +(w.iptu?linhaValor(iptuLabel_(w),w.iptu,'+'):'')
         +(w.desconto?linhaValor('Desconto',w.desconto,'-'):'');
-      totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>';
+      totalRodape='<div style="color:#c8d8f0;font-size:11.5px;margin-top:4px">Referente ao aluguel vencido em <strong>'+E(mesExtenso(w.mes))+'</strong></div>'
+        +(w.statusAluguel==='Recebido a menor'?'<div style="color:var(--yellow);font-size:11.5px;margin-top:2px">⚠ Locatário pagou a menor este mês — a diferença já foi descontada do repasse acima.</div>':'');
       contaTitulo='Dados bancários do locador (repasse)';
       contaHtml=reciboLocContaHtml({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
       disclaimer='';
@@ -22105,6 +22129,7 @@ window.cpRenderFixas=cpRenderFixas;
       // Sem garantia locatícia aqui também — removida dos dois documentos.
       txt+='\n';
       if(w.aluguel)txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
+      txt+=diferencaRecebidoTexto_(w);
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
       txt+='(−) Taxa de administração: -'+fmt(w.taxa)+'\n';
@@ -22113,6 +22138,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(w.desconto)txt+='(−) Desconto: -'+fmt(w.desconto)+'\n';
       txt+='\n*TOTAL REPASSADO:* '+fmt(rep)+'\n';
       txt+='Referente ao aluguel vencido em '+mesExtenso(w.mes)+'\n';
+      if(w.statusAluguel==='Recebido a menor')txt+='⚠ Locatário pagou a menor este mês — a diferença já foi descontada do repasse acima.\n';
       if(w.observacoesLocador)txt+='\n*OBSERVAÇÃO:* '+w.observacoesLocador+'\n';
       txt+='\n*DADOS BANCÁRIOS DO LOCADOR (REPASSE)*\n';
       txt+=contaTxt({titular:c.locador||'',banco:c.bancoLocador||'',agencia:c.agenciaLocador||'',conta:c.contaLocador||'',pix:c.pixLocador||''});
