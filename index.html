@@ -2978,13 +2978,20 @@
       return function () {
         return getFile().then(function (file) {
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            return navigator.share({ files: [file], title: opts.titulo || 'Documento' }).catch(function () {});
+            return navigator.share({ files: [file], title: opts.titulo || 'Documento' }).catch(function (e) { if (e && e.name !== 'AbortError') alert('Não consegui compartilhar a imagem (' + (e.message || e) + ').'); });
           } else {
             var url = URL.createObjectURL(file);
             var a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
             URL.revokeObjectURL(url);
+            var tmp = document.createElement('div');
+            tmp.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf7d;color:#000;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;';
+            tmp.textContent = opts.msg || 'Imagem baixada — confira a pasta "Downloads".';
+            document.body.appendChild(tmp);
+            setTimeout(function () { tmp.remove(); }, 2800);
           }
-        }).then(function () { if (opts.aoEnviar) opts.aoEnviar(); });
+        }).then(function () { if (opts.aoEnviar) opts.aoEnviar(); }).catch(function (e) {
+          alert('Não consegui gerar a imagem (' + (e && e.message || e) + '). Tente novamente ou use "🖨 Imprimir/PDF".');
+        });
       };
     }
 
@@ -17008,6 +17015,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-parc-img" onclick="avisoEnviarImagem()">📸 Foto</button>
       <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
+      <button class="loc-btn" onclick="avisoCopiarContato_()">📋 Copiar contato</button>
     </div>
   </div>
 </div>
@@ -17911,6 +17919,9 @@ window.cpRenderFixas=cpRenderFixas;
   // como recebido, pra abrir a Correspondência já com o texto de quitação total ou parcial
   // pronto — ver abrirConfirmacaoRecebimentoLoc_.
   var _avisoConfirmacaoContext=null;
+  // WhatsApp/e-mail/assunto do destinatário do aviso atualmente aberto no card — montado em
+  // avisoGerar() e usado pelo botão "📋 Copiar contato" (avisoCopiarContato_).
+  var _avisoContatoTexto='';
 
   function cfg(){try{return (typeof getConfig==='function')?getConfig():null;}catch(e){return null;}}
   function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
@@ -21215,15 +21226,15 @@ window.cpRenderFixas=cpRenderFixas;
         +'<div style="font-weight:700;color:var(--accent2);font-size:14px">'+(idx+1)+'. '+E(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'</div>'
         +'<div style="font-size:11px;color:'+(l.statusRep==='Repassado'?'var(--green)':'var(--yellow)')+';font-weight:700;white-space:nowrap;margin-left:10px">'+(l.statusRep==='Repassado'?'● Repassado':'● Pendente')+'</div>'
         +'</div>'
-        +'<div>Contrato nº <strong>'+E(l.contrato)+'</strong></div>'
-        +'<div>Aluguel: <strong>'+BRL(l.aluguel)+'</strong></div>'
-        +(l.taxa?'<div>(−) Taxa de administração: <strong>-'+BRL(l.taxa)+'</strong></div>':'')
-        +(l.multa?'<div>(+) Multa: <strong>'+BRL(l.multa)+'</strong></div>':'')
-        +(l.juros?'<div>(+) Juros: <strong>'+BRL(l.juros)+'</strong></div>':'')
+        +'<div style="margin-bottom:2px">Contrato nº <strong>'+E(l.contrato)+'</strong></div>'
+        +linhaValor('Aluguel',l.aluguel,'')
+        +(l.taxa?linhaValor('Taxa de administração',l.taxa,'-'):'')
+        +(l.multa?linhaValor('Multa',l.multa,'+'):'')
+        +(l.juros?linhaValor('Juros',l.juros,'+'):'')
         +itensHtml
-        +(l.iptu?'<div>(+) '+iptuLabel_(l)+': <strong>'+BRL(l.iptu)+'</strong></div>':'')
-        +(l.desconto?'<div>(−) Desconto: <strong>-'+BRL(l.desconto)+'</strong></div>':'')
-        +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)">Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':'')+': <strong>'+BRL(l.valorLiq)+'</strong></div>'
+        +(l.iptu?linhaValor(iptuLabel_(l),l.iptu,'+'):'')
+        +(l.desconto?linhaValor('Desconto',l.desconto,'-'):'')
+        +linhaValor('Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':''),l.valorLiq,'=')
         +(l.obsLocador?'<div style="margin-top:8px;padding:9px 12px;background:rgba(224,84,84,.16);border:2px solid var(--red);border-radius:8px;color:var(--red);font-weight:700;font-size:12.5px;line-height:1.5">📌 '+E(l.obsLocador)+'</div>':'')
         +'</div></div>';
     }).join('');
@@ -21567,7 +21578,7 @@ window.cpRenderFixas=cpRenderFixas;
     // MESMO contrato e tipo "reajuste_anual" — qualquer troca de contrato/tipo invalida.
     if(_avisoReajusteContext&&(tipo!=='reajuste_anual'||contratoNum!==_avisoReajusteContext.contrato))_avisoReajusteContext=null;
     if(_avisoConfirmacaoContext&&(tipo!=='confirmacao_recebimento'||contratoNum!==_avisoConfirmacaoContext.contrato))_avisoConfirmacaoContext=null;
-    if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';return;}
+    if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';_avisoContatoTexto='';return;}
     if(def.extras){
       if(!extrasWrap.querySelector('.aviso-extras-linha')){
         var pctInicial=_avisoReajusteContext?String(_avisoReajusteContext.pct||'').replace('.',','):'';
@@ -21588,6 +21599,21 @@ window.cpRenderFixas=cpRenderFixas;
     var destinatarioLabel=def.paraLocador?'Locador':'Locatário';
     var destinatarioNome=def.paraLocador?(c.locador||'—'):(c.locatario||'—');
     var corpoHtml=paragrafos.map(function(p){return '<div style="margin-bottom:8px">'+E(p)+'</div>';}).join('');
+    // Contato de quem vai RECEBER este aviso (locador ou locatário, conforme def.paraLocador) —
+    // mostrado no próprio card pra poder visualizar e copiar o WhatsApp/e-mail direto na hora de
+    // enviar, mesmo padrão já usado no recibo de aluguel/informe de repasse (reciboLocContatoHtml).
+    var destContatoTels=def.paraLocador?[c.telLocador1,c.telLocador2]:[c.telLocatario1,c.telLocatario2];
+    var destContatoEmails=def.paraLocador?[c.emailLocador1,c.emailLocador2]:[c.emailLocatario1,c.emailLocatario2];
+    var assuntoEmail=(def.label||'Aviso')+' — '+contratoNum;
+    var contatoEnvioSection='<div class="parc-section contato-envio-section"><div class="parc-section-label">Contato para envio</div><div class="parc-box">'
+      +reciboLocContatoHtml(destContatoTels,destContatoEmails)
+      +'<div>📧 Assunto do e-mail: <strong class="parc-contato-chip" onclick="copiarContatoRecibo_(this)" title="Clique para copiar">'+E(assuntoEmail)+'</strong></div>'
+      +'</div></div>';
+    _avisoContatoTexto=[]
+      .concat(destContatoTels.filter(function(v){return v;}).map(function(t){return 'WhatsApp: '+t;}))
+      .concat(destContatoEmails.filter(function(v){return v;}).map(function(e){return 'E-mail: '+e;}))
+      .concat(['Assunto do e-mail: '+assuntoEmail])
+      .join('\n');
     document.getElementById('avisoCard').innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">'+E(def.label)+'</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
@@ -21595,6 +21621,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'—')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato||'—')+'</div></div>'
       +'<div class="parc-section"><div class="parc-section-label">'+destinatarioLabel+'</div><div class="parc-box">'+E(destinatarioNome)+'</div></div>'
+      +contatoEnvioSection
       +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text">'+corpoHtml+'</div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — '+new Date().toLocaleDateString('pt-BR')+'</div>';
@@ -21626,6 +21653,14 @@ window.cpRenderFixas=cpRenderFixas;
     var texto=avisoMontarTexto();
     if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
     window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  };
+  // "📋 Copiar contato" — copia de uma vez o WhatsApp + e-mail + assunto do destinatário do
+  // aviso atualmente aberto no card (mesmo padrão do recibo de aluguel/informe de repasse).
+  window.avisoCopiarContato_=function(){
+    if(!_avisoContatoTexto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(_avisoContatoTexto).then(function(){alert('Contato copiado!\n\n'+_avisoContatoTexto);}).catch(function(){alert('Não consegui copiar. Selecione o texto na tela.');});
+    }else{alert('Selecione o texto na tela e copie manualmente.');}
   };
   window.avisoEnviarEmail=function(){
     var contratoNum=document.getElementById('avisoContratoSelect').value;
