@@ -15433,7 +15433,8 @@ window.cpRenderFixas=cpRenderFixas;
   .loc-stat.vermelho{border-left:3px solid var(--red)} .loc-stat.vermelho .loc-stat-value{color:var(--red)}
   .loc-stat.roxo{border-left:3px solid var(--purple)} .loc-stat.roxo .loc-stat-value{color:var(--purple)}
   .loc-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-  .loc-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+  .loc-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;cursor:pointer}
+  .loc-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
   .loc-chip.filtro-ativo{background:var(--accent2);border-color:var(--accent2);color:#0d1525;font-weight:700}
   .loc-chip.filtro-ativo b{color:#0d1525}
   .loc-stat-clicavel{border-radius:12px;transition:transform .1s}
@@ -16026,6 +16027,53 @@ window.cpRenderFixas=cpRenderFixas;
         <tbody id="accContratosTbody"></tbody></table>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- CAPTAÇÃO DE CLIENTES (11/set/2026) — módulo próprio: formulário público (captacao.html) alimenta
+     a aba CAPTACAO; aqui o usuário faz a triagem em funil de status até converter em processo. -->
+<div class="loc-overlay" id="captacaoOverlay">
+  <div class="loc-header">
+    <div class="lf-brand-mini" onclick="goHome()" title="Voltar ao Início">
+      <span class="eixo-word">EI<span class="eixo-icon"><svg viewBox="0 0 54 54" width="24" height="24" aria-hidden="true"><defs><mask id="eixoMaskCapt"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#c8a96e"/><rect x="16" y="16" width="34" height="34" rx="8" class="eixo-r2" mask="url(#eixoMaskCapt)"/></svg></span>O</span>
+      <span class="eixo-sep"></span>
+      <span class="eixo-mod">Captação</span>
+    </div>
+    <button class="theme-toggle-btn" onclick="toggleDarkMode()" title="Alternar tema claro/escuro">🌙</button>
+    <div class="loc-title">🧲 Captação de Clientes</div>
+    <div class="loc-sync"><span class="dot" id="captSyncDot"></span><span id="captSyncTxt">—</span></div>
+    <button class="loc-btn" onclick="carregarCaptacao()">🔄 Atualizar</button>
+    <span class="user-menu-slot"></span>
+    <button class="loc-btn" onclick="document.getElementById('captacaoOverlay').classList.remove('open')">✕ Fechar</button>
+  </div>
+  <div class="loc-body">
+    <div class="loc-cfield full" style="background:rgba(91,141,238,0.08);border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:13px;color:var(--muted)">📋 Link do formulário para enviar ao cliente (triagem trabalhista + upload de documentos):</span>
+      <code id="captLinkTxt" style="font-size:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-family:'DM Mono',monospace"></code>
+      <button type="button" class="loc-btn primary" style="padding:5px 12px;font-size:12px" onclick="captCopiarLink()">📎 Copiar link</button>
+    </div>
+    <div class="loc-stats" id="captStats"></div>
+    <div class="loc-chips" id="captChips"></div>
+    <div style="margin:10px 0"><input type="text" class="search-input" id="captBusca" placeholder="Buscar por nome, CPF, empresa ou telefone... (atalho: /)" oninput="captRender()" style="width:100%"></div>
+    <div class="lf-tip-wrap">
+      <button class="lf-tip-btn" onclick="this.classList.toggle('open');document.getElementById('captNote').classList.toggle('open')">💡 Dicas de uso desta tela</button>
+      <div class="loc-note lf-tip-content" id="captNote">
+        Copie o link acima e envie ao cliente em potencial (WhatsApp, e-mail etc.). Assim que ele responder, uma resposta nova aparece aqui como "Novo" e você recebe um e-mail de aviso. Abra o card pra ver a triagem completa, mude o status conforme for avançando (Em análise → Aguardando documentos → Apto para ação) e, quando decidir seguir, clique em "Converter em processo" — os dados do cliente já vão pro cadastro de Gestão de Processos, sem redigitar. Se não for viável, marque "Sem viabilidade" e registre o motivo, só pra manter o histórico.
+      </div>
+    </div>
+    <div id="captLista" style="display:flex;flex-direction:column;gap:12px;margin-top:14px"></div>
+    <div class="loc-note" id="captListaNote"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE DA CAPTAÇÃO — triagem completa de um atendimento -->
+<div class="modal-cobr-overlay" id="modalCaptDetalhe">
+  <div class="cobr-wrap">
+    <div class="cobr-header">
+      <div class="cobr-title">🧲 Triagem — <span id="captDetalheNome"></span></div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCaptDetalhe').classList.remove('open')">✕</button>
+    </div>
+    <div class="cobr-body" id="captDetalheBody"></div>
   </div>
 </div>
 
@@ -16919,7 +16967,8 @@ window.cpRenderFixas=cpRenderFixas;
         <option value="acordos">7. 🤝 Gestão de Acordos e Repasses</option>
         <option value="locacoes">8. 🏘️ Gestão de Locações e Repasses</option>
         <option value="rascunhos">9. 🗂️ Tarefas</option>
-        <option value="glossario">10. 📘 Glossário</option>
+        <option value="captacao">10. 🧲 Captação de Clientes</option>
+        <option value="glossario">11. 📘 Glossário</option>
       </select>
     </div>
     <div id="manualConteudo" style="padding:16px 20px 24px;max-height:65vh;overflow-y:auto"></div>
@@ -23302,7 +23351,8 @@ window.cpRenderFixas=cpRenderFixas;
   .home-card.hon .ic{background:rgba(76,175,125,.15);color:var(--green)}
   .home-card.com .ic{background:rgba(125,92,214,.15);color:var(--purple)}
   .home-card.imov .ic{background:rgba(201,154,28,.15);color:var(--yellow)}
-  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)} .home-card.com:hover{border-color:var(--purple)} .home-card.imov:hover{border-color:var(--yellow)}
+  .home-card.proc:hover{border-color:var(--accent)} .home-card.loc:hover{border-color:var(--blue)} .home-card.cont:hover{border-color:var(--orange)} .home-card.hon:hover{border-color:var(--green)} .home-card.com:hover{border-color:var(--purple)} .home-card.imov:hover{border-color:var(--yellow)} .home-card.capt:hover{border-color:var(--rose)}
+  .home-card.capt .ic{background:rgba(181,84,138,.15);color:var(--rose)}
   .cnum{position:relative;padding:2px 4px;margin:-2px -4px;border-radius:8px;transition:background .15s}
   .cnum.cnum-clickable{cursor:pointer}
   .cnum.cnum-clickable:hover{background:rgba(255,255,255,.06)}
@@ -23463,7 +23513,11 @@ window.cpRenderFixas=cpRenderFixas;
         </button>
         <button class="home-user-item" onclick="openAcordosHome();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-          Acordos
+          Gestão de Acordos e Repasses
+        </button>
+        <button class="home-user-item" onclick="openCaptacaoHome();document.getElementById('homeUserMenu').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          Captação de Clientes
         </button>
         <button class="home-user-item" onclick="abrirComissoes();document.getElementById('homeUserMenu').classList.remove('open')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8l4 4-4 4M3 12h18"/></svg>
@@ -23569,6 +23623,20 @@ window.cpRenderFixas=cpRenderFixas;
           </div>
         </div>
         <div class="home-alertas" id="homeAlertAcc"></div>
+      </div>
+      <div class="home-module">
+        <div class="home-card capt" onclick="openCaptacaoHome()">
+          <div class="arrow">→</div>
+          <div class="ic">🧲</div>
+          <div class="ctitle">Captação de Clientes</div>
+          <div class="cdesc">Triagem de atendimentos até virar processo</div>
+          <div class="cnums">
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openCaptacaoHome()" title="Atendimentos aguardando triagem"><div class="v" id="hc-capt-novo" style="color:var(--rose)">—</div><div class="l">novos</div><span class="cnum-spark-wrap" id="spark-capt-novo"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openCaptacaoHome()" title="Em análise ou aguardando documentos"><div class="v" id="hc-capt-andamento" style="color:var(--yellow)">—</div><div class="l">em análise</div><span class="cnum-spark-wrap" id="spark-capt-andamento"></span></div>
+            <div class="cnum cnum-clickable" onclick="event.stopPropagation();openCaptacaoHome()" title="Convertidos em processo"><div class="v" id="hc-capt-convertido" style="color:var(--green)">—</div><div class="l">convertidos</div><span class="cnum-spark-wrap" id="spark-capt-convertido"></span></div>
+          </div>
+        </div>
+        <div class="home-alertas" id="homeAlertCapt"></div>
       </div>
       <div class="home-module">
         <div class="home-card com" onclick="openComissoesHome()">
@@ -23790,11 +23858,263 @@ window.cpRenderFixas=cpRenderFixas;
     }).join('');
   }
   window.openFerramentasHome = function(){
-    ['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','homeOverlay'].forEach(function(id){
+    ['honOverlay','locOverlay','contasOverlay','acordosOverlay','captacaoOverlay','comOverlay','imovOverlay','homeOverlay'].forEach(function(id){
       var e = document.getElementById(id); if (e) e.classList.remove('open');
     });
     document.getElementById('ferramentasOverlay').classList.add('open');
     ferRender();
+  };
+})();
+</script>
+
+<!-- ============ CAPTAÇÃO DE CLIENTES (11/set/2026) ============
+     Aba CAPTACAO alimentada pelo formulário público captacao.html. Aqui o usuário faz a
+     triagem em funil de status (Novo → Em Análise/Documentos Pendentes/Contato Realizado →
+     Viável/Inviável → Convertido em Processo/Arquivado) até decidir ingressar com a ação. -->
+<script>
+(function(){
+  var BRLf=function(v){return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  function E(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+  function dbr(s){if(!s)return null;var p=String(s).trim().split('/');if(p.length===3){var d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d;}return null;}
+
+  var CAPT_STATUS = ['Novo','Em Análise','Documentos Pendentes','Contato Realizado','Viável','Inviável','Convertido em Processo','Arquivado'];
+  var CAPT_STATUS_COR = {
+    'Novo':'azul','Em Análise':'dourado','Documentos Pendentes':'atras','Contato Realizado':'dourado',
+    'Viável':'verde','Inviável':'pend','Convertido em Processo':'verde','Arquivado':'pend'
+  };
+  window.captLista = [];
+  var captFiltroAtivo = 'Todos';
+
+  function captLinkFormulario(){
+    // captacao.html publicado na mesma GitHub Pages do painel (mesmo domínio de index.html).
+    var base = location.href.replace(/index\.html?$/i,'').replace(/\/?$/,'/');
+    return base + 'captacao.html';
+  }
+  window.captCopiarLink = function(){
+    var link = captLinkFormulario();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(function(){ alert('Link copiado:\n' + link); }).catch(function(){ prompt('Copie o link do formulário:', link); });
+    } else {
+      prompt('Copie o link do formulário:', link);
+    }
+  };
+
+  window.abrirCaptacao = function(){
+    closeOverlays();
+    document.getElementById('captacaoOverlay').classList.add('open');
+    var txt = document.getElementById('captLinkTxt');
+    if (txt) txt.textContent = captLinkFormulario();
+    if (!window.captLista || !window.captLista.length) carregarCaptacao();
+    else captRender();
+  };
+  window.openCaptacaoHome = window.abrirCaptacao;
+
+  window.carregarCaptacao = async function(){
+    var dot = document.getElementById('captSyncDot'), txt = document.getElementById('captSyncTxt');
+    var c = getConfig();
+    if (!c || !c.apiKey || !c.sheetId) {
+      window.captLista = [];
+      if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'planilha não configurada';
+      captRender(); captAtualizarHome_(); return;
+    }
+    if (dot) dot.className = 'dot load'; if (txt) txt.textContent = 'sincronizando…';
+    try {
+      var base = 'https://sheets.googleapis.com/v4/spreadsheets/' + c.sheetId + '/values/';
+      var k = '?key=' + c.apiKey;
+      var r = await fetch(base + encodeURIComponent('CAPTACAO!A1:AB2000') + k);
+      var d = r.ok ? await r.json() : { values: [] };
+      var rows = d.values || [];
+      window.captLista = rows.length < 2 ? [] : rows.slice(1).filter(function(x){ return x[0]; }).map(function(row){
+        var o = {}; rows[0].forEach(function(h,i){ o[h] = row[i] || ''; }); return o;
+      });
+      var now = new Date();
+      if (dot) dot.className = 'dot live'; if (txt) txt.textContent = 'sincronizado às ' + ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+    } catch (e) {
+      window.captLista = [];
+      if (dot) dot.className = 'dot local'; if (txt) txt.textContent = 'falha ao ler a planilha: ' + e.message;
+    }
+    captRender();
+    captAtualizarHome_();
+  };
+
+  function captAtualizarHome_(){
+    var lista = window.captLista || [];
+    var novo = lista.filter(function(x){ return (x['Status']||'Novo') === 'Novo'; }).length;
+    var andamento = lista.filter(function(x){ return ['Em Análise','Documentos Pendentes','Contato Realizado'].indexOf(x['Status']) >= 0; }).length;
+    var convertido = lista.filter(function(x){ return x['Status'] === 'Convertido em Processo'; }).length;
+    var elN = document.getElementById('hc-capt-novo'); if (elN) elN.textContent = novo;
+    var elA = document.getElementById('hc-capt-andamento'); if (elA) elA.textContent = andamento;
+    var elC = document.getElementById('hc-capt-convertido'); if (elC) elC.textContent = convertido;
+  }
+
+  function captOrdemStatus(s){ var i = CAPT_STATUS.indexOf(s); return i < 0 ? 0 : i; }
+
+  window.captFiltrar = function(status){
+    captFiltroAtivo = status;
+    captRender();
+  };
+
+  function captChip(label, count, ativo){
+    return '<button class="loc-chip' + (ativo ? ' active' : '') + '" onclick="captFiltrar(\'' + E(label) + '\')">' + E(label) + ' <b>' + count + '</b></button>';
+  }
+
+  window.captRender = function(){
+    var lista = window.captLista || [];
+    var busca = (document.getElementById('captBusca') || {}).value || '';
+    busca = busca.toLowerCase().trim();
+
+    // stats
+    var statsEl = document.getElementById('captStats');
+    if (statsEl) {
+      var novo = lista.filter(function(x){ return (x['Status']||'Novo') === 'Novo'; }).length;
+      var viavel = lista.filter(function(x){ return x['Status'] === 'Viável'; }).length;
+      var convertido = lista.filter(function(x){ return x['Status'] === 'Convertido em Processo'; }).length;
+      statsEl.innerHTML =
+        '<div class="loc-stat azul"><div class="v">' + lista.length + '</div><div class="l">total de atendimentos</div></div>' +
+        '<div class="loc-stat dourado"><div class="v">' + novo + '</div><div class="l">aguardando triagem</div></div>' +
+        '<div class="loc-stat verde"><div class="v">' + viavel + '</div><div class="l">viáveis p/ ação</div></div>' +
+        '<div class="loc-stat pago"><div class="v">' + convertido + '</div><div class="l">convertidos em processo</div></div>';
+    }
+
+    // chips por status
+    var chipsEl = document.getElementById('captChips');
+    if (chipsEl) {
+      var html = captChip('Todos', lista.length, captFiltroAtivo === 'Todos');
+      CAPT_STATUS.forEach(function(s){
+        var n = lista.filter(function(x){ return (x['Status']||'Novo') === s; }).length;
+        if (n) html += captChip(s, n, captFiltroAtivo === s);
+      });
+      chipsEl.innerHTML = html;
+    }
+
+    var filtrada = lista.filter(function(x){
+      if (captFiltroAtivo !== 'Todos' && (x['Status']||'Novo') !== captFiltroAtivo) return false;
+      if (busca) {
+        var alvo = ((x['Nome Completo']||'') + ' ' + (x['Empresa']||'') + ' ' + (x['Telefone']||'') + ' ' + (x['E-mail']||'')).toLowerCase();
+        if (alvo.indexOf(busca) < 0) return false;
+      }
+      return true;
+    }).sort(function(a,b){
+      var da = dbr(a['Timestamp']) || new Date(0), db = dbr(b['Timestamp']) || new Date(0);
+      return db - da;
+    });
+
+    var listaEl = document.getElementById('captLista');
+    var noteEl = document.getElementById('captListaNote');
+    if (!filtrada.length) {
+      if (listaEl) listaEl.innerHTML = '';
+      if (noteEl) noteEl.textContent = lista.length ? 'Nenhum atendimento encontrado com esse filtro.' : 'Nenhum atendimento recebido ainda. Envie o link do formulário para o cliente preencher.';
+      return;
+    }
+    if (noteEl) noteEl.textContent = '';
+    if (listaEl) listaEl.innerHTML = filtrada.map(captCardHtml).join('');
+  };
+
+  function captCardHtml(x){
+    var cor = CAPT_STATUS_COR[x['Status']] || 'azul';
+    var corMap = { azul:'var(--blue)', dourado:'var(--yellow)', verde:'var(--green)', atras:'var(--red)', pend:'var(--muted)', pago:'var(--green)' };
+    return '<div class="loc-cfield" style="cursor:pointer;display:flex;flex-direction:column;gap:6px" onclick="captAbrirDetalhe(\'' + E(x['ID']) + '\')">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+        '<b style="font-size:15px">' + E(x['Nome Completo']||'(sem nome)') + '</b>' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:' + corMap[cor] + '22;color:' + corMap[cor] + '">' + E(x['Status']||'Novo') + '</span>' +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--muted)">' + E(x['Empresa']||'—') + ' · ' + E(x['Telefone']||'—') + (x['Ainda Trabalha'] ? ' · ' + (x['Ainda Trabalha']==='Sim' ? 'ainda trabalhando' : 'já saiu') : '') + '</div>' +
+      '<div style="font-size:12px;color:var(--muted)">Recebido em ' + E(x['Timestamp']||'—') + '</div>' +
+    '</div>';
+  }
+
+  function campo(label, valor){
+    if (!valor) return '';
+    return '<div style="margin-bottom:10px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">' + E(label) + '</div><div style="font-size:14px">' + E(valor) + '</div></div>';
+  }
+  function secao(titulo, conteudoHtml){
+    if (!conteudoHtml) return '';
+    return '<div style="margin-bottom:18px"><div style="font-family:\'DM Serif Display\',serif;font-size:16px;margin-bottom:8px;color:var(--accent2)">' + E(titulo) + '</div>' + conteudoHtml + '</div>';
+  }
+
+  window.captAbrirDetalhe = function(id){
+    var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
+    if (!x) return;
+    document.getElementById('captDetalheNome').textContent = x['Nome Completo'] || '';
+    var arquivosHtml = '';
+    try {
+      var arqs = x['Arquivos'] ? JSON.parse(x['Arquivos']) : [];
+      if (arqs.length) arquivosHtml = arqs.map(function(a){ return '<div><a href="' + E(a.url||'#') + '" target="_blank" rel="noopener">📎 ' + E(a.nome||'arquivo') + '</a></div>'; }).join('');
+    } catch(e){ if (x['Arquivos']) arquivosHtml = '<div style="white-space:pre-wrap">' + E(x['Arquivos']) + '</div>'; }
+
+    var body =
+      secao('Dados pessoais', campo('Nome completo', x['Nome Completo']) + campo('CPF', x['CPF']) + campo('Data de nascimento', x['Data Nascimento']) + campo('Telefone', x['Telefone']) + campo('E-mail', x['E-mail']) + campo('Endereço', x['Endereco'])) +
+      secao('Vínculo empregatício', campo('Empresa', x['Empresa']) + campo('CNPJ', x['CNPJ Empresa']) + campo('Cargo', x['Cargo']) + campo('Carteira assinada', x['Carteira Assinada']) + campo('Admissão', x['Data Admissao']) + campo('Ainda trabalha lá', x['Ainda Trabalha']) + campo('Saída', x['Data Saida']) + campo('Salário aproximado', x['Salario Aproximado']) + campo('Como terminou', x['Como Terminou'])) +
+      secao('Possível reclamação', campo('Verbas pleiteadas', x['Verbas Pleiteadas']) + campo('Outras verbas', x['Verbas Outro']) + campo('Documentos que possui', x['Documentos Que Tem'])) +
+      secao('Disponibilidade e observações', campo('Disponibilidade para atendimento', x['Disponibilidade']) + campo('Observações do cliente', x['Observacoes Cliente'])) +
+      secao('Documentos anexados', arquivosHtml || '<div style="color:var(--muted);font-size:13px">Nenhum documento anexado no formulário.</div>') +
+      secao('Triagem interna', '' +
+        '<div class="loc-cfield full"><label>Status</label><select class="loc-cinput" id="capt-det-status">' +
+          CAPT_STATUS.map(function(s){ return '<option value="' + E(s) + '"' + (s === (x['Status']||'Novo') ? ' selected' : '') + '>' + E(s) + '</option>'; }).join('') +
+        '</select></div>' +
+        '<div class="loc-cfield full"><label>Notas internas (não visíveis ao cliente)</label><textarea class="loc-cinput" id="capt-det-notas" rows="4">' + E(x['Notas Internas']) + '</textarea></div>' +
+        '<div class="loc-cform-actions">' +
+          '<button class="loc-btn primary" onclick="captSalvarDetalhe(\'' + E(x['ID']) + '\')">💾 Salvar triagem</button>' +
+          '<button class="loc-btn" onclick="captConverterEmProcesso(\'' + E(x['ID']) + '\')">⚖️ Converter em processo</button>' +
+          '<button class="btn-form-cancel" onclick="captExcluir(\'' + E(x['ID']) + '\')">🗑️ Excluir</button>' +
+        '</div>'
+      );
+    document.getElementById('captDetalheBody').innerHTML = body;
+    document.getElementById('modalCaptDetalhe').classList.add('open');
+  };
+
+  function captAtualizar_(id, campos){
+    return fetch(URL_AS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ acao:'atualizar_captacao', id:id, campos:campos }) }).catch(function(){});
+  }
+
+  window.captSalvarDetalhe = async function(id){
+    var status = document.getElementById('capt-det-status').value;
+    var notas = document.getElementById('capt-det-notas').value;
+    var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
+    if (x) { x['Status'] = status; x['Notas Internas'] = notas; }
+    await captAtualizar_(id, { 'Status': status, 'Notas Internas': notas, 'Data Atualizacao': new Date().toLocaleDateString('pt-BR') });
+    document.getElementById('modalCaptDetalhe').classList.remove('open');
+    captRender(); captAtualizarHome_();
+  };
+
+  window.captMudarStatus = async function(id, status){
+    var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
+    if (x) x['Status'] = status;
+    await captAtualizar_(id, { 'Status': status, 'Data Atualizacao': new Date().toLocaleDateString('pt-BR') });
+    captRender(); captAtualizarHome_();
+  };
+
+  window.captExcluir = async function(id){
+    if (!confirm('Excluir este atendimento da captação? Esta ação não pode ser desfeita.')) return;
+    window.captLista = (window.captLista||[]).filter(function(v){ return String(v['ID']) !== String(id); });
+    await fetch(URL_AS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ acao:'excluir_captacao', id:id }) }).catch(function(){});
+    document.getElementById('modalCaptDetalhe').classList.remove('open');
+    captRender(); captAtualizarHome_();
+  };
+
+  // Pré-preenche o Cadastro de Processo com os dados já coletados na triagem, evitando
+  // redigitação. Foco em Reclamação Trabalhista (escopo inicial deste módulo).
+  window.captConverterEmProcesso = function(id){
+    var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
+    if (!x) return;
+    document.getElementById('modalCaptDetalhe').classList.remove('open');
+    if (typeof window.abrirCadastro === 'function') window.abrirCadastro();
+    setTimeout(function(){
+      var set = function(id, v){ var el = document.getElementById(id); if (el && v) el.value = v; };
+      set('cad-nome', x['Nome Completo']);
+      set('cad-cpf', x['CPF']);
+      set('cad-telefone', x['Telefone']);
+      set('cad-email', x['E-mail']);
+      set('cad-endereco', x['Endereco']);
+      var ramo = document.getElementById('cad-ramo'); if (ramo) ramo.value = 'TRABALHISTA';
+      set('cad-tipo', 'Reclamação Trabalhista');
+      set('cad-parte', 'Autor(a)');
+      set('cad-outra', x['Empresa']);
+      captAtualizar_(x['ID'], { 'Status': 'Convertido em Processo', 'Data Atualizacao': new Date().toLocaleDateString('pt-BR') });
+      x['Status'] = 'Convertido em Processo';
+      captAtualizarHome_();
+      alert('Cadastro pré-preenchido com os dados da triagem. Revise as informações (inclusive as verbas pleiteadas e os documentos anexados na Captação) antes de salvar o processo.');
+    }, 300);
   };
 })();
 </script>
@@ -23843,7 +24163,7 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.renderNotifBell=renderNotifBell;
 
-  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','comOverlay','imovOverlay','ferramentasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
+  function closeOverlays(){['honOverlay','locOverlay','contasOverlay','acordosOverlay','captacaoOverlay','comOverlay','imovOverlay','ferramentasOverlay','homeOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('open');});}
 
   // ---- Menu do usuário (cabeçalho) ----
   window.toggleUserMenu=function(ev){
@@ -23886,6 +24206,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<button class="home-user-item" onclick="openContas();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Contas a Pagar</button>'+
         '<button class="home-user-item" onclick="openAlugueisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Gestão de Locações e Repasses</button>'+
         '<button class="home-user-item" onclick="openAcordosHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Gestão de Acordos e Repasses</button>'+
+        '<button class="home-user-item" onclick="openCaptacaoHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>Captação de Clientes</button>'+
         '<button class="home-user-item" onclick="abrirComissoes();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8l4 4-4 4M3 12h18"/></svg>Comissões Imobiliárias</button>'+
         '<button class="home-user-item" onclick="openImoveisHome();this.closest(\'.home-user\').classList.remove(\'open\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>Imóveis Disponíveis</button>'+
         '<div class="home-user-divider"></div>'+
@@ -24334,6 +24655,7 @@ window.cpRenderFixas=cpRenderFixas;
     {key:'imoveis',       titulo:'Imóveis Disponíveis'},
     {key:'comissoes',     titulo:'Comissões Imobiliárias'},
     {key:'rascunhos',     titulo:'Tarefas'},
+    {key:'captacao',      titulo:'Captação de Clientes'},
     {key:'glossario',     titulo:'Glossário'}
   ];
 
@@ -24417,6 +24739,13 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Botão "🗓️ gerar parcelas" cria automaticamente todo o cronograma de pagamento, respeitando a frequência escolhida (pulando fins de semana quando diário).</div>'
       +MH+'Informe de repasse</div>'
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
+
+    captacao: MH+'Como funciona</div>'
+      +MP+'Módulo de captação de clientes para reclamação trabalhista. O botão "📎 Copiar link" gera o endereço do formulário público (captacao.html) para enviar ao cliente em potencial — ele preenche os dados pessoais, informações do vínculo empregatício, marca (por checkbox) as verbas que pretende pleitear e os documentos que já tem, e pode anexar arquivos direto no formulário, mesmo sem ter todos os documentos em mãos.</div>'
+      +MH+'Funil de triagem</div>'
+      +MP+'Cada resposta chega com status "Novo". Ao abrir o card, você registra a triagem: muda o status (Em Análise, Documentos Pendentes, Contato Realizado, Viável, Inviável, Convertido em Processo ou Arquivado) e pode anotar observações internas — não visíveis ao cliente.</div>'
+      +MH+'Converter em processo</div>'
+      +MP+'Quando decidir ingressar com a ação, o botão "⚖️ Converter em processo" abre o Cadastro de Processo já preenchido com nome, CPF, telefone, e-mail, endereço e ramo Trabalhista — revise os dados (inclusive as verbas pleiteadas e os documentos anexados na triagem, que não são copiados automaticamente) antes de salvar.</div>',
 
     locacoes: MH+'Cadastro de contrato</div>'
       +MP+'Locador, locatário, endereço, aluguel, taxa de administração, dias de vencimento/repasse, vigência (início/fim), índice de reajuste, multa por atraso, dados bancários, condomínio/IPTU padrão e garantia locatícia (caução, seguro fiança, título de capitalização, carta fiança ou fiador). "Taxa incide sobre": escolha se a taxa de administração é calculada só sobre o aluguel (padrão) ou também sobre encargos e descontos do mês.</div>'
@@ -24740,7 +25069,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Descobre o campo de busca do painel que estiver aberto no momento (o primeiro da lista que
   // bater tem prioridade, caso mais de um overlay esteja aberto por algum motivo).
   function focoBuscaAtiva_(){
-    var mapa=[['locOverlay','locSearchInput'],['honOverlay','honBusca'],['contasOverlay','cpBusca'],['acordosOverlay','accBusca'],['comOverlay','comBusca']];
+    var mapa=[['locOverlay','locSearchInput'],['honOverlay','honBusca'],['contasOverlay','cpBusca'],['acordosOverlay','accBusca'],['captacaoOverlay','captBusca'],['comOverlay','comBusca']];
     for(var i=0;i<mapa.length;i++){
       var ov=document.getElementById(mapa[i][0]);
       if(ov&&ov.classList.contains('open'))return mapa[i][1];
@@ -25802,7 +26131,7 @@ window.cpRenderFixas=cpRenderFixas;
   function voiceGetSR(){ return window.SpeechRecognition||window.webkitSpeechRecognition||null; }
 
   function voiceCloseAllOverlays(){
-    ['honOverlay','locOverlay','contasOverlay','homeOverlay','acordosOverlay','comOverlay'].forEach(function(id){
+    ['honOverlay','locOverlay','contasOverlay','homeOverlay','acordosOverlay','captacaoOverlay','comOverlay'].forEach(function(id){
       var e=document.getElementById(id); if(e)e.classList.remove('open');
     });
   }
@@ -25820,6 +26149,7 @@ window.cpRenderFixas=cpRenderFixas;
     {kw:['honorarios'],label:'Honorários',run:function(){voiceCloseAllOverlays();if(typeof abrirHonorarios==='function')abrirHonorarios();}},
     {kw:['locacoes','locacao','alugueis','aluguel'],label:'Gestão de Locações e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAlugueis==='function')window.abrirAlugueis();}},
     {kw:['acordos','acordo'],label:'Gestão de Acordos e Repasses',run:function(){voiceCloseAllOverlays();if(typeof window.abrirAcordos==='function')window.abrirAcordos();}},
+    {kw:['captacao','captação','captacao de clientes','clientes'],label:'Captação de Clientes',run:function(){voiceCloseAllOverlays();if(typeof window.abrirCaptacao==='function')window.abrirCaptacao();}},
     {kw:['comissoes','comissoes imobiliarias','corretores'],label:'Comissões Imobiliárias',run:function(){voiceCloseAllOverlays();if(typeof window.abrirComissoes==='function')window.abrirComissoes();}},
     {kw:['imoveis','imoveis disponiveis','catalogo de imoveis'],label:'Imóveis Disponíveis',run:function(){voiceCloseAllOverlays();if(typeof window.abrirImoveis==='function')window.abrirImoveis();}},
     {kw:['processos','processo','gestao de processos'],label:'Gestão de Processos',run:function(){voiceCloseAllOverlays();}},
@@ -25993,7 +26323,7 @@ window.cpRenderFixas=cpRenderFixas;
   // duplicar a lógica de qual botão abre o quê.
   var VOICE_KEY_MAP={
     '1':'Gestão de Processos','2':'Gestão de Locações e Repasses','3':'Honorários','4':'Contas a Pagar','5':'Gestão de Acordos e Repasses',
-    '6':'Notas Rápidas','7':'Tarefas','8':'Início','9':'Busca'
+    '6':'Notas Rápidas','7':'Tarefas','8':'Início','9':'Busca','0':'Captação de Clientes'
   };
   document.addEventListener('keydown',function(e){
     if(!e.altKey||e.ctrlKey||e.metaKey)return;

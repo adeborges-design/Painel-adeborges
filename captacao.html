@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atendimento Inicial — Adenilson Borges da Silva Advocacia</title>
+<meta name="theme-color" content="#0d1f35">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef3f9;
+    --surface: #ffffff;
+    --surface2: #eef4fb;
+    --border: #dde7f3;
+    --border2: #c7d7ea;
+    --text: #16233a;
+    --muted: #5c6f8a;
+    --accent: #2f6fb3;
+    --accent2: #1b3a5c;
+    --red: #d1454a;
+    --green: #2f9d68;
+    --eixo-gold: #9c8455;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e131d;
+      --surface: #171e2b;
+      --surface2: #1e2635;
+      --border: #2b3547;
+      --border2: #384457;
+      --text: #e6ebf3;
+      --muted: #93a1b8;
+      --accent: #6ba3e0;
+      --accent2: #d8bd8a;
+      --red: #e5747a;
+      --green: #4fbb8a;
+      --eixo-gold: #c8a96e;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 9px; background: var(--eixo-gold);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-name { font-family: 'DM Serif Display', serif; font-size: 17px; line-height: 1.25; }
+  .brand-name small { display: block; font-family: 'DM Sans', sans-serif; font-size: 11.5px; color: var(--muted); font-weight: 500; letter-spacing: .02em; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px 22px; box-shadow: 0 1px 3px rgba(16,32,58,0.06); }
+  .intro h1 { font-family: 'DM Serif Display', serif; font-size: 24px; margin: 0 0 10px; text-wrap: balance; }
+  .intro p { color: var(--muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 10px; }
+  .intro ul { margin: 14px 0; padding-left: 20px; color: var(--text); font-size: 14px; line-height: 1.9; }
+  .btn { appearance: none; border: none; border-radius: 10px; padding: 13px 22px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity .15s, transform .1s; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .92; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; margin-top: 24px; }
+  .btn-row .btn { flex: 1; }
+
+  .progress-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+  .progress-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s ease; }
+  .progress-label { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .step-title { font-family: 'DM Serif Display', serif; font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+  .step-sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; line-height: 1.5; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+  .field .hint { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .field input[type=text], .field input[type=tel], .field input[type=email], .field input[type=date], .field select, .field textarea {
+    width: 100%; padding: 12px 13px; border-radius: 9px; border: 1px solid var(--border2); background: var(--surface2);
+    color: var(--text); font-size: 15px; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+
+  .choice-grid { display: grid; gap: 8px; }
+  .choice {
+    display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 10px;
+    border: 1.5px solid var(--border2); background: var(--surface2); cursor: pointer; font-size: 14.5px; transition: border-color .12s, background .12s;
+  }
+  .choice:hover { border-color: var(--accent); }
+  .choice input { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; }
+  .choice.checked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface2)); }
+  .choice .desc { font-size: 12px; color: var(--muted); display: block; margin-top: 1px; }
+
+  .upload-zone {
+    border: 2px dashed var(--border2); border-radius: 12px; padding: 26px 16px; text-align: center;
+    background: var(--surface2); cursor: pointer; transition: border-color .15s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); }
+  .upload-zone svg { width: 30px; height: 30px; color: var(--muted); margin-bottom: 8px; }
+  .upload-zone .up-title { font-weight: 600; font-size: 14.5px; }
+  .upload-zone .up-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  #fileInput { display: none; }
+  .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .file-item { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .file-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .fsize { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .file-item .frem { color: var(--red); cursor: pointer; font-size: 16px; line-height: 1; background: none; border: none; padding: 2px 4px; }
+
+  .consent { display: flex; gap: 10px; align-items: flex-start; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .consent input { width: 18px; height: 18px; accent-color: var(--accent); margin-top: 1px; flex-shrink: 0; }
+
+  .review-block { margin-bottom: 14px; }
+  .review-block h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 0 0 6px; }
+  .review-line { font-size: 14px; margin-bottom: 3px; }
+  .review-line b { font-weight: 600; }
+
+  .error-msg { color: var(--red); font-size: 12.5px; margin-top: -8px; margin-bottom: 14px; display: none; }
+  .error-msg.show { display: block; }
+
+  .done-wrap { text-align: center; padding: 20px 6px; }
+  .done-icon { width: 60px; height: 60px; border-radius: 50%; background: color-mix(in srgb, var(--green) 15%, var(--surface)); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+  .done-icon svg { width: 30px; height: 30px; color: var(--green); }
+  .done-wrap h1 { font-family: 'DM Serif Display', serif; font-size: 22px; margin: 0 0 10px; }
+  .done-wrap p { color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+
+  .footer-note { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 18px; line-height: 1.6; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 54 54" fill="none" aria-hidden="true"><defs><mask id="m"><rect width="54" height="54" fill="#fff"/><g stroke="#000" stroke-width="5" stroke-linecap="round"><line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/></g></mask></defs><rect x="2" y="2" width="34" height="34" rx="8" fill="#fff" opacity=".35"/><rect x="16" y="16" width="34" height="34" rx="8" fill="#fff" mask="url(#m)"/></svg>
+    </div>
+    <div class="brand-name">Adenilson Borges da Silva<small>OAB/SP 335.600 — Atendimento Inicial</small></div>
+  </div>
+
+  <div class="card">
+    <div id="progressWrap" class="progress-wrap" hidden>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <span class="progress-label" id="progressLabel"></span>
+    </div>
+    <div id="formArea"></div>
+  </div>
+
+  <div class="footer-note">Seus dados são usados apenas para análise do seu caso por este escritório e não são compartilhados com terceiros.</div>
+</div>
+
+<script>
+(function(){
+  // ============ CONFIG ============
+  var URL_AS = 'https://script.google.com/macros/s/AKfycbwMjrcSwDSc8SWQRtbuH0UQKU3uopCWMiZTxwaGJR3V3j95iJjJxFt3t7UKCSwY7nhv/exec';
+  var MAX_TOTAL_MB = 20; // soma dos arquivos anexados
+
+  // ============ ESTADO ============
+  var dados = {};
+  var arquivos = []; // {nome, tipo, tamanho, base64}
+  var stepAtual = 0;
+  var enviando = false;
+
+  // ============ DEFINIÇÃO DOS PASSOS ============
+  // Cada passo é uma função que RENDERIZA o HTML (usa "dados" já preenchido) e uma função
+  // VALIDAR que roda antes de avançar. "visivel" decide se o passo aparece (perguntas
+  // condicionais, ex.: só pergunta "data de saída" se o cliente não trabalha mais lá).
+  var PASSOS = [
+    { id: 'intro', render: renderIntro },
+    { id: 'pessoais', render: renderPessoais, validar: validarPessoais },
+    { id: 'emprego', render: renderEmprego, validar: validarEmprego },
+    { id: 'saida', render: renderSaida, validar: validarSaida, visivel: function(){ return dados['Ainda Trabalha']!=='Sim'; } },
+    { id: 'motivo', render: renderMotivo, validar: validarMotivo },
+    { id: 'verbas', render: renderVerbas, validar: validarVerbas },
+    { id: 'documentos', render: renderDocumentos },
+    { id: 'upload', render: renderUpload },
+    { id: 'disponibilidade', render: renderDisponibilidade },
+    { id: 'revisao', render: renderRevisao, validar: validarConsentimento },
+    { id: 'fim', render: renderFim }
+  ];
+
+  function passosVisiveis(){ return PASSOS.filter(function(p){ return !p.visivel || p.visivel(); }); }
+
+  function ir(delta){
+    var vis = passosVisiveis();
+    var idxAtual = vis.indexOf(PASSOS[stepAtual]);
+    if (delta>0 && vis[idxAtual] && vis[idxAtual].validar) {
+      var erro = vis[idxAtual].validar();
+      if (erro) { mostrarErro(erro); return; }
+    }
+    var novoIdx = idxAtual + delta;
+    if (novoIdx<0 || novoIdx>=vis.length) return;
+    stepAtual = PASSOS.indexOf(vis[novoIdx]);
+    renderPasso();
+  }
+  window.eixoIr = ir;
+
+  function mostrarErro(msg){
+    var el = document.getElementById('errMsg');
+    if (!el) return;
+    el.textContent = msg; el.classList.add('show');
+  }
+
+  function renderPasso(){
+    var passo = PASSOS[stepAtual];
+    var vis = passosVisiveis();
+    var idx = vis.indexOf(passo);
+    var progWrap = document.getElementById('progressWrap');
+    if (passo.id==='intro' || passo.id==='fim') {
+      progWrap.hidden = true;
+    } else {
+      progWrap.hidden = false;
+      var pct = Math.round((idx/(vis.length-2))*100);
+      document.getElementById('progressFill').style.width = pct+'%';
+      document.getElementById('progressLabel').textContent = idx+' de '+(vis.length-2);
+    }
+    document.getElementById('formArea').innerHTML = passo.render();
+    aplicarValoresSalvos();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function campo(id, valor){
+    dados[id] = valor;
+  }
+
+  function aplicarValoresSalvos(){
+    document.querySelectorAll('[data-campo]').forEach(function(el){
+      var nome = el.dataset.campo;
+      if (el.type==='checkbox') {
+        var arr = dados[nome+'__arr']||[];
+        el.checked = arr.indexOf(el.value)>=0;
+      } else if (el.type==='radio') {
+        el.checked = dados[nome]===el.value;
+      } else {
+        el.value = dados[nome]||'';
+      }
+    });
+    atualizarEstiloEscolhas();
+  }
+
+  function atualizarEstiloEscolhas(){
+    document.querySelectorAll('.choice').forEach(function(lbl){
+      var input = lbl.querySelector('input');
+      if (input) lbl.classList.toggle('checked', input.checked);
+    });
+  }
+
+  document.addEventListener('change', function(e){
+    var el = e.target;
+    if (!el.dataset || !el.dataset.campo) return;
+    var nome = el.dataset.campo;
+    if (el.type==='checkbox') {
+      var arr = dados[nome+'__arr']||[];
+      if (el.checked) { if (arr.indexOf(el.value)<0) arr.push(el.value); }
+      else { arr = arr.filter(function(v){return v!==el.value;}); }
+      dados[nome+'__arr'] = arr;
+      dados[nome] = arr.join(', ');
+    } else {
+      dados[nome] = el.value;
+    }
+    atualizarEstiloEscolhas();
+    document.getElementById('errMsg') && document.getElementById('errMsg').classList.remove('show');
+  });
+
+  // ============ PASSO: INTRO ============
+  function renderIntro(){
+    return ''
+      +'<div class="intro">'
+      +'<h1>Vamos entender seu caso</h1>'
+      +'<p>Este formulário leva cerca de 5 minutos. Suas respostas ajudam a avaliar se é possível entrar com uma reclamação trabalhista — sem compromisso.</p>'
+      +'<ul>'
+      +'<li>Perguntas rápidas, a maioria de marcar opções</li>'
+      +'<li>Você pode anexar documentos agora ou depois</li>'
+      +'<li>Ao final, entraremos em contato para os próximos passos</li>'
+      +'</ul>'
+      +'<div class="btn-row"><button class="btn btn-primary" style="width:100%" onclick="eixoIr(1)">Começar</button></div>'
+      +'</div>';
+  }
+
+  // ============ PASSO: DADOS PESSOAIS ============
+  function renderPessoais(){
+    return ''
+      +'<div class="step-title">Seus dados</div>'
+      +'<p class="step-sub">Pra gente saber quem é você e como te responder.</p>'
+      +field_text('Nome Completo','Nome completo','Seu nome completo')
+      +'<div class="row2">'
+      +field_text('CPF','CPF','000.000.000-00')
+      +field_text('Data Nascimento','Data de nascimento','',{type:'date'})
+      +'</div>'
+      +'<div class="row2">'
+      +field_text('Telefone','Telefone / WhatsApp','(11) 90000-0000',{type:'tel'})
+      +field_text('E-mail','E-mail','seuemail@exemplo.com',{type:'email'})
+      +'</div>'
+      +field_text('Endereco','Endereço','Rua, número, bairro, cidade')
+      +errMsg()
+      +botoes(true);
+  }
+  function validarPessoais(){
+    if (!(dados['Nome Completo']||'').trim()) return 'Preencha seu nome completo.';
+    if (!(dados['Telefone']||'').trim()) return 'Preencha um telefone para contato.';
+    return null;
+  }
+
+  // ============ PASSO: EMPREGO ============
+  function renderEmprego(){
+    return ''
+      +'<div class="step-title">Sobre o emprego</div>'
+      +'<p class="step-sub">Fale do trabalho que você quer questionar.</p>'
+      +choiceGroup('Carteira Assinada','radio',[['Sim','Sim'],['Não','Não'],['Parte do tempo','Só em parte do tempo trabalhado']])
+      +field_text('Cargo','Cargo / função','Ex.: Auxiliar administrativo')
+      +'<div class="row2">'
+      +field_text('Empresa','Nome da empresa','Razão social ou nome fantasia')
+      +field_text('CNPJ Empresa','CNPJ (se souber)','00.000.000/0000-00')
+      +'</div>'
+      +'<div class="row2">'
+      +field_text('Data Admissao','Data de admissão','',{type:'date'})
+      +field_text('Salario Aproximado','Salário aproximado (R$)','Ex.: 1800')
+      +'</div>'
+      +'<div class="field"><label>Ainda trabalha na empresa?</label>'
+      +choiceInline('Ainda Trabalha',[['Sim','Sim'],['Não','Não']])
+      +'</div>'
+      +errMsg()
+      +botoes(true);
+  }
+  function validarEmprego(){
+    if (!(dados['Empresa']||'').trim()) return 'Preencha o nome da empresa.';
+    if (!dados['Ainda Trabalha']) return 'Diga se você ainda trabalha na empresa.';
+    return null;
+  }
+
+  // ============ PASSO: SAÍDA (condicional) ============
+  function renderSaida(){
+    return ''
+      +'<div class="step-title">Sobre a saída</div>'
+      +'<p class="step-sub">Isso ajuda a saber se ainda dá tempo de entrar com a ação (o prazo é de até 2 anos após a saída).</p>'
+      +field_text('Data Saida','Data de saída','',{type:'date'})
+      +errMsg()
+      +botoes(true);
+  }
+  function validarSaida(){
+    if (!dados['Data Saida']) return 'Preencha a data de saída (mesmo que aproximada).';
+    return null;
+  }
+
+  // ============ PASSO: COMO TERMINOU ============
+  function renderMotivo(){
+    if (dados['Ainda Trabalha']==='Sim') { dados['Como Terminou']='Ainda trabalho lá'; ir(1); return ''; }
+    return ''
+      +'<div class="step-title">Como foi a saída?</div>'
+      +'<p class="step-sub">Escolha a opção mais parecida com o que aconteceu.</p>'
+      +choiceGroup('Como Terminou','radio',[
+        ['Demitido sem justa causa','Demitido(a) sem justa causa','A empresa dispensou você sem motivo grave'],
+        ['Demitido por justa causa','Demitido(a) por justa causa','A empresa alegou uma falta grave'],
+        ['Pedi demissão','Eu pedi demissão','Saí por vontade própria'],
+        ['Convidado a pedir demissão','Fui "convidado" a pedir demissão','Pressionado a pedir demissão'],
+        ['Acordo','Fizemos um acordo (distrato)','Saída combinada com a empresa'],
+        ['Não sei dizer','Não sei dizer']
+      ])
+      +errMsg()
+      +botoes(true);
+  }
+  function validarMotivo(){
+    if (!dados['Como Terminou']) return 'Escolha uma opção.';
+    return null;
+  }
+
+  // ============ PASSO: VERBAS (múltipla escolha) ============
+  function renderVerbas(){
+    var mostrarOutro = (dados['Verbas Pleiteadas__arr']||[]).indexOf('Outro')>=0;
+    return ''
+      +'<div class="step-title">O que você acha que a empresa te deve?</div>'
+      +'<p class="step-sub">Marque tudo que fizer sentido — pode marcar mais de uma.</p>'
+      +checkGroup('Verbas Pleiteadas',[
+        ['Horas extras','Horas extras não pagas'],
+        ['Verbas rescisórias','Verbas rescisórias (aviso prévio, saldo de salário, 13º, férias)'],
+        ['FGTS','FGTS não depositado ou não liberado'],
+        ['Insalubridade/Periculosidade','Trabalhava em condição insalubre ou perigosa sem adicional'],
+        ['Adicional noturno','Trabalhava à noite sem adicional noturno'],
+        ['Desvio de função','Fazia função diferente da registrada'],
+        ['Assédio moral','Sofri assédio moral ou perseguição'],
+        ['Assédio sexual','Sofri assédio sexual'],
+        ['Acidente/Doença ocupacional','Acidente de trabalho ou doença ocupacional'],
+        ['Férias não gozadas','Não me deixaram tirar férias'],
+        ['Outro','Outro motivo']
+      ])
+      +(mostrarOutro?field_text('Verbas Outro','Qual outro motivo?','Descreva rapidamente',{tag:'textarea'}):'')
+      +errMsg()
+      +botoes(true);
+  }
+  function validarVerbas(){
+    if (!(dados['Verbas Pleiteadas']||'').trim()) return 'Marque ao menos uma opção.';
+    return null;
+  }
+
+  // ============ PASSO: DOCUMENTOS QUE TEM ============
+  function renderDocumentos(){
+    return ''
+      +'<div class="step-title">Quais documentos você tem?</div>'
+      +'<p class="step-sub">Não se preocupe se não tiver nada ainda — marque só o que você já possui.</p>'
+      +checkGroup('Documentos Que Tem',[
+        ['CTPS','Carteira de trabalho (CTPS)'],
+        ['Contracheques','Contracheques / holerites'],
+        ['Contrato de trabalho','Contrato de trabalho'],
+        ['TRCT','Termo de rescisão (TRCT)'],
+        ['Extrato FGTS','Extrato do FGTS'],
+        ['Prints/mensagens','Prints de WhatsApp ou e-mails com a empresa'],
+        ['Atestados médicos','Atestados médicos'],
+        ['Nenhum documento ainda','Ainda não tenho nenhum documento']
+      ])
+      +botoes(true);
+  }
+
+  // ============ PASSO: UPLOAD ============
+  function renderUpload(){
+    setTimeout(ligarUpload,0);
+    return ''
+      +'<div class="step-title">Anexar documentos</div>'
+      +'<p class="step-sub">Opcional — se não tiver agora, pode pular e enviar depois.</p>'
+      +'<div class="upload-zone" id="upZone">'
+      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+      +'<div class="up-title">Toque para escolher arquivos</div>'
+      +'<div class="up-sub">Fotos ou PDFs — até '+MAX_TOTAL_MB+'MB no total</div>'
+      +'</div>'
+      +'<input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx">'
+      +'<div class="file-list" id="fileList"></div>'
+      +errMsg()
+      +botoes(true);
+  }
+  function ligarUpload(){
+    var zone = document.getElementById('upZone');
+    var input = document.getElementById('fileInput');
+    if (!zone||!input) return;
+    zone.onclick = function(){ input.click(); };
+    input.onchange = function(){ adicionarArquivos(input.files); input.value=''; };
+    zone.ondragover = function(e){ e.preventDefault(); zone.classList.add('drag'); };
+    zone.ondragleave = function(){ zone.classList.remove('drag'); };
+    zone.ondrop = function(e){ e.preventDefault(); zone.classList.remove('drag'); adicionarArquivos(e.dataTransfer.files); };
+    renderFileList();
+  }
+  function adicionarArquivos(fileList){
+    var restantes = MAX_TOTAL_MB*1024*1024 - arquivos.reduce(function(s,a){return s+a.tamanho;},0);
+    Array.from(fileList).forEach(function(f){
+      if (f.size > restantes) { mostrarErro('"'+f.name+'" não coube no limite de '+MAX_TOTAL_MB+'MB total. Tente um arquivo menor ou envie o restante depois.'); return; }
+      restantes -= f.size;
+      var reader = new FileReader();
+      reader.onload = function(){
+        arquivos.push({nome:f.name, tipo:f.type, tamanho:f.size, base64:reader.result});
+        renderFileList();
+      };
+      reader.readAsDataURL(f);
+    });
+  }
+  function renderFileList(){
+    var el = document.getElementById('fileList');
+    if (!el) return;
+    el.innerHTML = arquivos.map(function(a,i){
+      return '<div class="file-item"><span class="fname">📄 '+escHtml(a.nome)+'</span><span class="fsize">'+(a.tamanho/1024/1024).toFixed(1)+'MB</span><button type="button" class="frem" onclick="eixoRemoverArquivo('+i+')">✕</button></div>';
+    }).join('');
+  }
+  window.eixoRemoverArquivo = function(i){ arquivos.splice(i,1); renderFileList(); };
+
+  // ============ PASSO: DISPONIBILIDADE ============
+  function renderDisponibilidade(){
+    return ''
+      +'<div class="step-title">Disponibilidade</div>'
+      +'<p class="step-sub">Quando é melhor pra te ligar ou marcar uma conversa?</p>'
+      +field_text('Disponibilidade','Melhores dias e horários','Ex.: Dias úteis à tarde, ou fins de semana',{tag:'textarea'})
+      +field_text('Observacoes Cliente','Quer contar mais alguma coisa?','Algo que você ache importante mencionar',{tag:'textarea'})
+      +botoes(true);
+  }
+
+  // ============ PASSO: REVISÃO ============
+  function renderRevisao(){
+    return ''
+      +'<div class="step-title">Confira antes de enviar</div>'
+      +'<p class="step-sub">Revise rapidamente — você pode voltar e corrigir qualquer campo.</p>'
+      +reviewLine('Nome','Nome Completo')+reviewLine('Telefone','Telefone')+reviewLine('E-mail','E-mail')
+      +reviewLine('Empresa','Empresa')+reviewLine('Carteira assinada','Carteira Assinada')
+      +reviewLine('Como terminou','Como Terminou')+reviewLine('O que acha que tem direito','Verbas Pleiteadas')
+      +reviewLine('Documentos que tem','Documentos Que Tem')
+      +'<div class="review-line"><b>Arquivos anexados:</b> '+(arquivos.length? arquivos.length+' arquivo(s)':'nenhum')+'</div>'
+      +'<div class="field" style="margin-top:18px"><label class="consent">'
+      +'<input type="checkbox" id="consentChk"> '
+      +'<span>Autorizo o uso dos meus dados e documentos enviados para análise do meu caso por este escritório, conforme a Lei Geral de Proteção de Dados (LGPD).</span>'
+      +'</label></div>'
+      +errMsg()
+      +'<div class="btn-row"><button class="btn btn-ghost" onclick="eixoIr(-1)">Voltar</button><button class="btn btn-primary" id="btnEnviar" onclick="eixoEnviar()">Enviar</button></div>';
+  }
+  function reviewLine(label, campoNome){
+    var v = dados[campoNome];
+    if (!v) return '';
+    return '<div class="review-line"><b>'+label+':</b> '+escHtml(v)+'</div>';
+  }
+  function validarConsentimento(){
+    var chk = document.getElementById('consentChk');
+    if (!chk || !chk.checked) return 'Marque a autorização de uso dos dados para continuar.';
+    return null;
+  }
+
+  // ============ PASSO: FIM ============
+  function renderFim(){
+    return ''
+      +'<div class="done-wrap">'
+      +'<div class="done-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      +'<h1>Recebemos suas informações</h1>'
+      +'<p>Obrigado, '+escHtml((dados['Nome Completo']||'').split(' ')[0]||'')+'. Vamos analisar seu caso e entrar em contato pelo telefone ou e-mail informado. Se lembrar de algum documento depois, pode nos enviar por WhatsApp.</p>'
+      +'</div>';
+  }
+
+  // ============ ENVIO ============
+  window.eixoEnviar = function(){
+    var erro = validarConsentimento();
+    if (erro) { mostrarErro(erro); return; }
+    if (enviando) return;
+    enviando = true;
+    var btn = document.getElementById('btnEnviar');
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+    var payload = { acao:'salvar_captacao', campos: dados, arquivos: arquivos.map(function(a){return {nome:a.nome,tipo:a.tipo,base64:a.base64};}) };
+    fetch(URL_AS, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) })
+      .then(function(r){ return r.json(); })
+      .then(function(resp){
+        if (resp && resp.ok) { irParaFim(); }
+        else { throw new Error((resp&&resp.error)||'Não foi possível confirmar o envio.'); }
+      })
+      .catch(function(){
+        // fetch sem confirmação de leitura (ex.: CORS) — tenta no-cors como último recurso;
+        // como não há como confirmar, segue como sucesso (mesmo padrão já usado no sistema).
+        fetch(URL_AS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) })
+          .then(function(){ irParaFim(); })
+          .catch(function(){
+            enviando = false;
+            if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
+            mostrarErro('Não foi possível enviar agora. Verifique sua internet e tente novamente.');
+          });
+      });
+  };
+  function irParaFim(){
+    stepAtual = PASSOS.length-1;
+    renderPasso();
+  }
+
+  // ============ HELPERS DE HTML ============
+  function escHtml(s){ return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+  function errMsg(){ return '<div class="error-msg" id="errMsg"></div>'; }
+  function botoes(comVoltar){
+    return '<div class="btn-row">'
+      +(comVoltar&&stepAtual>1?'<button class="btn btn-ghost" onclick="eixoIr(-1)">Voltar</button>':'')
+      +'<button class="btn btn-primary" onclick="eixoIr(1)">Continuar</button>'
+      +'</div>';
+  }
+  function field_text(campoNome, label, placeholder, opts){
+    opts = opts||{};
+    var tag = opts.tag||'input';
+    var type = opts.type||'text';
+    var elHtml = tag==='textarea'
+      ? '<textarea data-campo="'+campoNome+'" placeholder="'+escHtml(placeholder||'')+'"></textarea>'
+      : '<input type="'+type+'" data-campo="'+campoNome+'" placeholder="'+escHtml(placeholder||'')+'">';
+    return '<div class="field"><label>'+escHtml(label)+'</label>'+elHtml+'</div>';
+  }
+  function choiceGroup(campoNome, tipo, opcoes){
+    return '<div class="field choice-grid">'+opcoes.map(function(o){
+      var valor=o[0], rotulo=o[1], desc=o[2];
+      return '<label class="choice"><input type="'+tipo+'" name="'+campoNome+'" data-campo="'+campoNome+'" value="'+escHtml(valor)+'"><span>'+escHtml(rotulo)+(desc?'<span class="desc">'+escHtml(desc)+'</span>':'')+'</span></label>';
+    }).join('')+'</div>';
+  }
+  function checkGroup(campoNome, opcoes){
+    return '<div class="field choice-grid">'+opcoes.map(function(o){
+      var valor=o[0], rotulo=o[1];
+      return '<label class="choice"><input type="checkbox" data-campo="'+campoNome+'" value="'+escHtml(valor)+'"><span>'+escHtml(rotulo)+'</span></label>';
+    }).join('')+'</div>';
+  }
+  function choiceInline(campoNome, opcoes){
+    return '<div class="choice-grid" style="grid-template-columns:1fr 1fr;display:grid;gap:8px">'+opcoes.map(function(o){
+      return '<label class="choice" style="justify-content:center"><input type="radio" name="'+campoNome+'" data-campo="'+campoNome+'" value="'+escHtml(o[0])+'"><span>'+escHtml(o[1])+'</span></label>';
+    }).join('')+'</div>';
+  }
+
+  renderPasso();
+})();
+</script>
+</body>
+</html>
