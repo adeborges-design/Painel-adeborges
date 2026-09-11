@@ -5121,12 +5121,8 @@
         </div>
 
         <div class="atend-section">
-          <div class="atend-section-label">Parcela em Aberto</div>
-          <div class="atend-box destaque-cliente">
-            <div style="font-size:15px;font-weight:700;margin-bottom:4px" id="cardHonParcelaRef"></div>
-            <div style="font-size:12px;margin-bottom:6px" id="cardHonParcelaVenc"></div>
-            <div style="font-size:19px;font-weight:700" id="cardHonParcelaValor"></div>
-          </div>
+          <div class="atend-section-label" id="cardHonParcelasLabel">Parcela em Aberto</div>
+          <div id="cardHonParcelasBox"></div>
         </div>
 
         <div class="atend-section">
@@ -13927,9 +13923,23 @@ window.abrirCardHonorarios=function(k,idx){
   modal.dataset.k=k;modal.dataset.idx=String(idx);
   document.getElementById('cardHonNome').textContent=(d.cliente||'').toUpperCase();
   document.getElementById('cardHonProcesso').textContent=d.proc?('Processo '+d.proc):'';
-  document.getElementById('cardHonParcelaRef').textContent='Parcela '+(p.ref||'-');
-  document.getElementById('cardHonParcelaVenc').textContent='Vencimento: '+(p.venc||'-');
-  document.getElementById('cardHonParcelaValor').textContent=fmr(p.valor||0);
+  // Mostra TODAS as parcelas em atraso deste contrato (não só a que foi clicada) — se o
+  // cliente tem 2+ parcelas vencidas, o card precisa deixar claro quantas são e há quantos
+  // dias cada uma está em atraso, em vez de dar a impressão de que só existe uma pendência.
+  var labelEl=document.getElementById('cardHonParcelasLabel');
+  var boxEl=document.getElementById('cardHonParcelasBox');
+  if(labelEl&&boxEl){
+   labelEl.textContent=lista.length>1?('Parcelas em Aberto ('+lista.length+')'):'Parcela em Aberto';
+   var totalParc=0;
+   boxEl.innerHTML=lista.map(function(pp){
+    totalParc+=pp.valor||0;
+    return '<div class="atend-box destaque-cliente" style="margin-bottom:8px">'
+     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">Parcela '+(pp.ref||'-')+'</div>'
+     +'<div style="font-size:12px;margin-bottom:6px">Vencimento: '+(pp.venc||'-')+' &nbsp;•&nbsp; vencida há '+(pp.diasAtraso||0)+'d</div>'
+     +'<div style="font-size:19px;font-weight:700">'+fmr(pp.valor||0)+'</div>'
+     +'</div>';
+   }).join('')+(lista.length>1?'<div style="text-align:right;font-size:13.5px;font-weight:700;margin-top:2px">Total em atraso: '+fmr(totalParc)+'</div>':'');
+  }
   document.getElementById('cardHonPreviewSub').textContent=(d.cliente||'')+' — pré-visualização';
   var secSenha=document.getElementById('cardHonSenhaSection');
   if(d.senhaCliente){secSenha.style.display='';document.getElementById('cardHonSenha').textContent=d.senhaCliente;}
@@ -13953,15 +13963,18 @@ function montarTextoCardHon_(formatoWpp){
   var modal=document.getElementById('modalCardHon');
   var k=modal.dataset.k,idx=parseInt(modal.dataset.idx)||0;
   var d=(window._honAvisoData||{})[k]||{};
-  var p=((window._honAvisoParcelas||{})[k]||[])[idx]||{};
+  var lista=(window._honAvisoParcelas||{})[k]||[];
   var b=formatoWpp?'*':'',ib=formatoWpp?'_':'';
   var txt=b+'AVISO DE HONORÁRIOS EM ABERTO'+b+'\n'+ib+'Escritório Adenilson Borges'+ib+'\n\n';
   txt+=b+'CLIENTE'+b+'\n'+(d.cliente||'')+'\n';
   if(d.proc)txt+='Processo: '+d.proc+'\n';
-  txt+='\n'+b+'PARCELA EM ABERTO'+b+'\n';
-  txt+='Parcela: '+(p.ref||'-')+'\n';
-  txt+='Vencimento: '+(p.venc||'-')+'\n';
-  txt+='Valor: '+fmr(p.valor||0)+'\n';
+  txt+='\n'+b+(lista.length>1?('PARCELAS EM ABERTO ('+lista.length+')'):'PARCELA EM ABERTO')+b+'\n';
+  var totalParc=0;
+  lista.forEach(function(pp){
+   totalParc+=pp.valor||0;
+   txt+='Parcela: '+(pp.ref||'-')+' | Vencimento: '+(pp.venc||'-')+' | vencida há '+(pp.diasAtraso||0)+'d | Valor: '+fmr(pp.valor||0)+'\n';
+  });
+  if(lista.length>1)txt+='Total em atraso: '+fmr(totalParc)+'\n';
   txt+='\n'+b+'DADOS PARA PAGAMENTO'+b+'\n';
   txt+='Titular: '+CONTA_ESCRITORIO_HON.titular+'\n';
   txt+='Banco: '+CONTA_ESCRITORIO_HON.banco+' | Agência: '+CONTA_ESCRITORIO_HON.agencia+' | Conta: '+CONTA_ESCRITORIO_HON.conta+'\n';
@@ -14098,7 +14111,7 @@ window.renderVencimentos=function(){
    else{var diff=Math.round((p.venc-hoje)/86400000);
     if(diff<0){
      var idxAviso=window._honAvisoParcelas[k].length;
-     window._honAvisoParcelas[k].push({ref:p.ref,venc:fdt(p.venc),valor:p.valor});
+     window._honAvisoParcelas[k].push({ref:p.ref,venc:fdt(p.venc),valor:p.valor,diasAtraso:-diff});
      stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span><span class="hon-alerta" title="Avisar cliente sobre esta parcela" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\','+idxAviso+')">⚠️</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
     else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;temVencer30=true;}
     else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30){tot30+=p.valor;temVencer30=true;}}}
