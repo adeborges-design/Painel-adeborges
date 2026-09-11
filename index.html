@@ -928,6 +928,63 @@
     margin-bottom: 6px;
   }
 
+  /* Despesas do Processo (11/set/2026) */
+  .despesas-proc-box {
+    background: var(--surface2, rgba(255,255,255,0.02));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
+  .despesas-proc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .despesas-proc-total { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .despesas-proc-vazio { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .despesa-proc-lista { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .despesa-proc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg, rgba(0,0,0,0.15));
+    border-radius: 6px;
+  }
+  .despesa-proc-item .dp-data { color: var(--muted); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .despesa-proc-item .dp-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .despesa-proc-item .dp-valor { color: var(--text); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .despesa-proc-item .dp-rem { background: none; border: none; color: var(--red); cursor: pointer; font-size: 13px; padding: 2px 4px; line-height: 1; }
+  .despesa-proc-form { display: grid; grid-template-columns: 130px 1fr 110px auto; gap: 6px; align-items: center; }
+  @media (max-width: 640px) { .despesa-proc-form { grid-template-columns: 1fr 1fr; } }
+  .despesa-proc-input {
+    padding: 7px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border2, var(--border));
+    background: var(--surface, transparent);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    min-width: 0;
+  }
+  .dp-add-btn {
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .dp-add-btn:hover { opacity: .9; }
+
   .detail-actions {
     display: flex;
     flex-direction: column;
@@ -4077,6 +4134,14 @@
             <label>Pasta Drive</label>
             <input type="text" id="ed-pastaDrive">
           </div>
+          <div class="form-field">
+            <label>Valor da Causa (R$)</label>
+            <input type="text" inputmode="decimal" id="ed-valorCausa">
+          </div>
+          <div class="form-field">
+            <label>Valor Atualizado da Execução (R$)</label>
+            <input type="text" inputmode="decimal" id="ed-valorAtualizadoExecucao" placeholder="Atualize conforme incidem juros/multa/honorários">
+          </div>
         </div>
       </div>
 
@@ -4674,6 +4739,14 @@
           <div class="form-field">
             <label>Pasta Drive</label>
             <input type="text" id="cad-pastaDrive">
+          </div>
+          <div class="form-field">
+            <label>Valor da Causa (R$)</label>
+            <input type="text" inputmode="decimal" id="cad-valorCausa">
+          </div>
+          <div class="form-field">
+            <label>Valor Atualizado da Execução (R$)</label>
+            <input type="text" inputmode="decimal" id="cad-valorAtualizadoExecucao" placeholder="Atualize conforme incidem juros/multa/honorários">
           </div>
         </div>
       </div>
@@ -6172,6 +6245,28 @@ function brNumStr(v) {
 }
 window.brNumStr = brNumStr;
 
+// --- DESPESAS DO PROCESSO (11/set/2026) ------------------------------------------------
+// Lista de despesas (custas, diligências, perícia, cópias...) lançadas por processo, guardada
+// serializada num único campo da planilha ("Despesas Processo") — mesmo padrão já usado em
+// "outras cobranças" de Locações (parseOutrasCobrancas): "data::descrição::valor" por item,
+// itens separados por "||". Evita precisar de aba nova na planilha ou ação nova no backend —
+// grava pela mesma ação genérica "atualizar" já usada por Pasta Drive/Situação etc.
+function BRLproc_(v) { return 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function despesasProcParse_(str) {
+  return String(str || '').split('||').map(function (par) {
+    var partes = par.split('::');
+    return { data: (partes[0] || '').trim(), desc: (partes[1] || '').trim(), valor: parseFloat(partes[2]) || 0 };
+  }).filter(function (it) { return it.desc || it.valor; });
+}
+function despesasProcMontar_(itens) {
+  return itens.filter(function (it) { return it.desc || it.valor; })
+    .map(function (it) { return (it.data || '') + '::' + (it.desc || '') + '::' + (it.valor || 0); })
+    .join('||');
+}
+function despesasProcTotal_(str) {
+  return despesasProcParse_(str).reduce(function (s, it) { return s + it.valor; }, 0);
+}
+
 // --- PARSE DOS DADOS ------------------------------------------
 function parseProcessos(rows) {
   if (rows.length < 2) {
@@ -6310,6 +6405,15 @@ function parseProcessos(rows) {
     const numBeneficiosHon  = get(row, 'Numero Beneficios Honorarios', -1);
     const valorBeneficioHon = brNumStr(get(row, 'Valor Beneficio Honorarios', -1));
     const valorAReceberHon  = brNumStr(get(row, 'Valor a Receber Processo', -1));
+    // Valor da causa, valor atualizado da execução (juros/multa/honorários acumulados com o
+    // tempo — o advogado atualiza manualmente conforme evolui, não há cálculo automático) e
+    // despesas do processo (custas, diligências, perícia...), pedidos pelo usuário em
+    // 11/set/2026. "Despesas Processo" fica serializado num único campo, no mesmo padrão já
+    // usado em "outras cobranças" de Locações (parseOutrasCobrancas): "data::descrição::
+    // valor||data::descrição::valor" — sem precisar de aba nova na planilha.
+    const valorCausa            = brNumStr(get(row, 'Valor da Causa', -1));
+    const valorAtualizadoExecucao = brNumStr(get(row, 'Valor Atualizado Execucao', -1));
+    const despesasProcesso      = get(row, 'Despesas Processo', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -6352,6 +6456,7 @@ function parseProcessos(rows) {
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
       prazoInfo,
+      valorCausa, valorAtualizadoExecucao, despesasProcesso,
       _row: i
     });
   }
@@ -6827,8 +6932,21 @@ function capaProcessoHtml_(p, fam) {
   // duas linhas empilhadas no mesmo campo, igual à capa do eproc.
   const campoJuiz = (juiz, atuante) => `<div class="capa-campo"><span class="capa-label">Juiz(a)</span><span class="capa-valor">${juiz ? escHtml(juiz) : '—'}</span>${atuante ? `<span class="capa-valor capa-valor-sub">Atuante: ${escHtml(atuante)}</span>` : ''}</div>`;
   const varaJuizo = [p.vara, p.tribunal].filter(Boolean).join(' — ');
+  // Valores (11/set/2026): Valor da Causa (fixo, da inicial), Valor Atualizado da Execução
+  // (o advogado atualiza manualmente conforme incidem juros/multa/honorários com o tempo — não
+  // há cálculo automático de correção aqui) e o total já lançado em Despesas do Processo. Linha
+  // só aparece quando ao menos um dos três estiver preenchido, pra não poluir processos antigos
+  // sem esse dado ainda cadastrado.
+  const despTotal = despesasProcTotal_(p.despesasProcesso);
+  const temValores = p.valorCausa || p.valorAtualizadoExecucao || despTotal > 0;
+  const linhaValores = temValores ? `
+      <div class="capa-linha">
+        ${campo('Valor da Causa', p.valorCausa ? BRLproc_(p.valorCausa) : '')}
+        ${campo('Valor Atualizado da Execução', p.valorAtualizadoExecucao ? BRLproc_(p.valorAtualizadoExecucao) : '')}
+        ${campo('Despesas do Processo', despTotal > 0 ? BRLproc_(despTotal) : '')}
+      </div>` : '';
   return `
-    <div class="capa-processo" style="${familiaChipStyle_(fam.color) ? `border-color:color-mix(in srgb, var(--${fam.color}) 40%, var(--border));background:color-mix(in srgb, var(--${fam.color}) 7%, var(--surface2))` : ''}">
+    <div class="capa-processo" id="capa-${p._uid}" style="${familiaChipStyle_(fam.color) ? `border-color:color-mix(in srgb, var(--${fam.color}) 40%, var(--border));background:color-mix(in srgb, var(--${fam.color}) 7%, var(--surface2))` : ''}">
       <div class="capa-linha">
         ${campo('Nº do processo', p.processo)}
         ${campo('Classe da Ação', p.tipo)}
@@ -6839,8 +6957,69 @@ function capaProcessoHtml_(p, fam) {
         ${campoJuiz(p.juiz, p.juizAtuante)}
         ${campo('Data de Autuação', p.dataAutuacao ? formatDate(p.dataAutuacao) : '')}
       </div>
+      ${linhaValores}
     </div>`;
 }
+
+// Bloco "Despesas do Processo" (11/set/2026): custas, diligências, perícia, cópias etc.
+// lançadas ao longo do processo, com data/descrição/valor — soma automática do total. Grava
+// no mesmo campo único "Despesas Processo" via a ação genérica "atualizar" (sem sheet/ação
+// nova no backend), então cada adicionar/excluir já sai gravado na hora, sem precisar abrir o
+// formulário de edição completo.
+function despesasProcBlocoHtml_(p) {
+  const itens = despesasProcParse_(p.despesasProcesso);
+  const total = itens.reduce((s, it) => s + it.valor, 0);
+  const linhas = itens.map((it, idx) => `
+    <div class="despesa-proc-item">
+      <span class="dp-data">${it.data ? escHtml(formatDate(it.data)) : '—'}</span>
+      <span class="dp-desc">${escHtml(it.desc)}</span>
+      <span class="dp-valor">${BRLproc_(it.valor)}</span>
+      <button type="button" class="dp-rem" title="Excluir despesa" onclick="event.stopPropagation();despesaProcRemover(${p._uid},${idx})">✕</button>
+    </div>`).join('');
+  return `
+  <div class="despesas-proc-box" id="despesas-proc-${p._uid}" onclick="event.stopPropagation()">
+    <div class="despesas-proc-header">
+      <span>💸 Despesas do Processo</span>
+      ${itens.length ? `<span class="despesas-proc-total">Total: ${BRLproc_(total)}</span>` : ''}
+    </div>
+    ${itens.length ? `<div class="despesa-proc-lista">${linhas}</div>` : `<div class="despesas-proc-vazio">Nenhuma despesa lançada ainda.</div>`}
+    <div class="despesa-proc-form">
+      <input type="date" class="despesa-proc-input dp-data-input" id="dp-data-${p._uid}">
+      <input type="text" class="despesa-proc-input dp-desc-input" id="dp-desc-${p._uid}" placeholder="Ex.: Custas de distribuição, diligência de oficial de justiça...">
+      <input type="text" inputmode="decimal" class="despesa-proc-input dp-valor-input" id="dp-valor-${p._uid}" placeholder="Valor (R$)">
+      <button type="button" class="dp-add-btn" onclick="despesaProcAdicionar(${p._uid})">+ Adicionar</button>
+    </div>
+  </div>`;
+}
+function despesaProcSalvarEAtualizarTela_(p) {
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Despesas Processo': p.despesasProcesso } }) }).catch(function(){});
+  const box = document.getElementById('despesas-proc-' + p._uid);
+  if (box) box.outerHTML = despesasProcBlocoHtml_(p);
+  const capa = document.getElementById('capa-' + p._uid);
+  if (capa) capa.outerHTML = capaProcessoHtml_(p, familiaClasse_(p.tipo, p.ramo));
+}
+window.despesaProcAdicionar = function (uid) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid)); if (!p) return;
+  const dataEl = document.getElementById('dp-data-' + uid);
+  const descEl = document.getElementById('dp-desc-' + uid);
+  const valorEl = document.getElementById('dp-valor-' + uid);
+  const desc = (descEl.value || '').trim();
+  const valor = numFlex(valorEl.value || '') || 0;
+  if (!desc) { descEl.focus(); return; }
+  if (!valor) { valorEl.focus(); return; }
+  const itens = despesasProcParse_(p.despesasProcesso);
+  itens.push({ data: inputParaData(dataEl.value) || new Date().toLocaleDateString('pt-BR'), desc: desc, valor: valor });
+  p.despesasProcesso = despesasProcMontar_(itens);
+  despesaProcSalvarEAtualizarTela_(p);
+};
+window.despesaProcRemover = function (uid, idx) {
+  const p = allProcessos.find(x => x._uid === parseInt(uid)); if (!p) return;
+  if (!confirm('Excluir esta despesa do processo?')) return;
+  const itens = despesasProcParse_(p.despesasProcesso);
+  itens.splice(idx, 1);
+  p.despesasProcesso = despesasProcMontar_(itens);
+  despesaProcSalvarEAtualizarTela_(p);
+};
 
 function renderCard(p, idx) {
   const fam = familiaClasse_(p.tipo, p.ramo);
@@ -7056,6 +7235,8 @@ function renderCard(p, idx) {
             <div class="nota-interna-tag">🔒 Anotação interna · não vai para o cliente</div>
             ${escHtml(p.obs)}
           </div>` : ''}
+
+          ${despesasProcBlocoHtml_(p)}
 
           <div class="detail-actions">
             <div class="btn-group-row btn-group-gestao">
@@ -12631,6 +12812,8 @@ function abrirEdicao(uid) {
   document.getElementById('ed-advParc').value = p.advParc || '';
   document.getElementById('ed-linkTrib').value = p.linkTrib || '';
   document.getElementById('ed-pastaDrive').value = p.pastaDrive || '';
+  document.getElementById('ed-valorCausa').value = p.valorCausa || '';
+  document.getElementById('ed-valorAtualizadoExecucao').value = p.valorAtualizadoExecucao || '';
 
   // Preencher campos - Advogado da Parte Adversa
   document.getElementById('ed-advAdvNome').value = p.advAdvNome || '';
@@ -12784,6 +12967,8 @@ async function salvarEdicao() {
     'Advogado Parceiro': document.getElementById('ed-advParc').value,
     'Link Tribunal': document.getElementById('ed-linkTrib').value,
     'Pasta Drive': document.getElementById('ed-pastaDrive').value,
+    'Valor da Causa': numFlex(document.getElementById('ed-valorCausa').value),
+    'Valor Atualizado Execucao': numFlex(document.getElementById('ed-valorAtualizadoExecucao').value),
     'Advogado Adversário Nome': document.getElementById('ed-advAdvNome').value,
     'Advogado Adversário OAB': document.getElementById('ed-advAdvOab').value,
     'Advogado Adversário Telefone': document.getElementById('ed-advAdvTelefone').value,
@@ -13452,6 +13637,8 @@ async function salvarCadastro() {
     'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
     'Link Tribunal': document.getElementById('cad-linkTrib').value,
     'Pasta Drive': document.getElementById('cad-pastaDrive').value,
+    'Valor da Causa': numFlex(document.getElementById('cad-valorCausa').value),
+    'Valor Atualizado Execucao': numFlex(document.getElementById('cad-valorAtualizadoExecucao').value),
     'Valor dos Honorários': numFlex(document.getElementById('cad-honorarios').value),
     'Forma Calculo Honorarios': document.getElementById('cad-formaCalcHon').value,
     'Percentual Honorarios': numFlex(document.getElementById('cad-percentualHon').value),
