@@ -990,6 +990,30 @@
      blocos que o Dr. Adenilson pediu pra editar sem precisar abrir "Editar Cadastro". Mesmo
      padrão de "salva e atualiza só esse pedaço da tela" já usado em Despesas do Processo. */
   .proc-inline-box { position: relative; }
+  /* Casco visual único e compacto para os 5 blocos (13/set/2026) — antes cada um usava uma
+     classe diferente (providencias-box/atualizacao-box/nota-interna-box) com paddings e
+     estilos distintos, e o de Anotação Interna tinha "white-space:pre-wrap" no container
+     inteiro, o que transformava a indentação do template em linhas em branco reais e deixava
+     o bloco enorme. Agora todos os 5 usam .proc-box, com o mesmo tamanho/espaçamento, e só o
+     texto (.proc-box-text) preserva quebras de linha do usuário. */
+  .proc-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 34px 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .proc-box-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+  }
+  .proc-box-text { white-space: pre-wrap; }
+  .proc-box-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
   .proc-inline-editbtn {
     position: absolute; top: 8px; right: 10px;
     background: none; border: none; cursor: pointer;
@@ -6989,94 +7013,63 @@ function capaProcessoHtml_(p, fam) {
 // blocos que o Dr. Adenilson pediu pra poder editar sem abrir "Editar Cadastro". Mesmo padrão
 // de "salva e re-renderiza só esse pedaço da tela" já usado em Despesas do Processo: grava via
 // a ação genérica 'atualizar' (sem ação nova no backend) e troca só o outerHTML daquele bloco.
-function prazoClienteBoxHtml_(p) {
-  var temValor = p.dataPrazoCliente && p.dataPrazoCliente.length > 3;
+// Casco comum dos 5 blocos (13/set/2026) - mesma estrutura/tamanho pra todos, só muda o
+// rótulo/cor e o campo de edição. `sub` é uma linha extra pequena (usada na data da última
+// movimentação); `editInner` é o(s) input(s) específico(s) daquele campo.
+function procBoxWrapper_(uid, campo, labelHtml, textoHtml, sub, editInner) {
   return `
-  <div class="providencias-box proc-inline-box" id="procbox-prazoCliente-${p._uid}" onclick="event.stopPropagation()">
+  <div class="proc-box proc-inline-box" id="procbox-${campo}-${uid}" onclick="event.stopPropagation()">
     <div class="proc-inline-view">
-      <div class="label">Prazo do cliente - aguardando providência</div>
-      <div class="text">${temValor ? `Data limite: <strong>${formatDate(p.dataPrazoCliente)}</strong>` : '<span style="color:var(--muted)">Nenhum prazo do cliente definido.</span>'}</div>
-      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'prazoCliente')">✏️</button>
+      <div class="proc-box-label">${labelHtml}</div>
+      <div class="proc-box-text">${textoHtml}</div>
+      ${sub ? `<div class="proc-box-sub">${sub}</div>` : ''}
+      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${uid},'${campo}')">✏️</button>
     </div>
     <div class="proc-inline-edit">
-      <input type="date" class="proc-inline-input" id="procin-prazoCliente-${p._uid}" value="${dataParaInput(p.dataPrazoCliente || '')}">
+      ${editInner}
       <div class="proc-inline-actions">
-        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'prazoCliente')">Salvar</button>
-        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'prazoCliente')">Cancelar</button>
+        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${uid},'${campo}')">Salvar</button>
+        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${uid},'${campo}')">Cancelar</button>
       </div>
     </div>
   </div>`;
+}
+function prazoClienteBoxHtml_(p) {
+  var temValor = p.dataPrazoCliente && p.dataPrazoCliente.length > 3;
+  var label = '<span style="color:var(--yellow)">⏳ Prazo do cliente</span>';
+  var texto = temValor ? ('Data limite: <strong>' + formatDate(p.dataPrazoCliente) + '</strong>') : '<span style="color:var(--muted)">Nenhum prazo do cliente definido.</span>';
+  var edit = '<input type="date" class="proc-inline-input" id="procin-prazoCliente-' + p._uid + '" value="' + dataParaInput(p.dataPrazoCliente || '') + '">';
+  return procBoxWrapper_(p._uid, 'prazoCliente', label, texto, '', edit);
 }
 function ultimaMovBoxHtml_(p) {
   var temValor = p.ultima && p.ultima.length > 2;
-  return `
-  <div class="atualizacao-box proc-inline-box" id="procbox-ultimaMov-${p._uid}" onclick="event.stopPropagation()">
-    <div class="proc-inline-view">
-      <strong>Última movimentacao:</strong><br>${temValor ? escHtml(p.ultima) : '<span style="color:var(--muted)">Nenhuma movimentação registrada.</span>'}
-      ${temValor && p.dataAtua ? `<br><span style="color:var(--muted);font-size:11px">${formatDate(p.dataAtua)}</span>` : ''}
-      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'ultimaMov')">✏️</button>
-    </div>
-    <div class="proc-inline-edit">
-      <textarea class="proc-inline-input" rows="3" id="procin-ultimaMov-${p._uid}-texto" placeholder="Última movimentação...">${escHtml(p.ultima || '')}</textarea>
-      <input type="date" class="proc-inline-input" id="procin-ultimaMov-${p._uid}-data" value="${dataParaInput(p.dataAtua || '')}">
-      <div class="proc-inline-actions">
-        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'ultimaMov')">Salvar</button>
-        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'ultimaMov')">Cancelar</button>
-      </div>
-    </div>
-  </div>`;
+  var label = 'Última movimentação';
+  var texto = temValor ? escHtml(p.ultima) : '<span style="color:var(--muted)">Nenhuma movimentação registrada.</span>';
+  var sub = (temValor && p.dataAtua) ? formatDate(p.dataAtua) : '';
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-ultimaMov-' + p._uid + '-texto" placeholder="Última movimentação...">' + escHtml(p.ultima || '') + '</textarea>'
+    + '<input type="date" class="proc-inline-input" id="procin-ultimaMov-' + p._uid + '-data" value="' + dataParaInput(p.dataAtua || '') + '">';
+  return procBoxWrapper_(p._uid, 'ultimaMov', label, texto, sub, edit);
 }
 function proxPassoBoxHtml_(p) {
   var temValor = p.proximoPassoAdv && p.proximoPassoAdv.length > 2;
-  return `
-  <div class="atualizacao-box proc-inline-box" id="procbox-proxPasso-${p._uid}" style="border-left:3px solid var(--blue);padding-left:10px" onclick="event.stopPropagation()">
-    <div class="proc-inline-view">
-      <strong style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer):</strong><br>${temValor ? escHtml(p.proximoPassoAdv) : '<span style="color:var(--muted)">Nada definido ainda.</span>'}
-      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'proxPasso')">✏️</button>
-    </div>
-    <div class="proc-inline-edit">
-      <textarea class="proc-inline-input" rows="3" id="procin-proxPasso-${p._uid}" placeholder="O que o advogado precisa fazer...">${escHtml(p.proximoPassoAdv || '')}</textarea>
-      <div class="proc-inline-actions">
-        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'proxPasso')">Salvar</button>
-        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'proxPasso')">Cancelar</button>
-      </div>
-    </div>
-  </div>`;
+  var label = '<span style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer)</span>';
+  var texto = temValor ? escHtml(p.proximoPassoAdv) : '<span style="color:var(--muted)">Nada definido ainda.</span>';
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-proxPasso-' + p._uid + '" placeholder="O que o advogado precisa fazer...">' + escHtml(p.proximoPassoAdv || '') + '</textarea>';
+  return procBoxWrapper_(p._uid, 'proxPasso', label, texto, '', edit);
 }
 function provClienteBoxHtml_(p) {
   var temValor = p.providCliente && p.providCliente.length > 2;
-  return `
-  <div class="atualizacao-box proc-inline-box" id="procbox-providCliente-${p._uid}" style="border-left:3px solid var(--green);padding-left:10px" onclick="event.stopPropagation()">
-    <div class="proc-inline-view">
-      <strong style="color:var(--green)">🧑 O que o cliente está providenciando:</strong><br>${temValor ? escHtml(p.providCliente) : '<span style="color:var(--muted)">Nada definido ainda.</span>'}
-      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'providCliente')">✏️</button>
-    </div>
-    <div class="proc-inline-edit">
-      <textarea class="proc-inline-input" rows="3" id="procin-providCliente-${p._uid}" placeholder="O que o cliente precisa providenciar...">${escHtml(p.providCliente || '')}</textarea>
-      <div class="proc-inline-actions">
-        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'providCliente')">Salvar</button>
-        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'providCliente')">Cancelar</button>
-      </div>
-    </div>
-  </div>`;
+  var label = '<span style="color:var(--green)">🧑 O que o cliente está providenciando</span>';
+  var texto = temValor ? escHtml(p.providCliente) : '<span style="color:var(--muted)">Nada definido ainda.</span>';
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-providCliente-' + p._uid + '" placeholder="O que o cliente precisa providenciar...">' + escHtml(p.providCliente || '') + '</textarea>';
+  return procBoxWrapper_(p._uid, 'providCliente', label, texto, '', edit);
 }
 function notaInternaBoxHtml_(p) {
   var temValor = p.obs && p.obs.length > 2;
-  return `
-  <div class="nota-interna-box proc-inline-box" id="procbox-notaInterna-${p._uid}" style="margin-top:8px" onclick="event.stopPropagation()">
-    <div class="proc-inline-view">
-      <div class="nota-interna-tag">🔒 Anotação interna · não vai para o cliente</div>
-      ${temValor ? escHtml(p.obs) : '<span style="color:var(--muted)">Nenhuma anotação interna.</span>'}
-      <button type="button" class="proc-inline-editbtn" title="Editar" onclick="event.stopPropagation();procBoxAbrirEdicao_(${p._uid},'notaInterna')">✏️</button>
-    </div>
-    <div class="proc-inline-edit">
-      <textarea class="proc-inline-input" rows="3" id="procin-notaInterna-${p._uid}" placeholder="Anotação só para uso interno do escritório...">${escHtml(p.obs || '')}</textarea>
-      <div class="proc-inline-actions">
-        <button type="button" class="proc-inline-save" onclick="procBoxSalvar_(${p._uid},'notaInterna')">Salvar</button>
-        <button type="button" class="proc-inline-cancel" onclick="procBoxCancelarEdicao_(${p._uid},'notaInterna')">Cancelar</button>
-      </div>
-    </div>
-  </div>`;
+  var label = '<span style="color:var(--orange)">🔒 Anotação interna · não vai para o cliente</span>';
+  var texto = temValor ? escHtml(p.obs) : '<span style="color:var(--muted)">Nenhuma anotação interna.</span>';
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-notaInterna-' + p._uid + '" placeholder="Anotação só para uso interno do escritório...">' + escHtml(p.obs || '') + '</textarea>';
+  return procBoxWrapper_(p._uid, 'notaInterna', label, texto, '', edit);
 }
 var PROC_BOX_RENDER_ = {
   prazoCliente: prazoClienteBoxHtml_,
@@ -7332,7 +7325,6 @@ function renderCard(p, idx) {
           ${audienciaHtml}
           ${segundoGrauHtml}
           ${reconvencaoHtml}
-          ${prazoClienteBoxHtml_(p)}
 
           <div class="detail-grid">
             <div class="detail-block">
@@ -7374,13 +7366,13 @@ function renderCard(p, idx) {
             </div>` : ''}
           </div>
 
-          ${ultimaMovBoxHtml_(p)}
-
-          ${proxPassoBoxHtml_(p)}
-
-          ${provClienteBoxHtml_(p)}
-
-          ${notaInternaBoxHtml_(p)}
+          <div class="proc-box-grupo">
+            ${prazoClienteBoxHtml_(p)}
+            ${ultimaMovBoxHtml_(p)}
+            ${proxPassoBoxHtml_(p)}
+            ${provClienteBoxHtml_(p)}
+            ${notaInternaBoxHtml_(p)}
+          </div>
 
           ${despesasProcBlocoHtml_(p)}
 
