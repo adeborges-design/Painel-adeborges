@@ -7105,6 +7105,25 @@ function renderCard(p, idx) {
       </div>`;
   }
 
+  // Próximo Passo do Advogado / O que o Cliente está providenciando (11/set/2026) - mesmos
+  // campos já usados no card compartilhável com o cliente (proximoPassoAdv/providCliente,
+  // editáveis em "Editar Cadastro" > Próximos Passos), agora também exibidos direto no card
+  // interno do processo, no mesmo padrão visual de "Última movimentação".
+  let proximoPassoHtml = '';
+  if (p.proximoPassoAdv && p.proximoPassoAdv.length > 2) {
+    proximoPassoHtml = `
+      <div class="atualizacao-box" style="border-left:3px solid var(--blue);padding-left:10px">
+        <strong style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer):</strong><br>${escHtml(p.proximoPassoAdv)}
+      </div>`;
+  }
+  let providClienteBoxHtml = '';
+  if (p.providCliente && p.providCliente.length > 2) {
+    providClienteBoxHtml = `
+      <div class="atualizacao-box" style="border-left:3px solid var(--green);padding-left:10px">
+        <strong style="color:var(--green)">🧑 O que o cliente está providenciando:</strong><br>${escHtml(p.providCliente)}
+      </div>`;
+  }
+
   const delay = Math.min(idx * 0.04, 0.8);
 
   return `
@@ -7197,11 +7216,6 @@ function renderCard(p, idx) {
               <div class="detail-label">Data do prazo</div>
               <div class="detail-value" style="color:var(--accent)">${formatDate(p.prazoData)}${pc.fonte === 'Prazo processual' ? ` <span style="font-size:11px;font-weight:400;color:${pc.dias<0?'var(--red)':'var(--muted)'}">(${pc.texto})</span>` : ''}</div>
             </div>` : ''}
-            ${p.dataPrazoCliente && p.dataPrazoCliente.length > 3 ? `
-            <div class="detail-block">
-              <div class="detail-label">Prazo do cliente</div>
-              <div class="detail-value" style="color:var(--yellow)">${formatDate(p.dataPrazoCliente)}</div>
-            </div>` : ''}
             ${p.advParc ? `
             <div class="detail-block">
               <div class="detail-label">Advogado parceiro</div>
@@ -7225,6 +7239,10 @@ function renderCard(p, idx) {
           </div>
 
           ${ultimaHtml}
+
+          ${proximoPassoHtml}
+
+          ${providClienteBoxHtml}
 
           ${p.obs && p.obs.length > 2 && p.obs !== p.ultima ? `
           <div class="nota-interna-box" style="margin-top:8px">
