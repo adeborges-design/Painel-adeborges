@@ -529,22 +529,18 @@
     var btn = document.getElementById('btnEnviar');
     if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
     var payload = { acao:'salvar_captacao', campos: dados, arquivos: arquivos.map(function(a){return {nome:a.nome,tipo:a.tipo,base64:a.base64};}) };
-    fetch(URL_AS, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) })
-      .then(function(r){ return r.json(); })
-      .then(function(resp){
-        if (resp && resp.ok) { irParaFim(); }
-        else { throw new Error((resp&&resp.error)||'Não foi possível confirmar o envio.'); }
-      })
+    // Apps Script Web App não devolve cabeçalho CORS pra fetch comum — o primeiro fetch (modo
+    // 'cors') SEMPRE falhava ao tentar ler a resposta, mesmo quando a gravação já tinha sido
+    // feita no servidor, e o catch tentava de novo com 'no-cors', gravando o mesmo atendimento
+    // DUAS vezes. Corrigido em 11/set/2026: um único fetch em 'no-cors' (mesmo padrão já usado
+    // no resto do sistema, ex.: cpLancar em index.html) — sem leitura de resposta possível
+    // nesse modo, então segue como sucesso assim que o envio sai sem erro de rede.
+    fetch(URL_AS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) })
+      .then(function(){ irParaFim(); })
       .catch(function(){
-        // fetch sem confirmação de leitura (ex.: CORS) — tenta no-cors como último recurso;
-        // como não há como confirmar, segue como sucesso (mesmo padrão já usado no sistema).
-        fetch(URL_AS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) })
-          .then(function(){ irParaFim(); })
-          .catch(function(){
-            enviando = false;
-            if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
-            mostrarErro('Não foi possível enviar agora. Verifique sua internet e tente novamente.');
-          });
+        enviando = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
+        mostrarErro('Não foi possível enviar agora. Verifique sua internet e tente novamente.');
       });
   };
   function irParaFim(){
