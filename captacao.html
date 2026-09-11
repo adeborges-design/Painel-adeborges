@@ -320,10 +320,12 @@
       +field_text('Empresa','Nome da empresa','Razão social ou nome fantasia')
       +field_text('CNPJ Empresa','CNPJ (se souber)','00.000.000/0000-00')
       +'</div>'
+      +field_text('Ramo Empresa','Atividade / ramo da empresa','Ex.: Comércio de roupas, construção civil, saúde, transporte...')
       +'<div class="row2">'
       +field_text('Data Admissao','Data de admissão','',{type:'date'})
-      +field_text('Salario Aproximado','Salário aproximado (R$)','Ex.: 1800')
+      +field_text('Salario Aproximado','Qual foi o seu último salário (R$)','Ex.: 1800')
       +'</div>'
+      +field_text('Sindicato','Nome do sindicato da categoria (se souber)','Ex.: Sindicato dos Comerciários de São Paulo — deixe em branco se não souber')
       +'<div class="field"><label>Ainda trabalha na empresa?</label>'
       +choiceInline('Ainda Trabalha',[['Sim','Sim'],['Não','Não']])
       +'</div>'
@@ -521,6 +523,22 @@
   }
 
   // ============ ENVIO ============
+  // Campos que usam <input type="date">: o navegador guarda/precisa do valor em ISO
+  // (AAAA-MM-DD) pra o seletor de data funcionar (voltar/avançar nas etapas mantendo o valor
+  // certo no campo) — por isso "dados" continua em ISO internamente. Mas o que chega no
+  // sistema (planilha/Eixo) precisa estar no padrão Brasil (DD/MM/AAAA), senão a data fica
+  // ambígua/errada pra quem lê. Convertido só na hora de montar o payload de envio.
+  var CAMPOS_DATA = ['Data Nascimento','Data Admissao','Data Saida'];
+  function isoParaBR(iso){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
+    return m ? (m[3]+'/'+m[2]+'/'+m[1]) : (iso||'');
+  }
+  function camposParaEnvio(){
+    var out = {};
+    Object.keys(dados).forEach(function(k){ out[k] = dados[k]; });
+    CAMPOS_DATA.forEach(function(k){ if (out[k]) out[k] = isoParaBR(out[k]); });
+    return out;
+  }
   window.eixoEnviar = function(){
     var erro = validarConsentimento();
     if (erro) { mostrarErro(erro); return; }
@@ -528,7 +546,7 @@
     enviando = true;
     var btn = document.getElementById('btnEnviar');
     if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
-    var payload = { acao:'salvar_captacao', campos: dados, arquivos: arquivos.map(function(a){return {nome:a.nome,tipo:a.tipo,base64:a.base64};}) };
+    var payload = { acao:'salvar_captacao', campos: camposParaEnvio(), arquivos: arquivos.map(function(a){return {nome:a.nome,tipo:a.tipo,base64:a.base64};}) };
     // Apps Script Web App não devolve cabeçalho CORS pra fetch comum — o primeiro fetch (modo
     // 'cors') SEMPRE falhava ao tentar ler a resposta, mesmo quando a gravação já tinha sido
     // feita no servidor, e o catch tentava de novo com 'no-cors', gravando o mesmo atendimento
