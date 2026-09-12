@@ -4277,6 +4277,10 @@
             <label>Próximo Passo do Advogado</label>
             <textarea id="ed-proxAdv" rows="2"></textarea>
           </div>
+          <div class="form-field">
+            <label>Prazo do Advogado (data limite pra executar o próximo passo)</label>
+            <input type="date" id="ed-dataProxPasso">
+          </div>
           <div class="form-field form-full">
             <label>Providências para o Cliente Atender</label>
             <textarea id="ed-provCliente" rows="2"></textarea>
@@ -4286,7 +4290,7 @@
             <input type="date" id="ed-dataPrazoCliente">
           </div>
           <div class="form-field">
-            <label>Data do Prazo</label>
+            <label>Data do Prazo (processual)</label>
             <input type="date" id="ed-prazoData">
             <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Os dias restantes são calculados automaticamente a partir dessa data — não precisa mais digitar "dias para cumprimento".</div>
           </div>
@@ -4778,6 +4782,10 @@
           <div class="form-field form-full">
             <label>Próximo Passo do Advogado</label>
             <textarea id="cad-proxAdv" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label>Prazo do Advogado (data limite pra executar o próximo passo)</label>
+            <input type="date" id="cad-dataProxPasso">
           </div>
           <div class="form-field form-full">
             <label>Providências para o Cliente</label>
@@ -6387,6 +6395,12 @@ function parseProcessos(rows) {
     const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
     const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
     const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
+    // Prazo do Advogado (13/set/2026) - data que o próprio advogado se dá pra executar o
+    // "Próximo Passo" acima. Diferente do prazo processual (imposto pelo processo/lei) e do
+    // prazo do cliente (o que o cliente precisa providenciar) - este é o prazo que o escritório
+    // se compromete internamente, pra não deixar tarefas "vou continuar monitorando" sem uma
+    // data real de cobrança.
+    const dataProxPasso    = get(row, 'Data Proximo Passo', -1);
     const diasPrazo        = get(row, 'DiasPrazo',        -1); // -1: campo legado, se a coluna for excluída da planilha simplesmente vira vazio (sem ler índice deslocado por engano)
     const prazoData        = get(row, 'prazoData',        39);
     const dataAudi         = get(row, 'Data Audiência',   40);
@@ -6487,7 +6501,7 @@ function parseProcessos(rows) {
       rendaMensal, numDependentes,
       outra, parte, ramo, tipo, status: st,
       dataAtua, ultima,
-      providCliente, dataPrazoCliente, proximoPassoAdv,
+      providCliente, dataPrazoCliente, proximoPassoAdv, dataProxPasso,
       diasPrazo: diasPrazoNum, prazoData,
       dataAudi, horAudi, localAudi,
       advParc, obs, pastaDrive, linkTrib, telefone, email,
@@ -7034,10 +7048,44 @@ function procBoxWrapper_(uid, campo, labelHtml, textoHtml, sub, editInner) {
     </div>
   </div>`;
 }
+// Classifica uma data (qualquer uma das 3 "prazo") em dias restantes + selo visual, reusando
+// a mesma linguagem de cores já usada no selo de urgência do topo do card (prazo-vencido/
+// prazo-hoje/prazo-breve/prazo-ok). Isolado do resolvePrazoCritico (que escolhe UMA fonte por
+// prioridade) porque aqui cada um dos 3 prazos tem seu próprio selo, independente dos outros.
+function classificarPrazo_(dataStr) {
+  if (!dataStr || String(dataStr).length < 4) return null;
+  var d = parseDate(dataStr);
+  if (!d) return null;
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  var dd = new Date(d); dd.setHours(0, 0, 0, 0);
+  var dias = Math.round((dd - hoje) / 86400000);
+  var cls, texto;
+  if (dias < 0) { cls = 'prazo-vencido'; texto = 'Venceu há ' + Math.abs(dias) + 'd'; }
+  else if (dias === 0) { cls = 'prazo-vencido'; texto = 'Vence hoje'; }
+  else if (dias <= 5) { cls = 'prazo-vencido'; texto = 'Faltam ' + dias + 'd'; }
+  else if (dias <= 15) { cls = 'prazo-hoje'; texto = 'Faltam ' + dias + 'd'; }
+  else if (dias <= 30) { cls = 'prazo-breve'; texto = 'Faltam ' + dias + 'd'; }
+  else { cls = 'prazo-ok'; texto = 'Faltam ' + dias + 'd'; }
+  return { dias: dias, cls: cls, texto: texto };
+}
+function prazoBadgeHtml_(dataStr) {
+  var c = classificarPrazo_(dataStr);
+  return c ? ' <span class="prazo-badge ' + c.cls + '" style="padding:2px 8px;font-size:11px">' + c.texto + '</span>' : '';
+}
+// Prazo Processual (13/set/2026) - o prazo imposto pelo processo/lei (não pode passar batido).
+// Antes ficava escondido dentro da grade "Sistema/ID, Parte contrária..." como texto simples;
+// agora tem o mesmo destaque e é editável igual aos outros 2 prazos (cliente e advogado).
+function prazoProcessualBoxHtml_(p) {
+  var temValor = p.prazoData && p.prazoData.length > 3;
+  var label = '<span style="color:var(--red)">🏛️ Prazo processual</span>';
+  var texto = temValor ? ('Data limite: <strong>' + formatDate(p.prazoData) + '</strong>' + prazoBadgeHtml_(p.prazoData)) : '<span style="color:var(--muted)">Nenhum prazo processual definido.</span>';
+  var edit = '<input type="date" class="proc-inline-input" id="procin-prazoProcessual-' + p._uid + '" value="' + dataParaInput(p.prazoData || '') + '">';
+  return procBoxWrapper_(p._uid, 'prazoProcessual', label, texto, '', edit);
+}
 function prazoClienteBoxHtml_(p) {
   var temValor = p.dataPrazoCliente && p.dataPrazoCliente.length > 3;
   var label = '<span style="color:var(--yellow)">⏳ Prazo do cliente</span>';
-  var texto = temValor ? ('Data limite: <strong>' + formatDate(p.dataPrazoCliente) + '</strong>') : '<span style="color:var(--muted)">Nenhum prazo do cliente definido.</span>';
+  var texto = temValor ? ('Data limite: <strong>' + formatDate(p.dataPrazoCliente) + '</strong>' + prazoBadgeHtml_(p.dataPrazoCliente)) : '<span style="color:var(--muted)">Nenhum prazo do cliente definido.</span>';
   var edit = '<input type="date" class="proc-inline-input" id="procin-prazoCliente-' + p._uid + '" value="' + dataParaInput(p.dataPrazoCliente || '') + '">';
   return procBoxWrapper_(p._uid, 'prazoCliente', label, texto, '', edit);
 }
@@ -7050,12 +7098,21 @@ function ultimaMovBoxHtml_(p) {
     + '<input type="date" class="proc-inline-input" id="procin-ultimaMov-' + p._uid + '-data" value="' + dataParaInput(p.dataAtua || '') + '">';
   return procBoxWrapper_(p._uid, 'ultimaMov', label, texto, sub, edit);
 }
+// Próximo Passo do Advogado + Prazo do Advogado (13/set/2026) - texto de "o que fazer" e a
+// data que o próprio advogado se dá pra fazer, no mesmo bloco (mesmo padrão de Última
+// Movimentação, que já combina texto + data). Diferente do prazo processual (imposto de fora)
+// e do prazo do cliente (o que o cliente precisa entregar) - este é o autocompromisso do
+// escritório, pra "vou continuar monitorando" sempre vir com uma data real de cobrança.
 function proxPassoBoxHtml_(p) {
   var temValor = p.proximoPassoAdv && p.proximoPassoAdv.length > 2;
   var label = '<span style="color:var(--blue)">📋 Próximo passo (o que o advogado precisa fazer)</span>';
   var texto = temValor ? escHtml(p.proximoPassoAdv) : '<span style="color:var(--muted)">Nada definido ainda.</span>';
-  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-proxPasso-' + p._uid + '" placeholder="O que o advogado precisa fazer...">' + escHtml(p.proximoPassoAdv || '') + '</textarea>';
-  return procBoxWrapper_(p._uid, 'proxPasso', label, texto, '', edit);
+  var temPrazoAdv = p.dataProxPasso && p.dataProxPasso.length > 3;
+  var sub = temPrazoAdv ? ('Prazo do advogado: ' + formatDate(p.dataProxPasso) + prazoBadgeHtml_(p.dataProxPasso)) : '';
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-proxPasso-' + p._uid + '" placeholder="O que o advogado precisa fazer...">' + escHtml(p.proximoPassoAdv || '') + '</textarea>'
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Prazo do advogado (data limite pra executar)</label>'
+    + '<input type="date" class="proc-inline-input" id="procin-proxPasso-' + p._uid + '-prazo" value="' + dataParaInput(p.dataProxPasso || '') + '">';
+  return procBoxWrapper_(p._uid, 'proxPasso', label, texto, sub, edit);
 }
 function provClienteBoxHtml_(p) {
   var temValor = p.providCliente && p.providCliente.length > 2;
@@ -7072,6 +7129,7 @@ function notaInternaBoxHtml_(p) {
   return procBoxWrapper_(p._uid, 'notaInterna', label, texto, '', edit);
 }
 var PROC_BOX_RENDER_ = {
+  prazoProcessual: prazoProcessualBoxHtml_,
   prazoCliente: prazoClienteBoxHtml_,
   ultimaMov: ultimaMovBoxHtml_,
   proxPasso: proxPassoBoxHtml_,
@@ -7094,7 +7152,11 @@ window.procBoxSalvar_ = function(uid, campo) {
   var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); });
   if (!p) return;
   var campos = {};
-  if (campo === 'prazoCliente') {
+  if (campo === 'prazoProcessual') {
+    var v0 = inputParaData(document.getElementById('procin-prazoProcessual-' + uid).value);
+    p.prazoData = v0;
+    campos['prazoData'] = v0;
+  } else if (campo === 'prazoCliente') {
     var v1 = inputParaData(document.getElementById('procin-prazoCliente-' + uid).value);
     p.dataPrazoCliente = v1;
     campos['dataPrazoCliente'] = v1;
@@ -7107,8 +7169,11 @@ window.procBoxSalvar_ = function(uid, campo) {
     campos['Data Atualização'] = vd;
   } else if (campo === 'proxPasso') {
     var vp = document.getElementById('procin-proxPasso-' + uid).value.trim();
+    var vpd = inputParaData(document.getElementById('procin-proxPasso-' + uid + '-prazo').value);
     p.proximoPassoAdv = vp;
+    p.dataProxPasso = vpd;
     campos['proximoPassoAdv'] = vp;
+    campos['Data Proximo Passo'] = vpd;
   } else if (campo === 'providCliente') {
     var vc = document.getElementById('procin-providCliente-' + uid).value.trim();
     p.providCliente = vc;
@@ -7339,11 +7404,6 @@ function renderCard(p, idx) {
               <div class="detail-label">Posicao processual</div>
               <div class="detail-value">${escHtml(p.parte) || '-'}</div>
             </div>
-            ${p.prazoData && p.prazoData.length > 3 ? `
-            <div class="detail-block">
-              <div class="detail-label">Data do prazo</div>
-              <div class="detail-value" style="color:var(--accent)">${formatDate(p.prazoData)}${pc.fonte === 'Prazo processual' ? ` <span style="font-size:11px;font-weight:400;color:${pc.dias<0?'var(--red)':'var(--muted)'}">(${pc.texto})</span>` : ''}</div>
-            </div>` : ''}
             ${p.advParc ? `
             <div class="detail-block">
               <div class="detail-label">Advogado parceiro</div>
@@ -7367,9 +7427,10 @@ function renderCard(p, idx) {
           </div>
 
           <div class="proc-box-grupo">
+            ${prazoProcessualBoxHtml_(p)}
             ${prazoClienteBoxHtml_(p)}
-            ${ultimaMovBoxHtml_(p)}
             ${proxPassoBoxHtml_(p)}
+            ${ultimaMovBoxHtml_(p)}
             ${provClienteBoxHtml_(p)}
             ${notaInternaBoxHtml_(p)}
           </div>
@@ -12975,6 +13036,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-dataAtua').value = dataParaInput(p.dataAtua);
   document.getElementById('ed-dataPrazoCliente').value = dataParaInput(p.dataPrazoCliente);
   document.getElementById('ed-prazoData').value = dataParaInput(p.prazoData);
+  document.getElementById('ed-dataProxPasso').value = dataParaInput(p.dataProxPasso);
   document.getElementById('ed-dataAudi').value = dataParaInput(p.dataAudi);
   document.getElementById('ed-horAudi').value = p.horAudi ? p.horAudi.substring(0,5) : '';
   document.getElementById('ed-localAudi').value = p.localAudi || '';
@@ -13118,6 +13180,7 @@ async function salvarEdicao() {
     'Status': document.getElementById('ed-status').value,
     'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
     'proximoPassoAdv': document.getElementById('ed-proxAdv').value,
+    'Data Proximo Passo': inputParaData(document.getElementById('ed-dataProxPasso').value),
     'Providências para o Cliente Atender': document.getElementById('ed-provCliente').value,
     'dataPrazoCliente': inputParaData(document.getElementById('ed-dataPrazoCliente').value),
     'prazoData': inputParaData(document.getElementById('ed-prazoData').value),
@@ -13504,7 +13567,7 @@ function abrirCadastro() {
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
    'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
-   'cad-advParc','cad-ultima','cad-proxAdv','cad-provCliente','cad-linkTrib',
+   'cad-advParc','cad-ultima','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
     const el = document.getElementById(id);
@@ -13772,6 +13835,7 @@ async function salvarCadastro() {
     'Advogado Parceiro': document.getElementById('cad-advParc').value,
     'Última Atualizacao': document.getElementById('cad-ultima').value,
     'proximoPassoAdv': document.getElementById('cad-proxAdv').value,
+    'Data Proximo Passo': inputParaData(document.getElementById('cad-dataProxPasso').value),
     'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
     'Link Tribunal': document.getElementById('cad-linkTrib').value,
     'Pasta Drive': document.getElementById('cad-pastaDrive').value,
