@@ -4278,6 +4278,10 @@
         <div class="form-section-title">⚙️ Próximos Passos</div>
         <div class="form-grid">
           <div class="form-field form-full">
+            <label>O que Precisa Ser Providenciado (anotação geral, quem tiver que ver)</label>
+            <textarea id="ed-precisaProvidenciar" rows="2"></textarea>
+          </div>
+          <div class="form-field form-full">
             <label>Próximo Passo do Advogado</label>
             <textarea id="ed-proxAdv" rows="2"></textarea>
           </div>
@@ -4786,6 +4790,10 @@
           <div class="form-field form-full">
             <label>Última Atualização / Situação Atual</label>
             <textarea id="cad-ultima" rows="3"></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>O que Precisa Ser Providenciado (anotação geral, quem tiver que ver)</label>
+            <textarea id="cad-precisaProvidenciar" rows="2"></textarea>
           </div>
           <div class="form-field form-full">
             <label>Próximo Passo do Advogado</label>
@@ -6401,6 +6409,10 @@ function parseProcessos(rows) {
     const dataAtua         = get(row, 'Data Atualização', 33);
     const ultima           = get(row, 'Última Atualização', 34);
     const providCliente    = get(row, 'Providências para o Cliente Atender', 35);
+    // O que Precisa Ser Providenciado (12/set/2026) - anotação geral no topo do card, separada
+    // do "Próximo Passo" (do advogado) e do "O que o Cliente está Providenciando" - pra recado
+    // solto que não é tarefa de ninguém específico ainda (ex.: "falta juntar documento X").
+    const precisaProvidenciar = get(row, 'O Que Precisa Ser Providenciado', -1);
     const dataPrazoCliente = get(row, 'dataPrazoCliente', 36);
     const proximoPassoAdv  = get(row, 'proximoPassoAdv',  37);
     // Prazo do Advogado (13/set/2026) - data que o próprio advogado se dá pra executar o
@@ -6510,7 +6522,7 @@ function parseProcessos(rows) {
       rendaMensal, numDependentes,
       outra, parte, ramo, tipo, status: st,
       dataAtua, ultima,
-      providCliente, dataPrazoCliente, proximoPassoAdv, dataProxPasso,
+      providCliente, dataPrazoCliente, proximoPassoAdv, dataProxPasso, precisaProvidenciar,
       diasPrazo: diasPrazoNum, prazoData,
       dataAudi, horAudi, localAudi,
       advParc, obs, pastaDrive, linkTrib, telefone, email,
@@ -7095,6 +7107,17 @@ function prazoProcessualBoxHtml_(p) {
   var edit = '<input type="date" class="proc-inline-input" id="procin-prazoProcessual-' + p._uid + '" value="' + dataParaInput(p.prazoData || '') + '">';
   return procBoxWrapper_(p._uid, 'prazoProcessual', label, texto, '', edit);
 }
+// O que Precisa Ser Providenciado (12/set/2026) - anotação geral, solta, pra recado que ainda
+// não virou tarefa de ninguém específico (diferente de "Próximo Passo", que é do advogado, e de
+// "O que o Cliente está Providenciando", que é do cliente). Fica logo abaixo do Prazo Processual,
+// cor teal (identidade do escritório), pra servir de rascunho/lembrete rápido.
+function precisaProvidenciarBoxHtml_(p) {
+  var temValor = p.precisaProvidenciar && p.precisaProvidenciar.length > 2;
+  var label = '<span style="color:var(--teal)">📝 O que precisa ser providenciado</span>';
+  var texto = temValor ? escHtml(p.precisaProvidenciar) : '<span style="color:var(--muted)">Nada anotado ainda.</span>';
+  var edit = '<textarea class="proc-inline-input" rows="2" id="procin-precisaProvidenciar-' + p._uid + '" placeholder="Anotação geral do que precisa ser providenciado...">' + escHtml(p.precisaProvidenciar || '') + '</textarea>';
+  return procBoxWrapper_(p._uid, 'precisaProvidenciar', label, texto, '', edit);
+}
 // Prazo do Advogado (12/set/2026) - prazo INTERNO que o próprio advogado se dá pra executar o
 // próximo passo. Antes vinha só como uma linha pequena dentro do bloco "Próximo Passo", o que
 // fazia parecer secundário e gerava confusão com o prazo processual (imposto de fora, pelo
@@ -7138,7 +7161,7 @@ function proxPassoBoxHtml_(p) {
 }
 function provClienteBoxHtml_(p) {
   var temValor = p.providCliente && p.providCliente.length > 2;
-  var label = '<span style="color:var(--green)">🧑 O que o cliente está providenciando</span>';
+  var label = '<span style="color:var(--yellow)">🧑 O que o cliente está providenciando</span>';
   var texto = temValor ? escHtml(p.providCliente) : '<span style="color:var(--muted)">Nada definido ainda.</span>';
   var edit = '<textarea class="proc-inline-input" rows="3" id="procin-providCliente-' + p._uid + '" placeholder="O que o cliente precisa providenciar...">' + escHtml(p.providCliente || '') + '</textarea>';
   return procBoxWrapper_(p._uid, 'providCliente', label, texto, '', edit);
@@ -7152,6 +7175,7 @@ function notaInternaBoxHtml_(p) {
 }
 var PROC_BOX_RENDER_ = {
   prazoProcessual: prazoProcessualBoxHtml_,
+  precisaProvidenciar: precisaProvidenciarBoxHtml_,
   prazoAdvogado: prazoAdvogadoBoxHtml_,
   prazoCliente: prazoClienteBoxHtml_,
   ultimaMov: ultimaMovBoxHtml_,
@@ -7179,6 +7203,10 @@ window.procBoxSalvar_ = function(uid, campo) {
     var v0 = inputParaData(document.getElementById('procin-prazoProcessual-' + uid).value);
     p.prazoData = v0;
     campos['prazoData'] = v0;
+  } else if (campo === 'precisaProvidenciar') {
+    var vpp = document.getElementById('procin-precisaProvidenciar-' + uid).value.trim();
+    p.precisaProvidenciar = vpp;
+    campos['O Que Precisa Ser Providenciado'] = vpp;
   } else if (campo === 'prazoAdvogado') {
     var va = inputParaData(document.getElementById('procin-prazoAdvogado-' + uid).value);
     p.dataProxPasso = va;
@@ -7452,6 +7480,7 @@ function renderCard(p, idx) {
 
           <div class="proc-box-grupo">
             ${prazoProcessualBoxHtml_(p)}
+            ${precisaProvidenciarBoxHtml_(p)}
             ${prazoAdvogadoBoxHtml_(p)}
             ${prazoClienteBoxHtml_(p)}
             ${proxPassoBoxHtml_(p)}
@@ -13054,6 +13083,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-situacao').value = p.situacao || '';
   document.getElementById('ed-ultima').value = p.ultima || '';
   document.getElementById('ed-status').value = p.status || 'ATIVO';
+  document.getElementById('ed-precisaProvidenciar').value = p.precisaProvidenciar || '';
   document.getElementById('ed-proxAdv').value = p.proximoPassoAdv || '';
   document.getElementById('ed-provCliente').value = p.providCliente || '';
   document.getElementById('ed-obs').value = p.obs || '';
@@ -13206,6 +13236,7 @@ async function salvarEdicao() {
     'Última Atualizacao': document.getElementById('ed-ultima').value,
     'Status': document.getElementById('ed-status').value,
     'Data Atualizacao': inputParaData(document.getElementById('ed-dataAtua').value) || new Date().toLocaleDateString('pt-BR'),
+    'O Que Precisa Ser Providenciado': document.getElementById('ed-precisaProvidenciar').value,
     'proximoPassoAdv': document.getElementById('ed-proxAdv').value,
     'Data Proximo Passo': inputParaData(document.getElementById('ed-dataProxPasso').value),
     'Providências para o Cliente Atender': document.getElementById('ed-provCliente').value,
@@ -13594,7 +13625,7 @@ function abrirCadastro() {
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
    'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-dataPrimeiroContato','cad-tipo','cad-parte','cad-outra',
-   'cad-advParc','cad-ultima','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
+   'cad-advParc','cad-ultima','cad-precisaProvidenciar','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
     const el = document.getElementById(id);
@@ -13862,6 +13893,7 @@ async function salvarCadastro() {
     'Status': document.getElementById('cad-status').value,
     'Advogado Parceiro': document.getElementById('cad-advParc').value,
     'Última Atualizacao': document.getElementById('cad-ultima').value,
+    'O Que Precisa Ser Providenciado': document.getElementById('cad-precisaProvidenciar').value,
     'proximoPassoAdv': document.getElementById('cad-proxAdv').value,
     'Data Proximo Passo': inputParaData(document.getElementById('cad-dataProxPasso').value),
     'Providências para o Cliente Atender': document.getElementById('cad-provCliente').value,
