@@ -4059,6 +4059,10 @@
             <label>Data de Autuação</label>
             <input type="date" id="ed-dataAutuacao">
           </div>
+          <div class="form-field">
+            <label>Data do Primeiro Contato (cliente com o escritório)</label>
+            <input type="date" id="ed-dataPrimeiroContato">
+          </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="ed-menorIdade" style="width:15px;height:15px"> 🔴 Menor de Idade / Adolescente (prioridade — ECA, Lei nº 8.069/1990; art. 1.048, II, CPC)</label>
@@ -4632,6 +4636,10 @@
           <div class="form-field">
             <label>Data de Autuação</label>
             <input type="date" id="cad-dataAutuacao">
+          </div>
+          <div class="form-field">
+            <label>Data do Primeiro Contato (cliente com o escritório)</label>
+            <input type="date" id="cad-dataPrimeiroContato">
           </div>
           <div class="form-field form-full" style="display:flex;gap:20px;align-items:center;padding-top:6px">
             <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-idoso" style="width:15px;height:15px"> 🔴 Idoso (prioridade — Estatuto do Idoso)</label>
@@ -6429,6 +6437,7 @@ function parseProcessos(rows) {
     const narrativaFatos    = get(row, 'Narrativa dos Fatos', -1);
     const providAdv         = get(row, 'Providências e Observações ao Advogado', -1);
     const dataAutuacao      = get(row, 'Data de Autuacao', -1);
+    const dataPrimeiroContato = get(row, 'Data Primeiro Contato', -1);
     const idoso             = get(row, 'Idoso', -1);
     const menorIdade         = get(row, 'Menor Idade', -1);
     const idosoOctogenario  = get(row, 'Idoso Maior 80 Anos', -1);
@@ -6508,7 +6517,7 @@ function parseProcessos(rows) {
       telParceiro, emailParceiro,
       advAdvNome, advAdvOab, advAdvTelefone, advAdvEmail,
       narrativaFatos, providAdv,
-      dataAutuacao, idoso, idosoOctogenario, menorIdade, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
+      dataAutuacao, dataPrimeiroContato, idoso, idosoOctogenario, menorIdade, digital100, tutelaDeferida, desinteresseConciliacao, justicaGratuita,
       peticaoUrgente, intervencaoMP, pericia,
       segundoGrau, segundoGrauData, segundoGrauRecurso, segundoGrauNumero, segundoGrauCamara, segundoGrauRelator, segundoGrauObs,
       reconvencao, reconvencaoData, reconvencaoStatus, reconvencaoObs,
@@ -7018,6 +7027,10 @@ function capaProcessoHtml_(p, fam) {
         ${campoJuiz(p.juiz, p.juizAtuante)}
         ${campo('Data de Autuação', p.dataAutuacao ? formatDate(p.dataAutuacao) : '')}
       </div>
+      ${p.dataPrimeiroContato ? `
+      <div class="capa-linha">
+        ${campo('Primeiro Contato do Cliente', formatDate(p.dataPrimeiroContato))}
+      </div>` : ''}
       ${linhaValores}
     </div>`;
 }
@@ -12994,6 +13007,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-tribunal').value = p.tribunal || '';
   document.getElementById('ed-linkArtefato').value = p.linkArtefato || '';
   document.getElementById('ed-dataAutuacao').value = dataParaInput(p.dataAutuacao);
+  document.getElementById('ed-dataPrimeiroContato').value = dataParaInput(p.dataPrimeiroContato);
   document.getElementById('ed-idoso').checked = (p.idoso || '').toUpperCase() === 'SIM';
   document.getElementById('ed-idosoOctogenario').checked = (p.idosoOctogenario || '').toUpperCase() === 'SIM';
   document.getElementById('ed-menorIdade').checked = (p.menorIdade || '').toUpperCase() === 'SIM';
@@ -13151,6 +13165,7 @@ async function salvarEdicao() {
     'Tribunal e Forum': document.getElementById('ed-tribunal').value,
     'Link Artefato': document.getElementById('ed-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('ed-dataAutuacao').value),
+    'Data Primeiro Contato': inputParaData(document.getElementById('ed-dataPrimeiroContato').value),
     'Idoso': document.getElementById('ed-idoso').checked ? 'Sim' : 'Nao',
     'Idoso Maior 80 Anos': document.getElementById('ed-idosoOctogenario').checked ? 'Sim' : 'Nao',
     'Menor Idade': document.getElementById('ed-menorIdade').checked ? 'Sim' : 'Nao',
@@ -13578,7 +13593,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-dataPrimeiroContato','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
@@ -13828,6 +13843,7 @@ async function salvarCadastro() {
     'Tribunal e Forum': document.getElementById('cad-tribunal').value,
     'Link Artefato': document.getElementById('cad-linkArtefato').value,
     'Data de Autuacao': inputParaData(document.getElementById('cad-dataAutuacao').value),
+    'Data Primeiro Contato': inputParaData(document.getElementById('cad-dataPrimeiroContato').value),
     'Idoso': document.getElementById('cad-idoso').checked ? 'Sim' : 'Nao',
     'Idoso Maior 80 Anos': document.getElementById('cad-idosoOctogenario').checked ? 'Sim' : 'Nao',
     'Menor Idade': document.getElementById('cad-menorIdade').checked ? 'Sim' : 'Nao',
