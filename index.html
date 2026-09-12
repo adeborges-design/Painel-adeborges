@@ -1731,6 +1731,37 @@
     body.printing-recibo .recibo-assinatura img { height: 36px !important; }
     body.printing-recibo .recibo-footer-doc { padding: 5px 12px !important; font-size: 8.5px !important; }
 
+    /* Mostrar APENAS o aviso de garantia (Corretora/Fiador) quando tem classe printing-sinCard —
+       mesmo padrão de printing-recibo, mas aqui só o #sinCardPreview (o conteúdo do aviso) sai
+       impresso; cabeçalho do modal, botão de anexar arquivo e botões de envio ficam de fora. */
+    body.printing-sinCard #sinCardOverlay {
+      display: flex !important;
+      position: absolute !important;
+      top: 0 !important; left: 0 !important;
+      width: 100% !important;
+      background: #fff !important;
+      padding: 0 !important;
+      z-index: 9999 !important;
+      overflow: visible !important;
+    }
+    body.printing-sinCard #sinCardWrap {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      background: #fff !important;
+    }
+    body.printing-sinCard #sinCardWrap > *:not(#sinCardPreview) { display: none !important; }
+    body.printing-sinCard #sinCardPreview {
+      background: #fff !important;
+      color: #16233a !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+    }
+    body.printing-sinCard #sinCardPreview [style*="color:#8a94a6"] { color: #5c6f8a !important; }
+    body.printing-sinCard #sinCardPreview [style*="color:#fff"] { color: #16233a !important; }
+
     /* Esconder todos os outros modais explicitamente */
     .modal-card-overlay,
     .modal-doc-overlay,
@@ -19315,6 +19346,12 @@ window.cpRenderFixas=cpRenderFixas;
     ov.dataset.contrato=contrato;ov.dataset.destino=destino;
     sinCardRender_(contrato,destino);
     ov.style.display='flex';
+    // Pré-gera a imagem assim que o card abre (mesmo padrão dos outros cards — Atendimento,
+    // Honorários, Locação): sem isso, o clique em "Enviar no WhatsApp" chamava navigator.share()
+    // só DEPOIS do html2canvas terminar de rodar, e nesse meio-tempo o navegador já tinha
+    // descartado o "gesto do usuário" do clique, quebrando o compartilhamento com o erro
+    // "Must be handling a user gesture to perform a share request".
+    _cardGarImgCache_.preAquecer(contrato+'|'+destino);
   };
   // Conteúdo do card de aviso (pedido do usuário, 01/set/2026): precisa trazer TODOS os dados
   // do contrato, TODAS as coberturas contratadas, os valores em atraso discriminados por
@@ -19351,14 +19388,54 @@ window.cpRenderFixas=cpRenderFixas;
       +cobTodas.map(function(x){return '<div>'+E(x[0])+': '+(num(x[1])>0?'até '+BRL(num(x[1])):'<span style="color:#8a94a6">não contratada</span>')+'</div>';}).join('')
       +'<div style="font-size:12px;color:#8a94a6;margin-top:10px">Favor comunicar'+(destino==='corretora'?' a seguradora':'')+' e retornar com as providências. Emitido em '+new Date().toLocaleDateString('pt-BR')+'.</div>';
   }
+  // Versão em texto puro do mesmo aviso (pedido do usuário, 12/set/2026) — usada no botão
+  // "✉️ E-mail" (ShareKit.enviarEmail já remove os asteriscos de negrito antes de abrir o
+  // cliente de e-mail). Mesmo conteúdo do card visual, sem HTML.
+  function montarTextoCardGarantia_(contrato,destino){
+    var c=contratosById[contrato]||{};
+    var dest=sinCardDestinatario_(c,destino);
+    var det=sinCalcularAtrasoDetalhado_(contrato);
+    var ehPJLocatario=String(c.cpfLocatario||'').replace(/\D/g,'').length>11;
+    var l=[];
+    l.push('*AVISO DE INADIMPLÊNCIA — GARANTIA LOCATÍCIA*');
+    l.push('Escritório Adenilson Borges');
+    l.push('');
+    l.push('Para: '+dest.nome+' ('+dest.tipo+')'+(dest.telefone?' — '+dest.telefone:'')+(dest.email?' — '+dest.email:''));
+    l.push('Contrato '+contrato+' — '+(c.end||'')+(c.cep?' — CEP '+c.cep:''));
+    l.push('Aluguel mensal: '+BRL(num(c.aluguel))+(c.vigInicio?' · Vigência: '+c.vigInicio+(c.vigFim?' a '+c.vigFim:''):''));
+    l.push('Locador: '+(c.locador||'-')+(c.telLocador1?' — '+c.telLocador1:'')+(c.telLocador2?' / '+c.telLocador2:'')+(c.emailLocador1?' — '+c.emailLocador1:''));
+    l.push('Locatário: '+(c.locatario||'-')+(c.telLocatario1?' — '+c.telLocatario1:'')+(c.telLocatario2?' / '+c.telLocatario2:'')+(c.emailLocatario1?' — '+c.emailLocatario1:'')+(c.emailLocatario2?' / '+c.emailLocatario2:''));
+    if(ehPJLocatario&&c.repLocatarioNome)l.push('Representante do locatário (PJ): '+c.repLocatarioNome);
+    if(c.tipoGarantia==='Seguro Fiança'&&(c.garApolice||c.garSeguradora))l.push('Apólice nº '+(c.garApolice||'-')+(c.garSeguradora?' — '+c.garSeguradora:''));
+    l.push('');
+    l.push('*Valores em atraso (discriminados por vencimento)*');
+    if(det.meses.length){
+      det.meses.forEach(function(m){
+        l.push('Vencimento '+(m.venc?m.venc.toLocaleDateString('pt-BR'):m.mes)+(m.dias?' — '+m.dias+' dia(s) de atraso':''));
+        if(m.itens.length)m.itens.forEach(function(it){l.push(it[0]+': '+BRL(it[1]));});
+        else l.push('Sem itens cobrados neste mês.');
+        l.push('Subtotal: '+BRL(m.total));
+        l.push('');
+      });
+    } else l.push('Nenhum valor em atraso encontrado nos lançamentos.');
+    l.push('Total em atraso ('+det.meses.length+' mês(es)): '+BRL(det.totalGeral));
+    l.push('');
+    l.push('*Coberturas contratadas na apólice (limite de indenização)*');
+    sinCoberturasLista_(c,false).forEach(function(x){l.push(x[0]+': '+(num(x[1])>0?('até '+BRL(num(x[1]))):'não contratada'));});
+    l.push('');
+    l.push('Favor comunicar'+(destino==='corretora'?' a seguradora':'')+' e retornar com as providências. Emitido em '+new Date().toLocaleDateString('pt-BR')+'.');
+    return l.join('\n');
+  }
   function sinCardRender_(contrato,destino){
     var wrap=document.getElementById('sinCardWrap');if(!wrap)return;
     wrap.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<div style="font-size:15px;font-weight:700">📨 Enviar aviso</div><button class="cp-btn" onclick="sinCardFechar()">✕</button></div>'
       +'<div id="sinCardPreview" style="background:#0d1525;color:#fff;border-radius:10px;padding:16px;margin-bottom:12px">'+sinCardConteudo_(contrato,destino)+'</div>'
-      +'<div style="margin-bottom:10px"><label class="loc-btn" style="display:inline-block;cursor:pointer">📷 '+(_cardGarFotoFile?'Trocar foto':'Anexar foto (opcional)')+'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="sinCardAnexarFoto(this)"></label> '+(_cardGarFotoFile?'<button type="button" class="loc-btn-edit" onclick="sinCardRemoverFoto()">✕ remover foto</button>':'')+'<div id="sinCardFotoStatus" style="font-size:11.5px;color:var(--muted);margin-top:4px">'+(_cardGarFotoFile?'✓ '+E(_cardGarFotoFile.name)+' vai junto no envio':'')+'</div></div>'
+      +'<div style="margin-bottom:10px"><label class="loc-btn" style="display:inline-block;cursor:pointer">📎 '+(_cardGarFotoFile?'Trocar arquivo':'Anexar arquivo (opcional)')+'<input type="file" style="display:none" onchange="sinCardAnexarFoto(this)"></label> '+(_cardGarFotoFile?'<button type="button" class="loc-btn-edit" onclick="sinCardRemoverFoto()">✕ remover arquivo</button>':'')+'<div id="sinCardFotoStatus" style="font-size:11.5px;color:var(--muted);margin-top:4px">'+(_cardGarFotoFile?'✓ '+E(_cardGarFotoFile.name)+' vai junto no envio':'')+'</div></div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +'<button type="button" class="loc-btn primary" id="btnShareGarWpp" onclick="compartilharCardGarantiaImagem()" style="flex:1">📱 Enviar no WhatsApp</button>'
+      +'<button type="button" class="loc-btn primary" id="btnShareGarWpp" onclick="compartilharCardGarantiaImagem()" style="flex:1;min-width:150px">📱 WhatsApp</button>'
+      +'<button type="button" class="loc-btn" id="btnEmailGar" onclick="enviarEmailCardGarantia()" style="flex:1;min-width:120px">✉️ E-mail</button>'
+      +'<button type="button" class="loc-btn" id="btnPrintGar" onclick="imprimirCardGarantia()" style="flex:1;min-width:120px">🖨 Imprimir/PDF</button>'
       +'<button type="button" class="loc-btn" id="btnSaveGarPng" onclick="salvarCardGarantiaPng()">💾 Salvar PNG</button>'
       +'</div><div id="sinCardShareStatus"></div>';
   }
@@ -19372,20 +19449,38 @@ window.cpRenderFixas=cpRenderFixas;
     var filename='aviso_garantia_'+new Date().toISOString().slice(0,10)+'.png';
     return ShareKit.gerarImagemFile(alvo,filename,{bg:'#0d1525'});
   }
+  // Cache da imagem (12/set/2026): pré-gerada assim que o card abre (abrirCardGarantia chama
+  // preAquecer), pra "Enviar no WhatsApp" chamar navigator.share() quase na hora do clique — ver
+  // nota em abrirCardGarantia sobre o erro "Must be handling a user gesture" que isso corrige.
+  var _cardGarImgCache_=ShareKit.criarCache(gerarImagemCardGarantiaFile_);
+  function getCardGarantiaImagemFile_(){return _cardGarImgCache_.obter();}
+  function sinCardRegistrarEnvio_(meio){
+    var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
+    var atual=sinAbertoDoContrato_(contrato);
+    if(atual)sinHistAdicionar_(atual.ID,'Aviso enviado via '+meio+' a '+(destino==='corretora'?'corretora ('+(contratosById[contrato]||{}).garCorretoraNome:'fiador '+((contratosById[contrato]||{})[destino==='fiador2'?'fiador2Nome':'fiador1Nome']||'')),true);
+  }
   window.compartilharCardGarantiaImagem=ShareKit.comBotao('btnShareGarWpp','sinCardShareStatus',
-    ShareKit.compartilharImagem(gerarImagemCardGarantiaFile_,{
+    ShareKit.compartilharImagem(getCardGarantiaImagemFile_,{
       titulo:'Aviso de Inadimplência',
       getExtraFiles:function(){return _cardGarFotoFile?[_cardGarFotoFile]:null;},
-      aoEnviar:function(){
-        var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
-        var atual=sinAbertoDoContrato_(contrato);
-        if(atual)sinHistAdicionar_(atual.ID,'Aviso enviado via WhatsApp a '+(destino==='corretora'?'corretora ('+(contratosById[contrato]||{}).garCorretoraNome:'fiador '+((contratosById[contrato]||{})[destino==='fiador2'?'fiador2Nome':'fiador1Nome']||'')),true);
-      }
+      aoEnviar:function(){sinCardRegistrarEnvio_('WhatsApp');}
     }));
   window.salvarCardGarantiaPng=ShareKit.comBotao('btnSaveGarPng','sinCardShareStatus',
-    ShareKit.salvarPng(gerarImagemCardGarantiaFile_,{
-      msg:function(){return 'PNG salvo'+(_cardGarFotoFile?' (a foto anexada precisa ser enviada separadamente).':'.');}
+    ShareKit.salvarPng(getCardGarantiaImagemFile_,{
+      msg:function(){return 'PNG salvo'+(_cardGarFotoFile?' (o arquivo anexado precisa ser enviado separadamente).':'.');}
     }));
+  window.enviarEmailCardGarantia=ShareKit.comBotao(null,'sinCardShareStatus',function(ui){
+    var ov=document.getElementById('sinCardOverlay');var contrato=ov.dataset.contrato,destino=ov.dataset.destino;
+    ShareKit.enviarEmail(
+      function(){return 'Aviso de Inadimplência — Contrato nº '+contrato;},
+      function(){return montarTextoCardGarantia_(contrato,destino);},
+      {aoEnviar:function(){sinCardRegistrarEnvio_('e-mail');}}
+    )();
+    ui.ok('Cliente de e-mail aberto.');
+  });
+  window.imprimirCardGarantia=function(){
+    ShareKit.imprimir('printing-sinCard',300,{aoEnviar:function(){sinCardRegistrarEnvio_('impressão/PDF');}})();
+  };
 
   // ---------- IMPOSTO DE RENDA SOBRE ALUGUEL (retenção na fonte) ----------
   // Tabela progressiva mensal do IR (faixas de 2025, mantidas em 2026) + o redutor criado
@@ -20190,10 +20285,22 @@ window.cpRenderFixas=cpRenderFixas;
       : '<option value="">Nenhum outro mês lançado</option>';
     document.getElementById('modalCobrancas').classList.add('open');
   };
+  // "MM/AAAA" -> índice absoluto de mês (ex.: 07/2026 -> 24319), só pra poder SUBTRAIR dois
+  // meses e saber quantos meses se passaram entre um lançamento de origem e o mês de destino.
+  function mesParaIndice_(mesStr){
+    var partes=String(mesStr||'').split('/');
+    var mm=parseInt(partes[0],10)||0,aa=parseInt(partes[1],10)||0;
+    return aa*12+mm;
+  }
   // Copia aluguel + todos os encargos/IPTU/outras cobranças/desconto de outro mês já lançado
   // pra dentro do formulário do mês atualmente aberto (não salva sozinho — só preenche os
   // campos, pra revisar e ajustar antes de clicar em "Salvar"). Multa/juros NÃO são copiados,
   // pois são específicos do atraso daquele mês de origem, não fazem sentido repetir.
+  // Bug corrigido (12/set/2026): ao duplicar um encargo PARCELADO (ex.: Seguro Fiança 30/47,
+  // IPTU 7/10) de um mês pro outro, o número da parcela estava sendo copiado igual, sem avançar
+  // — duplicar 07/2026 pra 08/2026 mantinha "30/47" nos dois meses, em vez de virar "31/47" no
+  // mês seguinte. Agora soma a diferença de meses entre origem e destino ao número da parcela
+  // (nunca abaixo de 1 nem acima do total).
   window.cobrDuplicarDeMes=function(){
     var mesOrigem=document.getElementById('cobr-duplicar-mes').value;
     if(!mesOrigem){alert('Não há outro mês lançado pra esse contrato pra copiar.');return;}
@@ -20201,19 +20308,26 @@ window.cpRenderFixas=cpRenderFixas;
     var origem=workingList().filter(function(x){return x.mes===mesOrigem&&x.contrato===contrato;})[0];
     if(!origem){alert('Não foi possível encontrar o lançamento de '+mesOrigem+' pra esse contrato.');return;}
     if(!confirm('Isso vai SUBSTITUIR os valores preenchidos agora no formulário (aluguel, condomínio, IPTU, outras cobranças e desconto) pelos de '+mesExtenso(mesOrigem)+'. Multa e juros não são copiados. Revise tudo antes de clicar em "Salvar". Continuar?'))return;
+    var difMeses=mesParaIndice_(selMes)-mesParaIndice_(mesOrigem);
     document.getElementById('cobr-aluguel-mes').value=(origem.aluguel!=null?origem.aluguel:0).toFixed(2);
     cobrChecarAluguelDivergente_(contrato);
     COBR_CAMPOS_NUM.forEach(function(p){
       if(p[1]==='multa'||p[1]==='juros')return;
       document.getElementById(p[0]).value=origem[p[1]]||'';
     });
-    document.getElementById('cobr-iptu-parcela-num').value=origem.iptuParcelaNum||'';
+    var iptuTotalOrig=parseInt(origem.iptuParcelaTotal)||0;
+    var iptuNumAjustado=iptuTotalOrig?Math.min(iptuTotalOrig,Math.max(1,(parseInt(origem.iptuParcelaNum)||0)+difMeses)):(origem.iptuParcelaNum||'');
+    document.getElementById('cobr-iptu-parcela-num').value=iptuNumAjustado;
     document.getElementById('cobr-iptu-parcela-total').value=origem.iptuParcelaTotal||'';
     document.getElementById('cobr-iptu-tipo').value=(origem.iptuParcelaTotal>0)?'parcelado':'mensal';
     document.getElementById('cobr-iptu-parcelas-wrap').style.display=(origem.iptuParcelaTotal>0)?'block':'none';
     document.getElementById('cobr-desconto-incide-taxa').value=origem.descontoIncideTaxa?'Sim':'Nao';
     document.getElementById('cobr-outras-lista').innerHTML='';
-    parseOutrasCobrancas(origem).forEach(function(it){cobrAdicionarItem(it.desc,it.valor,it.tipo,it.parcelaAtual,it.parcelaTotal,it.destino,it.incideTaxa);});
+    parseOutrasCobrancas(origem).forEach(function(it){
+      var atualAjustado=it.parcelaAtual;
+      if(it.tipo==='parcelado'&&it.parcelaTotal)atualAjustado=Math.min(it.parcelaTotal,Math.max(1,it.parcelaAtual+difMeses));
+      cobrAdicionarItem(it.desc,it.valor,it.tipo,atualAjustado,it.parcelaTotal,it.destino,it.incideTaxa);
+    });
     cobrAtualizarPreview();
   };
   window.fecharModalCobrancas=function(){document.getElementById('modalCobrancas').classList.remove('open');};
