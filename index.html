@@ -7121,10 +7121,10 @@ function prazoProcessualBoxHtml_(p) {
 // O que Precisa Ser Providenciado (12/set/2026) - anotação geral, solta, pra recado que ainda
 // não virou tarefa de ninguém específico (diferente de "Próximo Passo", que é do advogado, e de
 // "O que o Cliente está Providenciando", que é do cliente). Fica logo abaixo do Prazo Processual,
-// cor teal (identidade do escritório), pra servir de rascunho/lembrete rápido.
+// em vermelho (destaque de atenção — pedido do Dr. Adenilson), pra servir de rascunho/lembrete rápido.
 function precisaProvidenciarBoxHtml_(p) {
   var temValor = p.precisaProvidenciar && p.precisaProvidenciar.length > 2;
-  var label = '<span style="color:var(--teal)">📝 O que precisa ser providenciado</span>';
+  var label = '<span style="color:var(--red)">📝 O que precisa ser providenciado</span>';
   var texto = temValor ? escHtml(p.precisaProvidenciar) : '<span style="color:var(--muted)">Nada anotado ainda.</span>';
   var edit = '<textarea class="proc-inline-input" rows="2" id="procin-precisaProvidenciar-' + p._uid + '" placeholder="Anotação geral do que precisa ser providenciado...">' + escHtml(p.precisaProvidenciar || '') + '</textarea>';
   return procBoxWrapper_(p._uid, 'precisaProvidenciar', label, texto, '', edit);
@@ -7493,9 +7493,9 @@ function renderCard(p, idx) {
             ${prazoProcessualBoxHtml_(p)}
             ${precisaProvidenciarBoxHtml_(p)}
             ${prazoAdvogadoBoxHtml_(p)}
-            ${prazoClienteBoxHtml_(p)}
             ${proxPassoBoxHtml_(p)}
             ${ultimaMovBoxHtml_(p)}
+            ${prazoClienteBoxHtml_(p)}
             ${provClienteBoxHtml_(p)}
             ${notaInternaBoxHtml_(p)}
           </div>
