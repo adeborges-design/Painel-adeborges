@@ -985,6 +985,52 @@
   }
   .dp-add-btn:hover { opacity: .9; }
 
+  /* Histórico do processo (13/set/2026): gatilho compacto no card + modal com o log. */
+  .historico-proc-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border2, var(--border));
+    background: var(--surface2, rgba(255,255,255,0.02));
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .historico-proc-trigger:hover { color: var(--accent); border-color: var(--accent); }
+  .historico-proc-count {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .historico-proc-lista { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; max-height: 42vh; overflow-y: auto; }
+  .historico-proc-item {
+    background: var(--bg, rgba(0,0,0,0.15));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 11px;
+  }
+  .historico-proc-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .historico-proc-data { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .historico-proc-texto { color: var(--text); font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .historico-proc-form textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--border2, var(--border));
+    background: var(--surface, transparent);
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: inherit;
+    resize: vertical;
+  }
+
   /* Blocos editáveis direto no card (11/set/2026): Prazo do cliente, Última movimentação,
      Próximo passo do advogado, O que o cliente está providenciando, Anotação interna — os 5
      blocos que o Dr. Adenilson pediu pra editar sem precisar abrir "Editar Cadastro". Mesmo
@@ -6379,6 +6425,19 @@ function despesasProcMontar_(itens) {
 function despesasProcTotal_(str) {
   return despesasProcParse_(str).reduce(function (s, it) { return s + it.valor; }, 0);
 }
+// Histórico do processo: array de {data:'DD/MM/AAAA HH:MM', texto:'...'} serializado como JSON
+// (texto colado pode ter qualquer caractere — "::"/"||" quebrariam o mesmo truque usado em
+// Despesas do Processo, então aqui é JSON puro).
+function historicoProcParse_(raw) {
+  if (!raw) return [];
+  try {
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(function (it) { return it && it.texto; }) : [];
+  } catch (e) { return []; }
+}
+function historicoProcMontar_(itens) {
+  return JSON.stringify(itens || []);
+}
 
 // --- PARSE DOS DADOS ------------------------------------------
 function parseProcessos(rows) {
@@ -6538,6 +6597,11 @@ function parseProcessos(rows) {
     const valorCausa            = brNumStr(get(row, 'Valor da Causa', -1));
     const valorAtualizadoExecucao = brNumStr(get(row, 'Valor Atualizado Execucao', -1));
     const despesasProcesso      = get(row, 'Despesas Processo', -1);
+    // Histórico do processo (13/set/2026): log cronológico onde o usuário vai colando
+    // movimentações, decisões publicadas e anotações ao longo do caso — cada entrada fica
+    // guardada com data/hora, nada é sobrescrito. Serializado em JSON num único campo (mesmo
+    // princípio de "Despesas Processo"), sem precisar de aba nova na planilha.
+    const historicoProcesso     = historicoProcParse_(get(row, 'Historico Processo', -1));
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -6580,7 +6644,7 @@ function parseProcessos(rows) {
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
       prazoInfo,
-      valorCausa, valorAtualizadoExecucao, despesasProcesso,
+      valorCausa, valorAtualizadoExecucao, despesasProcesso, historicoProcesso,
       _row: i
     });
   }
@@ -7344,6 +7408,85 @@ window.despesaProcRemover = function (uid, idx) {
   despesaProcSalvarEAtualizarTela_(p);
 };
 
+// Histórico do processo (13/set/2026): log cronológico — o usuário cola movimentações,
+// decisões publicadas ou anotações ao longo do caso, e cada entrada fica empilhada com
+// data/hora, sem sobrescrever o que já foi colado antes. Fica numa seção separada (modal),
+// pra não poluir o card no dia a dia — abre só quando clica em "Ver histórico".
+function historicoProcEnsureModal_() {
+  if (document.getElementById('modalHistoricoProc')) return;
+  var ov = document.createElement('div');
+  ov.id = 'modalHistoricoProc';
+  ov.className = 'modal-card-overlay';
+  ov.innerHTML = '<div class="card-preview-wrap" id="historicoProcWrap" style="width:560px" onclick="event.stopPropagation()"></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) window.fecharHistoricoProcesso(); });
+  document.body.appendChild(ov);
+}
+function historicoProcModalHtml_(p) {
+  var itens = p.historicoProcesso || [];
+  var itensRev = itens.slice().reverse(); // mais recente primeiro
+  var lista = itensRev.length ? itensRev.map(function (it, idxRev) {
+    var idx = itens.length - 1 - idxRev; // índice real no array, p/ excluir a entrada certa
+    return '<div class="historico-proc-item">'
+      + '<div class="historico-proc-item-head"><span class="historico-proc-data">' + escHtml(it.data || '') + '</span>'
+      + '<button type="button" class="dp-rem" title="Excluir esta entrada" onclick="event.stopPropagation();historicoProcRemover(' + p._uid + ',' + idx + ')">✕</button></div>'
+      + '<div class="historico-proc-texto">' + escHtml(it.texto || '').replace(/\n/g, '<br>') + '</div>'
+      + '</div>';
+  }).join('') : '<div class="despesas-proc-vazio">Nenhum registro ainda. Cole abaixo uma movimentação, decisão publicada ou anotação.</div>';
+  return ''
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+    + '<div class="card-preview-title">📜 Histórico do processo</div>'
+    + '<button class="cp-btn" onclick="fecharHistoricoProcesso()">✕</button></div>'
+    + '<div class="card-preview-sub">' + escHtml(p.nome || '') + (p.processo ? ' · ' + escHtml(p.processo) : '') + '</div>'
+    + '<div class="historico-proc-lista">' + lista + '</div>'
+    + '<div class="historico-proc-form">'
+    + '<textarea id="historicoProcTexto-' + p._uid + '" rows="4" placeholder="Cole aqui a movimentação, decisão publicada ou anotação..."></textarea>'
+    + '<button type="button" class="dp-add-btn" style="margin-top:8px" onclick="historicoProcAdicionar(' + p._uid + ')">+ Adicionar ao histórico</button>'
+    + '</div>';
+}
+window.abrirHistoricoProcesso = function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  historicoProcEnsureModal_();
+  document.getElementById('historicoProcWrap').innerHTML = historicoProcModalHtml_(p);
+  document.getElementById('modalHistoricoProc').classList.add('open');
+};
+window.fecharHistoricoProcesso = function () {
+  var ov = document.getElementById('modalHistoricoProc'); if (ov) ov.classList.remove('open');
+};
+function historicoProcSalvarEAtualizarTela_(p) {
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Historico Processo': historicoProcMontar_(p.historicoProcesso) } }) }).catch(function () {});
+  var wrap = document.getElementById('historicoProcWrap');
+  if (wrap) wrap.innerHTML = historicoProcModalHtml_(p);
+  var trig = document.getElementById('historico-proc-trigger-' + p._uid);
+  if (trig) trig.outerHTML = historicoProcTriggerHtml_(p);
+};
+window.historicoProcAdicionar = function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var ta = document.getElementById('historicoProcTexto-' + uid);
+  var texto = (ta.value || '').trim();
+  if (!texto) { ta.focus(); return; }
+  var agora = new Date();
+  var pad = function (n) { return ('0' + n).slice(-2); };
+  var dataFmt = pad(agora.getDate()) + '/' + pad(agora.getMonth() + 1) + '/' + agora.getFullYear() + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes());
+  var itens = p.historicoProcesso || [];
+  itens.push({ data: dataFmt, texto: texto });
+  p.historicoProcesso = itens;
+  historicoProcSalvarEAtualizarTela_(p);
+};
+window.historicoProcRemover = function (uid, idx) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  if (!confirm('Excluir esta entrada do histórico? Essa ação não pode ser desfeita.')) return;
+  var itens = p.historicoProcesso || [];
+  itens.splice(idx, 1);
+  p.historicoProcesso = itens;
+  historicoProcSalvarEAtualizarTela_(p);
+};
+function historicoProcTriggerHtml_(p) {
+  var n = (p.historicoProcesso || []).length;
+  return '<div class="historico-proc-trigger" id="historico-proc-trigger-' + p._uid + '" onclick="event.stopPropagation();abrirHistoricoProcesso(' + p._uid + ')">'
+    + '📜 Ver histórico do processo' + (n ? ' <span class="historico-proc-count">' + n + '</span>' : '')
+    + '</div>';
+}
+
 function renderCard(p, idx) {
   const fam = familiaClasse_(p.tipo, p.ramo);
   const urgBadge = {
@@ -7531,6 +7674,7 @@ function renderCard(p, idx) {
             ${notaInternaBoxHtml_(p)}
           </div>
 
+          ${historicoProcTriggerHtml_(p)}
           ${despesasProcBlocoHtml_(p)}
 
           <div class="detail-actions">
