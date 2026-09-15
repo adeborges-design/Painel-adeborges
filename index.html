@@ -16385,7 +16385,7 @@ window.cpRenderFixas=cpRenderFixas;
             <option value="Fiadores">Fiadores</option>
           </select>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-SeguroFianca" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-SeguroFianca" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield half"><label>Seguradora</label><input class="loc-cinput" id="lc-gar-seguradora" placeholder="Nome da seguradora"></div>
             <div class="loc-cfield half"><label>Nº da apólice</label><input class="loc-cinput" id="lc-gar-apolice"></div>
@@ -16407,28 +16407,31 @@ window.cpRenderFixas=cpRenderFixas;
             <div class="loc-cfield half"><label>Pintura externa — limite (R$)</label><div style="display:flex;align-items:center;gap:8px"><input class="loc-cinput" style="flex:1" id="lc-gar-cob-pint-ext" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"><span id="lc-gar-cob-pint-ext-x" style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:110px">—</span></div></div>
           </div>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield half"><label>Empresa emissora do título</label><input class="loc-cinput" id="lc-gar-empresa-titulo"></div>
             <div class="loc-cfield half"><label>Nº da proposta</label><input class="loc-cinput" id="lc-gar-nr-proposta"></div>
+            <div class="loc-cfield half"><label>Valor inicial aplicado (R$)</label><input class="loc-cinput" id="lc-gar-titulo-valor-inicial" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Valor atualizado (R$)</label><input class="loc-cinput" id="lc-gar-titulo-valor-atualizado" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="loc-cfield half"><label>Data da atualização</label><input class="loc-cinput" id="lc-gar-titulo-data-atualizacao" type="date"></div>
           </div>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-CaucaoDinheiro" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-CaucaoDinheiro" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield half"><label>Valor da caução (R$)</label><input class="loc-cinput" id="lc-gar-valor-caucao" type="text" inputmode="decimal" placeholder="0,00"></div>
             <div class="loc-cfield half"><label>Valor fica com</label><select class="loc-cinput" id="lc-gar-caucao-responsavel"><option value="">Selecionar</option><option value="Locador">Locador</option><option value="Administradora">Administradora (escritório)</option></select></div>
           </div>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-CaucaoImovel" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-CaucaoImovel" style="display:none;padding:0;border:none">
           <div class="loc-cfield full"><label>Descrição do imóvel dado em garantia (endereço/matrícula)</label><input class="loc-cinput" id="lc-gar-imovel-descricao"></div>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-CartaFiancaBancaria" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-CartaFiancaBancaria" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield half"><label>Banco</label><input class="loc-cinput" id="lc-gar-banco" placeholder="Ex.: Itaú"></div>
             <div class="loc-cfield half"><label>Nº da carta fiança</label><input class="loc-cinput" id="lc-gar-nr-carta"></div>
           </div>
         </div>
-        <div class="loc-cfield full" id="lc-garantia-Fiadores" style="display:none;padding:0;border:none">
+        <div class="loc-cfield-wrap full" id="lc-garantia-Fiadores" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
             <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Fiador 1</div>
             <div class="loc-cfield"><label>Nome</label><input class="loc-cinput" id="lc-fiador1-nome"></div>
@@ -18894,7 +18897,7 @@ window.cpRenderFixas=cpRenderFixas;
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           repLocatarioNome:cell(row,mc,'Representante Locatario Nome'),
-          tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
+          tipoGarantia:cell(row,mc,'Tipo Garantia'),garSeguradora:cell(row,mc,'Garantia Seguradora'),garApolice:cell(row,mc,'Garantia Nr Apolice'),garEmpresaTitulo:cell(row,mc,'Garantia Empresa Titulo'),garNrProposta:cell(row,mc,'Garantia Nr Proposta'),garTituloValorInicial:num(cell(row,mc,'Garantia Titulo Valor Inicial')),garTituloValorAtualizado:num(cell(row,mc,'Garantia Titulo Valor Atualizado')),garTituloDataAtualizacao:cell(row,mc,'Garantia Titulo Data Atualizacao'),garValorCaucao:num(cell(row,mc,'Garantia Valor Caucao')),garCaucaoResponsavel:cell(row,mc,'Garantia Caucao Responsavel'),garImovelDescricao:cell(row,mc,'Garantia Imovel Descricao'),garBanco:cell(row,mc,'Garantia Banco'),garNrCarta:cell(row,mc,'Garantia Nr Carta Fianca'),
           fiador1Nome:cell(row,mc,'Fiador1 Nome'),fiador1Telefone:cell(row,mc,'Fiador1 Telefone'),fiador1Email:cell(row,mc,'Fiador1 Email'),fiador2Nome:cell(row,mc,'Fiador2 Nome'),fiador2Telefone:cell(row,mc,'Fiador2 Telefone'),fiador2Email:cell(row,mc,'Fiador2 Email'),
           senhaLocador:cell(row,mc,'Senha Locador'),senhaLocatario:cell(row,mc,'Senha Locatario'),
           garCorretoraNome:cell(row,mc,'Garantia Corretora Nome'),garCorretoraTelefone:cell(row,mc,'Garantia Corretora Telefone'),garCorretoraEmail:cell(row,mc,'Garantia Corretora Email'),
@@ -19383,6 +19386,8 @@ window.cpRenderFixas=cpRenderFixas;
       return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">'
         +'<div style="font-weight:700;margin-bottom:4px">🏦 Título de capitalização</div>'
         +'<div>Empresa emissora: '+E(c.garEmpresaTitulo||'não cadastrada')+(c.garNrProposta?' · Proposta nº '+E(c.garNrProposta):'')+'</div>'
+        +(c.garTituloValorInicial?('<div>Valor inicial aplicado: '+BRL(num(c.garTituloValorInicial))+'</div>'):'')
+        +(c.garTituloValorAtualizado?('<div>Valor atualizado: '+BRL(num(c.garTituloValorAtualizado))+(c.garTituloDataAtualizacao?' (em '+E(c.garTituloDataAtualizacao)+')':'')+'</div>'):'')
         +'</div>';
     }
     if(tipo==='Carta Fiança Bancária'){
@@ -23049,7 +23054,7 @@ window.cpRenderFixas=cpRenderFixas;
     lcSenhasAtualizarPainel(null);
     ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2','lc-rep-locatario',
-     'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
+     'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-titulo-valor-inicial','lc-gar-titulo-valor-atualizado','lc-gar-titulo-data-atualizacao','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
      'lc-gar-corretora-nome','lc-gar-corretora-telefone','lc-gar-corretora-email',
      'lc-gar-cob-aluguel','lc-gar-cob-multa','lc-gar-cob-danos','lc-gar-cob-iptu','lc-gar-cob-condominio','lc-gar-cob-energia','lc-gar-cob-agua','lc-gar-cob-gas','lc-gar-cob-pint-int','lc-gar-cob-pint-ext',
@@ -23177,6 +23182,9 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-gar-apolice').value=c.garApolice||'';
     document.getElementById('lc-gar-empresa-titulo').value=c.garEmpresaTitulo||'';
     document.getElementById('lc-gar-nr-proposta').value=c.garNrProposta||'';
+    document.getElementById('lc-gar-titulo-valor-inicial').value=num(c.garTituloValorInicial)||'';
+    document.getElementById('lc-gar-titulo-valor-atualizado').value=num(c.garTituloValorAtualizado)||'';
+    document.getElementById('lc-gar-titulo-data-atualizacao').value=c.garTituloDataAtualizacao?locIsoFromBR(c.garTituloDataAtualizacao):'';
     document.getElementById('lc-gar-valor-caucao').value=num(c.garValorCaucao)||'';
     document.getElementById('lc-gar-caucao-responsavel').value=c.garCaucaoResponsavel||'';
     document.getElementById('lc-gar-imovel-descricao').value=c.garImovelDescricao||'';
@@ -23254,6 +23262,9 @@ window.cpRenderFixas=cpRenderFixas;
       'Garantia Nr Apolice':document.getElementById('lc-gar-apolice').value.trim(),
       'Garantia Empresa Titulo':document.getElementById('lc-gar-empresa-titulo').value.trim(),
       'Garantia Nr Proposta':document.getElementById('lc-gar-nr-proposta').value.trim(),
+      'Garantia Titulo Valor Inicial':num(document.getElementById('lc-gar-titulo-valor-inicial').value),
+      'Garantia Titulo Valor Atualizado':num(document.getElementById('lc-gar-titulo-valor-atualizado').value),
+      'Garantia Titulo Data Atualizacao':locDtBRfromInput(document.getElementById('lc-gar-titulo-data-atualizacao').value),
       'Garantia Valor Caucao':num(document.getElementById('lc-gar-valor-caucao').value),
       'Garantia Caucao Responsavel':document.getElementById('lc-gar-caucao-responsavel').value,
       'Garantia Imovel Descricao':document.getElementById('lc-gar-imovel-descricao').value.trim(),
@@ -23288,7 +23299,7 @@ window.cpRenderFixas=cpRenderFixas;
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       repLocatarioNome:campos['Representante Locatario Nome'],
-      tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
+      tipoGarantia:campos['Tipo Garantia'],garSeguradora:campos['Garantia Seguradora'],garApolice:campos['Garantia Nr Apolice'],garEmpresaTitulo:campos['Garantia Empresa Titulo'],garNrProposta:campos['Garantia Nr Proposta'],garTituloValorInicial:campos['Garantia Titulo Valor Inicial'],garTituloValorAtualizado:campos['Garantia Titulo Valor Atualizado'],garTituloDataAtualizacao:campos['Garantia Titulo Data Atualizacao'],garValorCaucao:campos['Garantia Valor Caucao'],garCaucaoResponsavel:campos['Garantia Caucao Responsavel'],garImovelDescricao:campos['Garantia Imovel Descricao'],garBanco:campos['Garantia Banco'],garNrCarta:campos['Garantia Nr Carta Fianca'],
       fiador1Nome:campos['Fiador1 Nome'],fiador1Telefone:campos['Fiador1 Telefone'],fiador1Email:campos['Fiador1 Email'],fiador2Nome:campos['Fiador2 Nome'],fiador2Telefone:campos['Fiador2 Telefone'],fiador2Email:campos['Fiador2 Email'],
       garCorretoraNome:campos['Garantia Corretora Nome'],garCorretoraTelefone:campos['Garantia Corretora Telefone'],garCorretoraEmail:campos['Garantia Corretora Email'],
       garCobAluguel:campos['Cobertura Aluguel Limite'],garCobMulta:campos['Cobertura Multa Rescisoria Limite'],garCobDanos:campos['Cobertura Danos Imovel Limite'],garCobIptu:campos['Cobertura IPTU Limite'],garCobCondominio:campos['Cobertura Condominio Limite'],garCobEnergia:campos['Cobertura Energia Limite'],garCobAgua:campos['Cobertura Agua Limite'],garCobGas:campos['Cobertura Gas Limite'],garCobEnergiaVerba:campos['Cobertura Energia Verba'],garCobAguaVerba:campos['Cobertura Agua Verba'],garCobGasVerba:campos['Cobertura Gas Verba'],garCobPintInt:campos['Cobertura Pintura Interna Limite'],garCobPintExt:campos['Cobertura Pintura Externa Limite']
