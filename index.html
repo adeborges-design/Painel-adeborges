@@ -1938,6 +1938,32 @@
   .parc-urg-urgente { background: rgba(224,124,58,0.15); color: #e07c3a; border: 1px solid rgba(224,124,58,0.3); }
   .parc-urg-critico { background: rgba(224,84,84,0.15); color: #e05454; border: 1px solid rgba(224,84,84,0.3); box-shadow: 0 0 8px rgba(224,84,84,0.2); }
 
+  /* Tarja "REPASSADO" no Informe de Repasse (16/set/2026): só aparece quando o Status Repasse
+     do lançamento já está marcado como Repassado — sem tarja nenhuma quando está
+     Pendente/Atrasado. Mostra o valor repassado (e a data, quando registrada) pra quem recebe
+     o informe já impresso/PDF ver de cara que aquilo já foi pago, sem precisar perguntar. */
+  .parc-tarja-repassado {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+    text-align: right;
+    line-height: 1.5;
+    text-transform: uppercase;
+    background: rgba(76,175,125,0.15);
+    color: #4caf7d;
+    border: 1px solid rgba(76,175,125,0.35);
+    white-space: nowrap;
+  }
+  .parc-tarja-repassado .parc-tarja-valor {
+    display: block;
+    font-size: 13px;
+    text-transform: none;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+
   .parc-body { padding: 16px 20px; }
 
   .parc-section {
@@ -15126,7 +15152,10 @@ function renderContas(){
   +cpBlocoResumoHtml('pessoal')
   +cpBlocoResumoHtml('escritorio')
   +cpBlocoResumoHtml('locacao')
-  +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div><div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
+  +'<div id="cpCartoes" class="cp-cartoes"><div class="cp-cc-title" style="display:flex;align-items:center;justify-content:space-between">💳 Cartões de Crédito <span style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:inherit"><span id="cpCartoesSalvoMsg" style="color:var(--green);opacity:0;transition:opacity .3s;font-weight:700">✓ Salvo!</span><button class="cp-btn" style="font-size:11px;padding:5px 10px" onclick="cpSalvarCartoesBtn()">💾 Salvar limites e datas</button></span></div>'
+  +'<div style="margin:10px 0 4px"><input type="text" class="search-input" id="cpCartaoBusca" placeholder="🔎 Buscar uma compra em todos os cartões (descrição, categoria ou observação)..." oninput="cpBuscarEmCartoes()" style="width:100%"></div>'
+  +'<div id="cpCartaoBuscaResultados"></div>'
+  +'<div class="cp-cc-grid" id="cpCartoesGrid"></div></div>'
   +'<div class="cp-cartoes" style="margin-top:16px"><div class="cp-cc-title" style="cursor:pointer" onclick="cpToggleQuadro_(\'cpFixasLista\')">📌 Contas Fixas (recorrência mensal) <span style="font-size:11px;color:var(--muted);font-weight:400">— clique para mostrar/ocultar</span></div><div id="cpFixasLista" style="display:none"></div></div>'
   +'<div id="cpPagasHost"></div>'
   +'<button class="btn-form-save" id="btnCpNovoLancamento" style="width:100%;margin-top:16px" onclick="cpAbrirForm()">➕ Novo Lançamento</button>'
@@ -15340,6 +15369,45 @@ var CP_CARTOES=['Itaú Visa 2355','Itaú Mastercard 6669','Itaú Múltiplo Black
 // cartão certo depois do rename, sem precisar editar cada lançamento na mão.
 var CP_CARTAO_ALIAS={'Itaú Visa':'Itaú Visa 2355','Itaú Visa 7503':'Itaú Visa 2355','Itaú Mastercard':'Itaú Mastercard 6669','Leroy Merlin':'Leroy Merlin Elo 6823','XP':'XP Visa 7503','Sicredi':'Sicredi Mastercard 8727','Mercado Pago':'Mercado Pago Visa 9390'};
 window.cpNomeCartao=function(v){v=String(v||'').trim();return CP_CARTAO_ALIAS[v]||v;};
+// Busca uma compra em TODOS os cartões de uma vez (16/set/2026) — a busca principal de Contas a
+// Pagar (cpBusca) não alcança compras de cartão, porque elas ficam escondidas da lista geral de
+// propósito (pra não lotar a tela, já que cada compra some com a fatura); esta busca varre só as
+// compras individuais de cartão (c['Cartao'] preenchido, exceto a fatura consolidada) e mostra em
+// qual cartão cada uma está lançada, sem precisar abrir cartão por cartão pra procurar na mão.
+window.cpBuscarEmCartoes=function(){
+ var host=document.getElementById('cpCartaoBuscaResultados');
+ if(!host)return;
+ var termo=((document.getElementById('cpCartaoBusca')||{}).value||'').trim().toLowerCase();
+ if(!termo){host.innerHTML='';host.style.display='none';return;}
+ host.style.display='block';
+ var itens=(allContas||[]).filter(function(c){
+  var isFaturaCartao=/^cart[aã]o de cr[eé]dito$/i.test(String(c['Categoria']||'').trim());
+  if(!c['Cartao']||isFaturaCartao)return false;
+  var alvo=[c['Descricao'],c['Categoria'],c['Fornecedor'],c['Observacoes']].filter(Boolean).join(' ').toLowerCase();
+  return alvo.indexOf(termo)>=0;
+ });
+ itens.sort(function(a,b){return (dbr(b['Data Vencimento'])||0)-(dbr(a['Data Vencimento'])||0);});
+ if(!itens.length){
+  host.innerHTML='<div class="hon-empty" style="margin:6px 0 12px">Nenhuma compra encontrada em nenhum cartão para "'+esc(termo)+'".</div>';
+  return;
+ }
+ host.innerHTML='<div style="font-size:11px;color:var(--muted);margin:6px 0 8px">'+itens.length+' compra(s) encontrada(s):</div>'
+  +'<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">'
+  +itens.map(function(c){
+   var nomeCartao=window.cpNomeCartao(c['Cartao']);
+   var paga=String(c['Status']).toLowerCase()==='paga';
+   return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;cursor:pointer" onclick="document.getElementById(\'cpCartaoBusca\').value=\'\';cpBuscarEmCartoes();cpAbrirCartaoDrill(\''+esc(nomeCartao)+'\')">'
+    +'<div style="min-width:0">'
+    +'<div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c['Descricao']||'(sem descrição)')+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">💳 '+esc(nomeCartao)+' · vence '+esc(c['Data Vencimento']||'-')+(paga?' · <span style="color:var(--green)">paga</span>':'')+'</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;white-space:nowrap">'
+    +'<strong style="font-size:13px">'+fmr(nbr(c['Valor']))+'</strong>'
+    +'<span class="cp-btn" style="font-size:11px;padding:4px 9px">Abrir cartão →</span>'
+    +'</div></div>';
+  }).join('')
+  +'</div>';
+};
 // migra chaves antigas p/ as novas dentro de um objeto salvo no localStorage (limites, datas etc.),
 // sem perder o que o usuário já tinha configurado quando um cartão é renomeado.
 function cpMigrarChaves(obj){
@@ -21226,6 +21294,14 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('reciboLocValoresSecao').innerHTML='<div class="parc-section-label">Valores</div><div class="parc-box">'+d.valoresHtml+'</div>';
     document.getElementById('reciboLocTotalSecao').innerHTML='<div class="parc-section-label">'+d.totalLabel+'</div><div class="parc-tarefa-box"><strong>'+BRL(d.totalValor)+'</strong>'+d.totalRodape+'</div>';
     document.getElementById('reciboLocContaSecao').innerHTML='<div class="parc-section-label">Dados bancários do proprietário (repasse)</div><div class="parc-box">'+d.contaHtml+'</div>';
+    // Tarja "REPASSADO" mostra o valor — ao trocar de coproprietário no seletor, a fatia muda,
+    // então o valor exibido na tarja precisa acompanhar (mesma condição: só existe a tarja
+    // quando o lançamento já está Repassado — ver abrirReciboLoc).
+    var tarja=document.getElementById('reciboLocTarjaRepassado');
+    if(tarja){
+      var valorEl=tarja.querySelector('.parc-tarja-valor');
+      if(valorEl)valorEl.textContent=BRL(d.totalValor);
+    }
   };
   // ---------- Menus suspensos da barra de Locações (Relatórios/Financeiro/Mais) ----------
   // Genérico: fecha qualquer outro menu aberto e alterna o solicitado. Funciona pra
@@ -22547,6 +22623,15 @@ window.cpRenderFixas=cpRenderFixas;
       titulo='Informe de Repasse'; badgeHtml='';
       valoresHtml=d.valoresHtml; totalValor=d.totalValor; totalLabel=d.totalLabel; totalRodape=d.totalRodape;
       contaTitulo='Dados bancários do proprietário (repasse)'; contaHtml=d.contaHtml;
+    }
+
+    // Tarja "REPASSADO": só no Informe de Repasse (nunca no recibo de aluguel) e só quando o
+    // Status Repasse deste lançamento já está Repassado — Pendente/Atrasado não leva nenhuma
+    // tarja. Calculada por último, depois do bloco de coproprietários acima, pra usar sempre o
+    // totalValor final que vai realmente aparecer no documento (a fatia do proprietário
+    // selecionado, quando o imóvel tem coproprietários).
+    if(tipo!=='aluguel'&&w.statusRep==='Repassado'){
+      badgeHtml='<div class="parc-tarja-repassado" id="reciboLocTarjaRepassado">✓ Repassado'+(w.dataRep?' em '+E(w.dataRep):'')+'<span class="parc-tarja-valor">'+BRL(totalValor)+'</span></div>';
     }
 
     document.getElementById('reciboLocTitulo').textContent=titulo;
