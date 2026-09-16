@@ -22468,9 +22468,24 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'—')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato||'—')+'</div></div>'
       +'<div class="parc-section"><div class="parc-section-label">'+destinatarioLabel+'</div><div class="parc-box">'+E(destinatarioNome)+'</div></div>'
       +contatoEnvioSection
-      +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text">'+corpoHtml+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text" oninput="avisoImgCacheInvalidar_()">'+corpoHtml+'</div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — '+new Date().toLocaleDateString('pt-BR')+'</div>';
+    // Pré-aquece a imagem do card assim que ele é montado (mesmo padrão do Informe de Repasse —
+    // ver _reciboLocImgCache_/preAquecer em abrirReciboLoc), pra já estar pronta quando o
+    // usuário clicar em "📸 Foto": sem isso, o html2canvas só começava a rodar NO clique, e
+    // enquanto ele processava (card grande, mais de meio segundo), o navegador considerava que o
+    // gesto do clique já tinha "expirado" e recusava o navigator.share com o erro "Must be
+    // handling a user gesture to perform a share request." — reportado pelo usuário (16/set/2026)
+    // no card de Confirmação de Recebimento.
+    _avisoImgCache_.preAquecer(contratoNum+'|'+tipo);
+  };
+  // Reaquece a imagem quando o usuário edita o texto da mensagem na hora (contenteditable) —
+  // sem isso, o "📸 Foto" mandaria uma imagem com o texto antigo (de antes da edição).
+  window.avisoImgCacheInvalidar_=function(){
+    var contratoNum=(document.getElementById('avisoContratoSelect')||{}).value;
+    var tipo=(document.getElementById('avisoTipoSelect')||{}).value;
+    if(contratoNum&&tipo)_avisoImgCache_.preAquecer(contratoNum+'|'+tipo);
   };
   function avisoMontarTexto(){
     var tipo=document.getElementById('avisoTipoSelect').value;
@@ -22526,10 +22541,14 @@ window.cpRenderFixas=cpRenderFixas;
     var el=document.getElementById('avisoCard');
     return ShareKit.gerarImagemFile(el,'aviso-locatario-locador.png',{bg:'#0d1525'});
   }
+  // Cache/pré-aquecimento da imagem (ver comentário em avisoGerar) — sem isso o html2canvas só
+  // começava a rodar no clique de "📸 Foto", e a demora fazia o navigator.share ser recusado por
+  // já não estar mais "dentro" do gesto do clique do usuário.
+  var _avisoImgCache_=ShareKit.criarCache(gerarAvisoImagemFile);
   window.avisoEnviarImagem=function(){
     var texto=avisoMontarTexto();
     if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
-    return ShareKit.enviarImagemDireto(gerarAvisoImagemFile,{titulo:'Aviso ao Locatário/Locador'})();
+    return ShareKit.enviarImagemDireto(function(){return _avisoImgCache_.obter();},{titulo:'Aviso ao Locatário/Locador'})();
   };
 
   window.abrirReciboLoc=function(contrato,tipo){
