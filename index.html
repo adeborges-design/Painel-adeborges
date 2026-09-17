@@ -16516,13 +16516,26 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="IGP-DI">IGP-DI</option>
           <option value="Outro">Outro (definir na hora do aviso)</option>
         </select></div>
-        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_()"></div>
+        <div class="loc-cfield"><label>Aluguel (R$) *</label><input class="loc-cinput" id="lc-aluguel" type="text" inputmode="decimal" placeholder="0,00" oninput="locGarCobAtualizarMultiplicadores_();locAtualizarPreviewMultaRescisoria()"></div>
         <div class="loc-cfield"><label>Dia Vencimento</label><input class="loc-cinput" id="lc-venc" type="number" min="1" max="31" placeholder="Ex.: 10"></div>
         <div class="loc-cfield"><label>Dia Repasse</label><input class="loc-cinput" id="lc-rep" type="number" min="1" max="31" placeholder="Ex.: 15"></div>
         <div class="loc-cfield"><label>Condomínio (padrão mensal, R$)</label><input class="loc-cinput" id="lc-condominio" type="text" inputmode="decimal" placeholder="0,00" oninput="try{locGarCobAtualizarMultiplicadores_()}catch(e){}"></div>
         <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="text" inputmode="decimal" placeholder="0,00" oninput="try{locGarCobAtualizarMultiplicadores_()}catch(e){}"></div>
         <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="text" inputmode="decimal" placeholder="Ex.: 2"></div>
         <div class="loc-cfield"><label>Juros de mora (% ao mês)</label><input class="loc-cinput" id="lc-juros-mora-pct" type="text" inputmode="decimal" placeholder="Ex.: 1"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Multa rescisória</div>
+        <div class="loc-cfield"><label>Forma da multa rescisória</label><select class="loc-cinput" id="lc-multa-resc-tipo" onchange="locToggleMultaRescisoria()">
+          <option value="">Não definida</option>
+          <option value="Multiplo">Múltiplo do aluguel</option>
+          <option value="Fixo">Valor fixo (R$)</option>
+        </select></div>
+        <div class="loc-cfield" id="lc-multa-resc-multiplo-wrap" style="display:none"><label>Múltiplo do aluguel <span style="font-weight:400;color:var(--muted)">(máx. 3x — art. 4º, parágrafo único, Lei 8.245/91)</span></label><select class="loc-cinput" id="lc-multa-resc-multiplo" onchange="locAtualizarPreviewMultaRescisoria()">
+          <option value="1">1x o aluguel</option>
+          <option value="2">2x o aluguel</option>
+          <option value="3">3x o aluguel (máximo legal)</option>
+        </select></div>
+        <div class="loc-cfield" id="lc-multa-resc-valor-wrap" style="display:none"><label>Valor da multa rescisória (R$)</label><input class="loc-cinput" id="lc-multa-resc-valor" type="text" inputmode="decimal" placeholder="0,00"></div>
+        <div class="loc-cfield full" style="color:var(--muted);font-size:11px;margin-top:-4px" id="lc-multa-resc-preview"></div>
         <div class="loc-cfield full"><label>Observações (ex.: co-proprietários)</label><input class="loc-cinput" id="lc-obs" placeholder="Co-proprietarios: Fulano, Beltrano..."></div>
         <div class="loc-cform-actions">
           <span class="msg" id="lc-msg"></span>
@@ -18952,7 +18965,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),multaRescTipo:cell(row,mc,'Multa Rescisoria Tipo'),multaRescMultiplo:cell(row,mc,'Multa Rescisoria Multiplo'),multaRescValor:num(cell(row,mc,'Multa Rescisoria Valor')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           repLocatarioNome:cell(row,mc,'Representante Locatario Nome'),
@@ -23147,7 +23160,7 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
     lcSenhasAtualizarPainel(null);
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-multa-resc-tipo','lc-multa-resc-valor','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2','lc-rep-locatario',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-titulo-valor-inicial','lc-gar-titulo-valor-atualizado','lc-gar-titulo-data-atualizacao','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
@@ -23162,7 +23175,9 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-juros-mora-pct').value='1';
     document.getElementById('lc-tipo-locacao').value='';document.getElementById('lc-tipo-imovel').value='';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-taxa-incide-encargos').value='Nao';document.getElementById('lc-msg').textContent='';
+    document.getElementById('lc-multa-resc-multiplo').value='1';
     try{locToggleGarantia();}catch(e){}
+    try{locToggleMultaRescisoria();}catch(e){}
     locRenderContratos();document.getElementById('lc-contrato').focus();
     try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
   };
@@ -23227,6 +23242,27 @@ window.cpRenderFixas=cpRenderFixas;
       if(el)el.style.display=(k===tipo)?'':'none';
     });
   };
+  // Multa rescisória: pode ser um valor fixo em R$ ou um múltiplo do aluguel (1x/2x/3x — o
+  // teto de 3x vem do art. 4º, parágrafo único, da Lei 8.245/91). Mesmo mecanismo de
+  // display none/'' por id usado em locToggleGarantia.
+  window.locToggleMultaRescisoria=function(){
+    var tipo=document.getElementById('lc-multa-resc-tipo').value;
+    document.getElementById('lc-multa-resc-multiplo-wrap').style.display=(tipo==='Multiplo')?'':'none';
+    document.getElementById('lc-multa-resc-valor-wrap').style.display=(tipo==='Fixo')?'':'none';
+    locAtualizarPreviewMultaRescisoria();
+  };
+  window.locAtualizarPreviewMultaRescisoria=function(){
+    var prev=document.getElementById('lc-multa-resc-preview');
+    if(!prev)return;
+    var tipo=document.getElementById('lc-multa-resc-tipo').value;
+    if(tipo==='Multiplo'){
+      var mult=parseInt(document.getElementById('lc-multa-resc-multiplo').value,10)||1;
+      var aluguel=num(document.getElementById('lc-aluguel').value)||0;
+      prev.textContent=aluguel?('Multa rescisória = '+mult+' x '+BRL(aluguel)+' = '+BRL(mult*aluguel)):'Preencha o aluguel pra calcular o valor da multa.';
+    }else{
+      prev.textContent='';
+    }
+  };
   window.locEditarContrato=function(contrato){
     var c=contratosById[contrato];if(!c)return;
     document.getElementById('locContratosSection').classList.remove('loc-hidden');
@@ -23261,6 +23297,10 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-iptu').value=num(c.iptuParcela)||'';
     document.getElementById('lc-multa-atraso-pct').value=num(c.multaAtrasoPct)||'';
     document.getElementById('lc-juros-mora-pct').value=num(c.jurosMoraPct)||'';
+    document.getElementById('lc-multa-resc-tipo').value=c.multaRescTipo||'';
+    document.getElementById('lc-multa-resc-multiplo').value=c.multaRescMultiplo||'1';
+    document.getElementById('lc-multa-resc-valor').value=num(c.multaRescValor)||'';
+    try{locToggleMultaRescisoria();}catch(e){}
     document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
     document.getElementById('lc-obs').value=c.obs||'';
     document.getElementById('lc-tel-locador-1').value=c.telLocador1||'';
@@ -23343,6 +23383,9 @@ window.cpRenderFixas=cpRenderFixas;
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
       'Multa Atraso Perc':num(document.getElementById('lc-multa-atraso-pct').value),
       'Juros Mora Perc':num(document.getElementById('lc-juros-mora-pct').value),
+      'Multa Rescisoria Tipo':document.getElementById('lc-multa-resc-tipo').value,
+      'Multa Rescisoria Multiplo':document.getElementById('lc-multa-resc-tipo').value==='Multiplo'?document.getElementById('lc-multa-resc-multiplo').value:'',
+      'Multa Rescisoria Valor':document.getElementById('lc-multa-resc-tipo').value==='Fixo'?num(document.getElementById('lc-multa-resc-valor').value):'',
       'Telefone Locador 1':document.getElementById('lc-tel-locador-1').value.trim(),
       'Telefone Locador 2':document.getElementById('lc-tel-locador-2').value.trim(),
       'Email Locador 1':document.getElementById('lc-email-locador-1').value.trim(),
@@ -23390,7 +23433,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],multaRescTipo:campos['Multa Rescisoria Tipo'],multaRescMultiplo:campos['Multa Rescisoria Multiplo'],multaRescValor:campos['Multa Rescisoria Valor'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       repLocatarioNome:campos['Representante Locatario Nome'],
