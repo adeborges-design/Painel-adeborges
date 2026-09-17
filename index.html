@@ -16322,6 +16322,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="loc-btn primary" onclick="locNovoContrato()">🏢 Novo contrato</button>
       <button class="loc-btn" id="btnLocContratos" onclick="locToggleContratos()">📋 Contratos</button>
       <button class="loc-btn" onclick="locReajusteAbrir()" title="Contratos com reajuste anual vencido ou próximo, com simulação antes de aplicar">📈 Reajustes</button>
+      <button class="loc-btn" onclick="locCorrigirAlugueisAbrir()" title="Encontra meses ainda pendentes (não recebidos) cujo aluguel lançado está desatualizado em relação ao cadastro do contrato, e corrige em lote">🔧 Corrigir aluguéis</button>
       <button class="loc-btn" onclick="rescisaoAbrir()" title="Cálculo de rescisão contratual — multa proporcional, aluguel/encargos em aberto, IPTU e garantias">📤 Rescisão</button>
       <div class="loc-dropdown-wrap" style="position:relative;display:inline-block">
         <button class="loc-btn" id="btnLocMenuRelatorios" onclick="locToggleMenu(event,'locMenuRelatorios')">📊 Relatórios ▾</button>
@@ -18150,6 +18151,30 @@ window.cpRenderFixas=cpRenderFixas;
         <button class="loc-btn" onclick="locReajusteRenderLista()">🔄 Recalcular lista</button>
       </div>
       <div id="reajusteLista" style="max-height:65vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CORREÇÃO EM LOTE DE ALUGUÉIS DESATUALIZADOS -->
+<div class="modal-repasse-overlay" id="modalCorrigirAluguel">
+  <div class="repasse-wrap">
+    <div class="parceiro-toolbar reciboloc-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)">🔧 Corrigir aluguéis desatualizados</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalCorrigirAluguel').classList.remove('open')">✕</button>
+    </div>
+    <div class="reciboloc-inner" style="padding:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Compara, em TODOS os meses ainda <b>não recebidos</b> (Pendente/Atrasado) de todos os contratos ativos, o aluguel lançado
+        naquele mês com o aluguel atualmente cadastrado no contrato. Isso acontece quando um mês é gerado antes de um reajuste/correção
+        ser aplicado no cadastro — o mês já gerado fica "congelado" no valor antigo. Meses já marcados como Recebido/Recebido a menor/
+        Recebido a maior NUNCA são tocados aqui (edite-os manualmente em Encargos do mês se for o caso).
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;gap:8px">
+        <button class="loc-btn" onclick="locCorrigirAlugueisRenderLista()">🔄 Recalcular lista</button>
+        <button class="loc-btn primary" onclick="locCorrigirAlugueisAplicar()">✅ Corrigir selecionados</button>
+      </div>
+      <div id="corrigirAluguelMsg" style="font-size:12px;margin-bottom:10px"></div>
+      <div id="corrigirAluguelLista" style="max-height:60vh;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -23650,6 +23675,68 @@ window.cpRenderFixas=cpRenderFixas;
     _avisoReajusteContext={contrato:contrato,valorAnterior:valorAnterior,valorNovo:valorNovo,indice:c.indiceReajuste||'',pct:pct,integral:integral};
     document.getElementById('modalReajuste').classList.remove('open');
     avisoAbrir(contrato,'reajuste_anual');
+  };
+
+  // ---------- CORREÇÃO EM LOTE DE ALUGUÉIS DESATUALIZADOS (17/set/2026) ----------
+  // Um mês, ao ser gerado, herda o aluguel do ÚLTIMO lançamento existente NAQUELE MOMENTO (ver
+  // gerar_mes_loc no Codigo.gs) — se depois disso o aluguel é corrigido/reajustado (no cadastro
+  // do contrato, ou direto num mês via "Usar valor do contrato" em Encargos), os meses que já
+  // tinham sido gerados antes da correção continuam com o valor antigo pra sempre, a não ser que
+  // alguém note e corrija um por um. Usuário relatou isso acontecendo em vários contratos ao
+  // mesmo tempo (ex.: salas 401/403). Esta tela varre TODOS os meses ainda não recebidos de TODOS
+  // os contratos ativos e deixa corrigir de uma vez, sem tocar em nada já marcado como Recebido.
+  var _corrigirAluguelItens=[];
+  window.locCorrigirAlugueisAbrir=function(){
+    document.getElementById('modalCorrigirAluguel').classList.add('open');
+    locCorrigirAlugueisRenderLista();
+  };
+  function locCorrigirAlugueisAchar_(){
+    var itens=[];
+    workingList().forEach(function(l){
+      if(locFoiRecebido_(l))return; // nunca toca em mês já recebido
+      var ct=contratosById[l.contrato];
+      if(!ct||!ct.ativo)return;
+      var atual=num(ct.aluguel);
+      if(!atual)return;
+      if(Math.abs(atual-num(l.aluguel))<0.01)return;
+      itens.push({contrato:l.contrato,mes:l.mes,locatario:ct.locatario||'',valorLancado:num(l.aluguel),valorContrato:atual});
+    });
+    itens.sort(function(a,b){return a.contrato===b.contrato?(mesParaIndice_(a.mes)-mesParaIndice_(b.mes)):String(a.contrato).localeCompare(String(b.contrato));});
+    return itens;
+  }
+  window.locCorrigirAlugueisRenderLista=function(){
+    _corrigirAluguelItens=locCorrigirAlugueisAchar_();
+    var host=document.getElementById('corrigirAluguelLista');
+    document.getElementById('corrigirAluguelMsg').textContent='';
+    if(!_corrigirAluguelItens.length){host.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px">Nenhum mês pendente desatualizado encontrado. 🎉</div>';return;}
+    host.innerHTML='<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:12px;color:var(--muted)"><input type="checkbox" id="corrigir-marcar-todos" checked onchange="Array.from(document.querySelectorAll(\'.corrigir-item-chk\')).forEach(function(c){c.checked=document.getElementById(\'corrigir-marcar-todos\').checked;})"> Selecionar/desmarcar todos ('+_corrigirAluguelItens.length+' mês(es) em '+(new Set(_corrigirAluguelItens.map(function(x){return x.contrato;})).size)+' contrato(s))</label>'
+      +_corrigirAluguelItens.map(function(it,i){
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
+          +'<input type="checkbox" class="corrigir-item-chk" data-i="'+i+'" checked>'
+          +'<div style="flex:1">'
+          +'<div><strong>'+E(it.contrato)+'</strong> — '+E(it.locatario||'-')+' <span style="color:var(--muted)">· mês '+E(it.mes)+'</span></div>'
+          +'<div style="font-size:12px;color:var(--muted)">Lançado: <strong style="color:var(--red)">'+BRL(it.valorLancado)+'</strong> → Cadastro: <strong style="color:var(--green)">'+BRL(it.valorContrato)+'</strong></div>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+  };
+  window.locCorrigirAlugueisAplicar=function(){
+    var chks=Array.from(document.querySelectorAll('.corrigir-item-chk')).filter(function(c){return c.checked;});
+    if(!chks.length){document.getElementById('corrigirAluguelMsg').innerHTML='<span style="color:var(--red)">Nenhum item selecionado.</span>';return;}
+    if(!confirm('Corrigir o aluguel de '+chks.length+' mês(es) pro valor atual do cadastro de cada contrato? Isso grava direto na planilha (só meses ainda não recebidos).'))return;
+    var msg=document.getElementById('corrigirAluguelMsg');
+    var ok=0;
+    chks.forEach(function(chk){
+      var it=_corrigirAluguelItens[parseInt(chk.getAttribute('data-i'),10)];
+      if(!it)return;
+      setOverride(it.contrato,{aluguel:it.valorContrato},it.mes);
+      gravarSheet(it.contrato,it.mes);
+      logAuditoria_('Aluguel corrigido (lote)',it.contrato,'Mês '+it.mes+' — de '+BRL(it.valorLancado)+' para '+BRL(it.valorContrato));
+      ok++;
+    });
+    msg.innerHTML='<span style="color:var(--green)">✓ '+ok+' mês(es) corrigido(s).</span>';
+    locRender();
+    setTimeout(locCorrigirAlugueisRenderLista,500);
   };
 
   // ---------- CÁLCULO DE RESCISÃO DE LOCAÇÃO ----------
