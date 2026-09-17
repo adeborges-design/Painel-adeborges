@@ -21328,7 +21328,7 @@ window.cpRenderFixas=cpRenderFixas;
 
     var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação da participação de '+pct+'% de '+E(owner.Nome)+' no aluguel e nos encargos do imóvel, mês de referência indicado.</div>';
     var valoresHtml=introValores
-      +(alugShare?linhaValor('Aluguel recebido ('+pct+'%)',alugShare,''):'')
+      +(alugShare?linhaValor('Valor do aluguel ('+pct+'%)',alugShare,''):'')
       +(taxaShare?linhaValor('Taxa de administração ('+pct+'%)',taxaShare,'-'):'')
       +(retemIR?linhaValor('IRRF retido na fonte',irValor,'-'):'')
       +linhaValor('Líquido do aluguel',liquidoAluguel,'=')
@@ -22282,7 +22282,8 @@ window.cpRenderFixas=cpRenderFixas;
       var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       var introValores='<div style="color:#8fadd4;font-size:11px;margin-bottom:6px">Discriminação do valor referente ao aluguel e encargos do imóvel acima, mês de referência indicado.</div>';
       valoresHtml=introValores
-        +(w.aluguel?linhaValor('Aluguel recebido',w.aluguel,''):'')
+        +(w.aluguel?linhaValor('Valor do aluguel',w.aluguel,''):'')
+        +diferencaRecebidoLinhaHtml_(w)
         +(w.multa?linhaValor('Multa',w.multa,'+'):'')
         +(w.juros?linhaValor('Juros',w.juros,'+'):'')
         +linhaValor('Taxa de administração',w.taxa,'-')
@@ -22660,7 +22661,7 @@ window.cpRenderFixas=cpRenderFixas;
       var itensCondoLocador=reciboLocItensCondo(w,true);
       var linhasCondoRep=itensCondoLocador.filter(function(it){return it[1];}).map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       valoresHtml=introValores
-        +(w.aluguel?linhaValor('Aluguel recebido',w.aluguel,''):'')
+        +(w.aluguel?linhaValor('Valor do aluguel',w.aluguel,''):'')
         +diferencaRecebidoLinhaHtml_(w)
         +(w.multa?linhaValor('Multa',w.multa,'+'):'')
         +(w.juros?linhaValor('Juros',w.juros,'+'):'')
@@ -22850,7 +22851,7 @@ window.cpRenderFixas=cpRenderFixas;
       txt+='*LOCADOR:* '+(c.locador||'')+' — CPF/CNPJ '+(c.cpfLocador||'—')+'\n';
       // Sem garantia locatícia aqui também — removida dos dois documentos.
       txt+='\n';
-      if(w.aluguel)txt+='Aluguel recebido: '+fmt(w.aluguel)+'\n';
+      if(w.aluguel)txt+='Valor do aluguel: '+fmt(w.aluguel)+'\n';
       txt+=diferencaRecebidoTexto_(w);
       if(w.multa)txt+='(+) Multa: '+fmt(w.multa)+'\n';
       if(w.juros)txt+='(+) Juros: '+fmt(w.juros)+'\n';
