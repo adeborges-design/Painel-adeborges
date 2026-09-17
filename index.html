@@ -8249,7 +8249,8 @@ function partesDoProcesso(p, polo) {
       telefone: x['Telefone'] || '', email: x['e-mail'] || '', tipoPessoa: x['Tipo de Pessoa'] || '',
       repNome: x['Representante Nome'] || '', repCpf: x['Representante CPF'] || '', repRg: x['Representante RG'] || '',
       repCargo: x['Representante Cargo'] || '', rendaMensal: x['Renda Mensal'] || '', numDependentes: x['Numero Dependentes'] || '',
-      nossoCliente: String(x['Nosso Cliente'] || '').trim().toLowerCase() === 'sim', polo: x['Polo'] || ''
+      nossoCliente: String(x['Nosso Cliente'] || '').trim().toLowerCase() === 'sim', polo: x['Polo'] || '',
+      tambemHerdeiro: String(x['Tambem Herdeiro'] || '').trim().toLowerCase() === 'sim'
     };
   });
 }
@@ -8264,11 +8265,17 @@ function partesDoProcesso(p, polo) {
 // para partes SEM Polo definido (processos legados, cadastrados antes de existir esse campo) —
 // Réu e "Outra Parte" nunca substituem o cliente; na ausência de qualquer parte utilizável, cai
 // para o campo único "cliente" gravado direto no cadastro do processo (comportamento antigo).
+// (17/set/2026) Além de "Autor", Exequente e Inventariante entram no mesmo balde de fallback:
+// em execução, quem o escritório normalmente representa é o Exequente; em inventário, o
+// Inventariante (que às vezes também é Herdeiro(a) — ver 'tambemHerdeiro' — mas isso não muda
+// quem é qualificado como parte representada). Executado(a) e Réu nunca entram aqui (ver
+// reusDoProcesso). Herdeiro(a) fica de fora do fallback automático — herdeiros podem estar em
+// qualquer lado de uma disputa de inventário, então só entra via "Nosso Cliente: Sim" explícito.
 function clientesDoProcesso(p) {
   const todas = partesDoProcesso(p, null);
   const nossos = todas.filter(function (x) { return x.nossoCliente; });
   if (nossos.length) return nossos;
-  const autores = todas.filter(function (x) { return String(x.polo || '').toLowerCase() === 'autor'; });
+  const autores = todas.filter(function (x) { return ['autor', 'exequente', 'inventariante'].indexOf(String(x.polo || '').toLowerCase()) !== -1; });
   if (autores.length) return autores;
   const semPolo = todas.filter(function (x) { return !String(x.polo || '').trim(); });
   if (semPolo.length) return semPolo;
@@ -8281,7 +8288,9 @@ function clientesDoProcesso(p) {
 // e depois só a(s) ré(s) nova(s) foi(ram) adicionada(s) lá sem migrar a primeira) — junta os dois,
 // sem duplicar, em vez de simplesmente ignorar o campo antigo.
 function reusDoProcesso(p) {
-  const reus = partesDoProcesso(p, 'Réu');
+  // Executado(a) entra junto com Réu (parte contrária, para fins de qualificação na Petição).
+  const todas = partesDoProcesso(p, null);
+  const reus = todas.filter(function (x) { return ['réu', "executado(a)"].indexOf(String(x.polo || '').toLowerCase()) !== -1; });
   const outraNome = String((p && p.outra) || '').trim();
   if (!outraNome) return reus;
   const jaListado = reus.some(function (x) { return String(x.nome || '').trim().toLowerCase() === outraNome.toLowerCase(); });
@@ -8370,10 +8379,14 @@ window.ptAdicionarLinha = function (dados) {
   const jur = tipoP === 'Jurídica' || tipoP === 'Entidade';
   const dispPf = jur ? 'none' : 'contents';
   const dispPj = jur ? '' : 'none';
+  const tambemHerdeiro = String(dados['Tambem Herdeiro'] || '').trim().toLowerCase() === 'sim';
+  const dispHerdeiro = polo === 'Inventariante' ? '' : 'none';
+  const POLOS = ['Autor', 'Réu', 'Outra Parte', 'Inventariante', 'Exequente', 'Executado(a)', 'Herdeiro(a)'];
   div.innerHTML =
     '<input type="hidden" class="pt-id" value="' + escHtml(dados.ID || '') + '">'
     + '<div class="loc-cform" style="padding:0;border:none;background:none">'
-    + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo"><option value="Autor"' + (polo === 'Autor' ? ' selected' : '') + '>Autor</option><option value="Réu"' + (polo === 'Réu' ? ' selected' : '') + '>Réu</option><option value="Outra Parte"' + (polo === 'Outra Parte' ? ' selected' : '') + '>Outra Parte</option></select></div>'
+    + '<div class="loc-cfield"><label>Polo</label><select class="loc-cinput pt-polo" onchange="ptTogglePolo(this)">' + POLOS.map(function (v) { return '<option value="' + v + '"' + (polo === v ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></div>'
+    + '<div class="loc-cfield pt-herdeiro-field" style="display:' + dispHerdeiro + '"><label>Também é herdeiro(a)?</label><select class="loc-cinput pt-tambem-herdeiro"><option value="Não"' + (!tambemHerdeiro ? ' selected' : '') + '>Não</option><option value="Sim"' + (tambemHerdeiro ? ' selected' : '') + '>Sim</option></select></div>'
     + '<div class="loc-cfield"><label>Nosso cliente?</label><select class="loc-cinput pt-nosso"><option value="Sim"' + (nosso ? ' selected' : '') + '>Sim</option><option value="Não"' + (!nosso ? ' selected' : '') + '>Não</option></select></div>'
     + '<div class="loc-cfield"><label>Tipo de pessoa</label><select class="loc-cinput pt-tipopessoa" onchange="ptToggleTipoPessoa(this)"><option value="Física"' + (tipoP === 'Física' ? ' selected' : '') + '>Física</option><option value="Jurídica"' + (tipoP === 'Jurídica' ? ' selected' : '') + '>Jurídica</option><option value="Entidade"' + (tipoP === 'Entidade' ? ' selected' : '') + '>Entidade</option></select></div>'
     + '<div class="loc-cfield full"><label>Nome / Razão social</label><input class="loc-cinput pt-nome" value="' + escHtml(dados['Nome'] || '') + '"></div>'
@@ -8419,6 +8432,12 @@ window.ptToggleTipoPessoa = function (selEl) {
   linha.querySelectorAll('.pt-pf-fields').forEach(function (el) { el.style.display = juridica ? 'none' : 'contents'; });
   linha.querySelectorAll('.pt-pj-fields').forEach(function (el) { el.style.display = juridica ? '' : 'none'; });
 };
+window.ptTogglePolo = function (selEl) {
+  const linha = selEl.closest('.pt-linha');
+  if (!linha) return;
+  const campo = linha.querySelector('.pt-herdeiro-field');
+  if (campo) campo.style.display = (selEl.value === 'Inventariante') ? '' : 'none';
+};
 window.ptRemoverLinha = function (uid) {
   const div = document.getElementById(uid);
   if (!div) return;
@@ -8444,6 +8463,7 @@ window.ptSalvarTodas = async function () {
     const campos = {
       'Nr Processo': processo,
       'Polo': div.querySelector('.pt-polo').value,
+      'Tambem Herdeiro': div.querySelector('.pt-polo').value === 'Inventariante' ? div.querySelector('.pt-tambem-herdeiro').value : '',
       'Nosso Cliente': div.querySelector('.pt-nosso').value,
       'Tipo de Pessoa': div.querySelector('.pt-tipopessoa').value,
       'Nome': div.querySelector('.pt-nome').value.trim(),
