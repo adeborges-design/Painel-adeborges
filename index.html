@@ -17316,6 +17316,12 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-mensal .rel-imovel-bloco,
   body.printing-rel-mensal .parc-header,
   body.printing-rel-mensal .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  /* Pedido do usuário (17/set/2026): quem recebe este relatório imprime e arquiva folha por
+     folha — cada locação precisa sair numa página própria (a primeira fica com o título, que já
+     abre o relatório antes do primeiro imóvel), e o bloco final (subtotal/despesas/total geral/
+     dados bancários) sai junto, inteiro, numa última página separada da última locação. */
+  body.printing-rel-mensal .rel-imovel-bloco + .rel-imovel-bloco { page-break-before: always !important; break-before: page !important; }
+  body.printing-rel-mensal .rel-final-bloco { page-break-before: always !important; break-before: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-informes-lote * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-informes-lote html, body.printing-informes-lote body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-informes-lote > * { display:none !important; }
@@ -22149,10 +22155,12 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is) apto(s) a repassar'+((naoRecebidos||jaRepassados)?' <span style="color:var(--yellow)">— '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)</span>':'')+'</div></div>'
       +blocos
+      +'<div class="rel-final-bloco">'
       +subtotalHtml
       +avulsosHtml
       +'<div class="parc-section"><div class="parc-section-label">Total Geral do Mês</div><div class="parc-tarefa-box"><strong>'+BRL(totalGeral)+'</strong><div style="color:#6b5116;font-size:11.5px;margin-top:4px">Soma do líquido repassado de todos os imóveis'+(avulsos.length?' + despesas/créditos do locador':'')+'</div></div></div>'
       +contaLocadorHtml
+      +'</div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712</div>';
   };
