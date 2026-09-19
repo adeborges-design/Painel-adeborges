@@ -12574,7 +12574,8 @@ function abrirHonorarios() {
   processosOrdenados.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p._uid;
-    opt.textContent = p.nome + (p.processo ? ' - ' + p.processo : '');
+    const rotuloProc = (typeof window.honProcRotulo === 'function') ? window.honProcRotulo(p) : (p.processo || '');
+    opt.textContent = p.nome + (rotuloProc ? ' - ' + rotuloProc : '');
     sel.appendChild(opt);
   });
   // Data padrao hoje
@@ -12755,8 +12756,9 @@ async function salvarHonorario() {
   // Buscar dados do processo
   const p = allProcessos.find(x => x._uid === parseInt(uid));
 
+  const rotuloProcLanc = p ? ((typeof window.honProcRotulo === 'function') ? window.honProcRotulo(p) : p.processo) : '';
   const campos = {
-    'Nr Processo': p ? p.processo : '',
+    'Nr Processo': rotuloProcLanc,
     'Cliente': p ? p.nome : '',
     'Tipo Contrato': document.getElementById('hon-tipoContrato').value,
     'Valor Total Contrato': numFlex(document.getElementById('hon-valorContrato').value),
@@ -14530,6 +14532,24 @@ function normChave_(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u
 // aba HONORARIOS com o processo correspondente, mesmo com pequenas diferenças de digitação
 // entre "Nr Processo"/"Cliente" (gravado no lançamento) e os mesmos campos no cadastro.
 function gkey(proc,nome){return normChave_(proc)+'|'+normChave_(nome);}
+// Rótulo do processo para fins de honorários (19/set/2026): quando o mesmo cliente tem DOIS
+// contratos de honorários (ex.: um já em andamento na 1a instância e outro novo, específico da
+// fase recursal), o usuário cadastra um segundo "processo" no sistema para hospedar o segundo
+// contrato, marcando "Segundo Grau" nesse cadastro. Sem isso, dois cadastros com o mesmo Nr
+// Processo + mesmo Cliente colidiam na mesma gkey() e as parcelas dos dois contratos se
+// misturavam num único card. Aqui, sempre que o processo está marcado como 2º Grau, o rótulo
+// usado no dropdown de lançamento e gravado no lançamento (campo "Nr Processo") ganha um sufixo
+// com a classe do recurso (ou "2º Grau" genérico) — isso torna a gkey() naturalmente distinta
+// do processo de 1a instância, sem exigir que o usuário digite um número de processo diferente.
+function honProcRotulo(p){
+  var base=(p&&p.processo)||'';
+  if(p&&String(p.segundoGrau||'').toUpperCase()==='SIM'){
+    var tag=p.segundoGrauRecurso?p.segundoGrauRecurso:'2º Grau';
+    return base+(base?' — ':'')+tag;
+  }
+  return base;
+}
+window.honProcRotulo=honProcRotulo;
 window.renderVencimentos=function(){
  var host=document.getElementById('honLista');if(!host)return;
  var hoje=new Date();hoje.setHours(0,0,0,0);
@@ -14547,7 +14567,7 @@ window.renderVencimentos=function(){
   // aviso de "fórmula pendente" no lugar do cronograma, em vez de sumir silenciosamente.
   var temFormula=!!p.formaCalcHon;
   if(!vTotalP&&!nParcP&&!temFormula)return;
-  var k=gkey(p.processo,p.nome);
+  var k=gkey(honProcRotulo(p),p.nome);
   if(groups[k])return;
   var tipoFormula='';
   if(temFormula){
@@ -14556,7 +14576,7 @@ window.renderVencimentos=function(){
     ?(nbr(p.numBeneficiosHon)+' benef.+'+pctTxt)
     :(pctTxt+' a receber');
   }
-  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':tipoFormula||((nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único'),
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':honProcRotulo(p),'Tipo Contrato':tipoFormula||((nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único'),
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
    'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||'',
    '_formulaPendente':(temFormula&&!vTotalP)}];
@@ -14583,7 +14603,7 @@ window.renderVencimentos=function(){
   totRepasse+=repPend;
   // Datas de vencimento customizadas (campo opcional no cadastro do processo) -
   // sobrepoe o calculo automatico mensal, uma data por parcela na ordem (entrada primeiro).
-  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(pp.processo,pp.nome)===k;});
+  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(honProcRotulo(pp),pp.nome)===k;});
   var datasCustom=[];
   if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
@@ -14707,9 +14727,10 @@ function calcAlertas(){
  (typeof allProcessos!=='undefined'?allProcessos:[]).forEach(function(p){
   var vTotalP=nbr(p.valorHonorarios),nParcP=parseInt(p.numParcelas)||0;
   if(!vTotalP&&!nParcP)return;
-  var k=gkey(p.processo,p.nome);
+  var procRotulo=(typeof window.honProcRotulo==='function')?window.honProcRotulo(p):(p.processo||'');
+  var k=gkey(procRotulo,p.nome);
   if(groups[k])return;
-  groups[k]=[{'Cliente':p.nome||'','Nr Processo':p.processo||'','Tipo Contrato':(nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único',
+  groups[k]=[{'Cliente':p.nome||'','Nr Processo':procRotulo,'Tipo Contrato':(nParcP>1||nbr(p.valorEntrada)>0)?'Parcelado':'Único',
    'Valor Total Contrato':p.valorHonorarios||'','Número de Parcelas':p.numParcelas||'','Valor da Entrada':p.valorEntrada||'',
    'Valor da Parcela':p.valorParcela||'','Dia Vencimento':p.diaVencimento||'','Valor Recebido':'','Data Pagamento':'','Data Lancamento':'','Forma de Pagamento':p.formaPagamento||''}];
  });
@@ -14721,7 +14742,7 @@ function calcAlertas(){
   rows.forEach(function(r){vTotal=Math.max(vTotal,nbr(r['Valor Total Contrato']));vParc=Math.max(vParc,nbr(r['Valor da Parcela']));vEntr=Math.max(vEntr,nbr(r['Valor da Entrada']));dia=dia||parseInt(diaOnly(r['Dia Vencimento']))||0;nParc=nParc||parseInt(r['Número de Parcelas'])||0;});
   if(!vParc&&nParc>0)vParc=Math.max((vTotal-vEntr)/nParc,0);
   var pags=rows.filter(function(r){return nbr(r['Valor Recebido'])>0;});
-  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(pp.processo,pp.nome)===k;});
+  var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey((typeof window.honProcRotulo==='function')?window.honProcRotulo(pp):(pp.processo||''),pp.nome)===k;});
   var datasCustom=[];
   if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
