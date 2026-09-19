@@ -4941,6 +4941,40 @@
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">⚖️ Segunda Instância (Recurso ao TJ/TRF)</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-field form-full" style="padding-top:2px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:400;margin:0"><input type="checkbox" id="cad-segundoGrau" style="width:15px;height:15px"> ⚖️ Processo remetido ao 2º Grau (TJ/TRF)</label>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Marque também ao cadastrar um SEGUNDO processo pro mesmo cliente representando um novo contrato de honorários da fase recursal (ex.: apelação) — isso diferencia automaticamente os dois contratos no módulo Honorários, mesmo que o número do processo seja o mesmo.</div>
+          </div>
+          <div class="form-field">
+            <label>Data de Remessa ao Tribunal</label>
+            <input type="date" id="cad-segundoGrauData">
+          </div>
+          <div class="form-field">
+            <label>Classe do Recurso</label>
+            <input type="text" id="cad-segundoGrauRecurso" placeholder="Ex.: Apelação, Agravo de Instrumento">
+          </div>
+          <div class="form-field">
+            <label>Nº no Tribunal (se diferente)</label>
+            <input type="text" id="cad-segundoGrauNumero" placeholder="Ex.: 1003999-80.2024.8.26.0008/TJSP">
+          </div>
+          <div class="form-field">
+            <label>Câmara / Órgão Julgador</label>
+            <input type="text" id="cad-segundoGrauCamara" placeholder="Ex.: 4ª Câmara de Direito Privado">
+          </div>
+          <div class="form-field">
+            <label>Desembargador(a) Relator(a)</label>
+            <input type="text" id="cad-segundoGrauRelator">
+          </div>
+          <div class="form-field form-full">
+            <label>Observações do 2º Grau</label>
+            <textarea id="cad-segundoGrauObs" rows="3" placeholder="Anotações sobre o andamento no tribunal — julgamento, acórdão, embargos, etc."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title">💰 Honorários</div>
         <div class="form-grid form-grid-3">
           <div class="form-field">
@@ -13890,6 +13924,11 @@ function abrirCadastro() {
   document.getElementById('cad-peticaoUrgente').checked = false;
   document.getElementById('cad-intervencaoMP').checked = false;
   document.getElementById('cad-pericia').checked = false;
+  document.getElementById('cad-segundoGrau').checked = false;
+  ['cad-segundoGrauData','cad-segundoGrauRecurso','cad-segundoGrauNumero','cad-segundoGrauCamara','cad-segundoGrauRelator','cad-segundoGrauObs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 
   document.getElementById('cadastroStatus').textContent = '';
   document.getElementById('modalCadastro').classList.add('open');
@@ -14147,6 +14186,13 @@ async function salvarCadastro() {
     'Forma de pagamento ': document.getElementById('cad-formaPag').value,
     'Objeto do contrato (descricao dos Serviços)': document.getElementById('cad-objeto').value,
     'Datas de Vencimentos': document.getElementById('cad-datasVenc').value,
+    'Segundo Grau': document.getElementById('cad-segundoGrau').checked ? 'Sim' : 'Nao',
+    'Segundo Grau Data Remessa': inputParaData(document.getElementById('cad-segundoGrauData').value),
+    'Segundo Grau Recurso': document.getElementById('cad-segundoGrauRecurso').value,
+    'Segundo Grau Numero': document.getElementById('cad-segundoGrauNumero').value,
+    'Segundo Grau Camara': document.getElementById('cad-segundoGrauCamara').value,
+    'Segundo Grau Relator': document.getElementById('cad-segundoGrauRelator').value,
+    'Segundo Grau Observacoes': document.getElementById('cad-segundoGrauObs').value,
   };
 
   // Cadastro novo: se já tem CPF/CNPJ, gera a senha do cliente de cara.
