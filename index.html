@@ -20440,7 +20440,8 @@ window.cpRenderFixas=cpRenderFixas;
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
         '<td style="text-align:center;white-space:nowrap">'+btnSin+'<button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
         +'<span style="cursor:pointer;font-size:12px;margin:0 3px" title="'+(l.reciboEnviado?('Recibo de aluguel enviado em '+E(l.dataEnvioRecibo||'—')+' — clique para desmarcar'):'Recibo de aluguel ainda não marcado como enviado — clique para marcar manualmente')+'" onclick="event.stopPropagation();locToggleReciboEnviado(\''+E(l.contrato)+'\')">'+(l.reciboEnviado?'✅':'⭘')+'</span>'
-        +' <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button></td>'+
+        +' <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button>'
+        +' <button class="loc-send-btn" style="color:var(--red);border-color:var(--red)" title="Excluir este lançamento do mês (ex.: mês gerado por engano, contrato encerrado). Não apaga o contrato nem outros meses." onclick="event.stopPropagation();locExcluirLancamentoMes(\''+E(l.id)+'\',\''+E(l.contrato)+'\',\''+E(l.mes)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="15" style="text-align:center;color:var(--muted);padding:30px">'+(locFiltroAtivo!=='all'?'Nenhum lançamento corresponde a esse filtro neste mês.':'Nenhum lançamento neste mês.')+'</td></tr>';
     if(showRepasse)renderRepasse(lstTodos);
@@ -23266,6 +23267,26 @@ window.cpRenderFixas=cpRenderFixas;
     if(!live){alert('Só é possível excluir contratos com a planilha conectada (modo ao vivo).');return;}
     logAuditoria_('Contrato excluído', contrato, qtdLanc+' lançamento(s) vinculado(s) no momento da exclusão');
     fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locc',id:id})}).then(function(){
+      setTimeout(function(){carregarAlugueis();},1000);
+    });
+  };
+  // Exclui um único lançamento mensal (uma linha de LOC_LANCAMENTOS) — pedido do usuário
+  // (22/set/2026): não existia como apagar um mês gerado por engano ou de um contrato já
+  // encerrado sem mexer direto na planilha. Não apaga o contrato nem outros meses; se o mês
+  // ainda for gerado de novo (Gerar mês seguinte/Lançar-recriar mês), o lançamento volta.
+  window.locExcluirLancamentoMes=function(id,contrato,mes){
+    if(!id){alert('Não foi possível identificar este lançamento (ID ausente). Tente clicar em 🔄 Atualizar e repetir.');return;}
+    var l=(workingList()||[]).find(function(x){return String(x.id)===String(id);})||{};
+    var recebido=l.statusAluguel&&l.statusAluguel!=='Pendente';
+    var repassado=l.statusRep==='Repassado';
+    var aviso='Excluir o lançamento de '+(mes||'—')+' do contrato '+contrato+'?\n\nEsta ação não pode ser desfeita.';
+    if(recebido||repassado){
+      aviso='ATENÇÃO: este lançamento já está marcado como '+(recebido?('Status Aluguel: '+l.statusAluguel):'')+(recebido&&repassado?' e ':'')+(repassado?'Repassado':'')+'.\n\n'+aviso+'\n\nExcluir um lançamento já recebido/repassado apaga esse registro financeiro — confirme que é isso mesmo (ex.: lançamento duplicado ou gerado por engano), não use isso para simplesmente "esconder" um mês.';
+    }
+    if(!confirm(aviso))return;
+    if(!live){alert('Só é possível excluir lançamentos com a planilha conectada (modo ao vivo).');return;}
+    logAuditoria_('Lançamento excluído', contrato, 'Mês '+(mes||'—')+(recebido?' — Status Aluguel: '+l.statusAluguel:'')+(repassado?' — repassado':''));
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'excluir_locl',id:id})}).then(function(){
       setTimeout(function(){carregarAlugueis();},1000);
     });
   };
