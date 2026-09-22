@@ -16469,7 +16469,22 @@ window.cpRenderFixas=cpRenderFixas;
             <button type="button" class="loc-btn" style="padding:0 10px;white-space:nowrap" title="Sugerir número automaticamente com base no tipo de locação e no ano de início de vigência" onclick="locSugerirNumeroContrato()">🔢 Sugerir</button>
           </div>
         </div>
-        <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo" onchange="locToggleEncerramento()"><option>Sim</option><option>Não</option></select></div>
+        <div class="loc-cfield full" id="lc-encerramento-wrap" style="display:none;background:var(--surface2);padding:12px 14px;border-radius:8px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="loc-cfield" style="flex:1;min-width:220px"><label>Motivo do encerramento</label><select class="loc-cinput" id="lc-encerramento-motivo">
+              <option value="">Selecionar</option>
+              <option value="Término do prazo contratual">Término do prazo contratual</option>
+              <option value="Rescisão antecipada — locatário">Rescisão antecipada — locatário</option>
+              <option value="Rescisão antecipada — locador">Rescisão antecipada — locador</option>
+              <option value="Rescisão por acordo (distrato)">Rescisão por acordo (distrato)</option>
+              <option value="Ação de despejo">Ação de despejo</option>
+              <option value="Outro">Outro</option>
+            </select></div>
+            <div class="loc-cfield" style="flex:1;min-width:180px"><label>Data do encerramento</label><input class="loc-cinput" id="lc-encerramento-data" type="date"></div>
+          </div>
+          <div class="loc-cfield full" style="margin-top:8px"><label>Observações do encerramento</label><textarea class="loc-cinput" id="lc-encerramento-obs" rows="2" placeholder="Ex.: nº do processo de despejo, condições do acordo, data de entrega das chaves..."></textarea></div>
+        </div>
         <div class="loc-cfield"><label>Tipo de locação</label><select class="loc-cinput" id="lc-tipo-locacao" onchange="locAutoSugerirSeVazio()">
           <option value="">Selecionar</option>
           <option value="Residencial">Residencial</option>
@@ -19088,7 +19103,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),multaRescTipo:cell(row,mc,'Multa Rescisoria Tipo'),multaRescMultiplo:cell(row,mc,'Multa Rescisoria Multiplo'),multaRescValor:num(cell(row,mc,'Multa Rescisoria Valor')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',motivoEncerramento:cell(row,mc,'Motivo Encerramento'),dataEncerramento:cell(row,mc,'Data Encerramento'),obsEncerramento:cell(row,mc,'Observacoes Encerramento'),obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),multaRescTipo:cell(row,mc,'Multa Rescisoria Tipo'),multaRescMultiplo:cell(row,mc,'Multa Rescisoria Multiplo'),multaRescValor:num(cell(row,mc,'Multa Rescisoria Valor')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           repLocatarioNome:cell(row,mc,'Representante Locatario Nome'),
@@ -23230,7 +23245,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-endereco" title="'+E(c.end||'')+'">'+E(c.end||'-')+'</td>'+
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
-        '<td style="text-align:center">'+(c.ativo?'Sim':'Não')+'</td>'+
+        '<td style="text-align:center">'+(c.ativo?'Sim':('<span title="'+E((c.motivoEncerramento||'Motivo não informado')+(c.dataEncerramento?' — '+c.dataEncerramento:''))+'">Não'+(c.motivoEncerramento?' ⓘ':'')+'</span>'))+'</td>'+
         '<td style="white-space:nowrap">'+btnSinC+'<button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">'+(busca?'Nenhum contrato encontrado para "'+E(busca)+'".':'Sem contratos.')+'</td></tr>';
@@ -23281,6 +23296,17 @@ window.cpRenderFixas=cpRenderFixas;
   }
   window.lcSenhasAtualizarPainel=lcSenhasAtualizarPainel;
 
+  // Mostra os campos de encerramento (motivo, data, observações) só quando o contrato está
+  // marcado como "Não" ativo — pedido do usuário (22/set/2026): registrar formalmente por que
+  // um contrato de locação acabou (término do prazo, rescisão antecipada, acordo/distrato ou
+  // ação de despejo), separado do módulo "Rescisão" (que é só a calculadora de multa/valores).
+  window.locToggleEncerramento=function(){
+    var ativo=document.getElementById('lc-ativo').value;
+    var wrap=document.getElementById('lc-encerramento-wrap');
+    if(!wrap)return;
+    wrap.style.display=(ativo==='Não')?'':'none';
+  };
+
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
@@ -23302,8 +23328,10 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-tipo-locacao').value='';document.getElementById('lc-tipo-imovel').value='';
     document.getElementById('lc-taxa').value='';document.getElementById('lc-ativo').value='Sim';document.getElementById('lc-taxa-incide-encargos').value='Nao';document.getElementById('lc-msg').textContent='';
     document.getElementById('lc-multa-resc-multiplo').value='1';
+    document.getElementById('lc-encerramento-motivo').value='';document.getElementById('lc-encerramento-data').value='';document.getElementById('lc-encerramento-obs').value='';
     try{locToggleGarantia();}catch(e){}
     try{locToggleMultaRescisoria();}catch(e){}
+    try{locToggleEncerramento();}catch(e){}
     locRenderContratos();document.getElementById('lc-contrato').focus();
     try{document.getElementById('locCFormWrap').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
   };
@@ -23428,6 +23456,10 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-multa-resc-valor').value=num(c.multaRescValor)||'';
     try{locToggleMultaRescisoria();}catch(e){}
     document.getElementById('lc-ativo').value=c.ativo?'Sim':'Não';
+    document.getElementById('lc-encerramento-motivo').value=c.motivoEncerramento||'';
+    document.getElementById('lc-encerramento-data').value=locIsoFromBR(c.dataEncerramento);
+    document.getElementById('lc-encerramento-obs').value=c.obsEncerramento||'';
+    try{locToggleEncerramento();}catch(e){}
     document.getElementById('lc-obs').value=c.obs||'';
     document.getElementById('lc-tel-locador-1').value=c.telLocador1||'';
     document.getElementById('lc-tel-locador-2').value=c.telLocador2||'';
@@ -23504,6 +23536,9 @@ window.cpRenderFixas=cpRenderFixas;
       'Dia Vencimento':document.getElementById('lc-venc').value.trim(),
       'Dia Repasse':document.getElementById('lc-rep').value.trim(),
       'Ativo':document.getElementById('lc-ativo').value,
+      'Motivo Encerramento':document.getElementById('lc-ativo').value==='Não'?document.getElementById('lc-encerramento-motivo').value:'',
+      'Data Encerramento':document.getElementById('lc-ativo').value==='Não'?locDtBRfromInput(document.getElementById('lc-encerramento-data').value):'',
+      'Observacoes Encerramento':document.getElementById('lc-ativo').value==='Não'?document.getElementById('lc-encerramento-obs').value.trim():'',
       'Observacoes':document.getElementById('lc-obs').value.trim(),
       'Condominio Padrao':num(document.getElementById('lc-condominio').value),
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
@@ -23559,7 +23594,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],multaRescTipo:campos['Multa Rescisoria Tipo'],multaRescMultiplo:campos['Multa Rescisoria Multiplo'],multaRescValor:campos['Multa Rescisoria Valor'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',motivoEncerramento:campos['Motivo Encerramento'],dataEncerramento:campos['Data Encerramento'],obsEncerramento:campos['Observacoes Encerramento'],obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],multaRescTipo:campos['Multa Rescisoria Tipo'],multaRescMultiplo:campos['Multa Rescisoria Multiplo'],multaRescValor:campos['Multa Rescisoria Valor'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       repLocatarioNome:campos['Representante Locatario Nome'],
