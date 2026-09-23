@@ -4139,9 +4139,21 @@
             <input type="text" id="ed-chaveAcesso" placeholder="Chave de acesso emitida pelo tribunal para consulta do processo">
           </div>
           <div class="form-field form-full" style="position:relative">
-            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
+            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for apensado, incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
             <input type="text" id="ed-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'ed')" autocomplete="off" data-no-copy="1">
             <div id="ed-processoPrincipalResultados" class="cad-busca-resultados"></div>
+          </div>
+          <div class="form-field">
+            <label>Tipo de Vínculo <span style="font-weight:400;color:var(--muted)">(só se houver Processo Principal)</span></label>
+            <select id="ed-tipoVinculo">
+              <option value="">Selecionar</option>
+              <option value="Apenso">Apenso — autos e número próprios, tramitando em conjunto com o principal</option>
+              <option value="Incidente processual">Incidente processual — mesmos autos do principal (impugnação, exceção, habilitação etc.)</option>
+              <option value="Recurso">Recurso</option>
+              <option value="Cumprimento de Sentença">Cumprimento de Sentença</option>
+              <option value="Execução">Execução</option>
+              <option value="Outro">Outro</option>
+            </select>
           </div>
           <div class="form-field">
             <label>Sistema</label>
@@ -4721,9 +4733,21 @@
             <input type="text" id="cad-chaveAcesso" placeholder="Chave de acesso emitida pelo tribunal para consulta do processo">
           </div>
           <div class="form-field form-full" style="position:relative">
-            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
+            <label>🔗 Processo Principal <span style="font-weight:400;color:var(--muted)">(preencha se este for apensado, incidente, recurso ou cumprimento de sentença de outro processo já cadastrado)</span></label>
             <input type="text" id="cad-processoPrincipal" placeholder="Digite o nome do cliente ou número do processo principal..." oninput="buscarProcessoPrincipal(this.value,'cad')" autocomplete="off" data-no-copy="1">
             <div id="cad-processoPrincipalResultados" class="cad-busca-resultados"></div>
+          </div>
+          <div class="form-field">
+            <label>Tipo de Vínculo <span style="font-weight:400;color:var(--muted)">(só se houver Processo Principal)</span></label>
+            <select id="cad-tipoVinculo">
+              <option value="">Selecionar</option>
+              <option value="Apenso">Apenso — autos e número próprios, tramitando em conjunto com o principal</option>
+              <option value="Incidente processual">Incidente processual — mesmos autos do principal (impugnação, exceção, habilitação etc.)</option>
+              <option value="Recurso">Recurso</option>
+              <option value="Cumprimento de Sentença">Cumprimento de Sentença</option>
+              <option value="Execução">Execução</option>
+              <option value="Outro">Outro</option>
+            </select>
           </div>
           <div class="form-field">
             <label>Sistema</label>
@@ -6601,6 +6625,7 @@ function parseProcessos(rows) {
     const telParceiro      = get(row, 'Telefone do Advogado Parceiro', 44);  // AS
     const emailParceiro    = get(row, 'E-mail do Advogado Parceiro',   45);  // AT
     const processoPrincipal = get(row, 'Processo Principal', -1);
+    const tipoVinculo        = get(row, 'Tipo de Vinculo',    -1);
     const tipoPessoa        = get(row, 'Tipo de Pessoa',    -1);
     const repNome           = get(row, 'Representante Nome', -1);
     const repCpf            = get(row, 'Representante CPF',  -1);
@@ -6705,7 +6730,7 @@ function parseProcessos(rows) {
       segundoGrau, segundoGrauData, segundoGrauRecurso, segundoGrauNumero, segundoGrauCamara, segundoGrauRelator, segundoGrauObs,
       reconvencao, reconvencaoData, reconvencaoStatus, reconvencaoObs,
       situacao,
-      processoPrincipal,
+      processoPrincipal, tipoVinculo,
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
       prazoInfo,
@@ -7659,17 +7684,18 @@ function renderCard(p, idx) {
           let html = '';
           if (p.processoPrincipal) {
             const pai = allProcessos.find(x => x.processo && x.processo.trim() === p.processoPrincipal.trim());
+            const tv = (p.tipoVinculo || '').trim();
             html += `<div class="processo-vinculo" onclick="event.stopPropagation();${pai ? 'toggleCard(' + pai._uid + ');document.getElementById(\'card-' + pai._uid + '\').scrollIntoView({behavior:\'smooth\',block:\'center\'})' : ''}">
-              🔗 Incidente/vinculado a: <strong>${escHtml(pai ? pai.nome : p.processoPrincipal)}</strong>${pai ? ' (' + escHtml(p.processoPrincipal) + ')' : ''}
+              🔗 ${tv ? escHtml(tv) : 'Vinculado'} de: <strong>${escHtml(pai ? pai.nome : p.processoPrincipal)}</strong>${pai ? ' (' + escHtml(p.processoPrincipal) + ')' : ''}
             </div>`;
           }
           const filhos = p.processo ? allProcessos.filter(x => x.processoPrincipal && x.processoPrincipal.trim() === p.processo.trim()) : [];
           if (filhos.length) {
             html += `<div class="processo-vinculo processo-vinculo-toggle" onclick="event.stopPropagation();toggleVinculados(${p._uid})">
-              📎 ${filhos.length} processo(s) vinculado(s) — incidentes/recursos <span class="chevron" id="chev-${p._uid}">▸</span>
+              📎 ${filhos.length} processo(s) vinculado(s) — apensos/incidentes/recursos <span class="chevron" id="chev-${p._uid}">▸</span>
             </div>
             <div class="processo-vinculados-lista" id="vinc-${p._uid}" style="display:none">
-              ${filhos.map(f => `<div class="vinc-item" onclick="event.stopPropagation();toggleCard(${f._uid});document.getElementById('card-${f._uid}').scrollIntoView({behavior:'smooth',block:'center'})">${escHtml(f.processo || '(sem número)')} — ${escHtml(f.tipo || f.nome)}</div>`).join('')}
+              ${filhos.map(f => `<div class="vinc-item" onclick="event.stopPropagation();toggleCard(${f._uid});document.getElementById('card-${f._uid}').scrollIntoView({behavior:'smooth',block:'center'})">${escHtml(f.processo || '(sem número)')}${f.tipoVinculo ? ' — ' + escHtml(f.tipoVinculo) : ''} — ${escHtml(f.tipo || f.nome)}</div>`).join('')}
             </div>`;
           }
           return html;
@@ -13301,6 +13327,7 @@ function abrirEdicao(uid) {
   document.getElementById('ed-processo').value = p.processo || '';
   document.getElementById('ed-chaveAcesso').value = p.chaveAcesso || '';
   document.getElementById('ed-processoPrincipal').value = p.processoPrincipal || '';
+  document.getElementById('ed-tipoVinculo').value = p.tipoVinculo || '';
   document.getElementById('ed-sistema').value = p.sistema || '';
   document.getElementById('ed-vara').value = p.vara || '';
   document.getElementById('ed-juiz').value = p.juiz || '';
@@ -13460,6 +13487,7 @@ async function salvarEdicao() {
     'Número do Processo': document.getElementById('ed-processo').value,
     'Chave de Acesso': document.getElementById('ed-chaveAcesso').value,
     'Processo Principal': document.getElementById('ed-processoPrincipal').value,
+    'Tipo de Vinculo': document.getElementById('ed-processoPrincipal').value ? document.getElementById('ed-tipoVinculo').value : '',
     'Sistema': document.getElementById('ed-sistema').value,
     'Vara': document.getElementById('ed-vara').value,
     'Juiz(a)': document.getElementById('ed-juiz').value,
@@ -13896,7 +13924,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
-   'cad-processo','cad-processoPrincipal','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-dataPrimeiroContato','cad-tipo','cad-parte','cad-outra',
+   'cad-processo','cad-processoPrincipal','cad-tipoVinculo','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-dataPrimeiroContato','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-precisaProvidenciar','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
    'cad-repNome','cad-repCpf','cad-repRg','cad-repCargo'].forEach(id => {
@@ -14070,7 +14098,7 @@ function montarTextoParaPeticao_(prefixo) {
   if (v('sistema')) dadosProcesso.push('Sistema: ' + v('sistema'));
   if (v('tipo')) dadosProcesso.push('Ação: ' + v('tipo'));
   if (v('parte') || v('outra')) dadosProcesso.push('Posição: ' + (v('parte') || '-') + (v('outra') ? (' em face de ' + v('outra')) : ''));
-  if (v('processoPrincipal')) dadosProcesso.push('Processo principal: ' + v('processoPrincipal'));
+  if (v('processoPrincipal')) dadosProcesso.push('Processo principal: ' + v('processoPrincipal') + (v('tipoVinculo') ? ' (' + v('tipoVinculo') + ')' : ''));
   linhas.push('');
   linhas.push('DADOS DO PROCESSO');
   linhas.push.apply(linhas, dadosProcesso);
@@ -14144,6 +14172,7 @@ async function salvarCadastro() {
     'Número do Processo': document.getElementById('cad-processo').value,
     'Chave de Acesso': document.getElementById('cad-chaveAcesso').value,
     'Processo Principal': document.getElementById('cad-processoPrincipal').value,
+    'Tipo de Vinculo': document.getElementById('cad-processoPrincipal').value ? document.getElementById('cad-tipoVinculo').value : '',
     'Sistema': document.getElementById('cad-sistema').value,
     'Vara': document.getElementById('cad-vara').value,
     'Juiz(a)': document.getElementById('cad-juiz').value,
