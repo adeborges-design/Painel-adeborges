@@ -1009,7 +1009,15 @@
     padding: 1px 6px;
     font-variant-numeric: tabular-nums;
   }
-  .historico-proc-lista { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; max-height: 42vh; overflow-y: auto; }
+  .historico-proc-box {
+    background: var(--surface2, rgba(255,255,255,0.02));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
+  .historico-proc-lista { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; max-height: 42vh; overflow-y: auto; }
   .historico-proc-item {
     background: var(--bg, rgba(0,0,0,0.15));
     border: 1px solid var(--border);
@@ -1017,6 +1025,7 @@
     padding: 9px 11px;
   }
   .historico-proc-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .historico-proc-item-head .dp-rem { background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; line-height: 1; color: var(--red); }
   .historico-proc-data { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
   .historico-proc-texto { color: var(--text); font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .historico-proc-form textarea {
@@ -7338,10 +7347,10 @@ function prazoClienteBoxHtml_(p) {
 }
 function ultimaMovBoxHtml_(p) {
   var temValor = p.ultima && p.ultima.length > 2;
-  var label = 'Última movimentação';
+  var label = '<span style="color:var(--green)">💬 Situação atual (aparece pro cliente — WhatsApp/portal)</span>';
   var texto = temValor ? escHtml(p.ultima) : '<span style="color:var(--muted)">Nenhuma movimentação registrada.</span>';
   var sub = (temValor && p.dataAtua) ? formatDate(p.dataAtua) : '';
-  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-ultimaMov-' + p._uid + '-texto" placeholder="Última movimentação...">' + escHtml(p.ultima || '') + '</textarea>'
+  var edit = '<textarea class="proc-inline-input" rows="3" id="procin-ultimaMov-' + p._uid + '-texto" placeholder="Situação atual...">' + escHtml(p.ultima || '') + '</textarea>'
     + '<input type="date" class="proc-inline-input" id="procin-ultimaMov-' + p._uid + '-data" value="' + dataParaInput(p.dataAtua || '') + '">';
   return procBoxWrapper_(p._uid, 'ultimaMov', label, texto, sub, edit);
 }
@@ -7502,23 +7511,15 @@ window.despesaProcRemover = function (uid, idx) {
 
 // Histórico do processo (13/set/2026): log cronológico — o usuário cola movimentações,
 // decisões publicadas ou anotações ao longo do caso, e cada entrada fica empilhada com
-// data/hora, sem sobrescrever o que já foi colado antes. Fica numa seção separada (modal),
-// pra não poluir o card no dia a dia — abre só quando clica em "Ver histórico".
-function historicoProcEnsureModal_() {
-  if (document.getElementById('modalHistoricoProc')) return;
-  var ov = document.createElement('div');
-  ov.id = 'modalHistoricoProc';
-  ov.className = 'modal-card-overlay';
-  ov.innerHTML = '<div class="card-preview-wrap" id="historicoProcWrap" style="width:560px" onclick="event.stopPropagation()"></div>';
-  ov.addEventListener('click', function (e) { if (e.target === ov) window.fecharHistoricoProcesso(); });
-  document.body.appendChild(ov);
-}
-function historicoProcModalHtml_(p) {
+// data/hora, sem sobrescrever o que já foi colado antes. Renderizado direto no card
+// expandido (não é modal) — o advogado pediu pra ficar visível assim que abre o processo,
+// sem precisar de um segundo clique.
+function historicoProcBlocoHtml_(p) {
   var itens = p.historicoProcesso || [];
   var porId = {}; itens.forEach(function (it) { if (it.id) porId[it.id] = it; });
   var itensRev = itens.slice().reverse(); // mais recente primeiro
   var lista = itensRev.length ? itensRev.map(function (it, idxRev) {
-    var idx = itens.length - 1 - idxRev; // índice real no array, p/ excluir a entrada certa
+    var idx = itens.length - 1 - idxRev; // índice real no array, p/ excluir/copiar a entrada certa
     var grauTxt = it.grau ? ' <span class="hon-badge hv-badge-fut">' + escHtml(it.grau) + '</span>' : '';
     var origemRef = it.origem && porId[it.origem];
     var origemTxt = origemRef
@@ -7526,47 +7527,51 @@ function historicoProcModalHtml_(p) {
       : '';
     return '<div class="historico-proc-item">'
       + '<div class="historico-proc-item-head"><span class="historico-proc-data">' + escHtml(it.data || '') + '</span>' + grauTxt
-      + '<button type="button" class="dp-rem" title="Excluir esta entrada" onclick="event.stopPropagation();historicoProcRemover(' + p._uid + ',' + idx + ')">✕</button></div>'
+      + '<span style="margin-left:auto;display:flex;gap:6px">'
+      + '<button type="button" class="dp-rem" title="Usar este texto como Situação atual (visível ao cliente)" style="color:var(--green)" onclick="event.stopPropagation();historicoProcUsarComoSituacao(' + p._uid + ',' + idx + ')">💬</button>'
+      + '<button type="button" class="dp-rem" title="Excluir esta entrada" onclick="event.stopPropagation();historicoProcRemover(' + p._uid + ',' + idx + ')">✕</button>'
+      + '</span></div>'
       + '<div class="historico-proc-texto">' + escHtml(it.texto || '').replace(/\n/g, '<br>') + origemTxt + '</div>'
       + '</div>';
   }).join('') : '<div class="despesas-proc-vazio">Nenhum registro ainda. Cole abaixo uma movimentação, decisão publicada ou anotação.</div>';
-  // Opções pra vincular a nova entrada a uma já existente (ex.: um agravo que impugna a decisão X) —
-  // mesma lógica de "eventos" do eproc, só que dentro do próprio histórico, sem tela separada.
+  // Opções pra vincular a nova entrada a uma já existente (ex.: um agravo que impugna a decisão X).
   var opcoesOrigem = '<option value="">Nenhum (não vinculado)</option>' + itens.slice().reverse().map(function (it) {
     if (!it.id) return '';
     var label = (it.texto || '').slice(0, 50) + (it.texto && it.texto.length > 50 ? '…' : '') + ' (' + (it.data || '') + ')';
     return '<option value="' + it.id + '">' + escHtml(label) + '</option>';
   }).join('');
-  return ''
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-    + '<div class="card-preview-title">📜 Histórico do processo</div>'
-    + '<button class="cp-btn" onclick="fecharHistoricoProcesso()">✕</button></div>'
-    + '<div class="card-preview-sub">' + escHtml(p.nome || '') + (p.processo ? ' · ' + escHtml(p.processo) : '') + '</div>'
+  return '<div class="historico-proc-box" id="historico-proc-' + p._uid + '" onclick="event.stopPropagation()">'
+    + '<div class="despesas-proc-header"><span>📜 Histórico / Lançamentos do processo' + (itens.length ? ' <span class="historico-proc-count">' + itens.length + '</span>' : '') + '</span></div>'
     + '<div class="historico-proc-lista">' + lista + '</div>'
     + '<div class="historico-proc-form">'
-    + '<textarea id="historicoProcTexto-' + p._uid + '" rows="4" placeholder="Cole aqui a movimentação, decisão publicada ou anotação..."></textarea>'
+    + '<textarea id="historicoProcTexto-' + p._uid + '" rows="3" placeholder="Cole aqui a movimentação, decisão publicada ou anotação..."></textarea>'
     + '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">'
     + '<div style="flex:0 0 90px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Grau (opcional)</label><select id="historicoProcGrau-' + p._uid + '" style="width:100%"><option value="">—</option><option value="1G">1G</option><option value="2G">2G</option></select></div>'
     + '<div style="flex:1;min-width:180px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Vincular a um registro anterior (opcional)</label><select id="historicoProcOrigem-' + p._uid + '" style="width:100%">' + opcoesOrigem + '</select></div>'
     + '</div>'
     + '<button type="button" class="dp-add-btn" style="margin-top:8px" onclick="historicoProcAdicionar(' + p._uid + ')">+ Adicionar ao histórico</button>'
-    + '</div>';
+    + '</div></div>';
 }
-window.abrirHistoricoProcesso = function (uid) {
-  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
-  historicoProcEnsureModal_();
-  document.getElementById('historicoProcWrap').innerHTML = historicoProcModalHtml_(p);
-  document.getElementById('modalHistoricoProc').classList.add('open');
-};
-window.fecharHistoricoProcesso = function () {
-  var ov = document.getElementById('modalHistoricoProc'); if (ov) ov.classList.remove('open');
-};
 function historicoProcSalvarEAtualizarTela_(p) {
   fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Historico Processo': historicoProcMontar_(p.historicoProcesso) } }) }).catch(function () {});
-  var wrap = document.getElementById('historicoProcWrap');
-  if (wrap) wrap.innerHTML = historicoProcModalHtml_(p);
-  var trig = document.getElementById('historico-proc-trigger-' + p._uid);
-  if (trig) trig.outerHTML = historicoProcTriggerHtml_(p);
+  var box = document.getElementById('historico-proc-' + p._uid);
+  if (box) box.outerHTML = historicoProcBlocoHtml_(p);
+};
+// "Usar como Situação atual": copia o texto (e a data) de uma entrada do Histórico pro campo
+// "Situação atual (visível ao cliente)" — cópia deliberada, não vínculo automático, porque o
+// Histórico pode ter anotação interna que não deve ir pro cliente sem o advogado decidir isso.
+window.historicoProcUsarComoSituacao = function (uid, idx) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var itens = p.historicoProcesso || [];
+  var it = itens[idx]; if (!it) return;
+  if (!confirm('Copiar este texto para "Situação atual"? Isso vai aparecer no card do cliente e no portal — confirme que não tem nada de uso interno.')) return;
+  p.ultima = it.texto || '';
+  var soData = (it.data || '').split(' ')[0]; // já vem como DD/MM/AAAA
+  if (soData) p.dataAtua = soData;
+  var campos = { 'Última Atualização': p.ultima, 'Data Atualização': p.dataAtua };
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: campos }) }).catch(function () {});
+  var box = document.getElementById('procbox-ultimaMov-' + uid);
+  if (box) box.outerHTML = ultimaMovBoxHtml_(p);
 };
 window.historicoProcAdicionar = function (uid) {
   var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
@@ -7602,12 +7607,6 @@ window.historicoProcRemover = function (uid, idx) {
   p.historicoProcesso = itens;
   historicoProcSalvarEAtualizarTela_(p);
 };
-function historicoProcTriggerHtml_(p) {
-  var n = (p.historicoProcesso || []).length;
-  return '<div class="historico-proc-trigger" id="historico-proc-trigger-' + p._uid + '" onclick="event.stopPropagation();abrirHistoricoProcesso(' + p._uid + ')">'
-    + '📜 Ver histórico do processo' + (n ? ' <span class="historico-proc-count">' + n + '</span>' : '')
-    + '</div>';
-}
 
 function renderCard(p, idx) {
   const fam = familiaClasse_(p.tipo, p.ramo);
@@ -7797,7 +7796,7 @@ function renderCard(p, idx) {
             ${notaInternaBoxHtml_(p)}
           </div>
 
-          ${historicoProcTriggerHtml_(p)}
+          ${historicoProcBlocoHtml_(p)}
           ${despesasProcBlocoHtml_(p)}
 
           <div class="detail-actions">
