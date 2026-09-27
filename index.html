@@ -6381,7 +6381,6 @@ function saveConfig() {
   try{if(typeof carregarAgenda==='function')carregarAgenda();}catch(e){}
   try{if(typeof carregarAtendimentos==='function')carregarAtendimentos();}catch(e){}
   try{if(typeof window.carregarConfigPainel==='function')window.carregarConfigPainel();}catch(e){}
-  try{if(typeof window.carregarEventos==='function')window.carregarEventos();}catch(e){}
 }
 
 // Lembretes diários por e-mail (prazos, contas, honorários e agora recibos/informes de
@@ -7516,15 +7515,28 @@ function historicoProcEnsureModal_() {
 }
 function historicoProcModalHtml_(p) {
   var itens = p.historicoProcesso || [];
+  var porId = {}; itens.forEach(function (it) { if (it.id) porId[it.id] = it; });
   var itensRev = itens.slice().reverse(); // mais recente primeiro
   var lista = itensRev.length ? itensRev.map(function (it, idxRev) {
     var idx = itens.length - 1 - idxRev; // índice real no array, p/ excluir a entrada certa
+    var grauTxt = it.grau ? ' <span class="hon-badge hv-badge-fut">' + escHtml(it.grau) + '</span>' : '';
+    var origemRef = it.origem && porId[it.origem];
+    var origemTxt = origemRef
+      ? ' <span style="font-size:11px;color:var(--muted)">— vinculado a: ' + escHtml((origemRef.texto || '').slice(0, 60)) + (origemRef.texto && origemRef.texto.length > 60 ? '…' : '') + ' (' + escHtml(origemRef.data || '') + ')</span>'
+      : '';
     return '<div class="historico-proc-item">'
-      + '<div class="historico-proc-item-head"><span class="historico-proc-data">' + escHtml(it.data || '') + '</span>'
+      + '<div class="historico-proc-item-head"><span class="historico-proc-data">' + escHtml(it.data || '') + '</span>' + grauTxt
       + '<button type="button" class="dp-rem" title="Excluir esta entrada" onclick="event.stopPropagation();historicoProcRemover(' + p._uid + ',' + idx + ')">✕</button></div>'
-      + '<div class="historico-proc-texto">' + escHtml(it.texto || '').replace(/\n/g, '<br>') + '</div>'
+      + '<div class="historico-proc-texto">' + escHtml(it.texto || '').replace(/\n/g, '<br>') + origemTxt + '</div>'
       + '</div>';
   }).join('') : '<div class="despesas-proc-vazio">Nenhum registro ainda. Cole abaixo uma movimentação, decisão publicada ou anotação.</div>';
+  // Opções pra vincular a nova entrada a uma já existente (ex.: um agravo que impugna a decisão X) —
+  // mesma lógica de "eventos" do eproc, só que dentro do próprio histórico, sem tela separada.
+  var opcoesOrigem = '<option value="">Nenhum (não vinculado)</option>' + itens.slice().reverse().map(function (it) {
+    if (!it.id) return '';
+    var label = (it.texto || '').slice(0, 50) + (it.texto && it.texto.length > 50 ? '…' : '') + ' (' + (it.data || '') + ')';
+    return '<option value="' + it.id + '">' + escHtml(label) + '</option>';
+  }).join('');
   return ''
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
     + '<div class="card-preview-title">📜 Histórico do processo</div>'
@@ -7533,6 +7545,10 @@ function historicoProcModalHtml_(p) {
     + '<div class="historico-proc-lista">' + lista + '</div>'
     + '<div class="historico-proc-form">'
     + '<textarea id="historicoProcTexto-' + p._uid + '" rows="4" placeholder="Cole aqui a movimentação, decisão publicada ou anotação..."></textarea>'
+    + '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">'
+    + '<div style="flex:0 0 90px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Grau (opcional)</label><select id="historicoProcGrau-' + p._uid + '" style="width:100%"><option value="">—</option><option value="1G">1G</option><option value="2G">2G</option></select></div>'
+    + '<div style="flex:1;min-width:180px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Vincular a um registro anterior (opcional)</label><select id="historicoProcOrigem-' + p._uid + '" style="width:100%">' + opcoesOrigem + '</select></div>'
+    + '</div>'
     + '<button type="button" class="dp-add-btn" style="margin-top:8px" onclick="historicoProcAdicionar(' + p._uid + ')">+ Adicionar ao histórico</button>'
     + '</div>';
 }
@@ -7561,7 +7577,20 @@ window.historicoProcAdicionar = function (uid) {
   var pad = function (n) { return ('0' + n).slice(-2); };
   var dataFmt = pad(agora.getDate()) + '/' + pad(agora.getMonth() + 1) + '/' + agora.getFullYear() + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes());
   var itens = p.historicoProcesso || [];
-  itens.push({ data: dataFmt, texto: texto });
+  // Garante que toda entrada tenha um id estável (entradas antigas podem não ter — recebem um
+  // agora), pra permitir vincular uma entrada nova a uma antiga sem depender da posição no array
+  // (que muda se alguma entrada for excluída).
+  var maxId = 0;
+  itens.forEach(function (it) { if (it.id && it.id > maxId) maxId = it.id; });
+  itens.forEach(function (it) { if (!it.id) { maxId++; it.id = maxId; } });
+  var grauSel = document.getElementById('historicoProcGrau-' + uid);
+  var origemSel = document.getElementById('historicoProcOrigem-' + uid);
+  var grau = grauSel ? grauSel.value : '';
+  var origem = origemSel && origemSel.value ? parseInt(origemSel.value) : null;
+  var novaEntrada = { id: ++maxId, data: dataFmt, texto: texto };
+  if (grau) novaEntrada.grau = grau;
+  if (origem) novaEntrada.origem = origem;
+  itens.push(novaEntrada);
   p.historicoProcesso = itens;
   historicoProcSalvarEAtualizarTela_(p);
 };
@@ -7878,12 +7907,6 @@ function renderCard(p, idx) {
                   <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
                 Follow-up
-              </button>
-              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEventos(this.dataset.uid)" title="Linha do tempo de eventos do processo (decisões, recursos, petições) e o vínculo entre eles">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
-                </svg>
-                Eventos
               </button>
               <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEntregas(this.dataset.uid)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -9491,116 +9514,6 @@ function atendRenderModal(uid, loadingMsg) {
     + '<div>' + linhas + '</div>';
 }
 window.atendRenderModal = atendRenderModal;
-
-// --- MÓDULO EVENTOS (linha do tempo do processo, tipo "eventos" do eproc) ------
-// Cada lançamento (decisão, petição, recurso...) vira uma linha na aba EVENTOS, com
-// "Evento de Origem" ligando um evento posterior (ex.: agravo) ao evento que o motivou
-// (ex.: a decisão impugnada). Lido direto da planilha (Sheets API, mesmo padrão dos
-// demais módulos). Gravação via 'lancar_evento'/'excluir_evento' no doPost — essas duas
-// ações precisam ser adicionadas manualmente no Código.gs (ver instruções enviadas
-// separadamente); até lá, o formulário abaixo mostra a lista normalmente mas a gravação
-// de evento novo falha com aviso claro em vez de travar o painel.
-function evEsc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
-function evFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
-function evDbr(s) { s = String(s || '').trim(); var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return null; return new Date(+m[3], +m[2] - 1, +m[1]); }
-function evDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-var EV_GRAUS = ['1G', '2G'];
-var EV_TIPOS_SUGERIDOS = ['Decisão interlocutória', 'Sentença', 'Petição intercorrente', 'Recurso interposto - Agravo de Instrumento', 'Recurso interposto - Apelação', 'Embargos de Declaração', 'Cumprimento de sentença', 'Manifestação', 'Juntada de documento'];
-window.allEventos = [];
-window.carregarEventos = async function () {
-  try {
-    var cfg = getConfig(); if (!cfg || !cfg.apiKey || !cfg.sheetId) return;
-    var r = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + cfg.sheetId + '/values/' + encodeURIComponent('EVENTOS!A1:I1000') + '?key=' + cfg.apiKey);
-    if (!r.ok) { window.allEventos = []; return; }
-    var data = await r.json(); var rows = data.values || [];
-    if (rows.length < 2) { window.allEventos = []; return; }
-    var hd = rows[0];
-    window.allEventos = rows.slice(1).filter(function (x) { return x[0]; }).map(function (row) {
-      var o = {}; hd.forEach(function (h, i) { o[h] = row[i] || ''; }); return o;
-    });
-  } catch (e) { console.error('eventos', e); }
-};
-function eventosEnsureModal() {
-  if (document.getElementById('evModalOverlay')) return;
-  var ov = document.createElement('div');
-  ov.id = 'evModalOverlay';
-  ov.style.cssText = 'display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);z-index:970;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
-  ov.innerHTML = '<div id="evModalWrap" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:680px;max-width:96vw;padding:20px 22px;margin:auto"></div>';
-  ov.addEventListener('click', function (e) { if (e.target === ov) window.eventosFechar(); });
-  document.body.appendChild(ov);
-}
-window.eventosFechar = function () { var ov = document.getElementById('evModalOverlay'); if (ov) ov.style.display = 'none'; };
-window.abrirEventos = async function (uid) {
-  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
-  eventosEnsureModal();
-  document.getElementById('evModalOverlay').style.display = 'flex';
-  eventosRenderModal(uid, '⏳ Carregando linha do tempo...');
-  await window.carregarEventos();
-  eventosRenderModal(uid);
-};
-window.eventosSalvar = async function (uid) {
-  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
-  var grau = document.getElementById('ev-grau').value;
-  var dataV = document.getElementById('ev-data').value;
-  var tipo = document.getElementById('ev-tipo').value.trim();
-  var desc = document.getElementById('ev-desc').value.trim();
-  var origem = document.getElementById('ev-origem').value.trim();
-  var stEl = document.getElementById('evStatus');
-  if (!tipo || !desc) { stEl.innerHTML = '<span style="color:var(--red)">Preencha tipo e descrição do evento.</span>'; return; }
-  var campos = {
-    'Processo': p.processo || '', 'Data': dataV ? evDtBRfromInput(dataV) : evFdt(new Date()),
-    'Grau': grau, 'Tipo de Evento': tipo, 'Descricao': desc, 'Evento de Origem': origem
-  };
-  stEl.textContent = '⏳ salvando...';
-  try {
-    var rr = await fetch(URL_AS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'lancar_evento', campos: campos }) });
-    var d = await rr.json();
-    if (!d.ok) { stEl.innerHTML = '<span style="color:var(--red)">❌ ' + (d.error || 'o Apps Script recusou') + ' — a ação "lancar_evento" pode ainda não ter sido adicionada ao Código.gs.</span>'; return; }
-    stEl.innerHTML = '<span style="color:var(--green)">Salvo!</span>';
-  } catch (e2) {
-    stEl.innerHTML = '<span style="color:var(--red)">❌ Não foi possível confirmar o salvamento — a ação "lancar_evento" provavelmente ainda não existe no Código.gs (backend). Veja as instruções de configuração do módulo Eventos.</span>';
-    return;
-  }
-  setTimeout(async function () { await carregarEventos(); eventosRenderModal(uid); }, 1200);
-};
-window.eventosExcluir = async function (id, uid) {
-  if (!confirm('Excluir esse evento da linha do tempo?')) return;
-  try {
-    await fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'excluir_evento', id: id }) });
-  } catch (e) {}
-  setTimeout(async function () { await carregarEventos(); eventosRenderModal(uid); }, 1200);
-};
-function eventosRenderModal(uid, loadingMsg) {
-  var wrap = document.getElementById('evModalWrap'); if (!wrap) return;
-  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
-  if (loadingMsg) { wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">' + loadingMsg + '</div>'; return; }
-  var pk = String(p.processo || '').trim().toLowerCase();
-  var itens = (window.allEventos || []).filter(function (ev) {
-    return String(ev['Processo'] || '').trim().toLowerCase() === pk;
-  });
-  itens.sort(function (a, b) { return (evDbr(a['Data']) || 0) - (evDbr(b['Data']) || 0) || (parseInt(a['ID']) - parseInt(b['ID'])); });
-  var porId = {}; itens.forEach(function (ev) { porId[ev['ID']] = ev; });
-  var linhas = itens.length ? itens.map(function (ev) {
-    var origemTxt = ev['Evento de Origem'] && porId[ev['Evento de Origem']]
-      ? ' <span style="font-size:11px;color:var(--muted)">— origem: evento nº ' + evEsc(ev['Evento de Origem']) + ' (' + evEsc(porId[ev['Evento de Origem']]['Tipo de Evento'] || '') + ')</span>'
-      : (ev['Evento de Origem'] ? ' <span style="font-size:11px;color:var(--muted)">— origem: evento nº ' + evEsc(ev['Evento de Origem']) + '</span>' : '');
-    return '<div class="cp-item"><div><div class="desc">' + (ev['Grau'] === '2G' ? '⚖️ ' : '📄 ') + '<span class="hon-badge hv-badge-fut">' + evEsc(ev['Grau'] || '') + '</span> ' + evEsc(ev['Tipo de Evento'] || '') + origemTxt + '</div>'
-      + '<div class="meta">' + evEsc(ev['Data'] || '-') + ' · ' + evEsc(ev['Descricao'] || '') + '</div></div>'
-      + '<button class="cp-btn ex" title="Excluir" onclick="eventosExcluir(\'' + evEsc(ev['ID']) + '\',\'' + uid + '\')">🗑️</button></div>';
-  }).join('') : '<div class="hon-empty">Nenhum evento registrado ainda para este processo.</div>';
-  wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:16px;font-weight:700">🕒 Linha do tempo — ' + evEsc(p.nome) + '</div><button class="cp-btn" onclick="eventosFechar()">✕</button></div>'
-    + (p.processo ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Processo nr. ' + evEsc(p.processo) + '</div>' : '')
-    + '<div class="cp-form" style="margin-bottom:16px">'
-    + '<div class="cp-field"><label>Grau</label><select id="ev-grau">' + EV_GRAUS.map(function (g) { return '<option value="' + g + '">' + g + '</option>'; }).join('') + '</select></div>'
-    + '<div class="cp-field"><label>Data</label><input id="ev-data" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>'
-    + '<div class="cp-field cp-full"><label>Tipo de evento *</label><input id="ev-tipo" list="ev-tipos-lista" placeholder="Ex.: Petição intercorrente"><datalist id="ev-tipos-lista">' + EV_TIPOS_SUGERIDOS.map(function (t) { return '<option value="' + evEsc(t) + '">'; }).join('') + '</datalist></div>'
-    + '<div class="cp-field cp-full"><label>Descrição *</label><input id="ev-desc" placeholder="Resumo objetivo do que ocorreu"></div>'
-    + '<div class="cp-field"><label>Evento de origem (nº, opcional)</label><input id="ev-origem" placeholder="Ex.: 1"></div>'
-    + '<div class="cp-full" style="display:flex;justify-content:flex-end;gap:10px"><span id="evStatus" style="margin-right:auto;font-size:12px"></span><button class="cp-btn" onclick="eventosSalvar(\'' + uid + '\')" style="background:var(--accent);color:#fff;font-weight:700;padding:9px 16px">💾 Registrar evento</button></div>'
-    + '</div>'
-    + '<div>' + linhas + '</div>';
-}
-window.eventosRenderModal = eventosRenderModal;
 
 // --- MÓDULO ENTREGAS E ASSINATURAS -----------------------------
 // Recibo de Entrega: registra entrega de chaves, documentos ou certidões (para o
