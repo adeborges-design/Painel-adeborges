@@ -2510,12 +2510,12 @@
 
   .doc-logo-header {
     text-align: center;
-    margin-bottom: 28px;
+    margin-bottom: 1cm;
   }
 
   .doc-logo-header img {
-    max-width: 260px;
-    width: 100%;
+    width: 4cm;
+    max-width: 4cm;
     height: auto;
   }
 
@@ -2597,7 +2597,7 @@
       color: #000000 !important;
     }
     body.printing-doc .doc-body {
-      padding: 20px 28px !important;
+      padding: 0 !important;
       color: #000000 !important;
     }
     body.printing-doc .doc-edit-hint { display: none !important; }
@@ -2610,16 +2610,30 @@
        instrução abaixo, no botão de imprimir). */
     @page {
       size: A4;
-      margin: 2.5cm;
-      /* Sem isto, a área de margem da página (onde fica o "Página X de Y") não herda
+      margin: 3cm 2cm 2cm 3cm;
+      /* Sem isto, a área de margem da página (onde fica o rodapé) não herda
          de forma confiável o fundo branco definido em html/body no Chrome — é o que
          causava a borda preta ao redor do documento no PDF gerado/impresso. */
       background: #ffffff;
+      @bottom-right {
+        content: counter(page);
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 8pt;
+        color: #404040;
+      }
+    }
+    @page :first {
+      @bottom-right { content: none; }
       @bottom-center {
-        content: "Página " counter(page) " de " counter(pages);
-        font-family: 'DM Sans', sans-serif;
-        font-size: 10px;
-        color: #000000;
+        content: "Rua Engenheiro Pegado, 945, Conjunto 1304, Carrão, São Paulo/SP, CEP 03430-003\A adeborges@gmail.com  |  (11) 99931-3712  |  OAB/SP 335.600";
+        white-space: pre;
+        text-align: center;
+        vertical-align: top;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 8pt;
+        color: #404040;
+        border-top: 0.75pt solid #A8875A;
+        padding-top: 4pt;
       }
     }
   }
@@ -5115,7 +5129,7 @@
       <button class="btn-recibo-fechar" onclick="document.getElementById('modalDoc').classList.remove('open')">✕</button>
     </div>
     <div class="doc-print-tip" style="padding:6px 20px;font-size:11px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border2)">
-      💡 Pra numeração de página garantida em documentos com mais de 1 página: na janela de impressão, abra "Mais definições" e marque "Cabeçalhos e rodapés".
+      💡 Na janela de impressão, deixe DESMARCADO "Cabeçalhos e rodapés" — senão o Chrome substitui o rodapé do escritório por URL e data.
     </div>
     <div class="doc-body" id="docBody" oninput="comDocImgCacheInvalidar_()"></div>
   </div>
@@ -8745,13 +8759,6 @@ function gerarPeticao(p) {
   <div style="margin-top:56px;text-align:center;font-size:13px;line-height:1.6">
     ${escHtml(advNome)}<br>
     Advogado(a) – OAB/${escHtml(advOabUf)} ${escHtml(advOabNum)}
-  </div>
-
-  <div style="margin-top:24px;text-align:center">
-    <div style="border-top:1px solid #000000;width:220px;margin:0 auto 8px"></div>
-    <div style="font-size:12px;color:#000000">
-      Telefone: ${escHtml(advTel)} — e-mail: ${escHtml(advEmail)}
-    </div>
   </div>`;
 }
 
@@ -25501,6 +25508,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '29/set/2026', itens: [
+      'Ajustado o timbre dos documentos gerados em Processos (Procuração, Contrato de Honorários, Gratuidade, Petição): logotipo reduzido para 4cm de largura no topo.',
+      'Novo rodapé automático em todas as páginas, com numeração (canto inferior direito) a partir da 2ª página; na 1ª página, o rodapé traz o endereço, e-mail, telefone e OAB do escritório com uma linha divisória acima.',
+      'Margens dos documentos ajustadas para o padrão do timbre (3cm superior/esquerda, 2cm inferior/direita).',
+      'Removido da Petição o bloco de telefone/e-mail abaixo da assinatura — esses dados agora só aparecem no rodapé.',
+      'Atualizada a dica de impressão do modal de Documentos: agora orienta a deixar "Cabeçalhos e rodapés" DESMARCADO na janela de impressão, para não perder o rodapé do escritório.'
+    ]},
     { data: '01/set/2026', itens: [
       'O botão "🚨" (agora rotulado "🚨 garantia" na lista de Contratos) passou a se adaptar ao Tipo de Garantia de cada contrato — Seguro Fiança, Título de Capitalização, Carta Fiança Bancária, Fiadores ou Caução — em vez de falar sempre em "sinistro"/"seguradora".',
       'Novo em Contratos (quando a garantia é Seguro Fiança): campos para as coberturas da apólice (aluguel, multa rescisória, danos ao imóvel, contas de energia/água/gás, pintura interna/externa, cada uma com limite de valor) e dados da corretora (nome, telefone, e-mail). Tudo isso aparece automaticamente dentro do controle de inadimplência.',
@@ -25949,7 +25963,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Cards de estatística</div>'
       +MP+'Casos Ativos, Crítico/Urgente, Prazo mais próximo, Audiências, Providências e Honorários (quando há algo vencendo) — todos clicáveis, cada um filtra a lista automaticamente.</div>'
       +MH+'Documentos e ações rápidas</div>'
-      +ML+'<li>Gerar Petição, Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto no formato jurídico padrão (fundo branco, letras pretas, cabeçalho em negrito, endereçamento, qualificação, fecho, assinatura com OAB), editável direto na tela, com botão de imprimir/salvar em PDF. A petição já vem com os dados do processo preenchidos (partes, número, vara) e numeração de página automática — só falta escrever o pedido específico no parágrafo indicado.</li>'
+      +ML+'<li>Gerar Petição, Procuração, Contrato de Honorários ou Declaração de Hipossuficiência — texto pronto no formato jurídico padrão (fundo branco, letras pretas, cabeçalho em negrito, endereçamento, qualificação, fecho, assinatura com OAB), editável direto na tela, com botão de imprimir/salvar em PDF. A petição já vem com os dados do processo preenchidos (partes, número, vara) — só falta escrever o pedido específico no parágrafo indicado. Todos os documentos saem com o timbre padrão do escritório: logotipo de 4cm no topo da 1ª página e, no rodapé, endereço/e-mail/telefone/OAB na 1ª página e numeração automática a partir da 2ª. Na janela de impressão, deixe "Cabeçalhos e rodapés" DESMARCADO, senão o Chrome substitui esse rodapé pela URL e data.</li>'
       +'<li>Compartilhar atualização com o cliente via WhatsApp (card com a fase do processo).</li>'
       +'<li>Vincular processos incidentais a um processo principal.</li>'
       +'<li>Histórico de Atendimento (ligações, WhatsApp, despesas reembolsáveis) e Entregas (documentos entregues, com assinatura digital) — acessíveis a partir do card do processo.</li></ul>'
