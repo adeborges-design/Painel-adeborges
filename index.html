@@ -9953,6 +9953,18 @@ function accNum(v) {
   var n = parseFloat(s); return isNaN(n) ? 0 : n;
 }
 function accBRL(v) { return 'R$ ' + accNum(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// Saldo devedor do acordo (30/set/2026): quanto ainda falta a parte contrária pagar, considerando
+// TODAS as parcelas já lançadas (qualquer mês) com "Valor Recebido" preenchido — não só a do mês
+// em exibição. Usado pra o usuário conferir, na hora que edita uma parcela com valor diferente do
+// previsto (recebido a maior ou a menor), que o desconto na dívida total já está correto.
+function accSaldoContrato(contratoId) {
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); }) || {};
+  var totalAcordo = accNum(c['Valor Total Acordo']);
+  var totalRecebido = 0;
+  accLancamentos.filter(function (l) { return String(l['Contrato']) === String(contratoId); })
+    .forEach(function (l) { totalRecebido += accNum(l['Valor Recebido']); });
+  return Math.max(totalAcordo - totalRecebido, 0);
+}
 function accFdt(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
 function accDtBRfromInput(v) { if (!v) return ''; var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 // Converte pra formato de <input type="date"> (AAAA-MM-DD). Tolera tanto "DD/MM/AAAA" (o formato
@@ -10516,7 +10528,9 @@ window.accRender = function () {
       + '<td style="text-align:center">' + accE(l['Data Prevista'] || '-') + '</td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Recebimento']) + '" onchange="accSetDataRecebimento(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td><select class="loc-row-select ' + classeRec + '" onchange="accSetStatusRecebimento(\'' + accE(l['ID']) + '\',this.value)">' + ['Pendente', 'Recebido', 'Atrasado'].map(function (s) { return '<option' + (s === statusRec ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>'
-      + '<td><input class="loc-row-money ' + classeRec + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')"></td>'
+      + '<td><input class="loc-row-money ' + classeRec + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\',\'' + accE(l['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')">'
+      + '<div id="acc-saldo-' + accE(l['ID']) + '" style="font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap" title="Quanto ainda falta a parte contrária pagar neste acordo, considerando todas as parcelas já lançadas">Saldo do acordo: ' + accBRL(accSaldoContrato(c['ID'])) + '</div>'
+      + '</td>'
       + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
       + '<td><input class="loc-row-money ' + classeRep + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center">' + (c['Dia Repasse'] ? accE(c['Dia Repasse']) + 'd' : '-') + '</td>'
@@ -10569,19 +10583,34 @@ window.accSetStatusRecebimento = function (id, val) {
   if (val === 'Recebido' && l && !l['Data Recebimento']) campos['Data Recebimento'] = accFdt(new Date());
   accAtualizarLancamento(id, campos);
 };
-// Atualiza Honorários e Repasse na tela IMEDIATAMENTE enquanto o usuário digita
+// Atualiza Honorários, Repasse e Saldo do Acordo na tela IMEDIATAMENTE enquanto o usuário digita
 // (sem esperar sair do campo) — o salvamento de verdade continua no onchange.
-window.accCalcularAoVivo = function (inputEl, contratoId) {
+window.accCalcularAoVivo = function (inputEl, contratoId, lancamentoId) {
   var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); }) || {};
   var recebido = accNum(inputEl.value);
   var pct = accNum(c['Percentual Honorarios']);
   var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
   var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  // Saldo do acordo ao vivo: parte do saldo já salvo (que ainda não conta o que está sendo
+  // digitado agora) e desconta a diferença entre o valor novo e o que estava salvo antes nesta
+  // mesma parcela — assim o saldo muda na hora, sem esperar sair do campo pra salvar.
+  if (lancamentoId != null) {
+    var lAoVivo = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
+    var jaSalvo = lAoVivo ? accNum(lAoVivo['Valor Recebido']) : 0;
+    var saldoBase = accSaldoContrato(contratoId);
+    var saldoAoVivo = Math.max(saldoBase - (recebido - jaSalvo), 0);
+    var saldoEl = document.getElementById('acc-saldo-' + lancamentoId);
+    if (saldoEl) saldoEl.textContent = 'Saldo do acordo: ' + accBRL(saldoAoVivo);
+  }
   var tr = inputEl.closest('tr');
   if (!tr) return;
   var tds = tr.querySelectorAll('td');
-  if (tds[6]) tds[6].textContent = accBRL(honorarios);
-  var repasseInput = tds[7] ? tds[7].querySelector('input') : null;
+  // Índices corrigidos (30/set/2026): eram tds[6]/tds[7], mas tds[6] é a PRÓPRIA célula do campo
+  // "Valor Recebido" que está sendo digitado — sobrescrever seu innerHTML a cada tecla apagava o
+  // input no meio da digitação (o usuário "não conseguia editar" o campo). Honorários é tds[7],
+  // Repasse Cliente é tds[8].
+  if (tds[7]) tds[7].textContent = accBRL(honorarios);
+  var repasseInput = tds[8] ? tds[8].querySelector('input') : null;
   if (repasseInput) repasseInput.value = repasse ? repasse.toFixed(2) : '';
 };
 window.accSetValorRecebido = function (id, val, contratoId) {
@@ -25533,6 +25562,10 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '30/set/2026', itens: [
+      'Corrigido bug em Acordos com a Parte Contrária: o campo "Valor Recebido (R$)" da lista de parcelas apagava a si mesmo a cada tecla digitada (um erro de código atualizava a célula errada da tabela), impedindo editar o valor quando a parte contrária pagava a mais ou a menos que o previsto.',
+      'Novo aviso "Saldo do acordo" abaixo do campo "Valor Recebido", atualizado em tempo real — mostra quanto ainda falta a parte contrária pagar no total do acordo, já considerando o valor que está sendo digitado.'
+    ]},
     { data: '29/set/2026 (2)', itens: [
       'Em Processos, o "Prazo do Advogado" (prazo interno) agora entra no cálculo de urgência do card e da barra lateral: vencido ou faltando até 5 dias vira "Urgente"; até 15 dias vira "Atenção" (não chega a "Crítico" — esse nível fica reservado a audiência e prazo processual, que são fatais).',
       'Ao editar o Prazo Processual, o Prazo do Advogado ou o Prazo do Cliente direto no card, o selo de urgência e os contadores da barra lateral já atualizam na hora, sem precisar recarregar a tela.'
@@ -26047,7 +26080,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Gerar parcelas</div>'
       +MP+'Botão "🗓️ gerar parcelas" cria automaticamente todo o cronograma de pagamento, respeitando a frequência escolhida (pulando fins de semana quando diário).</div>'
       +MH+'Informe de repasse</div>'
-      +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>',
+      +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>'
+      +MH+'Parcela recebida com valor diferente do previsto</div>'
+      +MP+'Edite o campo "Valor Recebido (R$)" direto na lista de parcelas do mês sempre que a parte contrária pagar mais ou menos que o previsto (ex.: pagamento em atraso de uma parcela anterior junto, ou acordo renegociado). Honorários e Repasse Cliente recalculam sozinhos, na mesma hora, usando o percentual de honorários cadastrado no acordo sobre o valor real recebido — e um aviso discreto abaixo do campo ("Saldo do acordo: R$ X") mostra, também em tempo real, quanto ainda falta a parte contrária pagar no total do acordo, já descontando esse valor. O Informe de Repasse gerado sempre usa o valor realmente salvo em "Valor Recebido", nunca o valor previsto.</div>',
 
     captacao: MH+'Como funciona</div>'
       +MP+'Módulo de captação de clientes para reclamação trabalhista. O botão "📎 Copiar link" gera o endereço do formulário público (captacao.html) para enviar ao cliente em potencial — ele preenche os dados pessoais, informações do vínculo empregatício, marca (por checkbox) as verbas que pretende pleitear e os documentos que já tem, e pode anexar arquivos direto no formulário, mesmo sem ter todos os documentos em mãos.</div>'
