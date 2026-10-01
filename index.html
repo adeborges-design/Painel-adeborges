@@ -10581,6 +10581,21 @@ window.accSetStatusRecebimento = function (id, val) {
   var campos = { 'Status Recebimento': val };
   var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
   if (val === 'Recebido' && l && !l['Data Recebimento']) campos['Data Recebimento'] = accFdt(new Date());
+  // Corrigido (01/out/2026): marcar "Recebido" sem nunca ter digitado um "Valor Recebido" real
+  // deixava o campo mostrando só o valor previsto como dica (placeholder) — parecia preenchido,
+  // mas não entrava na soma de nenhum total (Recebido/Repassado do acordo ficavam errados). Agora,
+  // ao marcar Recebido com o campo ainda vazio, grava o valor previsto como valor REAL já de cara
+  // (o usuário pode corrigir depois se o valor realmente recebido for diferente).
+  if (val === 'Recebido' && l && !accNum(l['Valor Recebido'])) {
+    var c = accContratos.find(function (x) { return String(x['ID']) === String(l['Contrato']); }) || {};
+    var recebido = accNum(l['Valor Previsto']);
+    var pct = accNum(c['Percentual Honorarios']);
+    var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+    var repasse = Math.round((recebido - honorarios) * 100) / 100;
+    campos['Valor Recebido'] = recebido;
+    campos['Valor Honorarios'] = honorarios;
+    campos['Valor Repasse'] = repasse;
+  }
   accAtualizarLancamento(id, campos);
 };
 // Atualiza Honorários, Repasse e Saldo do Acordo na tela IMEDIATAMENTE enquanto o usuário digita
@@ -25584,6 +25599,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '01/out/2026 (2)', itens: [
+      'Corrigido bug em Acordos: marcar uma parcela como "Recebido" sem nunca ter digitado um valor em "Valor Recebido" deixava o campo mostrando só o valor previsto como dica visual (placeholder) — parecia preenchido, mas não entrava em nenhum total do acordo (Recebido/Repassado ficavam menores que o real). Agora, marcar "Recebido" já grava o valor previsto como valor de verdade (editável depois, se o valor real for diferente).'
+    ]},
     { data: '01/out/2026', itens: [
       'Novo em Acordos cadastrados: botão "🔄 recalcular honorários" em cada acordo — reprocessa Honorários e Repasse de todas as parcelas já lançadas usando o percentual de honorários cadastrado agora no contrato, sem precisar editar parcela por parcela. Útil depois de corrigir o percentual de um acordo que foi cadastrado errado (ex.: acordo sem desconto de honorários, sempre repassado integral ao cliente). O "Valor Recebido" de cada parcela não muda, só Honorários e Repasse.'
     ]},
@@ -26105,7 +26123,7 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Gerar parcelas</div>'
       +MP+'Botão "🗓️ gerar parcelas" cria automaticamente todo o cronograma de pagamento, respeitando a frequência escolhida (pulando fins de semana quando diário).</div>'
       +MH+'Informe de repasse</div>'
-      +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>'
+      +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão. Marcar o Status Recebimento como "Recebido" já grava o valor previsto da parcela como "Valor Recebido" de verdade (não é só uma dica visual) — edite esse campo depois se o valor realmente pago for diferente.</div>'
       +MH+'Parcela recebida com valor diferente do previsto</div>'
       +MP+'Edite o campo "Valor Recebido (R$)" direto na lista de parcelas do mês sempre que a parte contrária pagar mais ou menos que o previsto (ex.: pagamento em atraso de uma parcela anterior junto, ou acordo renegociado). Honorários e Repasse Cliente recalculam sozinhos, na mesma hora, usando o percentual de honorários cadastrado no acordo sobre o valor real recebido — e um aviso discreto abaixo do campo ("Saldo do acordo: R$ X") mostra, também em tempo real, quanto ainda falta a parte contrária pagar no total do acordo, já descontando esse valor. O Informe de Repasse gerado sempre usa o valor realmente salvo em "Valor Recebido", nunca o valor previsto.</div>'
       +MH+'Corrigindo o percentual de honorários de um acordo</div>'
