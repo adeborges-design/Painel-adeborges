@@ -9957,6 +9957,17 @@ function accBRL(v) { return 'R$ ' + accNum(v).toLocaleString('pt-BR', { minimumF
 // TODAS as parcelas já lançadas (qualquer mês) com "Valor Recebido" preenchido — não só a do mês
 // em exibição. Usado pra o usuário conferir, na hora que edita uma parcela com valor diferente do
 // previsto (recebido a maior ou a menor), que o desconto na dívida total já está correto.
+// Percentual de honorários efetivo de uma parcela já lançada (01/out/2026): em vez de sempre
+// mostrar o percentual cadastrado no acordo (que pode não bater mais, se Honorários foi editado
+// manualmente), mostra o percentual REAL resultante de Valor Honorarios ÷ Valor Recebido — assim o
+// campo de % sempre reflete o que está de fato salvo, e não engana depois de um ajuste manual.
+function accPercEfetivo_(l, c) {
+  var recebido = accNum(l['Valor Recebido']);
+  var honorarios = accNum(l['Valor Honorarios']);
+  var pct = recebido > 0 ? (honorarios / recebido * 100) : accNum(c['Percentual Honorarios']);
+  var arred = Math.round(pct * 100) / 100;
+  return (arred % 1 === 0) ? String(arred) : String(arred).replace('.', ',');
+}
 function accSaldoContrato(contratoId) {
   var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); }) || {};
   var totalAcordo = accNum(c['Valor Total Acordo']);
@@ -10531,8 +10542,13 @@ window.accRender = function () {
       + '<td><input class="loc-row-money ' + classeRec + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Recebido']) ? accNum(l['Valor Recebido']).toFixed(2) : '') + '" placeholder="' + accNum(l['Valor Previsto']).toFixed(2) + '" onfocus="this.select()" oninput="accCalcularAoVivo(this,\'' + accE(c['ID']) + '\',\'' + accE(l['ID']) + '\')" onchange="accSetValorRecebido(\'' + accE(l['ID']) + '\',this.value,\'' + accE(c['ID']) + '\')">'
       + '<div id="acc-saldo-' + accE(l['ID']) + '" style="font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap" title="Quanto ainda falta a parte contrária pagar neste acordo, considerando todas as parcelas já lançadas">Saldo do acordo: ' + accBRL(accSaldoContrato(c['ID'])) + '</div>'
       + '</td>'
-      + '<td class="loc-money">' + accBRL(l['Valor Honorarios']) + '</td>'
-      + '<td><input class="loc-row-money ' + classeRep + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
+      + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Honorarios']) ? accNum(l['Valor Honorarios']).toFixed(2) : '') + '" onfocus="this.select()" oninput="accHonorariosAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetHonorarios(\'' + accE(l['ID']) + '\',this.value)">'
+      + '<div style="display:flex;align-items:center;gap:3px;margin-top:2px" title="Percentual de honorários desta parcela — vem do acordo, mas pode ser editado aqui pra esta parcela especificamente">'
+      + '<input class="loc-row-money" type="text" inputmode="decimal" style="width:48px;padding:2px 4px;font-size:10.5px" value="' + accPercEfetivo_(l, c) + '" onfocus="this.select()" oninput="accPercentualAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetPercentualHonorarios(\'' + accE(l['ID']) + '\',this.value)">'
+      + '<span style="font-size:10.5px;color:var(--muted)">% desta parcela</span>'
+      + '</div>'
+      + '</td>'
+      + '<td><input class="loc-row-money ' + classeRep + '" type="text" inputmode="decimal" value="' + (accNum(l['Valor Repasse']) ? accNum(l['Valor Repasse']).toFixed(2) : '') + '" onfocus="this.select()" oninput="accRepasseAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td style="text-align:center">' + (c['Dia Repasse'] ? accE(c['Dia Repasse']) + 'd' : '-') + '</td>'
       + '<td><input class="loc-row-date" type="date" value="' + accIsoFromBR(l['Data Repasse']) + '" onchange="accSetDataRepasse(\'' + accE(l['ID']) + '\',this.value)"></td>'
       + '<td>' + (statusRec !== 'Recebido'
@@ -10623,8 +10639,10 @@ window.accCalcularAoVivo = function (inputEl, contratoId, lancamentoId) {
   // Índices corrigidos (30/set/2026): eram tds[6]/tds[7], mas tds[6] é a PRÓPRIA célula do campo
   // "Valor Recebido" que está sendo digitado — sobrescrever seu innerHTML a cada tecla apagava o
   // input no meio da digitação (o usuário "não conseguia editar" o campo). Honorários é tds[7],
-  // Repasse Cliente é tds[8].
-  if (tds[7]) tds[7].textContent = accBRL(honorarios);
+  // Repasse Cliente é tds[8]. Desde 01/out/2026 os dois são <input> editáveis, não mais texto fixo.
+  var hsInputs = tds[7] ? tds[7].querySelectorAll('input') : [];
+  if (hsInputs[0]) hsInputs[0].value = honorarios ? honorarios.toFixed(2) : '';
+  if (hsInputs[1]) hsInputs[1].value = pct ? String(pct).replace('.', ',') : '0';
   var repasseInput = tds[8] ? tds[8].querySelector('input') : null;
   if (repasseInput) repasseInput.value = repasse ? repasse.toFixed(2) : '';
 };
@@ -10636,7 +10654,74 @@ window.accSetValorRecebido = function (id, val, contratoId) {
   var repasse = Math.round((recebido - honorarios) * 100) / 100;
   accAtualizarLancamento(id, { 'Valor Recebido': recebido, 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
 };
-window.accSetRepasse = function (id, val) { accAtualizarLancamento(id, { 'Valor Repasse': accNum(val) }); };
+// Honorários e Repasse agora são dois campos editáveis e interligados (01/out/2026): mexeu em um,
+// o outro se ajusta pra sempre fechar a conta (Honorários + Repasse = Valor Recebido). O percentual
+// cadastrado no acordo (mostrado abaixo do campo Honorários) é só a SUGESTÃO inicial — pensado pra
+// quando um valor recebido foge do padrão (ex.: R$1.000,00 de uma vez) e o usuário quer digitar o
+// honorário real direto, sem fazer conta de cabeça.
+// td[7] guarda DOIS inputs: o de Honorários (R$) e, dentro da div de baixo, o de % desta parcela.
+function accInputsHonorarios_(tr) {
+  var inputs = tr ? tr.querySelectorAll('td')[7].querySelectorAll('input') : [];
+  return { honorarios: inputs[0] || null, percentual: inputs[1] || null };
+}
+window.accHonorariosAoVivo = function (inputEl, lancamentoId) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var honorarios = accNum(inputEl.value);
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  var tr = inputEl.closest('tr');
+  var repasseInput = tr ? tr.querySelectorAll('td')[8].querySelector('input') : null;
+  if (repasseInput) repasseInput.value = repasse ? repasse.toFixed(2) : '';
+  var pctInput = accInputsHonorarios_(tr).percentual;
+  if (pctInput && recebido > 0) pctInput.value = (Math.round(honorarios / recebido * 10000) / 100).toString().replace('.', ',');
+};
+window.accRepasseAoVivo = function (inputEl, lancamentoId) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var repasse = accNum(inputEl.value);
+  var honorarios = Math.round((recebido - repasse) * 100) / 100;
+  var tr = inputEl.closest('tr');
+  var hs = accInputsHonorarios_(tr);
+  if (hs.honorarios) hs.honorarios.value = honorarios ? honorarios.toFixed(2) : '';
+  if (hs.percentual && recebido > 0) hs.percentual.value = (Math.round(honorarios / recebido * 10000) / 100).toString().replace('.', ',');
+};
+// Campo de % desta parcela (01/out/2026): editável igual aos outros dois — mexer nele recalcula
+// Honorários (= Valor Recebido × % digitado) e Repasse, ao vivo e ao salvar. É o atalho mais rápido
+// quando se sabe o percentual de cabeça e não quer calcular o valor em reais na mão.
+window.accPercentualAoVivo = function (inputEl, lancamentoId) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(lancamentoId); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var pct = accNum(inputEl.value);
+  var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  var tr = inputEl.closest('tr');
+  var hs = accInputsHonorarios_(tr);
+  if (hs.honorarios) hs.honorarios.value = honorarios ? honorarios.toFixed(2) : '';
+  var repasseInput = tr ? tr.querySelectorAll('td')[8].querySelector('input') : null;
+  if (repasseInput) repasseInput.value = repasse ? repasse.toFixed(2) : '';
+};
+window.accSetPercentualHonorarios = function (id, val) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var pct = accNum(val);
+  var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  accAtualizarLancamento(id, { 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
+};
+window.accSetHonorarios = function (id, val) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var honorarios = accNum(val);
+  var repasse = Math.round((recebido - honorarios) * 100) / 100;
+  accAtualizarLancamento(id, { 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
+};
+window.accSetRepasse = function (id, val) {
+  var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
+  var recebido = l ? accNum(l['Valor Recebido']) : 0;
+  var repasse = accNum(val);
+  var honorarios = Math.round((recebido - repasse) * 100) / 100;
+  accAtualizarLancamento(id, { 'Valor Repasse': repasse, 'Valor Honorarios': honorarios });
+};
 // Recalcula Honorários/Repasse de TODAS as parcelas já lançadas de um acordo, usando o percentual
 // de honorários cadastrado AGORA no contrato (30/set/2026) — pensado pra quando o percentual foi
 // cadastrado errado (ex.: acordo sem desconto de honorários, repassado sempre integral ao cliente,
@@ -25599,6 +25684,13 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '01/out/2026 (4)', itens: [
+      'Em Acordos, o percentual de honorários de cada parcela (abaixo do campo "Honorários") agora é editável, não só uma referência — mudou o %, Honorários e Repasse recalculam sozinhos na hora, sem precisar fazer a conta em reais na mão.'
+    ]},
+    { data: '01/out/2026 (3)', itens: [
+      'Em Acordos, o campo "Honorários" da lista de parcelas virou editável (antes era só calculado, sem poder mexer) — continua calculando sozinho a partir do valor recebido, mas agora também pode ser ajustado manualmente quando necessário (ex.: valor recebido fora do padrão, como R$1.000,00 de uma vez).',
+      'Honorários, % e Repasse Cliente agora estão todos interligados: editar qualquer um dos três recalcula os outros dois na hora, sempre fechando a conta (Honorários + Repasse = Valor Recebido).'
+    ]},
     { data: '01/out/2026 (2)', itens: [
       'Corrigido bug em Acordos: marcar uma parcela como "Recebido" sem nunca ter digitado um valor em "Valor Recebido" deixava o campo mostrando só o valor previsto como dica visual (placeholder) — parecia preenchido, mas não entrava em nenhum total do acordo (Recebido/Repassado ficavam menores que o real). Agora, marcar "Recebido" já grava o valor previsto como valor de verdade (editável depois, se o valor real for diferente).'
     ]},
@@ -26126,6 +26218,8 @@ window.cpRenderFixas=cpRenderFixas;
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão. Marcar o Status Recebimento como "Recebido" já grava o valor previsto da parcela como "Valor Recebido" de verdade (não é só uma dica visual) — edite esse campo depois se o valor realmente pago for diferente.</div>'
       +MH+'Parcela recebida com valor diferente do previsto</div>'
       +MP+'Edite o campo "Valor Recebido (R$)" direto na lista de parcelas do mês sempre que a parte contrária pagar mais ou menos que o previsto (ex.: pagamento em atraso de uma parcela anterior junto, ou acordo renegociado). Honorários e Repasse Cliente recalculam sozinhos, na mesma hora, usando o percentual de honorários cadastrado no acordo sobre o valor real recebido — e um aviso discreto abaixo do campo ("Saldo do acordo: R$ X") mostra, também em tempo real, quanto ainda falta a parte contrária pagar no total do acordo, já descontando esse valor. O Informe de Repasse gerado sempre usa o valor realmente salvo em "Valor Recebido", nunca o valor previsto.</div>'
+      +MH+'Ajustando Honorários e Repasse manualmente</div>'
+      +MP+'Três campos ligados na lista de parcelas: "Honorários (R$)", o "% desta parcela" (logo abaixo) e "Repasse Cliente (R$)". Editar "Valor Recebido" já calcula os três sozinho, usando o percentual cadastrado no acordo — na maioria dos casos não precisa mexer em mais nada. Quando precisar de um valor diferente do calculado (ex.: acordo com honorários variáveis, ou um valor recebido fora do padrão como R$1.000,00 de uma vez), edite qualquer um dos três — Honorários em reais, o percentual, ou o Repasse — e os outros dois se recalculam na hora, sempre fechando a conta (Honorários + Repasse = Valor Recebido).</div>'
       +MH+'Corrigindo o percentual de honorários de um acordo</div>'
       +MP+'Se o percentual de honorários cadastrado estiver errado pra um acordo (ex.: cadastrado com desconto, mas na prática tudo é repassado integral ao cliente), edite o acordo em "📋 Acordos cadastrados" e corrija o campo "Percentual de Honorários" — isso vale sozinho pras parcelas que ainda serão lançadas. Pras parcelas <strong>já lançadas</strong>, use o botão "🔄 recalcular honorários" na mesma linha do acordo: ele reaplica o percentual corrigido em todas elas de uma vez (Honorários e Repasse), sem mexer no "Valor Recebido" de cada uma.</div>',
 
