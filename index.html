@@ -10289,7 +10289,7 @@ function accRenderContratos() {
       + '<td class="loc-money"><span style="color:var(--green)">' + accBRL(totalRecebido) + '</span><br><span style="color:var(--muted);font-size:11px">falta ' + accBRL(faltaReceber) + '</span></td>'
       + '<td class="loc-money"><span style="color:var(--accent2)">' + accBRL(totalRepassado) + '</span><br><span style="color:var(--yellow);font-size:11px">pendente ' + accBRL(totalRepassePendente) + '</span></td>'
       + '<td style="text-align:center">' + accE(c['Ativo']) + '</td>'
-      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" title="Gerar todas as parcelas de uma vez, conforme a frequência" onclick="accGerarTodasParcelas(\'' + accE(c['ID']) + '\')">🗓️ gerar parcelas</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
+      + '<td style="white-space:nowrap"><button class="loc-btn-edit" onclick="accEditarContrato(\'' + accE(c['ID']) + '\')">✎ editar</button> <button class="loc-btn-edit" title="Gerar todas as parcelas de uma vez, conforme a frequência" onclick="accGerarTodasParcelas(\'' + accE(c['ID']) + '\')">🗓️ gerar parcelas</button> <button class="loc-btn-edit" title="Recalcula Honorários e Repasse de TODAS as parcelas já lançadas deste acordo, usando o percentual de honorários cadastrado agora (útil depois de corrigir o percentual do acordo)" onclick="accRecalcularHonorariosContrato(\'' + accE(c['ID']) + '\')">🔄 recalcular honorários</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="accExcluirContrato(\'' + accE(c['ID']) + '\')">🗑️</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Nenhum acordo cadastrado.</td></tr>';
 }
@@ -10622,6 +10622,28 @@ window.accSetValorRecebido = function (id, val, contratoId) {
   accAtualizarLancamento(id, { 'Valor Recebido': recebido, 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
 };
 window.accSetRepasse = function (id, val) { accAtualizarLancamento(id, { 'Valor Repasse': accNum(val) }); };
+// Recalcula Honorários/Repasse de TODAS as parcelas já lançadas de um acordo, usando o percentual
+// de honorários cadastrado AGORA no contrato (30/set/2026) — pensado pra quando o percentual foi
+// cadastrado errado (ex.: acordo sem desconto de honorários, repassado sempre integral ao cliente,
+// mas cadastrado com 30%) e as parcelas já lançadas ficaram com Honorários/Repasse incorretos. Não
+// mexe em "Valor Recebido" (o que foi efetivamente recebido continua o mesmo) — só reaplica a conta
+// honorarios = recebido × percentual, repasse = recebido − honorarios, em cada parcela.
+window.accRecalcularHonorariosContrato = async function (contratoId) {
+  var c = accContratos.find(function (x) { return String(x['ID']) === String(contratoId); });
+  if (!c) return;
+  var pct = accNum(c['Percentual Honorarios']);
+  var lancs = accLancamentos.filter(function (l) { return String(l['Contrato']) === String(contratoId) && accNum(l['Valor Recebido']) > 0; });
+  if (!lancs.length) { alert('Este acordo não tem nenhuma parcela com "Valor Recebido" lançado ainda.'); return; }
+  if (!confirm('Recalcular Honorários e Repasse de ' + lancs.length + ' parcela(s) já lançada(s), usando o percentual de honorários cadastrado agora (' + pct + '%)? O "Valor Recebido" de cada parcela não muda, só Honorários e Repasse.')) return;
+  for (var i = 0; i < lancs.length; i++) {
+    var l = lancs[i];
+    var recebido = accNum(l['Valor Recebido']);
+    var honorarios = Math.round(recebido * pct / 100 * 100) / 100;
+    var repasse = Math.round((recebido - honorarios) * 100) / 100;
+    accAtualizarLancamento(l['ID'], { 'Valor Honorarios': honorarios, 'Valor Repasse': repasse });
+  }
+  alert('Pronto — ' + lancs.length + ' parcela(s) recalculada(s) com ' + pct + '% de honorários.');
+};
 window.accSetStatusRepasse = function (id, val) {
   var campos = { 'Status Repasse': val };
   var l = accLancamentos.find(function (x) { return String(x['ID']) === String(id); });
@@ -25562,6 +25584,9 @@ window.cpRenderFixas=cpRenderFixas;
   // ---------- HISTÓRICO DE ATUALIZAÇÕES DO PAINEL ----------
   // A cada nova versão entregue, adicionar uma entrada NO TOPO deste array, com a data do dia.
   var LF_CHANGELOG = [
+    { data: '01/out/2026', itens: [
+      'Novo em Acordos cadastrados: botão "🔄 recalcular honorários" em cada acordo — reprocessa Honorários e Repasse de todas as parcelas já lançadas usando o percentual de honorários cadastrado agora no contrato, sem precisar editar parcela por parcela. Útil depois de corrigir o percentual de um acordo que foi cadastrado errado (ex.: acordo sem desconto de honorários, sempre repassado integral ao cliente). O "Valor Recebido" de cada parcela não muda, só Honorários e Repasse.'
+    ]},
     { data: '30/set/2026', itens: [
       'Corrigido bug em Acordos com a Parte Contrária: o campo "Valor Recebido (R$)" da lista de parcelas apagava a si mesmo a cada tecla digitada (um erro de código atualizava a célula errada da tabela), impedindo editar o valor quando a parte contrária pagava a mais ou a menos que o previsto.',
       'Novo aviso "Saldo do acordo" abaixo do campo "Valor Recebido", atualizado em tempo real — mostra quanto ainda falta a parte contrária pagar no total do acordo, já considerando o valor que está sendo digitado.'
@@ -26082,7 +26107,9 @@ window.cpRenderFixas=cpRenderFixas;
       +MH+'Informe de repasse</div>'
       +MP+'Ao marcar uma parcela como recebida, o sistema calcula automaticamente os honorários do escritório e o valor líquido a repassar ao cliente — gera um informe pronto pra enviar por WhatsApp, e-mail ou impressão.</div>'
       +MH+'Parcela recebida com valor diferente do previsto</div>'
-      +MP+'Edite o campo "Valor Recebido (R$)" direto na lista de parcelas do mês sempre que a parte contrária pagar mais ou menos que o previsto (ex.: pagamento em atraso de uma parcela anterior junto, ou acordo renegociado). Honorários e Repasse Cliente recalculam sozinhos, na mesma hora, usando o percentual de honorários cadastrado no acordo sobre o valor real recebido — e um aviso discreto abaixo do campo ("Saldo do acordo: R$ X") mostra, também em tempo real, quanto ainda falta a parte contrária pagar no total do acordo, já descontando esse valor. O Informe de Repasse gerado sempre usa o valor realmente salvo em "Valor Recebido", nunca o valor previsto.</div>',
+      +MP+'Edite o campo "Valor Recebido (R$)" direto na lista de parcelas do mês sempre que a parte contrária pagar mais ou menos que o previsto (ex.: pagamento em atraso de uma parcela anterior junto, ou acordo renegociado). Honorários e Repasse Cliente recalculam sozinhos, na mesma hora, usando o percentual de honorários cadastrado no acordo sobre o valor real recebido — e um aviso discreto abaixo do campo ("Saldo do acordo: R$ X") mostra, também em tempo real, quanto ainda falta a parte contrária pagar no total do acordo, já descontando esse valor. O Informe de Repasse gerado sempre usa o valor realmente salvo em "Valor Recebido", nunca o valor previsto.</div>'
+      +MH+'Corrigindo o percentual de honorários de um acordo</div>'
+      +MP+'Se o percentual de honorários cadastrado estiver errado pra um acordo (ex.: cadastrado com desconto, mas na prática tudo é repassado integral ao cliente), edite o acordo em "📋 Acordos cadastrados" e corrija o campo "Percentual de Honorários" — isso vale sozinho pras parcelas que ainda serão lançadas. Pras parcelas <strong>já lançadas</strong>, use o botão "🔄 recalcular honorários" na mesma linha do acordo: ele reaplica o percentual corrigido em todas elas de uma vez (Honorários e Repasse), sem mexer no "Valor Recebido" de cada uma.</div>',
 
     captacao: MH+'Como funciona</div>'
       +MP+'Módulo de captação de clientes para reclamação trabalhista. O botão "📎 Copiar link" gera o endereço do formulário público (captacao.html) para enviar ao cliente em potencial — ele preenche os dados pessoais, informações do vínculo empregatício, marca (por checkbox) as verbas que pretende pleitear e os documentos que já tem, e pode anexar arquivos direto no formulário, mesmo sem ter todos os documentos em mãos.</div>'
