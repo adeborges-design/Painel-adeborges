@@ -339,6 +339,10 @@
     display: grid;
     grid-template-columns: 280px 1fr;
     min-height: calc(100vh - 64px);
+    transition: grid-template-columns 0.18s ease;
+  }
+  .layout.sidebar-collapsed {
+    grid-template-columns: 0px 1fr;
   }
 
   /* SIDEBAR */
@@ -350,6 +354,42 @@
     top: 64px;
     height: calc(100vh - 64px);
     overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .layout.sidebar-collapsed .sidebar {
+    padding: 24px 0;
+    border-right: none;
+  }
+  .layout.sidebar-collapsed .sidebar > *:not(.sidebar-collapse-btn) {
+    display: none;
+  }
+
+  /* Botão que recolhe/expande a barra lateral inteira de filtros, pra ganhar espaço
+     pra lista de processos. Fica fixo no topo da sidebar; quando recolhida, "flutua"
+     colado à borda do conteúdo principal, já que a sidebar em si vira largura zero. */
+  .sidebar-collapse-btn {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 44px;
+    margin-bottom: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    z-index: 5;
+  }
+  .sidebar-collapse-btn:hover { background: var(--border); color: var(--text); }
+  .layout.sidebar-collapsed .sidebar-collapse-btn {
+    position: fixed;
+    top: 76px;
+    left: 4px;
+    margin-bottom: 0;
   }
 
   .sidebar-section {
@@ -1977,6 +2017,8 @@
 
   .parc-section {
     margin-bottom: 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .parc-section-label {
@@ -3550,6 +3592,7 @@
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
+    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarFiltros()" title="Recolher/expandir filtros">◂</button>
     <div class="sidebar-section">
       <div class="sidebar-label">Filtrar por urgência</div>
       <button class="filter-btn active" onclick="filterBy('all', this)" data-filter="all">
@@ -10544,7 +10587,7 @@ window.accRender = function () {
       + '</td>'
       + '<td><input class="loc-row-money" type="text" inputmode="decimal" value="' + (accNum(l['Valor Honorarios']) ? accNum(l['Valor Honorarios']).toFixed(2) : '') + '" onfocus="this.select()" oninput="accHonorariosAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetHonorarios(\'' + accE(l['ID']) + '\',this.value)">'
       + '<div style="display:flex;align-items:center;gap:3px;margin-top:2px" title="Percentual de honorários desta parcela — vem do acordo, mas pode ser editado aqui pra esta parcela especificamente">'
-      + '<input class="loc-row-money" type="text" inputmode="decimal" style="width:48px;padding:2px 4px;font-size:10.5px" value="' + accPercEfetivo_(l, c) + '" onfocus="this.select()" oninput="accPercentualAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetPercentualHonorarios(\'' + accE(l['ID']) + '\',this.value)">'
+      + '<input class="loc-row-money" type="text" inputmode="decimal" style="width:48px;padding:2px 4px;font-size:10.5px;color:#1b3a5c" value="' + accPercEfetivo_(l, c) + '" onfocus="this.select()" oninput="accPercentualAoVivo(this,\'' + accE(l['ID']) + '\')" onchange="accSetPercentualHonorarios(\'' + accE(l['ID']) + '\',this.value)">'
       + '<span style="font-size:10.5px;color:var(--muted)">% desta parcela</span>'
       + '</div>'
       + '</td>'
@@ -18730,7 +18773,7 @@ window.cpRenderFixas=cpRenderFixas;
           </div>
           <div id="dist-parc-fields" class="loc-cform loc-hidden">
             <div class="loc-cfield"><label>Número de parcelas</label><input class="loc-cinput" id="dist-parc-qtd" type="number" min="2" step="1" placeholder="Ex.: 3" oninput="distGerarClausula()"></div>
-            <div class="loc-cfield"><label>Valor de cada parcela</label><input class="loc-cinput" id="dist-parc-valor" value="R$ 0,00" disabled></div>
+            <div class="loc-cfield"><label>Valor de cada parcela (R$)</label><input class="loc-cinput" id="dist-parc-valor" type="text" inputmode="decimal" placeholder="0,00" onfocus="this.select()" oninput="distParcValorManual_=true;distGerarClausula()" title="Calculado automaticamente (saldo ÷ parcelas), mas pode ser editado — ex.: quando parte do débito já foi quitada com mercadoria/entrada fora do sistema e o restante não divide exato"></div>
             <div class="loc-cfield"><label>Vencimento da 1ª parcela</label><input class="loc-cinput" id="dist-parc-primeira" type="date" onchange="distGerarClausula()"></div>
             <div class="loc-cfield"><label>Forma (PIX, boleto...)</label><input class="loc-cinput" id="dist-parc-forma" placeholder="Ex.: PIX" oninput="distGerarClausula()"></div>
           </div>
@@ -18874,11 +18917,15 @@ window.cpRenderFixas=cpRenderFixas;
   .resc-vist-item-opts .loc-btn.active[data-est="regular"]{background:rgba(217,119,47,.18);border-color:var(--orange);color:var(--orange)}
   .resc-vist-item-opts .loc-btn.active[data-est="ruim"]{background:rgba(224,84,84,.18);border-color:var(--red);color:var(--red)}
   .resc-vist-item input{flex:1 1 220px}
-  .resc-doc-linha{padding:8px 2px;border-bottom:1px solid rgba(91,141,238,0.1);font-size:13px;line-height:1.6}
+  .resc-doc-linha{padding:8px 2px;border-bottom:1px solid rgba(91,141,238,0.1);font-size:13px;line-height:1.6;break-inside:avoid;page-break-inside:avoid}
   .resc-doc-linha:last-child{border-bottom:none}
-  .resc-doc-clausula-titulo{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin:14px 0 4px}
-  .resc-doc-assin{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px;text-align:center}
-  .resc-doc-assin-linha{border-top:1px solid var(--border2);padding-top:6px;font-size:12px}
+  .resc-doc-clausula-titulo{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin:14px 0 4px;break-after:avoid;page-break-after:avoid}
+  /* grid + impressão: quando este bloco cai bem em cima de uma quebra de página, o Chrome
+     às vezes não só corta como some com o conteúdo inteiro (bug conhecido de grid/flex no
+     motor de impressão). break-inside:avoid obriga o bloco inteiro — nomes de locador e
+     locatário inclusive — pra uma página só, em vez de arriscar sumir na quebra. */
+  .resc-doc-assin{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px;text-align:center;break-inside:avoid;page-break-inside:avoid}
+  .resc-doc-assin-linha{border-top:1px solid var(--border2);padding-top:6px;font-size:12px;break-inside:avoid;page-break-inside:avoid}
   .resc-doc-assin-linha .nome{font-weight:700;display:block}
   .resc-doc-assin-linha .papel{color:var(--muted);font-size:11px}
   .resc-vist-item-est-tag{font-size:10px;font-weight:700;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px}
@@ -24126,6 +24173,12 @@ window.cpRenderFixas=cpRenderFixas;
   // e impressão via imprimirComClasse_ (em vez de html2pdf.js). Cálculos e fórmulas mantidos
   // idênticos ao original — inclusive a multa do art. 4º da Lei 8.245/91 e o IPTU proporcional.
   var rescMultaVal=3, rescIptuMode='av', rescUltimoResultado=null;
+  // true assim que o usuário editar manualmente "Valor de cada parcela" no distrato — a partir
+  // daí o campo para de ser recalculado automaticamente (saldo ÷ nº de parcelas) a cada mudança
+  // de outros campos, pra não apagar um valor digitado à mão (ex.: caso com entrada em
+  // mercadoria, onde o restante não divide exato pelo número de parcelas). Reseta toda vez que
+  // o distrato é reaberto do zero (ver rescDocAbrir).
+  var distParcValorManual_=false;
   function rescBRL_(v){return BRL(Math.abs(v||0));}
   function rescFmtD_(s){return locDtBRfromInput(s)||'—';}
   function rescDiasEntre_(d1,d2){
@@ -24473,6 +24526,7 @@ window.cpRenderFixas=cpRenderFixas;
       document.getElementById('dist-cidade').value=document.getElementById('dist-cidade').value||'São Paulo';
       document.getElementById('dist-data').value=document.getElementById('dist-data').value||new Date().toISOString().slice(0,10);
       document.getElementById('dist-pagto-section').classList.toggle('loc-hidden',Math.abs(r.saldo)<0.01);
+      distParcValorManual_=false;
       distGerarClausula();
       document.getElementById('rescisaoDistratoView').classList.remove('loc-hidden');
       document.getElementById('rescisaoDistratoForm').classList.remove('loc-hidden');
@@ -24523,11 +24577,17 @@ window.cpRenderFixas=cpRenderFixas;
       txt=quemPaga+' pagará a '+quemRecebe+' o valor de '+valor+', à vista, '+(dtPag?('até o dia '+rescFmtD_(dtPag)):'na data da vistoria de devolução das chaves')+', via '+formaPag+'.';
     }else{
       var qtd=parseInt(document.getElementById('dist-parc-qtd').value)||0;
-      var vParc=qtd>0?r.saldo/qtd:0;
-      document.getElementById('dist-parc-valor').value=rescBRL_(vParc);
+      var campoValor=document.getElementById('dist-parc-valor');
+      if(!distParcValorManual_){
+        // Sugestão automática (saldo ÷ parcelas) — só enquanto o usuário não tiver digitado
+        // um valor próprio no campo (ver distParcValorManual_ acima).
+        var vParcSugerido=qtd>0?r.saldo/qtd:0;
+        campoValor.value=vParcSugerido?vParcSugerido.toFixed(2).replace('.',','):'';
+      }
+      var vParc=num(campoValor.value);
       var primeira=document.getElementById('dist-parc-primeira').value;
       var formaParc=document.getElementById('dist-parc-forma').value||'PIX';
-      txt=quemPaga+' pagará a '+quemRecebe+' o valor total de '+valor+', em '+(qtd||'—')+' parcela(s) '+(qtd>0?('de '+rescBRL_(vParc)+' cada'):'')+', mensais e consecutivas, vencendo a primeira '+(primeira?('em '+rescFmtD_(primeira)):'na data a ser ajustada entre as partes')+', via '+formaParc+'.';
+      txt=quemPaga+' pagará a '+quemRecebe+' o valor total de '+valor+', em '+(qtd||'—')+' parcela(s) '+(vParc>0?('de '+rescBRL_(vParc)+' cada'):'')+', mensais e consecutivas, vencendo a primeira '+(primeira?('em '+rescFmtD_(primeira)):'na data a ser ajustada entre as partes')+', via '+formaParc+'.';
     }
     document.getElementById('dist-clausula-pagto').value=txt;
   };
@@ -26543,9 +26603,29 @@ window.cpRenderFixas=cpRenderFixas;
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
     try{localStorage.setItem('lexflow_dark_mode',isDark?'1':'0');}catch(e){}
   };
+  // Recolher/expandir a barra lateral de filtros (tela de Gestão de Processos), pra liberar
+  // espaço horizontal pra lista. Estado fica salvo no localStorage, igual o tema.
+  window.toggleSidebarFiltros=function(){
+    var layoutEl=document.querySelector('.layout');
+    if(!layoutEl) return;
+    var collapsed=layoutEl.classList.toggle('sidebar-collapsed');
+    var btn=document.getElementById('sidebarCollapseBtn');
+    if(btn){ btn.textContent=collapsed?'▸':'◂'; btn.title=collapsed?'Expandir filtros':'Recolher filtros'; }
+    try{localStorage.setItem('lexflow_sidebar_collapsed',collapsed?'1':'0');}catch(e){}
+  };
   document.addEventListener('DOMContentLoaded',function(){
     var isDark=document.documentElement.classList.contains('dark-mode');
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
+    try{
+      if(localStorage.getItem('lexflow_sidebar_collapsed')==='1'){
+        var layoutEl=document.querySelector('.layout');
+        if(layoutEl){
+          layoutEl.classList.add('sidebar-collapsed');
+          var btn=document.getElementById('sidebarCollapseBtn');
+          if(btn){ btn.textContent='▸'; btn.title='Expandir filtros'; }
+        }
+      }
+    }catch(e){}
   });
 
   // ---------- ATALHO DE TECLADO "/" PARA BUSCA ----------
