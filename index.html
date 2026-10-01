@@ -24178,7 +24178,12 @@ window.cpRenderFixas=cpRenderFixas;
   // de outros campos, pra não apagar um valor digitado à mão (ex.: caso com entrada em
   // mercadoria, onde o restante não divide exato pelo número de parcelas). Reseta toda vez que
   // o distrato é reaberto do zero (ver rescDocAbrir).
-  var distParcValorManual_=false;
+  // Fica em "window" (não "var" local) de propósito: o atributo oninput do campo no HTML roda
+  // no escopo global, então precisa enxergar a MESMA variável que distGerarClausula() usa aqui
+  // dentro — com "var" local, o oninput criava uma variável global solta, sem efeito nenhum, e
+  // o campo ficava "travado": a cada tecla digitada, distGerarClausula() continuava achando que
+  // nada tinha sido editado e sobrescrevia o valor digitado com o cálculo automático.
+  window.distParcValorManual_=false;
   function rescBRL_(v){return BRL(Math.abs(v||0));}
   function rescFmtD_(s){return locDtBRfromInput(s)||'—';}
   function rescDiasEntre_(d1,d2){
