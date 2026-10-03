@@ -4505,8 +4505,10 @@
 
       <div class="form-section">
         <div class="form-section-title">🤖 Análise com IA</div>
-        <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
-        <button type="button" class="btn-action soft" onclick="iaConfigurarChave()" title="Cadastrar, trocar ou remover a chave da IA neste navegador">🔑 Chave da IA</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
+          <button type="button" class="btn-action soft" onclick="iaConfigurarChave()" title="Cadastrar, trocar ou remover a chave da IA neste navegador">🔑 Chave da IA</button>
+        </div>
         <div id="ed-iaResultado" style="display:none;margin-top:4px"></div>
       </div>
 
@@ -26648,8 +26650,13 @@ window.cpRenderFixas=cpRenderFixas;
       if(!chave) throw new Error('Nenhuma chave da IA foi cadastrada.');
     }
 
+    var hoje=new Date().toLocaleDateString('pt-BR');
     var prompt='Atue como um assistente jurídico sênior. Com base nos dados do processo abaixo, gere DUAS saídas separadas em linguagem clara.\n'
-      +'Use somente as informações fornecidas: não invente fatos, datas, prazos ou valores. Se alguma informação necessária não estiver nos dados, diga que ela não foi informada.\n\n'
+      +'Use somente as informações fornecidas: não invente fatos, datas, prazos ou valores. Se alguma informação necessária não estiver nos dados, diga que ela não foi informada.\n'
+      +'Data de hoje: '+hoje+'. Use essa data para dizer se algo já passou ou ainda está por vir; não calcule prazos a partir de datas que não foram informadas.\n'
+      +'Se os dados se contradisserem, aponte a contradição na PARTE 2 em vez de escolher uma versão.\n'
+      +'Na PARTE 1: dirija-se ao cliente por "você" (nunca "o(a) senhor(a)" nem flexões de gênero entre parênteses), em tom cordial e tranquilizador, frases curtas, pronto para enviar por WhatsApp. Não inclua riscos, fragilidades da tese nem estratégia processual. Só peça ações ao cliente se constarem em "Providências do cliente"; caso contrário, escreva apenas "Nenhuma ação necessária no momento." Não prometa resultado nem prazo que não esteja nos dados.\n'
+      +'Na PARTE 2: seja objetivo, com os itens mais urgentes primeiro, e escreva "não informado" em vez de especular.\n\n'
       +'---\n'
       +'PARTE 1: RESUMO PARA O CLIENTE (Linguagem acessível, cordial, direta e sem juridiquês)\n'
       +"- **Situação Atual:** [Resumo em 2 a 3 frases]\n"
