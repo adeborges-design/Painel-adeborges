@@ -4504,15 +4504,6 @@
       </div>
 
       <div class="form-section">
-        <div class="form-section-title">📰 Análise de Intimação / Publicação</div>
-        <textarea id="ed-pubTexto" rows="6" placeholder="Cole aqui o texto do despacho, decisão, intimação ou publicação do Diário Oficial. A IA identifica a providência e o prazo; a data fatal é calculada pelo painel (dias úteis, feriados, recesso)."></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
-          <button type="button" id="ed-btnPub" class="btn-action primary" onclick="pubAnalisar()">📰 Extrair prazo e providência</button>
-        </div>
-        <div id="ed-pubResultado" style="display:none;margin-top:6px"></div>
-      </div>
-
-      <div class="form-section">
         <div class="form-section-title">🤖 Análise com IA</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
@@ -7649,7 +7640,11 @@ function historicoProcBlocoHtml_(p) {
     + '<div style="flex:0 0 90px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Grau (opcional)</label><select id="historicoProcGrau-' + p._uid + '" style="width:100%"><option value="">—</option><option value="1G">1G</option><option value="2G">2G</option></select></div>'
     + '<div style="flex:1;min-width:180px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Vincular a um registro anterior (opcional)</label><select id="historicoProcOrigem-' + p._uid + '" style="width:100%">' + opcoesOrigem + '</select></div>'
     + '</div>'
-    + '<button type="button" class="dp-add-btn" style="margin-top:8px" onclick="historicoProcAdicionar(' + p._uid + ')">+ Adicionar ao histórico</button>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    + '<button type="button" class="dp-add-btn" onclick="historicoProcAdicionar(' + p._uid + ')">+ Adicionar ao histórico</button>'
+    + '<button type="button" class="dp-add-btn" id="pubBtn-' + p._uid + '" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2)" title="A IA lê o texto colado, identifica a providência e o prazo e calcula a data fatal" onclick="pubAnalisar(' + p._uid + ')">📰 Extrair prazo com IA</button>'
+    + '</div>'
+    + '<div id="pubRes-' + p._uid + '" style="display:none;margin-top:8px"></div>'
     + '</div></div>';
 }
 function historicoProcSalvarEAtualizarTela_(p) {
@@ -26804,8 +26799,10 @@ window.cpRenderFixas=cpRenderFixas;
   };
 
   // --- Leitura da publicação pela IA ---
-  window.pubAnalisar=async function(){
-    var ta=document.getElementById('ed-pubTexto'), btn=document.getElementById('ed-btnPub'), box=document.getElementById('ed-pubResultado');
+  window.pubAnalisar=async function(uid){
+    window.pubUid_=uid;
+    var ta=document.getElementById('historicoProcTexto-'+uid), btn=document.getElementById('pubBtn-'+uid), box=document.getElementById('pubRes-'+uid);
+    if(!ta||!box||!btn) return;
     var texto=ta?ta.value.trim():'';
     box.style.display='block';
     if(texto.length<20){ window.iaMensagem_(box,'Cole primeiro o texto da publicação, despacho ou intimação.'); return; }
@@ -26854,7 +26851,7 @@ window.cpRenderFixas=cpRenderFixas;
     c.appendChild(el('div','font-weight:700;font-size:14px','📰 '+(d.tipo_ato?String(d.tipo_ato).charAt(0).toUpperCase()+String(d.tipo_ato).slice(1):'Publicação')+(d.numero_processo?' — proc. '+d.numero_processo:'')));
 
     // Aviso se o número do processo da publicação não confere com o do cadastro.
-    var cad=(document.getElementById('ed-processo')||{value:''}).value.replace(/\D/g,''), pub=String(d.numero_processo||'').replace(/\D/g,'');
+    var pcad=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(x){return x._uid===parseInt(window.pubUid_);})||{}; var cad=String(pcad.processo||'').replace(/\D/g,''), pub=String(d.numero_processo||'').replace(/\D/g,'');
     if(cad.length>=10 && pub.length>=10 && cad!==pub){
       c.appendChild(el('div','margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(209,69,74,.15);color:var(--text);font-size:12.5px;font-weight:600','⚠️ O número do processo na publicação ('+d.numero_processo+') é diferente do cadastrado neste formulário. Confira antes de aplicar.'));
     }
@@ -26908,6 +26905,9 @@ window.cpRenderFixas=cpRenderFixas;
     notas.push('A data é uma estimativa: considera sábados, domingos, feriados nacionais, 9/7, 25/1 (SP), Carnaval, Sexta-feira Santa, Corpus Christi e o recesso de 20/12 a 20/01. Confira feriados locais, suspensões e a contagem nos autos antes de confiar nela.');
     notas.forEach(function(n){ c.appendChild(el('div','margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5',n)); });
 
+    var ckw=el('label','display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;line-height:1.45;cursor:pointer');
+    var ck=document.createElement('input'); ck.type='checkbox'; ck.id='pub-sit'; ck.checked=true; ck.style.marginTop='2px';
+    ckw.appendChild(ck); ckw.appendChild(el('span',null,'Também atualizar a "Situação atual" (aparece para o cliente no WhatsApp/portal). Desmarque se o conteúdo for de uso interno.')); c.appendChild(ckw);
     var bt=el('div','display:flex;gap:8px;flex-wrap:wrap;margin-top:12px');
     var ok=el('button',null,'✔ Aplicar nos campos do processo'); ok.type='button'; ok.className='btn-action primary'; ok.onclick=function(){ window.pubAplicar_(); };
     var no=el('button',null,'Descartar'); no.type='button'; no.className='btn-action soft'; no.onclick=function(){ container.textContent=''; container.style.display='none'; };
@@ -26918,33 +26918,54 @@ window.cpRenderFixas=cpRenderFixas;
 
   // Grava no formulário (sem salvar o processo: você revisa os campos destacados e clica em Salvar).
   window.pubAplicar_=function(){
+    var uid=window.pubUid_;
+    var p=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(x){return x._uid===parseInt(uid);});
     var g=function(id){return document.getElementById(id);};
+    var msg=g('pub-msg');
+    if(!p){ msg.textContent='Processo não encontrado. Reabra o processo e tente de novo.'; return; }
     var d=window.pubUltimo_||{};
-    var marcar=function(el){ if(!el) return; var o=el.style.outline; el.style.outline='2px solid var(--accent)'; setTimeout(function(){ el.style.outline=o; },5000); };
-    var set=function(id,val){
-      var el=g(id); if(!el||val==null||val==='') return;
-      el.value=val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); marcar(el);
-    };
-    var anexar=function(id,linha){
-      var el=g(id); if(!el||!linha) return;
-      var atual=el.value.trim();
-      if(atual.indexOf(linha)>=0) return;
-      el.value=atual?(atual+'\n'+linha):linha; el.dispatchEvent(new Event('input',{bubbles:true})); marcar(el);
-    };
-    var fatal=g('pub-fatal').value, hojeISO=pubIso(new Date()), prov=g('pub-prov').value.trim();
+    var fatal=g('pub-fatal').value, prov=g('pub-prov').value.trim();
     var dias=g('pub-dias').value, cont=g('pub-cont').value==='corridos'?'dias corridos':'dias úteis';
-    if(!fatal && !prov){ g('pub-msg').textContent='Nada para aplicar: informe a data fatal ou a providência.'; return; }
-    if(fatal){ set('ed-prazoData',fatal); set('ed-dataProxPasso',fatal); }
-    if(prov) anexar('ed-proxAdv','['+pubBR(hojeISO)+'] '+prov);
-    var reg=pubBR(hojeISO)+' — '+(d.tipo_ato||'Publicação')+(d.resumo?': '+d.resumo:'')
-      +(fatal?' Prazo'+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
-    anexar('ed-ultima',reg);
-    set('ed-dataAtua',hojeISO);
-    if(g('pub-aud')&&g('pub-aud').value){ set('ed-dataAudi',g('pub-aud').value); if(g('pub-hora')&&g('pub-hora').value) set('ed-horAudi',g('pub-hora').value); }
-    var u=window.pubUrgencia_(fatal);
-    if(u.critica && g('ed-peticaoUrgente') && !g('ed-peticaoUrgente').checked){ g('ed-peticaoUrgente').checked=true; marcar(g('ed-peticaoUrgente').parentNode); }
-    g('pub-msg').style.color='var(--green)';
-    g('pub-msg').textContent='Campos preenchidos (destacados no formulário). Revise e clique em Salvar para gravar.';
+    if(!fatal && !prov){ msg.textContent='Nada para aplicar: informe a data fatal ou a providência.'; return; }
+    var hojeISO=pubIso(new Date()), hojeBR=pubBR(hojeISO), campos={};
+    if(fatal){
+      var fBR=pubBR(fatal);
+      p.prazoData=fBR; campos['prazoData']=fBR;
+      p.dataProxPasso=fBR; campos['Data Proximo Passo']=fBR;
+    }
+    if(prov){
+      var linha='['+hojeBR+'] '+prov, atual=String(p.proximoPassoAdv||'').trim();
+      if(atual.indexOf(linha)<0){ p.proximoPassoAdv=atual?(atual+'\n'+linha):linha; }
+      campos['proximoPassoAdv']=p.proximoPassoAdv;
+    }
+    if(g('pub-sit') && g('pub-sit').checked){
+      var reg=hojeBR+' — '+(d.tipo_ato||'Publicação')+(d.resumo?': '+d.resumo:'')
+        +(fatal?' Prazo'+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
+      var ult=String(p.ultima||'').trim();
+      p.ultima=ult?(ult+'\n'+reg):reg; campos['Última Atualização']=p.ultima;
+      p.dataAtua=hojeBR; campos['Data Atualização']=hojeBR;
+    }
+    if(g('pub-aud')&&g('pub-aud').value){
+      p.dataAudi=pubBR(g('pub-aud').value); campos['Data Audiência']=p.dataAudi;
+      if(g('pub-hora')&&g('pub-hora').value){ p.horAudi=g('pub-hora').value; campos['Horário Audiência']=p.horAudi; }
+    }
+    // Lança o texto colado no Histórico do processo (mesma lógica de "+ Adicionar ao histórico").
+    var ta=g('historicoProcTexto-'+uid), texto=ta?ta.value.trim():'';
+    if(texto){
+      var ag=new Date(), pad=function(n){return ('0'+n).slice(-2);};
+      var itens=p.historicoProcesso||[], maxId=0;
+      itens.forEach(function(it){ if(it.id&&it.id>maxId) maxId=it.id; });
+      itens.forEach(function(it){ if(!it.id){ maxId++; it.id=maxId; } });
+      itens.push({id:++maxId,data:pad(ag.getDate())+'/'+pad(ag.getMonth()+1)+'/'+ag.getFullYear()+' '+pad(ag.getHours())+':'+pad(ag.getMinutes()),texto:texto});
+      p.historicoProcesso=itens;
+      campos['Historico Processo']=historicoProcMontar_(itens);
+    }
+    fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar',linha:p._row+1,campos:campos})}).catch(function(){});
+    // Recalcula a urgência e redesenha, como já faz o salvamento dos blocos do processo.
+    p.urgencia=calcUrgencia(p.diasPrazo,p.prazoData,p.dataPrazoCliente,p.dataAudi,p.status,p.tipo,p.dataProxPasso);
+    p.prazoInfo=resolvePrazoCritico(p.diasPrazo,p.prazoData,p.dataPrazoCliente,p.dataAudi,p.dataProxPasso);
+    updateStats();
+    renderProcessos();
   };
 
   // Dados de contexto (sem nome, CPF ou número do processo) que ajudam a IA a avaliar riscos e prioridades.
