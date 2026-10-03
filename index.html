@@ -26619,14 +26619,23 @@ window.cpRenderFixas=cpRenderFixas;
   // aberto no formulário de edição para o Cloudflare Worker e mostra o retorno abaixo do botão.
   var URL_IA_CASO='https://fragrant-sun-2208.adeborges.workers.dev';
   window.iaCasoEnviar_=async function(payload){
-    var resp=await fetch(URL_IA_CASO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    // O Worker espera três textos (fatos, andamento, proximosPassos); montamos cada um a partir dos campos.
+    var linhas=function(o){return Object.keys(o).filter(function(k){return o[k];}).map(function(k){return o[k]&&k+': '+o[k];}).join('\n');};
+    var rot={narrativa:'Narrativa',providenciasAdvogado:'Providências do advogado',situacao:'Situação',ultimaAtualizacao:'Última atualização',status:'Status',dataAtualizacao:'Data da atualização',precisaProvidenciar:'A providenciar',proximoPassoAdvogado:'Próximo passo do advogado',prazoAdvogado:'Prazo do advogado',providenciasCliente:'Providências do cliente',prazoCliente:'Prazo do cliente',prazoProcessual:'Prazo processual'};
+    var txt=function(o){var r={};Object.keys(o||{}).forEach(function(k){r[rot[k]||k]=o[k];});return linhas(r);};
+    var corpo={fatos:txt(payload.fatos),andamento:txt(payload.andamento),proximosPassos:txt(payload.proximosPassos)};
+    var resp=await fetch(URL_IA_CASO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo)});
     var bruto=await resp.text();
-    if(!resp.ok) throw new Error('HTTP '+resp.status+(bruto?' — '+bruto.slice(0,300):''));
+    if(!resp.ok){
+      var msgErro=bruto;
+      try{var je=JSON.parse(bruto); if(je&&je.error) msgErro=je.error;}catch(e){}
+      throw new Error('HTTP '+resp.status+(msgErro?' — '+String(msgErro).slice(0,300):''));
+    }
     var saida=bruto;
     try{
       var j=JSON.parse(bruto);
       if(typeof j==='string') saida=j;
-      else saida=j.resumo||j.resultado||j.result||j.response||j.text||j.content||j.message||
+      else saida=j.resposta||j.resumo||j.resultado||j.result||j.response||j.text||j.content||j.message||
         (Array.isArray(j.content)&&j.content[0]&&j.content[0].text)||JSON.stringify(j,null,2);
     }catch(e){ /* resposta em texto puro */ }
     return saida;
