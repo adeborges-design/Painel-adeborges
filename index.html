@@ -4506,6 +4506,7 @@
       <div class="form-section">
         <div class="form-section-title">🤖 Análise com IA</div>
         <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
+        <button type="button" class="btn-action soft" onclick="iaConfigurarChave()" title="Cadastrar, trocar ou remover a chave da IA neste navegador">🔑 Chave da IA</button>
         <div id="ed-iaResultado" style="display:none;margin-top:4px"></div>
       </div>
 
@@ -26615,29 +26616,79 @@ window.cpRenderFixas=cpRenderFixas;
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
     try{localStorage.setItem('lexflow_dark_mode',isDark?'1':'0');}catch(e){}
   };
-  // Análise do caso com IA: envia dados do processo, fatos/providências, andamento e próximos passos
-  // para o Cloudflare Worker e mostra o retorno em dois blocos (cliente / uso interno), com botão Copiar.
-  var URL_IA_CASO='https://fragrant-sun-2208.adeborges.workers.dev';
+  // Análise do caso com IA: chama a API da Anthropic direto do navegador (sem intermediário).
+  // A chave (sk-ant-...) fica guardada só neste navegador (localStorage), nunca no código nem no GitHub.
+  var IA_MODELO='claude-sonnet-5-5';
+  var IA_CHAVE_LS='eixo_ia_chave';
+  window.iaChaveLer_=function(){ try{return localStorage.getItem(IA_CHAVE_LS)||'';}catch(e){return '';} };
+  window.iaChaveGravar_=function(k){ try{ if(k) localStorage.setItem(IA_CHAVE_LS,k); else localStorage.removeItem(IA_CHAVE_LS); }catch(e){} };
+  // Botão "Chave da IA": cadastra, troca ou remove a chave neste navegador.
+  window.iaConfigurarChave=function(){
+    var atual=window.iaChaveLer_();
+    var msg=atual
+      ? 'Já existe uma chave salva neste navegador (termina em ...'+atual.slice(-4)+').\n\nCole a nova chave para trocar, ou deixe em branco e confirme para REMOVER a chave salva.'
+      : 'Cole aqui a sua chave da Anthropic (começa com sk-ant-...). Ela fica guardada somente neste navegador.';
+    var nova=window.prompt(msg,'');
+    if(nova===null) return;
+    nova=nova.trim();
+    if(nova && nova.indexOf('sk-ant-')!==0){ alert('Essa chave não parece válida: ela deve começar com sk-ant-'); return; }
+    window.iaChaveGravar_(nova);
+    alert(nova?'Chave salva neste navegador.':'Chave removida deste navegador.');
+  };
   window.iaCasoEnviar_=async function(payload){
-    // O Worker espera três textos (fatos, andamento, proximosPassos); montamos cada um a partir dos campos.
     var linhas=function(o){return Object.keys(o).filter(function(k){return o[k];}).map(function(k){return k+': '+o[k];}).join('\n');};
     var rot={contexto:'Dados do processo',narrativa:'Narrativa',providenciasAdvogado:'Providências do advogado',situacao:'Situação',ultimaAtualizacao:'Última atualização',status:'Status',dataAtualizacao:'Data da atualização',precisaProvidenciar:'A providenciar',proximoPassoAdvogado:'Próximo passo do advogado',prazoAdvogado:'Prazo do advogado',providenciasCliente:'Providências do cliente',prazoCliente:'Prazo do cliente',prazoProcessual:'Prazo processual'};
     var txt=function(o){var r={};Object.keys(o||{}).forEach(function(k){r[rot[k]||k]=o[k];});return linhas(r);};
-    var corpo={fatos:txt(payload.fatos),andamento:txt(payload.andamento),proximosPassos:txt(payload.proximosPassos)};
-    var resp=await fetch(URL_IA_CASO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo)});
-    var bruto=await resp.text();
-    if(!resp.ok){
-      var msgErro=bruto;
-      try{var je=JSON.parse(bruto); if(je&&je.error) msgErro=je.error;}catch(e){}
-      throw new Error('HTTP '+resp.status+(msgErro?' — '+String(msgErro).slice(0,300):''));
+    var fatos=txt(payload.fatos), andamento=txt(payload.andamento), proximosPassos=txt(payload.proximosPassos);
+
+    var chave=window.iaChaveLer_();
+    if(!chave){
+      window.iaConfigurarChave();
+      chave=window.iaChaveLer_();
+      if(!chave) throw new Error('Nenhuma chave da IA foi cadastrada.');
     }
-    var saida=bruto;
-    try{
-      var j=JSON.parse(bruto);
-      if(typeof j==='string') saida=j;
-      else saida=j.resposta||j.resumo||j.resultado||j.result||j.response||j.text||j.content||j.message||
-        (Array.isArray(j.content)&&j.content[0]&&j.content[0].text)||JSON.stringify(j,null,2);
-    }catch(e){ /* resposta em texto puro */ }
+
+    var prompt='Atue como um assistente jurídico sênior. Com base nos dados do processo abaixo, gere DUAS saídas separadas em linguagem clara.\n'
+      +'Use somente as informações fornecidas: não invente fatos, datas, prazos ou valores. Se alguma informação necessária não estiver nos dados, diga que ela não foi informada.\n\n'
+      +'---\n'
+      +'PARTE 1: RESUMO PARA O CLIENTE (Linguagem acessível, cordial, direta e sem juridiquês)\n'
+      +"- **Situação Atual:** [Resumo em 2 a 3 frases]\n"
+      +"- **O que o escritório está fazendo por você:** [Próximos passos adotados]\n"
+      +"- **O que você precisa fazer:** [Pendências do cliente ou 'Nenhuma ação necessária no momento']\n\n"
+      +'---\n'
+      +'PARTE 2: ANÁLISE DE RISCOS E PRAZOS (Uso interno do advogado)\n'
+      +'- **Prazos Críticos & Providências:** [Prazos fatais, alertas de cumprimento e contagem]\n'
+      +'- **Análise de Riscos & Prioridades:** [Riscos de improcedência, necessidade de tutela ou prioridades legais (Idoso/ECA)]\n'
+      +'- **Recomendação Estratégica:** [Próxima ação imediata no processo]\n\n'
+      +'---\n'
+      +'DADOS DO PROCESSO:\n'
+      +'Fatos e Providências: '+(fatos||'Não informado')+'\n'
+      +'Andamento Processual: '+(andamento||'Não informado')+'\n'
+      +'Próximos Passos: '+(proximosPassos||'Não informado');
+
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'x-api-key':chave,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'content-type':'application/json'
+      },
+      body:JSON.stringify({model:IA_MODELO,max_tokens:3000,messages:[{role:'user',content:prompt}]})
+    });
+    var data=null;
+    try{ data=await resp.json(); }catch(e){}
+    if(!resp.ok){
+      if(resp.status===401 || resp.status===403){
+        window.iaChaveGravar_('');
+        throw new Error('A Anthropic recusou a chave (HTTP '+resp.status+'). A chave salva foi removida: clique em "🔑 Chave da IA" e cadastre uma chave válida.');
+      }
+      throw new Error('Erro na API Anthropic (HTTP '+resp.status+')'+(data&&data.error&&data.error.message?': '+data.error.message:''));
+    }
+    var blocos=(data&&Array.isArray(data.content))?data.content:[];
+    var saida=blocos.filter(function(b){return b.type==='text'&&b.text;}).map(function(b){return b.text;}).join('\n\n').trim();
+    if(!saida) throw new Error('A IA não devolveu texto (stop_reason: '+((data&&data.stop_reason)||'?')+').');
+    if(data.stop_reason==='max_tokens') saida+='\n\n[Aviso: a resposta foi cortada por atingir o limite de tamanho.]';
     return saida;
   };
 
