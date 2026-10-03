@@ -4506,7 +4506,7 @@
       <div class="form-section">
         <div class="form-section-title">🤖 Análise com IA</div>
         <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
-        <div id="ed-iaResultado" style="display:none;margin-top:12px;padding:14px 16px;border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface2);color:var(--text);font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word"></div>
+        <div id="ed-iaResultado" style="display:none;margin-top:4px"></div>
       </div>
 
       <div class="form-section">
@@ -26615,13 +26615,13 @@ window.cpRenderFixas=cpRenderFixas;
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
     try{localStorage.setItem('lexflow_dark_mode',isDark?'1':'0');}catch(e){}
   };
-  // Análise do caso com IA: envia fatos/providências, andamento e próximos passos do processo
-  // aberto no formulário de edição para o Cloudflare Worker e mostra o retorno abaixo do botão.
+  // Análise do caso com IA: envia dados do processo, fatos/providências, andamento e próximos passos
+  // para o Cloudflare Worker e mostra o retorno em dois blocos (cliente / uso interno), com botão Copiar.
   var URL_IA_CASO='https://fragrant-sun-2208.adeborges.workers.dev';
   window.iaCasoEnviar_=async function(payload){
     // O Worker espera três textos (fatos, andamento, proximosPassos); montamos cada um a partir dos campos.
-    var linhas=function(o){return Object.keys(o).filter(function(k){return o[k];}).map(function(k){return o[k]&&k+': '+o[k];}).join('\n');};
-    var rot={narrativa:'Narrativa',providenciasAdvogado:'Providências do advogado',situacao:'Situação',ultimaAtualizacao:'Última atualização',status:'Status',dataAtualizacao:'Data da atualização',precisaProvidenciar:'A providenciar',proximoPassoAdvogado:'Próximo passo do advogado',prazoAdvogado:'Prazo do advogado',providenciasCliente:'Providências do cliente',prazoCliente:'Prazo do cliente',prazoProcessual:'Prazo processual'};
+    var linhas=function(o){return Object.keys(o).filter(function(k){return o[k];}).map(function(k){return k+': '+o[k];}).join('\n');};
+    var rot={contexto:'Dados do processo',narrativa:'Narrativa',providenciasAdvogado:'Providências do advogado',situacao:'Situação',ultimaAtualizacao:'Última atualização',status:'Status',dataAtualizacao:'Data da atualização',precisaProvidenciar:'A providenciar',proximoPassoAdvogado:'Próximo passo do advogado',prazoAdvogado:'Prazo do advogado',providenciasCliente:'Providências do cliente',prazoCliente:'Prazo do cliente',prazoProcessual:'Prazo processual'};
     var txt=function(o){var r={};Object.keys(o||{}).forEach(function(k){r[rot[k]||k]=o[k];});return linhas(r);};
     var corpo={fatos:txt(payload.fatos),andamento:txt(payload.andamento),proximosPassos:txt(payload.proximosPassos)};
     var resp=await fetch(URL_IA_CASO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo)});
@@ -26640,6 +26640,73 @@ window.cpRenderFixas=cpRenderFixas;
     }catch(e){ /* resposta em texto puro */ }
     return saida;
   };
+
+  // Dados de contexto (sem nome, CPF ou número do processo) que ajudam a IA a avaliar riscos e prioridades.
+  window.iaContextoTexto_=function(o){
+    var l=[];
+    [['ramo','Ramo do direito'],['tipo','Classe da ação'],['parte','Posição do cliente'],['vara','Vara'],['tribunal','Tribunal'],['valorCausa','Valor da causa'],['recurso2g','Recurso em 2º grau'],['audiencia','Audiência marcada']].forEach(function(c){ if(o[c[0]]) l.push(c[1]+': '+o[c[0]]); });
+    var f=o.flags||{};
+    var nomes={tutela:'tutela de urgência deferida',idoso:'cliente idoso',octogenario:'cliente octogenário',menor:'cliente menor de idade',gratuita:'justiça gratuita',urgente:'petição urgente',pericia:'perícia',segundoGrau:'processo em 2º grau',reconvencao:'há reconvenção',semConciliacao:'desinteresse em conciliação',mp:'intervenção do MP'};
+    var on=Object.keys(nomes).filter(function(k){return f[k];}).map(function(k){return nomes[k];});
+    if(on.length) l.push('Marcações: '+on.join('; '));
+    return l.join('\n');
+  };
+
+  // Mensagem simples (aguarde / erro / aviso) dentro do contêiner de resultado.
+  window.iaMensagem_=function(container,texto){
+    container.textContent='';
+    var d=document.createElement('div');
+    d.style.cssText='padding:12px 14px;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);color:var(--text);font-size:13.5px;line-height:1.6';
+    d.textContent=texto; container.appendChild(d);
+  };
+
+  // Divide a resposta em "Parte 1 (cliente)" e "Parte 2 (uso interno)" e desenha dois blocos com botão Copiar.
+  window.iaRenderizar_=function(container,texto){
+    container.textContent='';
+    var el=function(tag,css,txt){var e=document.createElement(tag); if(css) e.style.cssText=css; if(txt!=null) e.textContent=txt; return e;};
+    var limpar=function(t){return t.split('\n').filter(function(l){return !/^\s*[-*_]{3,}\s*$/.test(l)&&!/^\s*#*\s*\**\s*PARTE\s*\d/i.test(l);}).join('\n').trim();};
+    var paraWhats=function(t){return t.replace(/\*\*([^*]+)\*\*/g,'*$1*').replace(/^\s*[-•*]\s+/gm,'• ').replace(/^#{1,6}\s*/gm,'');};
+    var inline=function(parent,s){
+      s.split(/(\*\*[^*]+\*\*)/).forEach(function(seg){
+        if(/^\*\*[^*]+\*\*$/.test(seg)) parent.appendChild(el('strong',null,seg.slice(2,-2)));
+        else if(seg) parent.appendChild(document.createTextNode(seg));
+      });
+    };
+    var corpo=function(t){
+      var box=el('div','font-size:13.5px;line-height:1.6;word-break:break-word'), ul=null;
+      t.split('\n').forEach(function(l){
+        var b=/^\s*[-•*]\s+(.*)$/.exec(l);
+        if(b){ if(!ul){ ul=el('ul','margin:4px 0 8px 20px;padding:0'); box.appendChild(ul); } var li=el('li','margin:3px 0'); inline(li,b[1]); ul.appendChild(li); return; }
+        ul=null;
+        if(!l.trim()) return;
+        var h=/^\s*#{1,6}\s*(.*)$/.exec(l);
+        var p=el('div',h?'font-weight:700;margin:10px 0 4px':'margin:4px 0'); inline(p,h?h[1]:l); box.appendChild(p);
+      });
+      return box;
+    };
+    var copiar=function(txt,btn){
+      var rotulo=btn.textContent;
+      var ok=function(){ btn.textContent='✓ Copiado'; setTimeout(function(){btn.textContent=rotulo;},1800); };
+      var fallback=function(){
+        var ta=document.createElement('textarea'); ta.value=txt; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); ok(); }catch(e){ btn.textContent='Não copiou'; }
+        document.body.removeChild(ta);
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok,fallback); else fallback();
+    };
+    var card=function(titulo,aviso,txt,cor){
+      var c=el('div','border:1px solid var(--border2);border-left:4px solid '+cor+';border-radius:10px;background:var(--surface2);color:var(--text);padding:14px 16px;margin-top:12px');
+      var topo=el('div','display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px');
+      var tt=el('div'); tt.appendChild(el('div','font-weight:700;font-size:14px',titulo)); tt.appendChild(el('div','font-size:11.5px;color:var(--muted);margin-top:2px',aviso));
+      var b=el('button',null,'📋 Copiar'); b.type='button'; b.className='btn-action'; b.onclick=function(){ copiar(paraWhats(txt),b); };
+      topo.appendChild(tt); topo.appendChild(b); c.appendChild(topo); c.appendChild(corpo(txt)); return c;
+    };
+    var m=/(^|\n)[#*\s]*PARTE\s*2\b/i.exec(texto);
+    if(!m){ container.appendChild(card('Resultado da análise','Revise antes de usar.',limpar(texto),'var(--accent)')); return; }
+    container.appendChild(card('📨 Resumo para o cliente','Revise antes de enviar. O texto copiado já vai formatado para WhatsApp.',limpar(texto.slice(0,m.index)),'var(--green)'));
+    container.appendChild(card('🔒 Análise de riscos e prazos','Uso interno do advogado — não enviar ao cliente.',limpar(texto.slice(m.index)),'var(--orange)'));
+  };
+
   // Mesmo recurso, a partir do card do processo (Gestão de Processos), sem abrir o formulário de edição.
   window.analisarCasoIAProcesso=async function(uid){
     var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});
@@ -26649,44 +26716,51 @@ window.cpRenderFixas=cpRenderFixas;
       ov=document.createElement('div'); ov.id='iaCasoOverlay';
       ov.style.cssText='position:fixed;inset:0;background:rgba(10,14,24,.6);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto';
       ov.innerHTML='<div style="background:var(--surface);color:var(--text);border-radius:14px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.4)">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px"><strong id="iaCasoTitulo" style="font-size:15px"></strong>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:4px"><strong id="iaCasoTitulo" style="font-size:15px"></strong>'
         +'<button type="button" class="btn-action" onclick="document.getElementById(\'iaCasoOverlay\').style.display=\'none\'">Fechar</button></div>'
-        +'<div id="iaCasoTexto" style="padding:14px 16px;border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface2);font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word"></div></div>';
+        +'<div id="iaCasoTexto"></div></div>';
       ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
       document.body.appendChild(ov);
     }
     ov.style.display='flex';
     document.getElementById('iaCasoTitulo').textContent='🤖 Análise do caso — '+(p.nome||'');
-    var tx=document.getElementById('iaCasoTexto'); tx.textContent='Aguarde, a IA está analisando o caso...';
+    var tx=document.getElementById('iaCasoTexto'); window.iaMensagem_(tx,'Aguarde, a IA está analisando o caso...');
+    var sim=function(x){return String(x||'').toUpperCase()==='SIM';};
+    var ctx=window.iaContextoTexto_({ramo:p.ramo,tipo:p.tipo,parte:p.parte,vara:p.vara,tribunal:p.tribunal,valorCausa:p.valorCausa,recurso2g:p.segundoGrauRecurso,
+      audiencia:[p.dataAudi,p.horAudi?String(p.horAudi).substring(0,5):''].filter(Boolean).join(' às '),
+      flags:{tutela:sim(p.tutelaDeferida),idoso:sim(p.idoso),octogenario:sim(p.idosoOctogenario),menor:sim(p.menorIdade),gratuita:sim(p.justicaGratuita),urgente:sim(p.peticaoUrgente),pericia:sim(p.pericia),segundoGrau:sim(p.segundoGrau),reconvencao:sim(p.reconvencao),semConciliacao:sim(p.desinteresseConciliacao),mp:sim(p.intervencaoMP)}});
     var payload={
-      cliente:p.nome||'', processo:p.processo||'',
-      fatos:{narrativa:p.narrativaFatos||'', providenciasAdvogado:p.providAdv||''},
+      fatos:{contexto:ctx, narrativa:p.narrativaFatos||'', providenciasAdvogado:p.providAdv||''},
       andamento:{situacao:p.situacao||'', ultimaAtualizacao:p.ultima||'', status:p.status||'', dataAtualizacao:p.dataAtua||''},
       proximosPassos:{precisaProvidenciar:p.precisaProvidenciar||'', proximoPassoAdvogado:p.proximoPassoAdv||'', prazoAdvogado:p.dataProxPasso||'', providenciasCliente:p.providCliente||'', prazoCliente:p.dataPrazoCliente||'', prazoProcessual:p.prazoData||''}
     };
-    try{ tx.textContent=await window.iaCasoEnviar_(payload); }
-    catch(err){ tx.textContent='Não foi possível obter a análise: '+err.message; }
+    try{ window.iaRenderizar_(tx,await window.iaCasoEnviar_(payload)); }
+    catch(err){ window.iaMensagem_(tx,'Não foi possível obter a análise: '+err.message); }
   };
   window.analisarCasoIA=async function(){
     var v=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
+    var c=function(id){var el=document.getElementById(id);return !!(el&&el.checked);};
+    var d=function(id){return inputParaData(v(id));};
     var btn=document.getElementById('ed-btnIA'), box=document.getElementById('ed-iaResultado');
+    var ctx=window.iaContextoTexto_({ramo:v('ed-ramo'),tipo:v('ed-tipo'),parte:v('ed-parte'),vara:v('ed-vara'),tribunal:v('ed-tribunal'),valorCausa:v('ed-valorCausa'),recurso2g:v('ed-segundoGrauRecurso'),
+      audiencia:[d('ed-dataAudi'),v('ed-horAudi')].filter(Boolean).join(' às '),
+      flags:{tutela:c('ed-tutelaDeferida'),idoso:c('ed-idoso'),octogenario:c('ed-idosoOctogenario'),menor:c('ed-menorIdade'),gratuita:c('ed-justicaGratuita'),urgente:c('ed-peticaoUrgente'),pericia:c('ed-pericia'),segundoGrau:c('ed-segundoGrau'),reconvencao:c('ed-reconvencao'),semConciliacao:c('ed-desinteresseConciliacao'),mp:c('ed-intervencaoMP')}});
     var payload={
-      cliente:v('ed-nome'),
-      processo:v('ed-processo'),
-      fatos:{narrativa:v('ed-narrativaFatos'), providenciasAdvogado:v('ed-providAdv')},
-      andamento:{situacao:v('ed-situacao'), ultimaAtualizacao:v('ed-ultima'), status:v('ed-status'), dataAtualizacao:v('ed-dataAtua')},
-      proximosPassos:{precisaProvidenciar:v('ed-precisaProvidenciar'), proximoPassoAdvogado:v('ed-proxAdv'), prazoAdvogado:v('ed-dataProxPasso'), providenciasCliente:v('ed-provCliente'), prazoCliente:v('ed-dataPrazoCliente'), prazoProcessual:v('ed-prazoData')}
+      fatos:{contexto:ctx, narrativa:v('ed-narrativaFatos'), providenciasAdvogado:v('ed-providAdv')},
+      andamento:{situacao:v('ed-situacao'), ultimaAtualizacao:v('ed-ultima'), status:v('ed-status'), dataAtualizacao:d('ed-dataAtua')},
+      proximosPassos:{precisaProvidenciar:v('ed-precisaProvidenciar'), proximoPassoAdvogado:v('ed-proxAdv'), prazoAdvogado:d('ed-dataProxPasso'), providenciasCliente:v('ed-provCliente'), prazoCliente:d('ed-dataPrazoCliente'), prazoProcessual:d('ed-prazoData')}
     };
+    box.style.display='block';
     if(!payload.fatos.narrativa && !payload.fatos.providenciasAdvogado && !payload.andamento.ultimaAtualizacao && !payload.proximosPassos.proximoPassoAdvogado){
-      box.style.display='block'; box.textContent='Preencha ao menos um dos campos (fatos, andamento ou próximos passos) antes de analisar.'; return;
+      window.iaMensagem_(box,'Preencha ao menos um dos campos (fatos, andamento ou próximos passos) antes de analisar.'); return;
     }
     var textoBtn=btn.innerHTML;
     btn.disabled=true; btn.textContent='⏳ Analisando...';
-    box.style.display='block'; box.textContent='Aguarde, a IA está analisando o caso...';
+    window.iaMensagem_(box,'Aguarde, a IA está analisando o caso...');
     try{
-      box.textContent=await window.iaCasoEnviar_(payload);
+      window.iaRenderizar_(box,await window.iaCasoEnviar_(payload));
     }catch(err){
-      box.textContent='Não foi possível obter a análise: '+err.message;
+      window.iaMensagem_(box,'Não foi possível obter a análise: '+err.message);
     }finally{
       btn.disabled=false; btn.innerHTML=textoBtn;
     }
