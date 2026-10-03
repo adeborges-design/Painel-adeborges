@@ -26681,7 +26681,7 @@ window.cpRenderFixas=cpRenderFixas;
         'anthropic-dangerous-direct-browser-access':'true',
         'content-type':'application/json'
       },
-      body:JSON.stringify({model:IA_MODELO,max_tokens:3000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:IA_MODELO,max_tokens:8000,messages:[{role:'user',content:prompt}]})
     });
     var data=null;
     try{ data=await resp.json(); }catch(e){}
@@ -26694,7 +26694,7 @@ window.cpRenderFixas=cpRenderFixas;
     }
     var blocos=(data&&Array.isArray(data.content))?data.content:[];
     var saida=blocos.filter(function(b){return b.type==='text'&&b.text;}).map(function(b){return b.text;}).join('\n\n').trim();
-    if(!saida) throw new Error('A IA não devolveu texto (stop_reason: '+((data&&data.stop_reason)||'?')+').');
+    if(!saida) throw new Error('A IA não devolveu texto (stop_reason: '+((data&&data.stop_reason)||'?')+', blocos: '+(blocos.map(function(b){return b.type;}).join(',')||'nenhum')+'). Tente novamente.');
     if(data.stop_reason==='max_tokens') saida+='\n\n[Aviso: a resposta foi cortada por atingir o limite de tamanho.]';
     return saida;
   };
