@@ -4504,6 +4504,12 @@
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">🤖 Análise com IA</div>
+        <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
+        <div id="ed-iaResultado" style="display:none;margin-top:12px;padding:14px 16px;border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface2);color:var(--text);font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title">📅 Audiência</div>
         <div class="form-grid form-grid-3">
           <div class="form-field">
@@ -7989,6 +7995,7 @@ function renderCard(p, idx) {
                 </svg>
                 Follow-up
               </button>
+              <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();analisarCasoIAProcesso(this.dataset.uid)" title="Analisa fatos, andamento e próximos passos e gera um resumo com Claude 5.5">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
               <button class="btn-action" data-uid="${p._uid}" onclick="event.stopPropagation();abrirEntregas(this.dataset.uid)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5z"/>
@@ -26608,6 +26615,74 @@ window.cpRenderFixas=cpRenderFixas;
     document.querySelectorAll('.theme-toggle-btn').forEach(function(b){b.textContent=isDark?'☀️':'🌙';});
     try{localStorage.setItem('lexflow_dark_mode',isDark?'1':'0');}catch(e){}
   };
+  // Análise do caso com IA: envia fatos/providências, andamento e próximos passos do processo
+  // aberto no formulário de edição para o Cloudflare Worker e mostra o retorno abaixo do botão.
+  var URL_IA_CASO='https://fragrant-sun-2208.adeborges.workers.dev';
+  window.iaCasoEnviar_=async function(payload){
+    var resp=await fetch(URL_IA_CASO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var bruto=await resp.text();
+    if(!resp.ok) throw new Error('HTTP '+resp.status+(bruto?' — '+bruto.slice(0,300):''));
+    var saida=bruto;
+    try{
+      var j=JSON.parse(bruto);
+      if(typeof j==='string') saida=j;
+      else saida=j.resumo||j.resultado||j.result||j.response||j.text||j.content||j.message||
+        (Array.isArray(j.content)&&j.content[0]&&j.content[0].text)||JSON.stringify(j,null,2);
+    }catch(e){ /* resposta em texto puro */ }
+    return saida;
+  };
+  // Mesmo recurso, a partir do card do processo (Gestão de Processos), sem abrir o formulário de edição.
+  window.analisarCasoIAProcesso=async function(uid){
+    var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});
+    if(!p) return;
+    var ov=document.getElementById('iaCasoOverlay');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='iaCasoOverlay';
+      ov.style.cssText='position:fixed;inset:0;background:rgba(10,14,24,.6);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto';
+      ov.innerHTML='<div style="background:var(--surface);color:var(--text);border-radius:14px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.4)">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px"><strong id="iaCasoTitulo" style="font-size:15px"></strong>'
+        +'<button type="button" class="btn-action" onclick="document.getElementById(\'iaCasoOverlay\').style.display=\'none\'">Fechar</button></div>'
+        +'<div id="iaCasoTexto" style="padding:14px 16px;border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface2);font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word"></div></div>';
+      ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
+      document.body.appendChild(ov);
+    }
+    ov.style.display='flex';
+    document.getElementById('iaCasoTitulo').textContent='🤖 Análise do caso — '+(p.nome||'');
+    var tx=document.getElementById('iaCasoTexto'); tx.textContent='Aguarde, a IA está analisando o caso...';
+    var payload={
+      cliente:p.nome||'', processo:p.processo||'',
+      fatos:{narrativa:p.narrativaFatos||'', providenciasAdvogado:p.providAdv||''},
+      andamento:{situacao:p.situacao||'', ultimaAtualizacao:p.ultima||'', status:p.status||'', dataAtualizacao:p.dataAtua||''},
+      proximosPassos:{precisaProvidenciar:p.precisaProvidenciar||'', proximoPassoAdvogado:p.proximoPassoAdv||'', prazoAdvogado:p.dataProxPasso||'', providenciasCliente:p.providCliente||'', prazoCliente:p.dataPrazoCliente||'', prazoProcessual:p.prazoData||''}
+    };
+    try{ tx.textContent=await window.iaCasoEnviar_(payload); }
+    catch(err){ tx.textContent='Não foi possível obter a análise: '+err.message; }
+  };
+  window.analisarCasoIA=async function(){
+    var v=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
+    var btn=document.getElementById('ed-btnIA'), box=document.getElementById('ed-iaResultado');
+    var payload={
+      cliente:v('ed-nome'),
+      processo:v('ed-processo'),
+      fatos:{narrativa:v('ed-narrativaFatos'), providenciasAdvogado:v('ed-providAdv')},
+      andamento:{situacao:v('ed-situacao'), ultimaAtualizacao:v('ed-ultima'), status:v('ed-status'), dataAtualizacao:v('ed-dataAtua')},
+      proximosPassos:{precisaProvidenciar:v('ed-precisaProvidenciar'), proximoPassoAdvogado:v('ed-proxAdv'), prazoAdvogado:v('ed-dataProxPasso'), providenciasCliente:v('ed-provCliente'), prazoCliente:v('ed-dataPrazoCliente'), prazoProcessual:v('ed-prazoData')}
+    };
+    if(!payload.fatos.narrativa && !payload.fatos.providenciasAdvogado && !payload.andamento.ultimaAtualizacao && !payload.proximosPassos.proximoPassoAdvogado){
+      box.style.display='block'; box.textContent='Preencha ao menos um dos campos (fatos, andamento ou próximos passos) antes de analisar.'; return;
+    }
+    var textoBtn=btn.innerHTML;
+    btn.disabled=true; btn.textContent='⏳ Analisando...';
+    box.style.display='block'; box.textContent='Aguarde, a IA está analisando o caso...';
+    try{
+      box.textContent=await window.iaCasoEnviar_(payload);
+    }catch(err){
+      box.textContent='Não foi possível obter a análise: '+err.message;
+    }finally{
+      btn.disabled=false; btn.innerHTML=textoBtn;
+    }
+  };
+
   // Recolher/expandir a barra lateral de filtros (tela de Gestão de Processos), pra liberar
   // espaço horizontal pra lista. Estado fica salvo no localStorage, igual o tema.
   window.toggleSidebarFiltros=function(){
