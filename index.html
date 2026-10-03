@@ -4504,6 +4504,15 @@
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">📰 Análise de Intimação / Publicação</div>
+        <textarea id="ed-pubTexto" rows="6" placeholder="Cole aqui o texto do despacho, decisão, intimação ou publicação do Diário Oficial. A IA identifica a providência e o prazo; a data fatal é calculada pelo painel (dias úteis, feriados, recesso)."></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <button type="button" id="ed-btnPub" class="btn-action primary" onclick="pubAnalisar()">📰 Extrair prazo e providência</button>
+        </div>
+        <div id="ed-pubResultado" style="display:none;margin-top:6px"></div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title">🤖 Análise com IA</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button type="button" id="ed-btnIA" class="btn-action primary" onclick="analisarCasoIA()">🤖 Analisar Caso &amp; Gerar Resumo com Claude 5.5</button>
@@ -26697,6 +26706,244 @@ window.cpRenderFixas=cpRenderFixas;
     if(!saida) throw new Error('A IA não devolveu texto (stop_reason: '+((data&&data.stop_reason)||'?')+', blocos: '+(blocos.map(function(b){return b.type;}).join(',')||'nenhum')+'). Tente novamente.');
     if(data.stop_reason==='max_tokens') saida+='\n\n[Aviso: a resposta foi cortada por atingir o limite de tamanho.]';
     return saida;
+  };
+
+  // ===== Análise de intimação / publicação (Diário Oficial, despacho, decisão) =====
+  // Chamada genérica à API: cuida da chave salva no navegador e devolve o texto da resposta.
+  window.iaChamarApi_=async function(prompt,maxTokens){
+    var chave=window.iaChaveLer_();
+    if(!chave){
+      window.iaConfigurarChave();
+      chave=window.iaChaveLer_();
+      if(!chave) throw new Error('Nenhuma chave da IA foi cadastrada.');
+    }
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'x-api-key':chave,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'content-type':'application/json'
+      },
+      body:JSON.stringify({model:IA_MODELO,max_tokens:maxTokens||8000,messages:[{role:'user',content:prompt}]})
+    });
+    var data=null;
+    try{ data=await resp.json(); }catch(e){}
+    if(!resp.ok){
+      if(resp.status===401 || resp.status===403){
+        window.iaChaveGravar_('');
+        throw new Error('A Anthropic recusou a chave (HTTP '+resp.status+'). A chave salva foi removida: clique em "🔑 Chave da IA" e cadastre uma chave válida.');
+      }
+      throw new Error('Erro na API Anthropic (HTTP '+resp.status+')'+(data&&data.error&&data.error.message?': '+data.error.message:''));
+    }
+    var blocos=(data&&Array.isArray(data.content))?data.content:[];
+    var saida=blocos.filter(function(b){return b.type==='text'&&b.text;}).map(function(b){return b.text;}).join('\n\n').trim();
+    if(!saida) throw new Error('A IA não devolveu texto (stop_reason: '+((data&&data.stop_reason)||'?')+', blocos: '+(blocos.map(function(b){return b.type;}).join(',')||'nenhum')+'). Tente novamente.');
+    if(data.stop_reason==='max_tokens') saida+='\n\n[Aviso: a resposta foi cortada por atingir o limite de tamanho.]';
+    return saida;
+  };
+
+  // --- Calendário forense (estimativa): dias úteis = sem sábado, domingo, feriados e recesso (CPC, art. 219 e 220) ---
+  // Feriados considerados: nacionais, 9/7 (estadual SP), 25/1 (capital SP), Carnaval, Sexta-feira Santa e Corpus Christi.
+  var PUB_FERIADOS_FIXOS={'01-01':1,'01-25':1,'04-21':1,'05-01':1,'07-09':1,'09-07':1,'10-12':1,'11-02':1,'11-15':1,'11-20':1,'12-25':1};
+  var pubMoveisCache={};
+  var pubIso=function(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);};
+  var pubData=function(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?new Date(+m[1],+m[2]-1,+m[3]):null;};
+  var pubBR=function(iso){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?(m[3]+'/'+m[2]+'/'+m[1]):(iso||'');};
+  var pubProx=function(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);};
+  var pubPascoa=function(y){
+    var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+        h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+    return new Date(y,mes-1,dia);
+  };
+  var pubMoveis=function(y){
+    if(!pubMoveisCache[y]){
+      var p=pubPascoa(y), o={};
+      [-48,-47,-2,60].forEach(function(n){ o[pubIso(new Date(p.getFullYear(),p.getMonth(),p.getDate()+n))]=1; });
+      pubMoveisCache[y]=o;
+    }
+    return pubMoveisCache[y];
+  };
+  var pubRecesso=function(d){var m=d.getMonth()+1,dd=d.getDate();return (m===12&&dd>=20)||(m===1&&dd<=20);};
+  var pubUtil=function(d){
+    var w=d.getDay();
+    if(w===0||w===6||pubRecesso(d)) return false;
+    var chave=('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+    if(PUB_FERIADOS_FIXOS[chave]) return false;
+    return !pubMoveis(d.getFullYear())[pubIso(d)];
+  };
+  // tipoRef: 'disponibilizacao' (publicação = 1º dia útil seguinte), 'publicacao' ou 'ciencia'.
+  // O prazo começa a contar no 1º dia útil após a referência (CPC, art. 224, §3º); o último dia é incluído.
+  window.pubCalcular_=function(tipoRef,refISO,dias,contagem){
+    var ref=pubData(refISO);
+    dias=parseInt(dias,10);
+    if(!ref||!(dias>0)||dias>400) return '';
+    if(tipoRef==='disponibilizacao'){ ref=pubProx(ref); while(!pubUtil(ref)) ref=pubProx(ref); }
+    var cur=pubProx(ref); while(!pubUtil(cur)) cur=pubProx(cur);
+    var n=1;
+    if(contagem==='corridos'){
+      while(n<dias){ cur=pubProx(cur); if(!pubRecesso(cur)) n++; }
+      while(!pubUtil(cur)) cur=pubProx(cur);
+    }else{
+      while(n<dias){ cur=pubProx(cur); if(pubUtil(cur)) n++; }
+    }
+    return pubIso(cur);
+  };
+  // Urgência no painel: mesmas faixas do cálculo do card (até 5 dias = crítica, até 15 = urgente, até 30 = atenção).
+  window.pubUrgencia_=function(fatalISO){
+    var d=pubData(fatalISO);
+    if(!d) return {rot:'—',cor:'var(--muted)',diff:null,critica:false};
+    var h=new Date(); h.setHours(0,0,0,0);
+    var diff=Math.round((d-h)/86400000);
+    if(diff<0) return {rot:'Prazo vencido',cor:'var(--red)',diff:diff,critica:true};
+    if(diff<=5) return {rot:'Crítica',cor:'var(--red)',diff:diff,critica:true};
+    if(diff<=15) return {rot:'Urgente',cor:'var(--orange)',diff:diff,critica:false};
+    if(diff<=30) return {rot:'Atenção',cor:'var(--accent)',diff:diff,critica:false};
+    return {rot:'Normal',cor:'var(--green)',diff:diff,critica:false};
+  };
+
+  // --- Leitura da publicação pela IA ---
+  window.pubAnalisar=async function(){
+    var ta=document.getElementById('ed-pubTexto'), btn=document.getElementById('ed-btnPub'), box=document.getElementById('ed-pubResultado');
+    var texto=ta?ta.value.trim():'';
+    box.style.display='block';
+    if(texto.length<20){ window.iaMensagem_(box,'Cole primeiro o texto da publicação, despacho ou intimação.'); return; }
+    if(texto.length>20000) texto=texto.slice(0,20000);
+    var hoje=pubIso(new Date());
+    var prompt='Você é um assistente jurídico brasileiro. Leia o texto abaixo (publicação do Diário Oficial, despacho, decisão ou intimação) e extraia os dados pedidos.\n'
+      +'Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois e sem bloco de código.\n\n'
+      +'Regras:\n'
+      +'- Use apenas o que está no texto. Se um dado não constar, use null. Não invente.\n'
+      +'- Datas sempre no formato AAAA-MM-DD. Hoje é '+hoje+'.\n'
+      +'- NÃO calcule a data fatal: informe o prazo em dias e a data de referência. Se o texto trouxer uma data-limite expressa, informe-a em data_limite_expressa.\n'
+      +'- contagem: "uteis" ou "corridos". Se o texto não disser, use "uteis" (regra geral do CPC, art. 219) e registre isso em observacoes.\n'
+      +'- referencia_tipo: "disponibilizacao" (data de disponibilização no DJe), "publicacao" (data de publicação no DJe) ou "ciencia" (intimação pessoal/eletrônica). Se o texto trouxer disponibilização e publicação, use "publicacao".\n'
+      +'- providencia: o que o advogado precisa fazer, objetivo e no imperativo (ex.: "Manifestar-se sobre o laudo pericial").\n'
+      +'- Se houver mais de uma providência ou prazo, registre a de prazo mais curto em prazo_dias/providencia e as demais em observacoes.\n\n'
+      +'Formato:\n'
+      +'{"tipo_ato":"despacho|decisão|sentença|acórdão|intimação|edital|outro","numero_processo":null,"resumo":"1 a 2 frases","providencia":"...","prazo_dias":null,"contagem":"uteis","referencia_tipo":null,"referencia_data":null,"data_limite_expressa":null,"data_audiencia":null,"hora_audiencia":null,"urgencia_sugerida":"alta|media|baixa","fundamento":"trecho ou dispositivo que fundamenta o prazo","observacoes":"dúvidas ou ambiguidades"}\n\n'
+      +'TEXTO:\n'+texto;
+    var rotulo=btn.innerHTML;
+    btn.disabled=true; btn.textContent='⏳ Lendo a publicação...';
+    window.iaMensagem_(box,'Aguarde, a IA está lendo a publicação...');
+    try{
+      var bruto=await window.iaChamarApi_(prompt,8000);
+      var i=bruto.indexOf('{'), j=bruto.lastIndexOf('}');
+      if(i<0||j<=i) throw new Error('A IA não devolveu os dados no formato esperado. Tente novamente.');
+      var dados;
+      try{ dados=JSON.parse(bruto.slice(i,j+1)); }catch(e){ throw new Error('Não consegui interpretar a resposta da IA. Tente novamente.'); }
+      window.pubRenderizar_(box,dados);
+    }catch(err){
+      window.iaMensagem_(box,'Não foi possível analisar a publicação: '+err.message);
+    }finally{
+      btn.disabled=false; btn.innerHTML=rotulo;
+    }
+  };
+
+  // Mostra o que a IA entendeu, com campos editáveis; só grava no formulário quando você clicar em "Aplicar".
+  window.pubRenderizar_=function(container,d){
+    container.textContent='';
+    window.pubUltimo_=d;
+    var el=function(tag,css,txt){var e=document.createElement(tag); if(css) e.style.cssText=css; if(txt!=null) e.textContent=txt; return e;};
+    var campo=function(rot,controle){var w=el('div','display:flex;flex-direction:column;gap:3px;min-width:130px;flex:1'); w.appendChild(el('label','font-size:11px;color:var(--muted);font-weight:600',rot)); w.appendChild(controle); return w;};
+    var input=function(id,tipo,val){var x=document.createElement('input'); x.type=tipo; x.id=id; x.value=val==null?'':val; x.style.cssText='padding:7px 9px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:13px'; return x;};
+    var select=function(id,opcoes,val){var s=document.createElement('select'); s.id=id; s.style.cssText='padding:7px 9px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:13px'; opcoes.forEach(function(o){var op=document.createElement('option'); op.value=o[0]; op.textContent=o[1]; if(o[0]===val) op.selected=true; s.appendChild(op);}); return s;};
+
+    var c=el('div','border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface2);color:var(--text);padding:14px 16px;margin-top:10px');
+    c.appendChild(el('div','font-weight:700;font-size:14px','📰 '+(d.tipo_ato?String(d.tipo_ato).charAt(0).toUpperCase()+String(d.tipo_ato).slice(1):'Publicação')+(d.numero_processo?' — proc. '+d.numero_processo:'')));
+
+    // Aviso se o número do processo da publicação não confere com o do cadastro.
+    var cad=(document.getElementById('ed-processo')||{value:''}).value.replace(/\D/g,''), pub=String(d.numero_processo||'').replace(/\D/g,'');
+    if(cad.length>=10 && pub.length>=10 && cad!==pub){
+      c.appendChild(el('div','margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(209,69,74,.15);color:var(--text);font-size:12.5px;font-weight:600','⚠️ O número do processo na publicação ('+d.numero_processo+') é diferente do cadastrado neste formulário. Confira antes de aplicar.'));
+    }
+    if(d.resumo) c.appendChild(el('div','margin-top:8px;font-size:13.5px;line-height:1.55',d.resumo));
+
+    var prov=el('textarea'); prov.id='pub-prov'; prov.rows=2; prov.value=d.providencia||''; prov.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;resize:vertical';
+    var pw=el('div','margin-top:10px'); pw.appendChild(el('label','font-size:11px;color:var(--muted);font-weight:600','Providência necessária')); pw.appendChild(prov); c.appendChild(pw);
+
+    var refTipo=['disponibilizacao','publicacao','ciencia'].indexOf(d.referencia_tipo)>=0?d.referencia_tipo:'publicacao';
+    var linha=el('div','display:flex;flex-wrap:wrap;gap:10px;margin-top:10px');
+    linha.appendChild(campo('Data de referência vale como',select('pub-tipoRef',[['disponibilizacao','Disponibilização no DJe'],['publicacao','Publicação no DJe'],['ciencia','Ciência / intimação']],refTipo)));
+    linha.appendChild(campo('Data da referência',input('pub-refData','date',d.referencia_data)));
+    linha.appendChild(campo('Prazo (dias)',input('pub-dias','number',d.prazo_dias)));
+    linha.appendChild(campo('Contagem',select('pub-cont',[['uteis','Dias úteis'],['corridos','Dias corridos']],d.contagem==='corridos'?'corridos':'uteis')));
+    c.appendChild(linha);
+
+    var linha2=el('div','display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;align-items:flex-end');
+    linha2.appendChild(campo('Data fatal (estimada)',input('pub-fatal','date','')));
+    var urg=el('div','flex:1;min-width:170px;font-size:13px;padding-bottom:6px'); urg.id='pub-urg'; linha2.appendChild(urg);
+    c.appendChild(linha2);
+    if(d.data_audiencia){
+      var l3=el('div','display:flex;flex-wrap:wrap;gap:10px;margin-top:10px');
+      l3.appendChild(campo('Audiência (data)',input('pub-aud','date',d.data_audiencia)));
+      l3.appendChild(campo('Horário',input('pub-hora','time',d.hora_audiencia)));
+      c.appendChild(l3);
+    }
+
+    var atualizar=function(){
+      var fatal=window.pubCalcular_(document.getElementById('pub-tipoRef').value,document.getElementById('pub-refData').value,document.getElementById('pub-dias').value,document.getElementById('pub-cont').value);
+      if(fatal) document.getElementById('pub-fatal').value=fatal;
+      mostrarUrg();
+    };
+    var mostrarUrg=function(){
+      var u=window.pubUrgencia_(document.getElementById('pub-fatal').value), e=document.getElementById('pub-urg');
+      e.textContent=''; e.appendChild(document.createTextNode('Urgência no painel: '));
+      var s=el('strong','color:'+u.cor,u.rot); e.appendChild(s);
+      if(u.diff!=null) e.appendChild(document.createTextNode(u.diff<0?' (venceu há '+Math.abs(u.diff)+' dia(s))':(u.diff===0?' (vence hoje)':' (faltam '+u.diff+' dia(s) corridos)')));
+    };
+    ['pub-tipoRef','pub-refData','pub-dias','pub-cont'].forEach(function(id){ var x=document.getElementById(id); x.addEventListener('change',atualizar); x.addEventListener('input',atualizar); });
+    document.getElementById('pub-fatal').addEventListener('input',mostrarUrg);
+
+    // Data inicial: expressa no texto, ou calculada.
+    if(d.data_limite_expressa){ document.getElementById('pub-fatal').value=d.data_limite_expressa; mostrarUrg(); }
+    else atualizar();
+
+    var notas=[];
+    if(d.data_limite_expressa) notas.push('A data fatal veio expressa no texto da publicação.');
+    if(d.fundamento) notas.push('Fundamento: '+d.fundamento);
+    if(d.observacoes) notas.push('Observações da IA: '+d.observacoes);
+    notas.push('A data é uma estimativa: considera sábados, domingos, feriados nacionais, 9/7, 25/1 (SP), Carnaval, Sexta-feira Santa, Corpus Christi e o recesso de 20/12 a 20/01. Confira feriados locais, suspensões e a contagem nos autos antes de confiar nela.');
+    notas.forEach(function(n){ c.appendChild(el('div','margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5',n)); });
+
+    var bt=el('div','display:flex;gap:8px;flex-wrap:wrap;margin-top:12px');
+    var ok=el('button',null,'✔ Aplicar nos campos do processo'); ok.type='button'; ok.className='btn-action primary'; ok.onclick=function(){ window.pubAplicar_(); };
+    var no=el('button',null,'Descartar'); no.type='button'; no.className='btn-action soft'; no.onclick=function(){ container.textContent=''; container.style.display='none'; };
+    bt.appendChild(ok); bt.appendChild(no); c.appendChild(bt);
+    var msg=el('div','margin-top:8px;font-size:12.5px;font-weight:600'); msg.id='pub-msg'; c.appendChild(msg);
+    container.appendChild(c);
+  };
+
+  // Grava no formulário (sem salvar o processo: você revisa os campos destacados e clica em Salvar).
+  window.pubAplicar_=function(){
+    var g=function(id){return document.getElementById(id);};
+    var d=window.pubUltimo_||{};
+    var marcar=function(el){ if(!el) return; var o=el.style.outline; el.style.outline='2px solid var(--accent)'; setTimeout(function(){ el.style.outline=o; },5000); };
+    var set=function(id,val){
+      var el=g(id); if(!el||val==null||val==='') return;
+      el.value=val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); marcar(el);
+    };
+    var anexar=function(id,linha){
+      var el=g(id); if(!el||!linha) return;
+      var atual=el.value.trim();
+      if(atual.indexOf(linha)>=0) return;
+      el.value=atual?(atual+'\n'+linha):linha; el.dispatchEvent(new Event('input',{bubbles:true})); marcar(el);
+    };
+    var fatal=g('pub-fatal').value, hojeISO=pubIso(new Date()), prov=g('pub-prov').value.trim();
+    var dias=g('pub-dias').value, cont=g('pub-cont').value==='corridos'?'dias corridos':'dias úteis';
+    if(!fatal && !prov){ g('pub-msg').textContent='Nada para aplicar: informe a data fatal ou a providência.'; return; }
+    if(fatal){ set('ed-prazoData',fatal); set('ed-dataProxPasso',fatal); }
+    if(prov) anexar('ed-proxAdv','['+pubBR(hojeISO)+'] '+prov);
+    var reg=pubBR(hojeISO)+' — '+(d.tipo_ato||'Publicação')+(d.resumo?': '+d.resumo:'')
+      +(fatal?' Prazo'+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
+    anexar('ed-ultima',reg);
+    set('ed-dataAtua',hojeISO);
+    if(g('pub-aud')&&g('pub-aud').value){ set('ed-dataAudi',g('pub-aud').value); if(g('pub-hora')&&g('pub-hora').value) set('ed-horAudi',g('pub-hora').value); }
+    var u=window.pubUrgencia_(fatal);
+    if(u.critica && g('ed-peticaoUrgente') && !g('ed-peticaoUrgente').checked){ g('ed-peticaoUrgente').checked=true; marcar(g('ed-peticaoUrgente').parentNode); }
+    g('pub-msg').style.color='var(--green)';
+    g('pub-msg').textContent='Campos preenchidos (destacados no formulário). Revise e clique em Salvar para gravar.';
   };
 
   // Dados de contexto (sem nome, CPF ou número do processo) que ajudam a IA a avaliar riscos e prioridades.
