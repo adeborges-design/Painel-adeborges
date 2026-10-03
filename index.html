@@ -26882,6 +26882,7 @@ window.cpRenderFixas=cpRenderFixas;
       c.appendChild(l3);
     }
 
+    container.appendChild(c); // precisa estar no DOM antes dos getElementById abaixo
     var atualizar=function(){
       var fatal=window.pubCalcular_(document.getElementById('pub-tipoRef').value,document.getElementById('pub-refData').value,document.getElementById('pub-dias').value,document.getElementById('pub-cont').value);
       if(fatal) document.getElementById('pub-fatal').value=fatal;
