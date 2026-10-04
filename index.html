@@ -6769,6 +6769,9 @@ function parseProcessos(rows) {
     // guardada com data/hora, nada é sobrescrito. Serializado em JSON num único campo (mesmo
     // princípio de "Despesas Processo"), sem precisar de aba nova na planilha.
     const historicoProcesso     = historicoProcParse_(get(row, 'Historico Processo', -1));
+    // Prazos das partes (04/out/2026): prazos da parte contrária, do cliente, de perito/terceiro ou do
+    // juízo, com a descrição do que o prazo se refere. JSON num único campo (coluna "Prazos das Partes").
+    const prazosPartes          = prazosPartesParse_(get(row, 'Prazos das Partes', -1));
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -6811,7 +6814,7 @@ function parseProcessos(rows) {
       tipoPessoa, repNome, repCpf, repRg, repCargo,
       urgencia,
       prazoInfo,
-      valorCausa, valorAtualizadoExecucao, despesasProcesso, historicoProcesso,
+      valorCausa, valorAtualizadoExecucao, despesasProcesso, historicoProcesso, prazosPartes,
       _row: i
     });
   }
@@ -7605,6 +7608,95 @@ window.despesaProcRemover = function (uid, idx) {
 // data/hora, sem sobrescrever o que já foi colado antes. Renderizado direto no card
 // expandido (não é modal) — o advogado pediu pra ficar visível assim que abre o processo,
 // sem precisar de um segundo clique.
+// ===== Prazos das partes (04/out/2026) =====
+// Controle dos prazos que NÃO são do escritório (parte contrária, cliente, perito/terceiro, juízo),
+// sempre com a descrição do que o prazo se refere. Cada item: {id, parte, desc, data:'DD/MM/AAAA',
+// status:'aberto'|'cumprido'}. Serializado em JSON na coluna "Prazos das Partes" da planilha.
+var PP_ROTULO_ = { contraria: 'Parte contrária', cliente: 'Cliente', terceiro: 'Perito / terceiro', juizo: 'Juízo / cartório' };
+function prazosPartesParse_(raw) {
+  if (!raw) return [];
+  try {
+    var arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(function (it) { return it && (it.desc || it.data); }).map(function (it, i) {
+      return { id: it.id || (i + 1), parte: PP_ROTULO_[it.parte] ? it.parte : 'contraria', desc: String(it.desc || ''), data: String(it.data || ''), status: it.status === 'cumprido' ? 'cumprido' : 'aberto' };
+    });
+  } catch (e) { return []; }
+}
+function prazosPartesMontar_(itens) { return itens && itens.length ? JSON.stringify(itens) : ''; }
+function prazosPartesDias_(it) { var c = classificarPrazo_(it.data); return c ? c.dias : 99999; }
+// Próximo prazo ainda aberto (o de menor data) — alimenta o selo separado no card.
+function prazosPartesProximo_(p) {
+  var abertos = (p.prazosPartes || []).filter(function (it) { return it.status !== 'cumprido' && classificarPrazo_(it.data); });
+  if (!abertos.length) return null;
+  abertos.sort(function (a, b) { return prazosPartesDias_(a) - prazosPartesDias_(b); });
+  return abertos[0];
+}
+function prazosPartesSeloHtml_(p) {
+  var it = prazosPartesProximo_(p); if (!it) return '';
+  var c = classificarPrazo_(it.data);
+  var n = (p.prazosPartes || []).filter(function (x) { return x.status !== 'cumprido'; }).length;
+  var tit = PP_ROTULO_[it.parte] + ': ' + it.desc + ' — ' + formatDate(it.data) + (n > 1 ? ' (+' + (n - 1) + ' em aberto)' : '');
+  return '<span class="prazo-badge ' + c.cls + '" style="font-size:10.5px;padding:2px 7px;border:1px dashed currentColor" title="' + escHtml(tit) + '">⚖️ ' + escHtml(PP_ROTULO_[it.parte]) + ': ' + escHtml(c.texto.replace('Faltam ', 'faltam ').replace('Venceu há', 'venceu há').replace('Vence hoje', 'vence hoje')) + '</span>';
+}
+function prazosPartesBlocoHtml_(p) {
+  var itens = (p.prazosPartes || []).slice().sort(function (a, b) {
+    if ((a.status === 'cumprido') !== (b.status === 'cumprido')) return a.status === 'cumprido' ? 1 : -1;
+    return prazosPartesDias_(a) - prazosPartesDias_(b);
+  });
+  var lista = itens.length ? itens.map(function (it) {
+    var cumprido = it.status === 'cumprido';
+    var c = classificarPrazo_(it.data);
+    var badge = cumprido ? ' <span class="prazo-badge prazo-ok" style="padding:2px 8px;font-size:11px">Cumprido</span>' : (c ? ' <span class="prazo-badge ' + c.cls + '" style="padding:2px 8px;font-size:11px">' + c.texto + '</span>' : '');
+    return '<div class="historico-proc-item"' + (cumprido ? ' style="opacity:.6"' : '') + '>'
+      + '<div class="historico-proc-item-head"><span class="historico-proc-data"><strong style="color:var(--text)">' + escHtml(PP_ROTULO_[it.parte]) + '</strong> · ' + (it.data ? formatDate(it.data) : 'sem data') + badge + '</span>'
+      + '<span style="margin-left:auto;display:flex;gap:6px">'
+      + '<button type="button" class="dp-rem" style="color:var(--green)" title="' + (cumprido ? 'Reabrir este prazo' : 'Marcar como cumprido') + '" onclick="event.stopPropagation();prazoPartesAlternar(' + p._uid + ',' + it.id + ')">' + (cumprido ? '↺' : '✔') + '</button>'
+      + '<button type="button" class="dp-rem" title="Excluir este prazo" onclick="event.stopPropagation();prazoPartesRemover(' + p._uid + ',' + it.id + ')">✕</button>'
+      + '</span></div>'
+      + '<div class="historico-proc-texto"' + (cumprido ? ' style="text-decoration:line-through"' : '') + '>' + escHtml(it.desc) + '</div></div>';
+  }).join('') : '<div class="despesas-proc-vazio">Nenhum prazo de parte lançado. Registre abaixo o prazo da parte contrária (ou de outro) e a que ele se refere.</div>';
+  var opcoes = Object.keys(PP_ROTULO_).map(function (k) { return '<option value="' + k + '">' + PP_ROTULO_[k] + '</option>'; }).join('');
+  var u = p._uid;
+  var aberto = itens.filter(function (it) { return it.status !== 'cumprido'; }).length;
+  return '<div class="historico-proc-box" id="prazos-partes-' + u + '" onclick="event.stopPropagation()">'
+    + '<div class="despesas-proc-header"><span>⚖️ Prazos das Partes' + (aberto ? ' <span class="historico-proc-count">' + aberto + '</span>' : '') + '</span></div>'
+    + '<div class="historico-proc-lista">' + lista + '</div>'
+    + '<div class="historico-proc-form"><div style="display:flex;gap:10px;flex-wrap:wrap">'
+    + '<div style="flex:0 0 170px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">De quem é o prazo</label><select id="ppParte-' + u + '" style="width:100%">' + opcoes + '</select></div>'
+    + '<div style="flex:0 0 160px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Data final</label><input type="date" id="ppData-' + u + '" style="width:100%"></div>'
+    + '<div style="flex:1;min-width:220px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">A que se refere</label><input type="text" id="ppDesc-' + u + '" placeholder="Ex.: Contestação; manifestação sobre o laudo; réplica..." style="width:100%"></div>'
+    + '</div><button type="button" class="dp-add-btn" style="margin-top:8px" onclick="prazoPartesAdicionar(' + u + ')">+ Adicionar prazo</button></div></div>';
+}
+function prazosPartesSalvar_(p) {
+  fetch(URL_AS, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ acao: 'atualizar', linha: p._row + 1, campos: { 'Prazos das Partes': prazosPartesMontar_(p.prazosPartes) } }) }).catch(function () {});
+  var box = document.getElementById('prazos-partes-' + p._uid);
+  if (box) box.outerHTML = prazosPartesBlocoHtml_(p);
+  renderProcessos(); // atualiza o selo do card
+}
+function prazosPartesNovoId_(itens) { var m = 0; itens.forEach(function (it) { if (it.id > m) m = it.id; }); return m + 1; }
+window.prazoPartesAdicionar = function (uid) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  var desc = (document.getElementById('ppDesc-' + uid).value || '').trim();
+  var data = inputParaData(document.getElementById('ppData-' + uid).value);
+  if (!desc || !data) { alert('Informe a data final e a que o prazo se refere.'); return; }
+  var itens = p.prazosPartes || [];
+  itens.push({ id: prazosPartesNovoId_(itens), parte: document.getElementById('ppParte-' + uid).value, desc: desc, data: data, status: 'aberto' });
+  p.prazosPartes = itens;
+  prazosPartesSalvar_(p);
+};
+window.prazoPartesAlternar = function (uid, id) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  (p.prazosPartes || []).forEach(function (it) { if (it.id === id) it.status = it.status === 'cumprido' ? 'aberto' : 'cumprido'; });
+  prazosPartesSalvar_(p);
+};
+window.prazoPartesRemover = function (uid, id) {
+  var p = allProcessos.find(function (x) { return x._uid === parseInt(uid); }); if (!p) return;
+  if (!confirm('Excluir este prazo?')) return;
+  p.prazosPartes = (p.prazosPartes || []).filter(function (it) { return it.id !== id; });
+  prazosPartesSalvar_(p);
+};
+
 function historicoProcBlocoHtml_(p) {
   var itens = p.historicoProcesso || [];
   var porId = {}; itens.forEach(function (it) { if (it.id) porId[it.id] = it; });
@@ -7891,6 +7983,7 @@ function renderCard(p, idx) {
             ${notaInternaBoxHtml_(p)}
           </div>
 
+          ${prazosPartesBlocoHtml_(p)}
           ${historicoProcBlocoHtml_(p)}
           ${despesasProcBlocoHtml_(p)}
 
@@ -8050,6 +8143,7 @@ function renderCard(p, idx) {
       </div>
       <div class="processo-right">
         ${prazoBadge}
+        ${prazosPartesSeloHtml_(p)}
         ${p.sistema ? `<span class="sistema-badge">${escHtml(p.sistema)}</span>` : ''}
       </div>
     </div>`;
@@ -26808,6 +26902,8 @@ window.cpRenderFixas=cpRenderFixas;
     if(texto.length<20){ window.iaMensagem_(box,'Cole primeiro o texto da publicação, despacho ou intimação.'); return; }
     if(texto.length>20000) texto=texto.slice(0,20000);
     var hoje=pubIso(new Date());
+    var pAtual=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(x){return x._uid===parseInt(uid);})||{};
+    var posicao=String(pAtual.parte||'').trim();
     var prompt='Você é um assistente jurídico brasileiro. Leia o texto abaixo (publicação do Diário Oficial, despacho, decisão ou intimação) e extraia os dados pedidos.\n'
       +'Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois e sem bloco de código.\n\n'
       +'Regras:\n'
@@ -26816,10 +26912,11 @@ window.cpRenderFixas=cpRenderFixas;
       +'- NÃO calcule a data fatal: informe o prazo em dias e a data de referência. Se o texto trouxer uma data-limite expressa, informe-a em data_limite_expressa.\n'
       +'- contagem: "uteis" ou "corridos". Se o texto não disser, use "uteis" (regra geral do CPC, art. 219) e registre isso em observacoes.\n'
       +'- referencia_tipo: "disponibilizacao" (data de disponibilização no DJe), "publicacao" (data de publicação no DJe) ou "ciencia" (intimação pessoal/eletrônica). Se o texto trouxer disponibilização e publicação, use "publicacao".\n'
-      +'- providencia: o que o advogado precisa fazer, objetivo e no imperativo (ex.: "Manifestar-se sobre o laudo pericial").\n'
+      +'- prazo_de: de quem é o prazo. O escritório representa '+(posicao?'a parte na posição de "'+posicao+'"':'uma das partes (posição não informada)')+'. Use "nosso" se o prazo é da parte representada pelo escritório; "contraria" se é da parte adversa; "terceiro" se é de perito, MP, testemunha ou outro; "juizo" se é prazo do juízo/cartório. Se não der para saber, use null e explique em observacoes.\n'
+      +'- providencia: o que a parte responsável pelo prazo precisa fazer, objetivo e no imperativo (ex.: "Manifestar-se sobre o laudo pericial").\n'
       +'- Se houver mais de uma providência ou prazo, registre a de prazo mais curto em prazo_dias/providencia e as demais em observacoes.\n\n'
       +'Formato:\n'
-      +'{"tipo_ato":"despacho|decisão|sentença|acórdão|intimação|edital|outro","numero_processo":null,"resumo":"1 a 2 frases","providencia":"...","prazo_dias":null,"contagem":"uteis","referencia_tipo":null,"referencia_data":null,"data_limite_expressa":null,"data_audiencia":null,"hora_audiencia":null,"urgencia_sugerida":"alta|media|baixa","fundamento":"trecho ou dispositivo que fundamenta o prazo","observacoes":"dúvidas ou ambiguidades"}\n\n'
+      +'{"tipo_ato":"despacho|decisão|sentença|acórdão|intimação|edital|outro","numero_processo":null,"resumo":"1 a 2 frases","providencia":"...","prazo_dias":null,"contagem":"uteis","referencia_tipo":null,"referencia_data":null,"prazo_de":"nosso|contraria|terceiro|juizo","data_limite_expressa":null,"data_audiencia":null,"hora_audiencia":null,"urgencia_sugerida":"alta|media|baixa","fundamento":"trecho ou dispositivo que fundamenta o prazo","observacoes":"dúvidas ou ambiguidades"}\n\n'
       +'TEXTO:\n'+texto;
     var rotulo=btn.innerHTML;
     btn.disabled=true; btn.textContent='⏳ Lendo a publicação...';
@@ -26869,6 +26966,7 @@ window.cpRenderFixas=cpRenderFixas;
     c.appendChild(linha);
 
     var linha2=el('div','display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;align-items:flex-end');
+    linha2.appendChild(campo('De quem é o prazo',select('pub-quem',[['nosso','Nosso (parte que representamos)'],['contraria','Parte contrária'],['cliente','Cliente'],['terceiro','Perito / terceiro'],['juizo','Juízo / cartório']],['nosso','contraria','terceiro','juizo'].indexOf(d.prazo_de)>=0?d.prazo_de:'nosso')));
     linha2.appendChild(campo('Data fatal (estimada)',input('pub-fatal','date','')));
     var urg=el('div','flex:1;min-width:170px;font-size:13px;padding-bottom:6px'); urg.id='pub-urg'; linha2.appendChild(urg);
     c.appendChild(linha2);
@@ -26928,6 +27026,14 @@ window.cpRenderFixas=cpRenderFixas;
     var dias=g('pub-dias').value, cont=g('pub-cont').value==='corridos'?'dias corridos':'dias úteis';
     if(!fatal && !prov){ msg.textContent='Nada para aplicar: informe a data fatal ou a providência.'; return; }
     var hojeISO=pubIso(new Date()), hojeBR=pubBR(hojeISO), campos={};
+    var quem=g('pub-quem')?g('pub-quem').value:'nosso';
+    if(quem!=='nosso'){
+      // Prazo de outra parte: vai para "Prazos das Partes" e não mexe nos prazos do escritório.
+      if(!fatal){ msg.textContent='Informe a data fatal do prazo da outra parte.'; return; }
+      var lst=p.prazosPartes||[];
+      lst.push({id:prazosPartesNovoId_(lst),parte:quem,desc:prov||(d.tipo_ato||'Prazo'),data:pubBR(fatal),status:'aberto'});
+      p.prazosPartes=lst; campos['Prazos das Partes']=prazosPartesMontar_(lst);
+    } else {
     if(fatal){
       var fBR=pubBR(fatal);
       p.prazoData=fBR; campos['prazoData']=fBR;
@@ -26938,9 +27044,10 @@ window.cpRenderFixas=cpRenderFixas;
       if(atual.indexOf(linha)<0){ p.proximoPassoAdv=atual?(atual+'\n'+linha):linha; }
       campos['proximoPassoAdv']=p.proximoPassoAdv;
     }
+    }
     if(g('pub-sit') && g('pub-sit').checked){
       var reg=hojeBR+' — '+(d.tipo_ato||'Publicação')+(d.resumo?': '+d.resumo:'')
-        +(fatal?' Prazo'+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
+        +(fatal?' Prazo'+(quem!=='nosso'?' ('+({contraria:'da parte contrária',cliente:'do cliente',terceiro:'de perito/terceiro',juizo:'do juízo'}[quem]||'de outra parte')+')':'')+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
       var ult=String(p.ultima||'').trim();
       p.ultima=ult?(ult+'\n'+reg):reg; campos['Última Atualização']=p.ultima;
       p.dataAtua=hojeBR; campos['Data Atualização']=hojeBR;
