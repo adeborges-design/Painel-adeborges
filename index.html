@@ -7711,7 +7711,7 @@ function dadosBancariosCliHtml_(p) {
 // Controle dos prazos que NÃO são do escritório (parte contrária, cliente, perito/terceiro, juízo),
 // sempre com a descrição do que o prazo se refere. Cada item: {id, parte, desc, data:'DD/MM/AAAA',
 // status:'aberto'|'cumprido'}. Serializado em JSON na coluna "Prazos das Partes" da planilha.
-var PP_ROTULO_ = { contraria: 'Parte contrária', cliente: 'Cliente', terceiro: 'Perito / terceiro', juizo: 'Juízo / cartório' };
+var PP_ROTULO_ = { contraria: 'Parte contrária', cliente: 'Cliente', inventariante: 'Inventariante dativo', terceiro: 'Perito / terceiro', juizo: 'Juízo / cartório' };
 function prazosPartesParse_(raw) {
   if (!raw) return [];
   try {
@@ -27039,11 +27039,11 @@ window.cpRenderFixas=cpRenderFixas;
       +'- NÃO calcule a data fatal: informe o prazo em dias e a data de referência. Se o texto trouxer uma data-limite expressa, informe-a em data_limite_expressa.\n'
       +'- contagem: "uteis" ou "corridos". Se o texto não disser, use "uteis" (regra geral do CPC, art. 219) e registre isso em observacoes.\n'
       +'- referencia_tipo: "disponibilizacao" (data de disponibilização no DJe), "publicacao" (data de publicação no DJe) ou "ciencia" (intimação pessoal/eletrônica). Se o texto trouxer disponibilização e publicação, use "publicacao".\n'
-      +'- prazo_de: de quem é o prazo. O escritório representa '+(posicao?'a parte na posição de "'+posicao+'"':'uma das partes (posição não informada)')+'. Use "nosso" se o prazo é da parte representada pelo escritório; "contraria" se é da parte adversa; "terceiro" se é de perito, MP, testemunha ou outro; "juizo" se é prazo do juízo/cartório. Se não der para saber, use null e explique em observacoes.\n'
+      +'- prazo_de: de quem é o prazo. O escritório representa '+(posicao?'a parte na posição de "'+posicao+'"':'uma das partes (posição não informada)')+'. Use "nosso" se o prazo é da parte representada pelo escritório; "contraria" se é da parte adversa; "inventariante" se é do inventariante dativo; "terceiro" se é de perito, MP, testemunha ou outro; "juizo" se é prazo do juízo/cartório. Se não der para saber, use null e explique em observacoes.\n'
       +'- providencia: o que a parte responsável pelo prazo precisa fazer, objetivo e no imperativo (ex.: "Manifestar-se sobre o laudo pericial").\n'
       +'- Se houver mais de uma providência ou prazo, registre a de prazo mais curto em prazo_dias/providencia e as demais em observacoes.\n\n'
       +'Formato:\n'
-      +'{"tipo_ato":"despacho|decisão|sentença|acórdão|intimação|edital|outro","numero_processo":null,"resumo":"1 a 2 frases","providencia":"...","prazo_dias":null,"contagem":"uteis","referencia_tipo":null,"referencia_data":null,"prazo_de":"nosso|contraria|terceiro|juizo","data_limite_expressa":null,"data_audiencia":null,"hora_audiencia":null,"urgencia_sugerida":"alta|media|baixa","fundamento":"trecho ou dispositivo que fundamenta o prazo","observacoes":"dúvidas ou ambiguidades"}\n\n'
+      +'{"tipo_ato":"despacho|decisão|sentença|acórdão|intimação|edital|outro","numero_processo":null,"resumo":"1 a 2 frases","providencia":"...","prazo_dias":null,"contagem":"uteis","referencia_tipo":null,"referencia_data":null,"prazo_de":"nosso|contraria|inventariante|terceiro|juizo","data_limite_expressa":null,"data_audiencia":null,"hora_audiencia":null,"urgencia_sugerida":"alta|media|baixa","fundamento":"trecho ou dispositivo que fundamenta o prazo","observacoes":"dúvidas ou ambiguidades"}\n\n'
       +'TEXTO:\n'+texto;
     var rotulo=btn.innerHTML;
     btn.disabled=true; btn.textContent='⏳ Lendo a publicação...';
@@ -27093,7 +27093,7 @@ window.cpRenderFixas=cpRenderFixas;
     c.appendChild(linha);
 
     var linha2=el('div','display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;align-items:flex-end');
-    linha2.appendChild(campo('De quem é o prazo',select('pub-quem',[['nosso','Nosso (parte que representamos)'],['contraria','Parte contrária'],['cliente','Cliente'],['terceiro','Perito / terceiro'],['juizo','Juízo / cartório']],['nosso','contraria','terceiro','juizo'].indexOf(d.prazo_de)>=0?d.prazo_de:'nosso')));
+    linha2.appendChild(campo('De quem é o prazo',select('pub-quem',[['nosso','Nosso (parte que representamos)'],['contraria','Parte contrária'],['cliente','Cliente'],['inventariante','Inventariante dativo'],['terceiro','Perito / terceiro'],['juizo','Juízo / cartório']],['nosso','contraria','inventariante','terceiro','juizo'].indexOf(d.prazo_de)>=0?d.prazo_de:'nosso')));
     linha2.appendChild(campo('Data fatal (estimada)',input('pub-fatal','date','')));
     var urg=el('div','flex:1;min-width:170px;font-size:13px;padding-bottom:6px'); urg.id='pub-urg'; linha2.appendChild(urg);
     c.appendChild(linha2);
@@ -27174,7 +27174,7 @@ window.cpRenderFixas=cpRenderFixas;
     }
     if(g('pub-sit') && g('pub-sit').checked){
       var reg=hojeBR+' — '+(d.tipo_ato||'Publicação')+(d.resumo?': '+d.resumo:'')
-        +(fatal?' Prazo'+(quem!=='nosso'?' ('+({contraria:'da parte contrária',cliente:'do cliente',terceiro:'de perito/terceiro',juizo:'do juízo'}[quem]||'de outra parte')+')':'')+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
+        +(fatal?' Prazo'+(quem!=='nosso'?' ('+({contraria:'da parte contrária',cliente:'do cliente',inventariante:'do inventariante dativo',terceiro:'de perito/terceiro',juizo:'do juízo'}[quem]||'de outra parte')+')':'')+(dias?' de '+dias+' '+cont:'')+' com data fatal estimada em '+pubBR(fatal)+'.':'');
       var ult=String(p.ultima||'').trim();
       p.ultima=ult?(ult+'\n'+reg):reg; campos['Última Atualização']=p.ultima;
       p.dataAtua=hojeBR; campos['Data Atualização']=hojeBR;
