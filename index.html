@@ -4191,6 +4191,41 @@
             <label>Estado (UF)</label>
             <input type="text" id="ed-estado" maxlength="2" placeholder="SP">
           </div>
+          <div class="form-field form-full">
+            <label style="font-weight:700;color:var(--text);margin-top:6px">🏦 Dados bancários e PIX do cliente (para repasses e devoluções)</label>
+          </div>
+          <div class="form-field">
+            <label>Banco</label>
+            <input type="text" id="ed-bancoCli" placeholder="Ex.: Itaú, Nubank, Caixa">
+          </div>
+          <div class="form-field">
+            <label>Agência</label>
+            <input type="text" id="ed-agenciaCli" maxlength="10">
+          </div>
+          <div class="form-field">
+            <label>Conta (com dígito)</label>
+            <input type="text" id="ed-contaCli" maxlength="20">
+          </div>
+          <div class="form-field">
+            <label>Tipo de conta</label>
+            <select id="ed-tipoContaCli"><option value="">—</option><option value="Corrente">Corrente</option><option value="Poupança">Poupança</option><option value="Pagamento">Conta de pagamento</option></select>
+          </div>
+          <div class="form-field">
+            <label>Titular da conta</label>
+            <input type="text" id="ed-titularCli" placeholder="Se for diferente do cliente">
+          </div>
+          <div class="form-field">
+            <label>CPF / CNPJ do titular</label>
+            <input type="text" id="ed-docTitularCli" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
+          </div>
+          <div class="form-field">
+            <label>Tipo de chave PIX</label>
+            <select id="ed-tipoPix"><option value="">—</option><option value="CPF/CNPJ">CPF / CNPJ</option><option value="E-mail">E-mail</option><option value="Telefone">Telefone</option><option value="Aleatória">Chave aleatória</option></select>
+          </div>
+          <div class="form-field">
+            <label>Chave PIX</label>
+            <input type="text" id="ed-chavePix">
+          </div>
         </div>
       </div>
       <div class="form-section">
@@ -4793,6 +4828,41 @@
           <div class="form-field">
             <label>Estado (UF)</label>
             <input type="text" id="cad-estado" maxlength="2" placeholder="SP">
+          </div>
+          <div class="form-field form-full">
+            <label style="font-weight:700;color:var(--text);margin-top:6px">🏦 Dados bancários e PIX do cliente (para repasses e devoluções)</label>
+          </div>
+          <div class="form-field">
+            <label>Banco</label>
+            <input type="text" id="cad-bancoCli" placeholder="Ex.: Itaú, Nubank, Caixa">
+          </div>
+          <div class="form-field">
+            <label>Agência</label>
+            <input type="text" id="cad-agenciaCli" maxlength="10">
+          </div>
+          <div class="form-field">
+            <label>Conta (com dígito)</label>
+            <input type="text" id="cad-contaCli" maxlength="20">
+          </div>
+          <div class="form-field">
+            <label>Tipo de conta</label>
+            <select id="cad-tipoContaCli"><option value="">—</option><option value="Corrente">Corrente</option><option value="Poupança">Poupança</option><option value="Pagamento">Conta de pagamento</option></select>
+          </div>
+          <div class="form-field">
+            <label>Titular da conta</label>
+            <input type="text" id="cad-titularCli" placeholder="Se for diferente do cliente">
+          </div>
+          <div class="form-field">
+            <label>CPF / CNPJ do titular</label>
+            <input type="text" id="cad-docTitularCli" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)">
+          </div>
+          <div class="form-field">
+            <label>Tipo de chave PIX</label>
+            <select id="cad-tipoPix"><option value="">—</option><option value="CPF/CNPJ">CPF / CNPJ</option><option value="E-mail">E-mail</option><option value="Telefone">Telefone</option><option value="Aleatória">Chave aleatória</option></select>
+          </div>
+          <div class="form-field">
+            <label>Chave PIX</label>
+            <input type="text" id="cad-chavePix">
           </div>
         </div>
       </div>
@@ -6772,6 +6842,15 @@ function parseProcessos(rows) {
     // Prazos das partes (04/out/2026): prazos da parte contrária, do cliente, de perito/terceiro ou do
     // juízo, com a descrição do que o prazo se refere. JSON num único campo (coluna "Prazos das Partes").
     const prazosPartes          = prazosPartesParse_(get(row, 'Prazos das Partes', -1));
+    // Dados bancários e PIX do cliente (05/out/2026) — colunas novas na planilha (cabeçalhos abaixo).
+    const bancoCli       = get(row, 'Banco do Cliente', -1);
+    const agenciaCli     = get(row, 'Agência do Cliente', -1);
+    const contaCli       = get(row, 'Conta do Cliente', -1);
+    const tipoContaCli   = get(row, 'Tipo de Conta do Cliente', -1);
+    const titularCli     = get(row, 'Titular da Conta do Cliente', -1);
+    const docTitularCli  = get(row, 'CPF/CNPJ do Titular', -1);
+    const tipoPix        = get(row, 'Tipo de Chave PIX', -1);
+    const chavePix       = get(row, 'Chave PIX', -1);
 
     // So processa linhas com numero (processo real)
     if (!nro || isNaN(parseInt(nro))) continue;
@@ -6815,6 +6894,7 @@ function parseProcessos(rows) {
       urgencia,
       prazoInfo,
       valorCausa, valorAtualizadoExecucao, despesasProcesso, historicoProcesso, prazosPartes,
+      bancoCli, agenciaCli, contaCli, tipoContaCli, titularCli, docTitularCli, tipoPix, chavePix,
       _row: i
     });
   }
@@ -7608,6 +7688,25 @@ window.despesaProcRemover = function (uid, idx) {
 // data/hora, sem sobrescrever o que já foi colado antes. Renderizado direto no card
 // expandido (não é modal) — o advogado pediu pra ficar visível assim que abre o processo,
 // sem precisar de um segundo clique.
+// Dados bancários / PIX do cliente (05/out/2026): exibidos no detalhe do processo, com botão de copiar.
+window.copiarDadoCli_ = function (btn) {
+  var txt = btn.getAttribute('data-copiar') || '';
+  var ok = function () { var o = btn.textContent; btn.textContent = '✔ Copiado'; setTimeout(function () { btn.textContent = o; }, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(ok).catch(function () {}); return; }
+  var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); ok(); } catch (e) {} document.body.removeChild(ta);
+};
+function dadosBancariosCliHtml_(p) {
+  var tem = p.bancoCli || p.agenciaCli || p.contaCli || p.chavePix || p.titularCli;
+  if (!tem) return '';
+  var btn = function (txt, rot) { return txt ? ' <button type="button" class="dp-rem" style="color:var(--accent);font-size:11px" data-copiar="' + escHtml(txt) + '" onclick="event.stopPropagation();copiarDadoCli_(this)" title="Copiar">' + (rot || '📋 Copiar') + '</button>' : ''; };
+  var linhas = [];
+  var conta = [p.bancoCli, p.agenciaCli ? 'Ag. ' + p.agenciaCli : '', p.contaCli ? 'Conta ' + p.contaCli : '', p.tipoContaCli].filter(Boolean).join(' · ');
+  if (conta) linhas.push('<div>' + escHtml(conta) + btn([p.bancoCli, p.agenciaCli ? 'Agência ' + p.agenciaCli : '', p.contaCli ? 'Conta ' + p.contaCli : '', p.tipoContaCli, p.titularCli ? 'Titular: ' + p.titularCli : '', p.docTitularCli ? 'CPF/CNPJ: ' + p.docTitularCli : ''].filter(Boolean).join('\n'), '📋 Copiar dados') + '</div>');
+  if (p.titularCli || p.docTitularCli) linhas.push('<div style="color:var(--muted);font-size:12px">Titular: ' + escHtml([p.titularCli, p.docTitularCli].filter(Boolean).join(' — ')) + '</div>');
+  if (p.chavePix) linhas.push('<div>PIX' + (p.tipoPix ? ' (' + escHtml(p.tipoPix) + ')' : '') + ': <strong>' + escHtml(p.chavePix) + '</strong>' + btn(p.chavePix, '📋 Copiar PIX') + '</div>');
+  return '<div class="detail-block"><div class="detail-label">🏦 Dados bancários / PIX</div><div class="detail-value" style="display:flex;flex-direction:column;gap:3px">' + linhas.join('') + '</div></div>';
+}
 // ===== Prazos das partes (04/out/2026) =====
 // Controle dos prazos que NÃO são do escritório (parte contrária, cliente, perito/terceiro, juízo),
 // sempre com a descrição do que o prazo se refere. Cada item: {id, parte, desc, data:'DD/MM/AAAA',
@@ -7970,6 +8069,7 @@ function renderCard(p, idx) {
               <div class="detail-label">E-mail</div>
               <div class="detail-value">${escHtml(p.email)}</div>
             </div>` : ''}
+            ${dadosBancariosCliHtml_(p)}
           </div>
 
           <div class="proc-box-grupo">
@@ -13687,6 +13787,14 @@ function abrirEdicao(uid) {
   document.getElementById('ed-cep').value = p.cep || '';
   document.getElementById('ed-cidade').value = p.cidade || '';
   document.getElementById('ed-estado').value = p.estado || '';
+  document.getElementById('ed-bancoCli').value = p.bancoCli || '';
+  document.getElementById('ed-agenciaCli').value = p.agenciaCli || '';
+  document.getElementById('ed-contaCli').value = p.contaCli || '';
+  document.getElementById('ed-tipoContaCli').value = p.tipoContaCli || '';
+  document.getElementById('ed-titularCli').value = p.titularCli || '';
+  document.getElementById('ed-docTitularCli').value = p.docTitularCli || '';
+  document.getElementById('ed-tipoPix').value = p.tipoPix || '';
+  document.getElementById('ed-chavePix').value = p.chavePix || '';
 
   // Preencher campos - Dados do Processo
   document.getElementById('ed-processo').value = p.processo || '';
@@ -13849,6 +13957,14 @@ async function salvarEdicao() {
     'CEP': document.getElementById('ed-cep').value,
     'Cidade': document.getElementById('ed-cidade').value,
     'Estado (UF)': document.getElementById('ed-estado').value,
+    'Banco do Cliente': document.getElementById('ed-bancoCli').value,
+    'Agência do Cliente': document.getElementById('ed-agenciaCli').value,
+    'Conta do Cliente': document.getElementById('ed-contaCli').value,
+    'Tipo de Conta do Cliente': document.getElementById('ed-tipoContaCli').value,
+    'Titular da Conta do Cliente': document.getElementById('ed-titularCli').value,
+    'CPF/CNPJ do Titular': document.getElementById('ed-docTitularCli').value,
+    'Tipo de Chave PIX': document.getElementById('ed-tipoPix').value,
+    'Chave PIX': document.getElementById('ed-chavePix').value,
     'Número do Processo': document.getElementById('ed-processo').value,
     'Chave de Acesso': document.getElementById('ed-chaveAcesso').value,
     'Processo Principal': document.getElementById('ed-processoPrincipal').value,
@@ -14237,7 +14353,9 @@ function preencherClienteExistente(p) {
     'cad-nome':'nome','cad-cpf':'cpfCnpj','cad-rg':'rg','cad-estadoCivil':'estadoCivil',
     'cad-profissao':'profissao','cad-telefone':'telefone','cad-email':'email',
     'cad-endereco':'endereco','cad-bairro':'bairro','cad-complemento':'complemento',
-    'cad-cep':'cep','cad-cidade':'cidade','cad-estado':'estado'
+    'cad-cep':'cep','cad-cidade':'cidade','cad-estado':'estado',
+    'cad-bancoCli':'bancoCli','cad-agenciaCli':'agenciaCli','cad-contaCli':'contaCli','cad-tipoContaCli':'tipoContaCli',
+    'cad-titularCli':'titularCli','cad-docTitularCli':'docTitularCli','cad-tipoPix':'tipoPix','cad-chavePix':'chavePix'
   };
   Object.keys(map).forEach(id => {
     const el = document.getElementById(id); if (!el) return;
@@ -14289,6 +14407,7 @@ function abrirCadastro() {
   // Limpar campos
   ['cad-nome','cad-cpf','cad-rg','cad-profissao','cad-telefone','cad-email',
    'cad-endereco','cad-bairro','cad-complemento','cad-cep','cad-cidade','cad-estado',
+   'cad-bancoCli','cad-agenciaCli','cad-contaCli','cad-titularCli','cad-docTitularCli','cad-chavePix',
    'cad-processo','cad-processoPrincipal','cad-tipoVinculo','cad-vara','cad-juiz','cad-juizAtuante','cad-tribunal','cad-linkArtefato','cad-dataAutuacao','cad-dataPrimeiroContato','cad-tipo','cad-parte','cad-outra',
    'cad-advParc','cad-ultima','cad-precisaProvidenciar','cad-proxAdv','cad-dataProxPasso','cad-provCliente','cad-linkTrib',
    'cad-pastaDrive','cad-objeto','cad-diaVenc','cad-datasVenc','cad-buscaCliente',
@@ -14307,7 +14426,7 @@ function abrirCadastro() {
   });
   document.getElementById('cad-formaCalcHon').value = '';
   honToggleFormaCalculo('cad');
-  ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag','cad-situacao'].forEach(id => {
+  ['cad-estadoCivil','cad-sistema','cad-ramo','cad-formaPag','cad-situacao','cad-tipoContaCli','cad-tipoPix'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -14534,6 +14653,14 @@ async function salvarCadastro() {
     'CEP': document.getElementById('cad-cep').value,
     'Cidade': document.getElementById('cad-cidade').value,
     'Estado (UF)': document.getElementById('cad-estado').value,
+    'Banco do Cliente': document.getElementById('cad-bancoCli').value,
+    'Agência do Cliente': document.getElementById('cad-agenciaCli').value,
+    'Conta do Cliente': document.getElementById('cad-contaCli').value,
+    'Tipo de Conta do Cliente': document.getElementById('cad-tipoContaCli').value,
+    'Titular da Conta do Cliente': document.getElementById('cad-titularCli').value,
+    'CPF/CNPJ do Titular': document.getElementById('cad-docTitularCli').value,
+    'Tipo de Chave PIX': document.getElementById('cad-tipoPix').value,
+    'Chave PIX': document.getElementById('cad-chavePix').value,
     'Número do Processo': document.getElementById('cad-processo').value,
     'Chave de Acesso': document.getElementById('cad-chaveAcesso').value,
     'Processo Principal': document.getElementById('cad-processoPrincipal').value,
