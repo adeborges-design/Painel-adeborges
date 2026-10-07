@@ -18958,7 +18958,9 @@ window.cpRenderFixas=cpRenderFixas;
       <div class="entr-no-print" style="display:flex;gap:10px;margin-bottom:16px">
         <button class="loc-btn primary" onclick="rescisaoImprimir()">🖨️ Imprimir / PDF</button>
         <button class="loc-btn" onclick="rescisaoVoltar()">← Editar dados</button>
+        <button class="loc-btn" id="resc-btn-encerrar" style="margin-left:auto;color:var(--red);border-color:var(--red)" onclick="rescisaoEncerrarContrato()" title="Marca o contrato como inativo (Ativo = Não) com motivo, data das chaves e o saldo apurado">🔒 Encerrar este contrato</button>
       </div>
+      <div id="resc-encerrar-msg" class="entr-no-print" style="font-size:12.5px;margin:-6px 0 10px"></div>
       <div class="entr-no-print resc-edit-hint">✏️ Clique no texto do demonstrativo abaixo pra editar antes de imprimir</div>
       <div class="parc-card" id="resc-pdf-target">
         <div class="parc-header">
@@ -24589,6 +24591,34 @@ window.cpRenderFixas=cpRenderFixas;
   window.rescisaoImprimir=function(){
     imprimirComClasse_('printing-rescisao',300);
   };
+  // Encerrar (dar baixa) o contrato a partir do demonstrativo de rescisão (07/out/2026): marca
+  // Ativo = Não e preenche motivo, data (entrega das chaves) e observação com o saldo apurado —
+  // o mesmo que editar o contrato à mão, só que sem esquecer essa etapa depois do cálculo.
+  window.rescisaoEncerrarContrato=function(){
+    var msg=document.getElementById('resc-encerrar-msg'), btn=document.getElementById('resc-btn-encerrar');
+    var erro=function(t){msg.style.color='var(--red)';msg.textContent=t;};
+    var r=rescUltimoResultado;
+    if(!r||!r.contratoSel){erro('Para encerrar o contrato por aqui, volte em "Editar dados" e escolha o contrato na lista "Selecionar contrato". Cálculos preenchidos manualmente não identificam o contrato.');return;}
+    var c=contratosById[r.contratoSel];
+    if(!c){erro('Contrato '+r.contratoSel+' não encontrado.');return;}
+    if(!c.ativo){erro('Este contrato já está encerrado.');return;}
+    var motivo=r.quem==='locador'?'Rescisão antecipada — locador':(r.quem==='mutuo'?'Rescisão por acordo (distrato)':'Rescisão antecipada — locatário');
+    var hojeBR=locDtBRfromInput(new Date().toISOString().slice(0,10));
+    var dataBR=r.dtC?locDtBRfromInput(r.dtC):hojeBR;
+    var obs='Rescisão calculada em '+hojeBR+' — '+r.fl+': '+rescBRL_(r.saldo)+(r.dtC?' (entrega das chaves em '+dataBR+')':' (data de encerramento = data do cálculo; chaves não informadas)')+'.';
+    if(!confirm('Encerrar o contrato '+r.contratoSel+'?\n\nMotivo: '+motivo+'\nData: '+dataBR+'\n'+obs+'\n\nO contrato passa a Inativo e sai dos lançamentos e relatórios dos contratos ativos.'))return;
+    c.ativo=false;c.motivoEncerramento=motivo;c.dataEncerramento=dataBR;c.obsEncerramento=obs;
+    logAuditoria_('Contrato encerrado (rescisão)',r.contratoSel,motivo+' — '+dataBR+' — '+r.fl+': '+rescBRL_(r.saldo));
+    if(live&&c.id){
+      var campos={'Ativo':'Não','Motivo Encerramento':motivo,'Data Encerramento':dataBR,'Observacoes Encerramento':obs};
+      try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locc',id:c.id,campos:campos})});}catch(e){}
+      msg.style.color='var(--green)';msg.textContent='Contrato encerrado e enviado à planilha. Clique em Atualizar em alguns segundos.';
+    }else{
+      msg.style.color='var(--yellow)';msg.textContent='Contrato encerrado apenas nesta sessão (a planilha não está conectada).';
+    }
+    btn.disabled=true;btn.textContent='✔ Contrato encerrado';
+    try{locRenderContratos();locRender();}catch(e){}
+  };
   window.rescisaoCalcular=function(){
     var contratoSel=document.getElementById('resc-contrato-sel').value;
     var locador=document.getElementById('resc-locador').value||'Não informado';
@@ -24736,6 +24766,8 @@ window.cpRenderFixas=cpRenderFixas;
     var vistEl=document.getElementById('resc-vist-data');
     if(vistEl&&!vistEl.value&&dtC)vistEl.value=dtC;
 
+    var bEnc=document.getElementById('resc-btn-encerrar');if(bEnc){bEnc.disabled=false;bEnc.textContent='🔒 Encerrar este contrato';}
+    var mEnc=document.getElementById('resc-encerrar-msg');if(mEnc)mEnc.textContent='';
     document.getElementById('rescisaoFormView').classList.add('loc-hidden');
     document.getElementById('rescisaoResultView').classList.remove('loc-hidden');
   };
