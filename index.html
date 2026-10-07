@@ -17152,6 +17152,15 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield"><label>IPTU (parcela mensal, R$) <a href="javascript:void(0)" onclick="abrirCalcIptu('lc-iptu')" style="font-size:11px;text-decoration:underline;color:var(--accent2)">📐 calcular</a></label><input class="loc-cinput" id="lc-iptu" type="text" inputmode="decimal" placeholder="0,00" oninput="try{locGarCobAtualizarMultiplicadores_()}catch(e){}"></div>
         <div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="lc-multa-atraso-pct" type="text" inputmode="decimal" placeholder="Ex.: 2"></div>
         <div class="loc-cfield"><label>Juros de mora (% ao mês)</label><input class="loc-cinput" id="lc-juros-mora-pct" type="text" inputmode="decimal" placeholder="Ex.: 1"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">🏢 Administradora do condomínio (acesso ao boleto)</div>
+        <div class="loc-cfield"><label>Administradora</label><input class="loc-cinput" id="lc-cond-admin" placeholder="Nome da administradora"></div>
+        <div class="loc-cfield"><label>Site de acesso <a href="javascript:void(0)" onclick="locAbrirSiteCond()" style="font-size:11px;text-decoration:underline;color:var(--accent)">abrir ↗</a></label><input class="loc-cinput" id="lc-cond-site" placeholder="https://..."></div>
+        <div class="loc-cfield"><label>Usuário</label><input class="loc-cinput" id="lc-cond-usuario" autocomplete="off"></div>
+        <div class="loc-cfield"><label>Senha <a href="javascript:void(0)" onclick="locVerSenhaCond()" id="lc-cond-senha-ver" style="font-size:11px;text-decoration:underline;color:var(--accent)">mostrar</a></label><input class="loc-cinput" id="lc-cond-senha" type="password" autocomplete="new-password"></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">👤 Síndico</div>
+        <div class="loc-cfield"><label>Nome do síndico</label><input class="loc-cinput" id="lc-sindico-nome"></div>
+        <div class="loc-cfield"><label>E-mail</label><input class="loc-cinput" id="lc-sindico-email" type="email"></div>
+        <div class="loc-cfield"><label>Telefone</label><input class="loc-cinput" id="lc-sindico-telefone" maxlength="15" oninput="mascararTelefone(this)"></div>
         <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;color:var(--accent2);font-family:'DM Serif Display',serif;font-size:13px">Multa rescisória</div>
         <div class="loc-cfield"><label>Forma da multa rescisória</label><select class="loc-cinput" id="lc-multa-resc-tipo" onchange="locToggleMultaRescisoria()">
           <option value="">Não definida</option>
@@ -19630,7 +19639,7 @@ window.cpRenderFixas=cpRenderFixas;
       var mc=hidx(rc[0]);
       var contratos=rc.slice(1).filter(function(x){return x[0];}).map(function(row){
         var obs=String(cell(row,mc,'Observacoes')||'');
-        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',motivoEncerramento:cell(row,mc,'Motivo Encerramento'),dataEncerramento:cell(row,mc,'Data Encerramento'),obsEncerramento:cell(row,mc,'Observacoes Encerramento'),obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),multaRescTipo:cell(row,mc,'Multa Rescisoria Tipo'),multaRescMultiplo:cell(row,mc,'Multa Rescisoria Multiplo'),multaRescValor:num(cell(row,mc,'Multa Rescisoria Valor')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
+        return {id:String(cell(row,mc,'ID')),contrato:String(cell(row,mc,'Contrato')),locador:cell(row,mc,'Locador'),locatario:cell(row,mc,'Locatario'),cpfLocador:cell(row,mc,'CPF Locador'),cpfLocatario:cell(row,mc,'CPF Locatario'),tipoLocacao:cell(row,mc,'Tipo Locacao'),tipoImovel:cell(row,mc,'Tipo Imovel'),cep:cell(row,mc,'CEP'),dataUltimoReajuste:cell(row,mc,'Data Ultimo Reajuste'),end:cell(row,mc,'Endereco'),aluguel:num(cell(row,mc,'Aluguel')),taxaPct:num(cell(row,mc,'Taxa Perc')),taxaIncideEncargos:String(cell(row,mc,'Taxa Incide Encargos')).toLowerCase()==='sim',venc:cell(row,mc,'Dia Vencimento'),rep:cell(row,mc,'Dia Repasse'),ativo:String(cell(row,mc,'Ativo')).toLowerCase()==='sim',motivoEncerramento:cell(row,mc,'Motivo Encerramento'),dataEncerramento:cell(row,mc,'Data Encerramento'),obsEncerramento:cell(row,mc,'Observacoes Encerramento'),condAdmin:cell(row,mc,'Administradora Condominio'),condSite:cell(row,mc,'Site Administradora'),condUsuario:cell(row,mc,'Usuario Administradora'),condSenha:cell(row,mc,'Senha Administradora'),sindicoNome:cell(row,mc,'Sindico Nome'),sindicoEmail:cell(row,mc,'Sindico Email'),sindicoTelefone:cell(row,mc,'Sindico Telefone'),obs:obs,condominioPadrao:num(cell(row,mc,'Condominio Padrao')),iptuParcela:num(cell(row,mc,'IPTU Parcela')),multaAtrasoPct:num(cell(row,mc,'Multa Atraso Perc')),jurosMoraPct:num(cell(row,mc,'Juros Mora Perc')),multaRescTipo:cell(row,mc,'Multa Rescisoria Tipo'),multaRescMultiplo:cell(row,mc,'Multa Rescisoria Multiplo'),multaRescValor:num(cell(row,mc,'Multa Rescisoria Valor')),contaRecebimento:cell(row,mc,'Conta Recebimento')||'escritorio',bancoLocador:cell(row,mc,'Banco Locador'),agenciaLocador:cell(row,mc,'Agencia Locador'),contaLocador:cell(row,mc,'Conta Locador'),pixLocador:cell(row,mc,'Pix Locador'),anotacoesInquilino:cell(row,mc,'Anotacoes Inquilino'),anotacoesLocador:cell(row,mc,'Anotacoes Locador'),vigInicio:cell(row,mc,'Data Inicio Contrato'),vigFim:cell(row,mc,'Data Fim Contrato'),indiceReajuste:cell(row,mc,'Indice Reajuste'),
           telLocador1:cell(row,mc,'Telefone Locador 1'),telLocador2:cell(row,mc,'Telefone Locador 2'),emailLocador1:cell(row,mc,'Email Locador 1'),emailLocador2:cell(row,mc,'Email Locador 2'),
           telLocatario1:cell(row,mc,'Telefone Locatario 1'),telLocatario2:cell(row,mc,'Telefone Locatario 2'),emailLocatario1:cell(row,mc,'Email Locatario 1'),emailLocatario2:cell(row,mc,'Email Locatario 2'),
           repLocatarioNome:cell(row,mc,'Representante Locatario Nome'),
@@ -23855,12 +23864,22 @@ window.cpRenderFixas=cpRenderFixas;
     wrap.style.display=(ativo==='Não')?'':'none';
   };
 
+  window.locVerSenhaCond=function(){
+    var el=document.getElementById('lc-cond-senha'),lk=document.getElementById('lc-cond-senha-ver');
+    var ver=el.type==='password';el.type=ver?'text':'password';lk.textContent=ver?'ocultar':'mostrar';
+  };
+  window.locAbrirSiteCond=function(){
+    var u=(document.getElementById('lc-cond-site').value||'').trim();
+    if(!u){alert('Informe o site da administradora.');return;}
+    if(!/^https?:\/\//i.test(u))u='https://'+u;
+    window.open(u,'_blank','noopener');
+  };
   window.locNovoContrato=function(){
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
     lcSenhasAtualizarPainel(null);
-    ['lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-multa-resc-tipo','lc-multa-resc-valor','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
+    ['lc-cond-admin','lc-cond-site','lc-cond-usuario','lc-cond-senha','lc-sindico-nome','lc-sindico-email','lc-sindico-telefone','lc-id','lc-contrato','lc-locador','lc-locatario','lc-cpf-locador','lc-cpf-locatario','lc-end','lc-cep','lc-vig-inicio','lc-vig-meses','lc-vig-fim','lc-indice-reajuste','lc-aluguel','lc-venc','lc-rep','lc-condominio','lc-iptu','lc-multa-atraso-pct','lc-juros-mora-pct','lc-multa-resc-tipo','lc-multa-resc-valor','lc-banco-locador','lc-agencia-locador','lc-conta-locador','lc-pix-locador','lc-obs',
      'lc-tel-locador-1','lc-tel-locador-2','lc-email-locador-1','lc-email-locador-2','lc-tel-locatario-1','lc-tel-locatario-2','lc-email-locatario-1','lc-email-locatario-2','lc-rep-locatario',
      'lc-tipo-garantia','lc-gar-seguradora','lc-gar-apolice','lc-gar-empresa-titulo','lc-gar-nr-proposta','lc-gar-titulo-valor-inicial','lc-gar-titulo-valor-atualizado','lc-gar-titulo-data-atualizacao','lc-gar-valor-caucao','lc-gar-caucao-responsavel','lc-gar-imovel-descricao','lc-gar-banco','lc-gar-nr-carta',
      'lc-fiador1-nome','lc-fiador1-telefone','lc-fiador1-email','lc-fiador2-nome','lc-fiador2-telefone','lc-fiador2-email',
@@ -23996,6 +24015,14 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('lc-venc').value=c.venc||'';
     document.getElementById('lc-rep').value=c.rep||'';
     document.getElementById('lc-condominio').value=num(c.condominioPadrao)||'';
+    document.getElementById('lc-cond-admin').value=c.condAdmin||'';
+    document.getElementById('lc-cond-site').value=c.condSite||'';
+    document.getElementById('lc-cond-usuario').value=c.condUsuario||'';
+    document.getElementById('lc-cond-senha').value=c.condSenha||'';
+    document.getElementById('lc-sindico-nome').value=c.sindicoNome||'';
+    document.getElementById('lc-sindico-email').value=c.sindicoEmail||'';
+    document.getElementById('lc-sindico-telefone').value=c.sindicoTelefone||'';
+    try{var _sv=document.getElementById('lc-cond-senha');_sv.type='password';document.getElementById('lc-cond-senha-ver').textContent='mostrar';}catch(e){}
     document.getElementById('lc-iptu').value=num(c.iptuParcela)||'';
     document.getElementById('lc-multa-atraso-pct').value=num(c.multaAtrasoPct)||'';
     document.getElementById('lc-juros-mora-pct').value=num(c.jurosMoraPct)||'';
@@ -24087,6 +24114,13 @@ window.cpRenderFixas=cpRenderFixas;
       'Motivo Encerramento':document.getElementById('lc-ativo').value==='Não'?document.getElementById('lc-encerramento-motivo').value:'',
       'Data Encerramento':document.getElementById('lc-ativo').value==='Não'?locDtBRfromInput(document.getElementById('lc-encerramento-data').value):'',
       'Observacoes Encerramento':document.getElementById('lc-ativo').value==='Não'?document.getElementById('lc-encerramento-obs').value.trim():'',
+      'Administradora Condominio':document.getElementById('lc-cond-admin').value.trim(),
+      'Site Administradora':document.getElementById('lc-cond-site').value.trim(),
+      'Usuario Administradora':document.getElementById('lc-cond-usuario').value.trim(),
+      'Senha Administradora':document.getElementById('lc-cond-senha').value,
+      'Sindico Nome':document.getElementById('lc-sindico-nome').value.trim(),
+      'Sindico Email':document.getElementById('lc-sindico-email').value.trim(),
+      'Sindico Telefone':document.getElementById('lc-sindico-telefone').value.trim(),
       'Observacoes':document.getElementById('lc-obs').value.trim(),
       'Condominio Padrao':num(document.getElementById('lc-condominio').value),
       'IPTU Parcela':num(document.getElementById('lc-iptu').value),
@@ -24142,7 +24176,7 @@ window.cpRenderFixas=cpRenderFixas;
     };
     if(!campos.Contrato||!campos.Locador||!campos.Locatario||!campos.Endereco||document.getElementById('lc-aluguel').value.trim()===''){msg.style.color='var(--red)';msg.textContent='Preencha nº do contrato, locador, locatário, endereço e aluguel (use 0,00 se for contrato rescindido, cobrando só a multa).';return;}
     var id=document.getElementById('lc-id').value;
-    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',motivoEncerramento:campos['Motivo Encerramento'],dataEncerramento:campos['Data Encerramento'],obsEncerramento:campos['Observacoes Encerramento'],obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],multaRescTipo:campos['Multa Rescisoria Tipo'],multaRescMultiplo:campos['Multa Rescisoria Multiplo'],multaRescValor:campos['Multa Rescisoria Valor'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
+    var novo={id:id,contrato:campos.Contrato,locador:campos.Locador,locatario:campos.Locatario,cpfLocador:campos['CPF Locador'],cpfLocatario:campos['CPF Locatario'],tipoLocacao:campos['Tipo Locacao'],tipoImovel:campos['Tipo Imovel'],cep:campos.CEP,end:campos.Endereco,vigInicio:campos['Data Inicio Contrato'],vigFim:campos['Data Fim Contrato'],indiceReajuste:campos['Indice Reajuste'],aluguel:campos.Aluguel,taxaPct:campos['Taxa Perc'],taxaIncideEncargos:campos['Taxa Incide Encargos']==='Sim',venc:campos['Dia Vencimento'],rep:campos['Dia Repasse'],ativo:campos.Ativo.toLowerCase()==='sim',motivoEncerramento:campos['Motivo Encerramento'],dataEncerramento:campos['Data Encerramento'],obsEncerramento:campos['Observacoes Encerramento'],condAdmin:campos['Administradora Condominio'],condSite:campos['Site Administradora'],condUsuario:campos['Usuario Administradora'],condSenha:campos['Senha Administradora'],sindicoNome:campos['Sindico Nome'],sindicoEmail:campos['Sindico Email'],sindicoTelefone:campos['Sindico Telefone'],obs:campos.Observacoes,condominioPadrao:campos['Condominio Padrao'],iptuParcela:campos['IPTU Parcela'],multaAtrasoPct:campos['Multa Atraso Perc'],jurosMoraPct:campos['Juros Mora Perc'],multaRescTipo:campos['Multa Rescisoria Tipo'],multaRescMultiplo:campos['Multa Rescisoria Multiplo'],multaRescValor:campos['Multa Rescisoria Valor'],contaRecebimento:campos['Conta Recebimento'],bancoLocador:campos['Banco Locador'],agenciaLocador:campos['Agencia Locador'],contaLocador:campos['Conta Locador'],pixLocador:campos['Pix Locador'],
       telLocador1:campos['Telefone Locador 1'],telLocador2:campos['Telefone Locador 2'],emailLocador1:campos['Email Locador 1'],emailLocador2:campos['Email Locador 2'],
       telLocatario1:campos['Telefone Locatario 1'],telLocatario2:campos['Telefone Locatario 2'],emailLocatario1:campos['Email Locatario 1'],emailLocatario2:campos['Email Locatario 2'],
       repLocatarioNome:campos['Representante Locatario Nome'],
