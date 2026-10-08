@@ -18383,6 +18383,8 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="reajuste_anual">8. Reajuste anual do aluguel</option>
           <option value="atraso_locador">9. Aviso ao locador — aluguel em atraso, monitorando</option>
           <option value="confirmacao_recebimento">10. Confirmação de recebimento do aluguel — quitação total/parcial</option>
+          <option value="dano_locador">11. Aviso ao locador — locatário informou dano/problema no imóvel</option>
+          <option value="dano_locatario">12. Ao locatário — pedido sobre dano/problema comunicado ao locador</option>
         </select></div>
         <div id="avisoExtrasWrap"></div>
       </div>
@@ -23042,6 +23044,28 @@ window.cpRenderFixas=cpRenderFixas;
         'O novo valor passará a vigorar a partir do próximo vencimento, dia '+(c.venc||'—')+'.'
       ];
     }},
+    // Danos/problemas no imóvel informados pelo locatário (08/out/2026). Dois avisos que usam os
+    // mesmos campos (tipo do dano, descrição, data do relato) — o texto sai editável, como em
+    // todas as correspondências, porque cada dano tem sua particularidade.
+    dano_locador:{ label:'Ao locador — dano/problema informado pelo locatário', paraLocador:true, extrasDano:true, corpo:function(c,ex){
+      var d=avisoDanoDados_(ex);
+      var l=['Prezado(a) '+(c.locador||'Locador')+',',
+        'Comunicamos que o locatário '+(c.locatario||'—')+', do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', informou'+(d.data?' em '+d.data:'')+' a ocorrência do seguinte problema no imóvel: '+d.tipo+'.'];
+      if(d.desc)l.push('Descrição do relato do locatário: '+d.desc);
+      l.push(d.provTexto);
+      l.push('A presente comunicação é feita em atenção ao art. 23, IV, da Lei 8.245/91, sem prejuízo da apuração de responsabilidade pelo dano, nos termos do contrato e do laudo de vistoria de entrada.');
+      l.push('Ficamos aguardando a sua manifestação para as providências necessárias.');
+      return l;
+    }},
+    dano_locatario:{ label:'Ao locatário — pedido comunicado ao locador', extrasDano:true, corpo:function(c,ex){
+      var d=avisoDanoDados_(ex);
+      var l=['Prezado(a) '+(c.locatario||'Locatário')+',',
+        'Confirmamos o recebimento da sua comunicação'+(d.data?' de '+d.data:'')+' sobre o seguinte problema no imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+': '+d.tipo+'.'];
+      l.push('Informamos que o seu pedido foi comunicado ao locador, '+(c.locador||'—')+', para que se manifeste e adote as providências cabíveis. Assim que recebermos o retorno, entraremos em contato com a orientação.');
+      l.push('Enquanto isso, pedimos que: (i) não realize reparos ou obras no imóvel sem autorização prévia e por escrito; (ii) registre o problema com fotos ou vídeos, anotando as datas; e (iii) mantenha o pagamento do aluguel e dos encargos em dia.');
+      l.push('Permanecemos à disposição para esclarecimentos.');
+      return l;
+    }},
     atraso_locador:{ label:'Ao locador — aluguel em atraso, monitorando', paraLocador:true, corpo:function(c,ex){
       return [
         'Prezado(a) '+(c.locador||'Locador')+',',
@@ -23096,6 +23120,33 @@ window.cpRenderFixas=cpRenderFixas;
     if(tipoPre)document.getElementById('avisoTipoSelect').value=tipoPre;
     avisoGerar();
   };
+  // Tipos de dano mais comuns (a lista é só ponto de partida: "Outro" libera o texto livre).
+  var AVISO_DANOS_=['Infiltração / vazamento','Mofo / umidade','Rachaduras / trincas','Pintura / paredes danificadas','Piso / revestimento danificado','Instalação elétrica (curto, tomadas, quadro)','Instalação hidráulica (cano, torneira, descarga)','Telhado / cobertura / calha','Portas / janelas / esquadrias','Vidros quebrados','Portão / grades / fechaduras','Pragas (cupins, ratos, insetos)','Aparelhos / equipamentos que acompanham o imóvel','Área comum / condomínio','Outro (descrever abaixo)'];
+  var AVISO_DANO_PROV_={
+    'ciencia':'Solicitamos a sua ciência e orientação sobre como deseja proceder.',
+    'reparo':'Solicitamos a sua autorização para providenciarmos orçamento e reparo, informando o valor a ser aprovado.',
+    'vistoria':'Informamos que será agendada vistoria no imóvel para constatação do problema e avaliação das providências necessárias.',
+    'urgente':'Trata-se de situação que pode se agravar; solicitamos retorno com urgência para evitar danos maiores ao imóvel.'
+  };
+  function avisoDanoDados_(ex){
+    ex=ex||{};
+    var tipo=ex.danoTipo||'problema no imóvel';
+    if(/^Outro/.test(tipo))tipo=(ex.danoOutro||'').trim()||'problema no imóvel';
+    var dt=ex.danoData?ex.danoData.split('-').reverse().join('/'):'';
+    return {tipo:tipo.charAt(0).toLowerCase()===tipo.charAt(0)?tipo:tipo.charAt(0).toLowerCase()+tipo.slice(1),
+      desc:(ex.danoDesc||'').trim().replace(/([^.!?])$/,'$1.'),data:dt,provTexto:AVISO_DANO_PROV_[ex.danoProv||'ciencia']||AVISO_DANO_PROV_.ciencia};
+  }
+  function avisoDanoExtrasHtml_(){
+    var optT=AVISO_DANOS_.map(function(t){return '<option>'+E(t)+'</option>';}).join('');
+    return '<div class="aviso-extras-dano" style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<div class="loc-cfield"><label>Tipo de dano / problema</label><select class="loc-cinput" id="aviso-dano-tipo" onchange="avisoGerar()">'+optT+'</select></div>'
+      +'<div class="loc-cfield"><label>Data em que o locatário informou</label><input class="loc-cinput" id="aviso-dano-data" type="date" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield full" id="aviso-dano-outro-wrap" style="display:none"><label>Qual o problema? (quando "Outro")</label><input class="loc-cinput" id="aviso-dano-outro" oninput="avisoGerar()" placeholder="Ex.: queda de forro do banheiro"></div>'
+      +'<div class="loc-cfield full"><label>Descrição do relato do locatário <span style="font-weight:400;color:var(--muted)">(onde, desde quando, extensão)</span></label><textarea class="loc-cinput" id="aviso-dano-desc" rows="2" oninput="avisoGerar()" placeholder="Ex.: mancha de umidade no teto do quarto, com goteira quando chove, desde o início de setembro."></textarea></div>'
+      +'<div class="loc-cfield full"><label>Solicitação ao locador <span style="font-weight:400;color:var(--muted)">(usada só no aviso ao locador)</span></label><select class="loc-cinput" id="aviso-dano-prov" onchange="avisoGerar()">'
+      +'<option value="ciencia">Pedir ciência e orientação</option><option value="reparo">Pedir autorização para orçamento e reparo</option><option value="vistoria">Informar que será agendada vistoria</option><option value="urgente">Pedir retorno urgente (risco de agravamento)</option></select></div>'
+      +'</div>';
+  }
   window.avisoGerar=function(){
     var contratoNum=document.getElementById('avisoContratoSelect').value;
     var tipo=document.getElementById('avisoTipoSelect').value;
@@ -23107,7 +23158,11 @@ window.cpRenderFixas=cpRenderFixas;
     if(_avisoReajusteContext&&(tipo!=='reajuste_anual'||contratoNum!==_avisoReajusteContext.contrato))_avisoReajusteContext=null;
     if(_avisoConfirmacaoContext&&(tipo!=='confirmacao_recebimento'||contratoNum!==_avisoConfirmacaoContext.contrato))_avisoConfirmacaoContext=null;
     if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';_avisoContatoTexto='';return;}
-    if(def.extras){
+    if(def.extrasDano){
+      if(!extrasWrap.querySelector('.aviso-extras-dano'))extrasWrap.innerHTML=avisoDanoExtrasHtml_();
+      var _selD=document.getElementById('aviso-dano-tipo'),_wrapO=document.getElementById('aviso-dano-outro-wrap');
+      if(_selD&&_wrapO)_wrapO.style.display=/^Outro/.test(_selD.value)?'':'none';
+    }else if(def.extras){
       if(!extrasWrap.querySelector('.aviso-extras-linha')){
         var pctInicial=_avisoReajusteContext?String(_avisoReajusteContext.pct||'').replace('.',','):'';
         var indiceInicial=(_avisoReajusteContext&&_avisoReajusteContext.indice)||c.indiceReajuste||'';
@@ -23121,6 +23176,7 @@ window.cpRenderFixas=cpRenderFixas;
       extrasWrap.innerHTML='';
     }
     var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
+    if(def.extrasDano){ex.danoTipo=(document.getElementById('aviso-dano-tipo')||{}).value;ex.danoOutro=(document.getElementById('aviso-dano-outro')||{}).value;ex.danoData=(document.getElementById('aviso-dano-data')||{}).value;ex.danoDesc=(document.getElementById('aviso-dano-desc')||{}).value;ex.danoProv=(document.getElementById('aviso-dano-prov')||{}).value;}
     if(_avisoReajusteContext){ex.valorAnterior=_avisoReajusteContext.valorAnterior;ex.valorNovo=_avisoReajusteContext.valorNovo;ex.jaAplicado=true;ex.integral=_avisoReajusteContext.integral;}
     if(_avisoConfirmacaoContext){ex.mesRef=_avisoConfirmacaoContext.mesRef;ex.valorRecebido=_avisoConfirmacaoContext.valorRecebido;ex.valorCobrado=_avisoConfirmacaoContext.valorCobrado;ex.diferenca=_avisoConfirmacaoContext.diferenca;ex.acaoTexto=_avisoConfirmacaoContext.acaoTexto;}
     var paragrafos=def.corpo(c,ex);
