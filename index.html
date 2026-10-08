@@ -3181,7 +3181,7 @@
     // o modal, chama preAquecer(chave) — gera a imagem em background (80ms de folga pro DOM
     // assentar) pra já estar pronta quando o usuário clicar em algum botão de envio. obter()
     // devolve a imagem do cache, ou gera na hora se ainda não tiver.
-    function criarCache(gerarFn) {
+    function criarCache(gerarFn, atrasoMs) {
       var cache = null, chaveCache = null;
       return {
         preAquecer: function (chave) {
@@ -3189,7 +3189,7 @@
           setTimeout(function () {
             if (chaveCache !== chave) return;
             gerarFn().then(function (file) { if (chaveCache === chave) cache = file; }).catch(function () {});
-          }, 80);
+          }, atrasoMs || 80);
         },
         obter: function () {
           if (cache) return Promise.resolve(cache);
@@ -23141,12 +23141,14 @@ window.cpRenderFixas=cpRenderFixas;
     return '<div class="aviso-extras-dano" style="display:flex;gap:10px;flex-wrap:wrap">'
       +'<div class="loc-cfield"><label>Tipo de dano / problema</label><select class="loc-cinput" id="aviso-dano-tipo" onchange="avisoGerar()">'+optT+'</select></div>'
       +'<div class="loc-cfield"><label>Data em que o locatário informou</label><input class="loc-cinput" id="aviso-dano-data" type="date" onchange="avisoGerar()"></div>'
-      +'<div class="loc-cfield full" id="aviso-dano-outro-wrap" style="display:none"><label>Qual o problema? (quando "Outro")</label><input class="loc-cinput" id="aviso-dano-outro" oninput="avisoGerar()" placeholder="Ex.: queda de forro do banheiro"></div>'
-      +'<div class="loc-cfield full"><label>Descrição do relato do locatário <span style="font-weight:400;color:var(--muted)">(onde, desde quando, extensão)</span></label><textarea class="loc-cinput" id="aviso-dano-desc" rows="2" oninput="avisoGerar()" placeholder="Ex.: mancha de umidade no teto do quarto, com goteira quando chove, desde o início de setembro."></textarea></div>'
+      +'<div class="loc-cfield full" id="aviso-dano-outro-wrap" style="display:none"><label>Qual o problema? (quando "Outro")</label><input class="loc-cinput" id="aviso-dano-outro" oninput="avisoGerarDebounced_()" placeholder="Ex.: queda de forro do banheiro"></div>'
+      +'<div class="loc-cfield full"><label>Descrição do relato do locatário <span style="font-weight:400;color:var(--muted)">(onde, desde quando, extensão)</span></label><textarea class="loc-cinput" id="aviso-dano-desc" rows="2" oninput="avisoGerarDebounced_()" placeholder="Ex.: mancha de umidade no teto do quarto, com goteira quando chove, desde o início de setembro."></textarea></div>'
       +'<div class="loc-cfield full"><label>Solicitação ao locador <span style="font-weight:400;color:var(--muted)">(usada só no aviso ao locador)</span></label><select class="loc-cinput" id="aviso-dano-prov" onchange="avisoGerar()">'
       +'<option value="ciencia">Pedir ciência e orientação</option><option value="reparo">Pedir autorização para orçamento e reparo</option><option value="vistoria">Informar que será agendada vistoria</option><option value="urgente">Pedir retorno urgente (risco de agravamento)</option></select></div>'
       +'</div>';
   }
+  var _avisoGerarTimer_=null;
+  window.avisoGerarDebounced_=function(){clearTimeout(_avisoGerarTimer_);_avisoGerarTimer_=setTimeout(function(){window.avisoGerar();},350);};
   window.avisoGerar=function(){
     var contratoNum=document.getElementById('avisoContratoSelect').value;
     var tipo=document.getElementById('avisoTipoSelect').value;
@@ -23168,7 +23170,7 @@ window.cpRenderFixas=cpRenderFixas;
         var indiceInicial=(_avisoReajusteContext&&_avisoReajusteContext.indice)||c.indiceReajuste||'';
         extrasWrap.innerHTML='<div class="aviso-extras-linha" style="display:flex;gap:10px;flex-wrap:wrap">'
           +'<div class="loc-cfield"><label>Índice de reajuste</label><input class="loc-cinput" id="aviso-indice" value="'+E(indiceInicial)+'" placeholder="Ex.: IGP-M"></div>'
-          +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="aviso-pct" type="text" inputmode="decimal" value="'+E(pctInicial)+'" placeholder="Ex.: 4,5" oninput="avisoGerar()"></div>'
+          +'<div class="loc-cfield"><label>Percentual do reajuste (%)</label><input class="loc-cinput" id="aviso-pct" type="text" inputmode="decimal" value="'+E(pctInicial)+'" placeholder="Ex.: 4,5" oninput="avisoGerarDebounced_()"></div>'
           +(_avisoReajusteContext?'<div style="font-size:11px;color:var(--green);flex-basis:100%">✓ Reajuste já aplicado no contrato: '+BRL(_avisoReajusteContext.valorAnterior)+' → '+BRL(_avisoReajusteContext.valorNovo)+'. O texto abaixo já confirma o valor novo.</div>':'')
           +'</div>';
       }
@@ -23282,7 +23284,9 @@ window.cpRenderFixas=cpRenderFixas;
   // Cache/pré-aquecimento da imagem (ver comentário em avisoGerar) — sem isso o html2canvas só
   // começava a rodar no clique de "📸 Foto", e a demora fazia o navigator.share ser recusado por
   // já não estar mais "dentro" do gesto do clique do usuário.
-  var _avisoImgCache_=ShareKit.criarCache(gerarAvisoImagemFile);
+  // Atraso maior (1,5 s) no pré-aquecimento: o html2canvas trava a tela enquanto roda, e antes ele disparava
+  // 80 ms depois de CADA troca de contrato/tipo ou tecla digitada, deixando selects e botões lentos.
+  var _avisoImgCache_=ShareKit.criarCache(gerarAvisoImagemFile,1500);
   window.avisoEnviarImagem=function(){
     var texto=avisoMontarTexto();
     if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
