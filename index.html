@@ -2061,6 +2061,7 @@
     color: #6a8ab0;
   }
 
+  #avisoMensagemBox.aviso-editando{box-shadow:0 0 0 2px var(--accent);border-color:var(--accent)!important}
   .parc-box {
     background: rgba(91,141,238,0.06);
     border: 1px solid rgba(91,141,238,0.15);
@@ -18391,6 +18392,7 @@ window.cpRenderFixas=cpRenderFixas;
     </div>
     <div id="avisoCard" style="padding:0 20px 20px"></div>
     <div class="loc-cform-actions entr-no-print" style="padding:0 20px 20px;flex-wrap:wrap">
+      <button class="loc-btn" type="button" onmousedown="event.preventDefault()" onclick="avisoEditarTexto()" title="Coloca o cursor dentro do texto da mensagem para você alterar antes de enviar">✏️ Editar texto</button>
       <button class="btn-parc-wpp" onclick="avisoEnviarWhats()">📱 WhatsApp</button>
       <button class="btn-parc-email" onclick="avisoEnviarEmail()">✉️ E-mail</button>
       <button class="btn-parc-img" onclick="avisoEnviarImagem()">📸 Foto</button>
@@ -23208,7 +23210,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-section"><div class="parc-section-label">Imóvel</div><div class="parc-processo-nome">'+E(c.end||'—')+'</div><div class="parc-processo-num">Contrato nº '+E(c.contrato||'—')+'</div></div>'
       +'<div class="parc-section"><div class="parc-section-label">'+destinatarioLabel+'</div><div class="parc-box">'+E(destinatarioNome)+'</div></div>'
       +contatoEnvioSection
-      +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text" oninput="avisoImgCacheInvalidar_()">'+corpoHtml+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Mensagem <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— clique no texto abaixo para editar antes de enviar</span></div><div class="parc-box" id="avisoMensagemBox" contenteditable="true" spellcheck="false" style="outline:none;cursor:text;min-height:90px" onfocus="this.className+=\' aviso-editando\'" onblur="this.className=this.className.replace(\' aviso-editando\',\'\')" oninput="avisoImgCacheInvalidar_()">'+corpoHtml+'</div></div>'
       +'</div>'
       +'<div class="parc-footer">Dr. Adenilson Borges da Silva — OAB/SP 335.600 — (11) 99931-3712 — '+new Date().toLocaleDateString('pt-BR')+'</div>';
     // Pré-aquece a imagem do card assim que ele é montado (mesmo padrão do Informe de Repasse —
@@ -23249,6 +23251,15 @@ window.cpRenderFixas=cpRenderFixas;
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(texto).then(function(){alert('Texto copiado!');}).catch(function(){alert('Não consegui copiar. Selecione o texto na tela.');});
     }else{alert('Selecione o texto na tela e copie manualmente.');}
+  };
+  // Botão "✏️ Editar texto": leva o cursor para dentro da mensagem (que já era editável ao clicar
+  // direto no texto, mas sem nenhum sinal visual — o usuário não percebia que dava para editar).
+  window.avisoEditarTexto=function(){
+    var box=document.getElementById('avisoMensagemBox');
+    if(!box){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
+    try{box.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
+    box.focus();
+    try{var r=document.createRange();r.selectNodeContents(box);r.collapse(false);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}catch(e){}
   };
   window.avisoEnviarWhats=function(){
     var texto=avisoMontarTexto();
