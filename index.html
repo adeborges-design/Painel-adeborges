@@ -18390,6 +18390,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="reajuste_anual">8. Reajuste anual do aluguel</option>
           <option value="atraso_locador">9. Aviso ao locador — aluguel em atraso, monitorando</option>
           <option value="confirmacao_recebimento">10. Confirmação de recebimento do aluguel — quitação total/parcial</option>
+          <option value="cobranca_taxa">13. Cobrança de taxa de administração ao locador (aluguel pago pela seguradora)</option>
           <option value="dano_locador">11. Aviso ao locador — locatário informou dano/problema no imóvel</option>
           <option value="dano_locatario">12. Ao locatário — pedido sobre dano/problema comunicado ao locador</option>
         </select></div>
@@ -23055,6 +23056,20 @@ window.cpRenderFixas=cpRenderFixas;
     // Danos/problemas no imóvel informados pelo locatário (08/out/2026). Dois avisos que usam os
     // mesmos campos (tipo do dano, descrição, data do relato) — o texto sai editável, como em
     // todas as correspondências, porque cada dano tem sua particularidade.
+    // Cobrança da taxa de administração quando o aluguel foi pago ao locador pela seguradora
+    // (garantia = seguro fiança) e, por isso, a taxa não foi retida em nenhum repasse.
+    cobranca_taxa:{ label:'Ao locador — cobrança de taxa de administração', paraLocador:true, extrasTaxa:true, corpo:function(c,ex){
+      var t=avisoTaxaDados_(c,ex);
+      var l=['Prezado(a) '+(c.locador||'Locador')+',',
+        'Referimo-nos à administração do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', locatário '+(c.locatario||'—')+'.'];
+      l.push('Os aluguéis abaixo relacionados foram pagos diretamente ao locador pela seguradora, em razão da garantia locatícia contratada (seguro fiança). Como o valor não transitou por esta administradora, a taxa de administração de '+t.pctTxt+'% prevista no contrato, calculada sobre o aluguel e sobre a multa por atraso, quando houver, não foi retida em repasse e permanece em aberto.');
+      t.linhas.forEach(function(x){l.push('• '+x);});
+      l.push('Total da taxa de administração devida: '+BRL(t.total)+'.');
+      l.push(t.prazoTxt);
+      if(t.obs)l.push(t.obs);
+      l.push('Permanecemos à disposição para esclarecimentos.');
+      return l;
+    }},
     dano_locador:{ label:'Ao locador — dano/problema informado pelo locatário', paraLocador:true, extrasDano:true, corpo:function(c,ex){
       var d=avisoDanoDados_(ex);
       var l=['Prezado(a) '+(c.locador||'Locador')+',',
@@ -23129,6 +23144,54 @@ window.cpRenderFixas=cpRenderFixas;
     avisoGerar();
   };
   // Tipos de dano mais comuns (a lista é só ponto de partida: "Outro" libera o texto livre).
+  var AVISO_MESES_=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function avisoTaxaLerLinhas_(){
+    return Array.prototype.map.call(document.querySelectorAll('#avisoExtrasWrap .aviso-taxa-row'),function(r){
+      return {mes:r.querySelector('.at-mes').value,dias:r.querySelector('.at-dias').value,aluguel:r.querySelector('.at-alu').value,multa:r.querySelector('.at-multa').value};
+    });
+  }
+  function avisoTaxaDados_(c,ex){
+    ex=ex||{};
+    var pct=num(ex.taxaPct!==undefined&&ex.taxaPct!==''?ex.taxaPct:c.taxaPct);
+    var total=0,linhas=[];
+    (ex.taxaRows||[]).forEach(function(r){
+      var alu=num(r.aluguel),dias=Math.max(0,Math.min(30,num(r.dias)||30));
+      if(!r.mes||!(alu>0))return;
+      var mul=Math.max(0,num(r.multa));
+      var v=Math.round((alu*(dias/30)+mul)*(pct/100)*100)/100;
+      total+=v;
+      var p=r.mes.split('-'),nomeMes=AVISO_MESES_[(parseInt(p[1],10)||1)-1]+'/'+p[0];
+      var baseTxt=dias>=30?'aluguel de '+BRL(alu):'aluguel de '+BRL(alu)+' × '+dias+'/30 = '+BRL(Math.round(alu*(dias/30)*100)/100);
+      if(mul>0)baseTxt+=' + multa por atraso de '+BRL(mul);
+      linhas.push(nomeMes+(dias>=30?'':' (proporcional, '+dias+' dias)')+': '+(mul>0?'('+baseTxt+')':baseTxt)+' × '+pctFmt_(pct)+'% = '+BRL(v));
+    });
+    var prazoTxt='Solicitamos o pagamento '+(ex.taxaPrazo?'até '+ex.taxaPrazo.split('-').reverse().join('/'):'no prazo de 5 (cinco) dias contados do recebimento desta comunicação')+', por transferência ou PIX para a conta do escritório, com o envio do comprovante.';
+    return {pctTxt:pctFmt_(pct),linhas:linhas,total:Math.round(total*100)/100,prazoTxt:prazoTxt,obs:(ex.taxaObs||'').trim()};
+  }
+  function pctFmt_(p){return String(Math.round(p*100)/100).replace('.',',');}
+  window.avisoTaxaAddLinha=function(mes,dias,alu){
+    var wrap=document.getElementById('aviso-taxa-linhas');if(!wrap)return;
+    var d=document.createElement('div');d.className='aviso-taxa-row';d.style.cssText='display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px';
+    d.innerHTML='<div class="loc-cfield"><label>Mês</label><input class="loc-cinput at-mes" type="month" value="'+E(mes||'')+'" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield"><label>Dias (30 = mês inteiro)</label><input class="loc-cinput at-dias" type="text" inputmode="numeric" value="'+E(dias||30)+'" oninput="avisoGerarDebounced_()"></div>'
+      +'<div class="loc-cfield"><label>Aluguel do mês (R$)</label><input class="loc-cinput at-alu" type="text" inputmode="decimal" value="'+E(alu||'')+'" oninput="avisoGerarDebounced_()"></div>'
+      +'<div class="loc-cfield"><label>Multa por atraso (R$)</label><input class="loc-cinput at-multa" type="text" inputmode="decimal" value="" placeholder="0,00" oninput="avisoGerarDebounced_()"></div>'
+      +'<button type="button" class="loc-btn" onclick="this.parentNode.remove();avisoGerar()" title="Remover linha">✕</button>';
+    wrap.appendChild(d);
+  };
+  function avisoTaxaExtrasHtml_(c){
+    return '<div class="aviso-extras-taxa">'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<div class="loc-cfield"><label>Taxa de administração (%)</label><input class="loc-cinput" id="aviso-taxa-pct" type="text" inputmode="decimal" value="'+E(String(c.taxaPct||'').replace('.',','))+'" oninput="avisoGerarDebounced_()"></div>'
+      +'<div class="loc-cfield"><label>Pagar até (opcional)</label><input class="loc-cinput" id="aviso-taxa-prazo" type="date" onchange="avisoGerar()"></div>'
+      +'</div>'
+      +'<div class="parc-section-label" style="margin:8px 0 4px">Meses cobrados</div>'
+      +'<div id="aviso-taxa-linhas"></div>'
+      +'<button type="button" class="loc-btn" onclick="avisoTaxaAddLinha(\'\',30,document.getElementById(\'aviso-taxa-alu-padrao\').value);avisoGerar()">+ Adicionar mês</button>'
+      +'<input type="hidden" id="aviso-taxa-alu-padrao" value="'+E(String(c.aluguel||'').replace('.',','))+'">'
+      +'<div class="loc-cfield full" style="margin-top:8px"><label>Observação (opcional)</label><input class="loc-cinput" id="aviso-taxa-obs" oninput="avisoGerarDebounced_()" placeholder="Ex.: dados para pagamento, número da apólice"></div>'
+      +'</div>';
+  }
   var AVISO_DANOS_=['Infiltração / vazamento','Mofo / umidade','Rachaduras / trincas','Pintura / paredes danificadas','Piso / revestimento danificado','Instalação elétrica (curto, tomadas, quadro)','Instalação hidráulica (cano, torneira, descarga)','Telhado / cobertura / calha','Portas / janelas / esquadrias','Vidros quebrados','Portão / grades / fechaduras','Pragas (cupins, ratos, insetos)','Aparelhos / equipamentos que acompanham o imóvel','Área comum / condomínio','Outro (descrever abaixo)'];
   var AVISO_DANO_PROV_={
     'ciencia':'Solicitamos a sua ciência e orientação sobre como deseja proceder.',
@@ -23168,7 +23231,13 @@ window.cpRenderFixas=cpRenderFixas;
     if(_avisoReajusteContext&&(tipo!=='reajuste_anual'||contratoNum!==_avisoReajusteContext.contrato))_avisoReajusteContext=null;
     if(_avisoConfirmacaoContext&&(tipo!=='confirmacao_recebimento'||contratoNum!==_avisoConfirmacaoContext.contrato))_avisoConfirmacaoContext=null;
     if(!c||!def){document.getElementById('avisoCard').innerHTML='';extrasWrap.innerHTML='';_avisoContatoTexto='';return;}
-    if(def.extrasDano){
+    if(def.extrasTaxa){
+      if(!extrasWrap.querySelector('.aviso-extras-taxa')){
+        extrasWrap.innerHTML=avisoTaxaExtrasHtml_(c);
+        var _al=String(c.aluguel||'').replace('.',',');
+        avisoTaxaAddLinha('2026-07',30,_al);avisoTaxaAddLinha('2026-08',30,_al);avisoTaxaAddLinha('2026-09',30,_al);avisoTaxaAddLinha('2026-10',15,_al);
+      }
+    }else if(def.extrasDano){
       if(!extrasWrap.querySelector('.aviso-extras-dano'))extrasWrap.innerHTML=avisoDanoExtrasHtml_();
       var _selD=document.getElementById('aviso-dano-tipo'),_wrapO=document.getElementById('aviso-dano-outro-wrap');
       if(_selD&&_wrapO)_wrapO.style.display=/^Outro/.test(_selD.value)?'':'none';
@@ -23186,6 +23255,7 @@ window.cpRenderFixas=cpRenderFixas;
       extrasWrap.innerHTML='';
     }
     var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
+    if(def.extrasTaxa){ex.taxaRows=avisoTaxaLerLinhas_();ex.taxaPct=(document.getElementById('aviso-taxa-pct')||{}).value;ex.taxaPrazo=(document.getElementById('aviso-taxa-prazo')||{}).value;ex.taxaObs=(document.getElementById('aviso-taxa-obs')||{}).value;}
     if(def.extrasDano){ex.danoTipo=(document.getElementById('aviso-dano-tipo')||{}).value;ex.danoOutro=(document.getElementById('aviso-dano-outro')||{}).value;ex.danoData=(document.getElementById('aviso-dano-data')||{}).value;ex.danoDesc=(document.getElementById('aviso-dano-desc')||{}).value;ex.danoProv=(document.getElementById('aviso-dano-prov')||{}).value;}
     if(_avisoReajusteContext){ex.valorAnterior=_avisoReajusteContext.valorAnterior;ex.valorNovo=_avisoReajusteContext.valorNovo;ex.jaAplicado=true;ex.integral=_avisoReajusteContext.integral;}
     if(_avisoConfirmacaoContext){ex.mesRef=_avisoConfirmacaoContext.mesRef;ex.valorRecebido=_avisoConfirmacaoContext.valorRecebido;ex.valorCobrado=_avisoConfirmacaoContext.valorCobrado;ex.diferenca=_avisoConfirmacaoContext.diferenca;ex.acaoTexto=_avisoConfirmacaoContext.acaoTexto;}
