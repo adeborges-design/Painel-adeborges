@@ -23062,6 +23062,7 @@ window.cpRenderFixas=cpRenderFixas;
       var t=avisoTaxaDados_(c,ex);
       var l=['Prezado(a) '+(c.locador||'Locador')+',',
         'Referimo-nos à administração do imóvel situado em '+(c.end||'—')+', contrato nº '+(c.contrato||'—')+', locatário '+(c.locatario||'—')+'.'];
+      if(!(t.pct>0))return ['ATENÇÃO: informe a taxa de administração (%) no campo acima (valor entre 0 e 100). Se o cadastro do contrato mostra um valor estranho, corrija o campo "Taxa Adm (%)" em Locações > Contratos.'];
       l.push('Os aluguéis abaixo relacionados foram pagos diretamente ao locador pela seguradora, em razão da garantia locatícia contratada (seguro fiança). Como o valor não transitou por esta administradora, a taxa de administração de '+t.pctTxt+'% prevista no contrato, calculada sobre o aluguel e sobre a multa por atraso, quando houver, não foi retida em repasse e permanece em aberto.');
       t.linhas.forEach(function(x){l.push('• '+x);});
       l.push('Total da taxa de administração devida: '+BRL(t.total)+'.');
@@ -23152,7 +23153,8 @@ window.cpRenderFixas=cpRenderFixas;
   }
   function avisoTaxaDados_(c,ex){
     ex=ex||{};
-    var pct=num(ex.taxaPct!==undefined&&ex.taxaPct!==''?ex.taxaPct:c.taxaPct);
+    var pct=num(ex.taxaPct!==undefined?ex.taxaPct:c.taxaPct);
+    if(!(pct>0&&pct<=100))pct=0;
     var total=0,linhas=[];
     (ex.taxaRows||[]).forEach(function(r){
       var alu=num(r.aluguel),dias=Math.max(0,Math.min(30,num(r.dias)||30));
@@ -23166,30 +23168,31 @@ window.cpRenderFixas=cpRenderFixas;
       linhas.push(nomeMes+(dias>=30?'':' (proporcional, '+dias+' dias)')+': '+(mul>0?'('+baseTxt+')':baseTxt)+' × '+pctFmt_(pct)+'% = '+BRL(v));
     });
     var prazoTxt='Solicitamos o pagamento '+(ex.taxaPrazo?'até '+ex.taxaPrazo.split('-').reverse().join('/'):'no prazo de 5 (cinco) dias contados do recebimento desta comunicação')+', por transferência ou PIX para a conta do escritório, com o envio do comprovante.';
-    return {pctTxt:pctFmt_(pct),linhas:linhas,total:Math.round(total*100)/100,prazoTxt:prazoTxt,obs:(ex.taxaObs||'').trim()};
+    return {pct:pct,pctTxt:pctFmt_(pct),linhas:linhas,total:Math.round(total*100)/100,prazoTxt:prazoTxt,obs:(ex.taxaObs||'').trim()};
   }
+  function avisoTaxaPctInicial_(c){var p=num(c&&c.taxaPct);return(p>0&&p<=100)?String(p).replace('.',','):'';}
   function pctFmt_(p){return String(Math.round(p*100)/100).replace('.',',');}
   window.avisoTaxaAddLinha=function(mes,dias,alu){
     var wrap=document.getElementById('aviso-taxa-linhas');if(!wrap)return;
     var d=document.createElement('div');d.className='aviso-taxa-row';d.style.cssText='display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px';
     d.innerHTML='<div class="loc-cfield"><label>Mês</label><input class="loc-cinput at-mes" type="month" value="'+E(mes||'')+'" onchange="avisoGerar()"></div>'
-      +'<div class="loc-cfield"><label>Dias (30 = mês inteiro)</label><input class="loc-cinput at-dias" type="text" inputmode="numeric" value="'+E(dias||30)+'" oninput="avisoGerarDebounced_()"></div>'
-      +'<div class="loc-cfield"><label>Aluguel do mês (R$)</label><input class="loc-cinput at-alu" type="text" inputmode="decimal" value="'+E(alu||'')+'" oninput="avisoGerarDebounced_()"></div>'
-      +'<div class="loc-cfield"><label>Multa por atraso (R$)</label><input class="loc-cinput at-multa" type="text" inputmode="decimal" value="" placeholder="0,00" oninput="avisoGerarDebounced_()"></div>'
+      +'<div class="loc-cfield"><label>Dias (30 = mês inteiro)</label><input class="loc-cinput at-dias" type="text" inputmode="numeric" autocomplete="off" value="'+E(dias||30)+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield"><label>Aluguel do mês (R$)</label><input class="loc-cinput at-alu" type="text" inputmode="decimal" autocomplete="off" value="'+E(alu||'')+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield"><label>Multa por atraso (R$)</label><input class="loc-cinput at-multa" type="text" inputmode="decimal" autocomplete="off" value="" placeholder="0,00" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
       +'<button type="button" class="loc-btn" onclick="this.parentNode.remove();avisoGerar()" title="Remover linha">✕</button>';
     wrap.appendChild(d);
   };
   function avisoTaxaExtrasHtml_(c){
     return '<div class="aviso-extras-taxa">'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
-      +'<div class="loc-cfield"><label>Taxa de administração (%)</label><input class="loc-cinput" id="aviso-taxa-pct" type="text" inputmode="decimal" value="'+E(String(c.taxaPct||'').replace('.',','))+'" oninput="avisoGerarDebounced_()"></div>'
+      +'<div class="loc-cfield"><label>Taxa de administração (%)</label><input class="loc-cinput" id="aviso-taxa-pct" type="text" inputmode="decimal" autocomplete="off" value="'+E(avisoTaxaPctInicial_(c))+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
       +'<div class="loc-cfield"><label>Pagar até (opcional)</label><input class="loc-cinput" id="aviso-taxa-prazo" type="date" onchange="avisoGerar()"></div>'
       +'</div>'
       +'<div class="parc-section-label" style="margin:8px 0 4px">Meses cobrados</div>'
       +'<div id="aviso-taxa-linhas"></div>'
       +'<button type="button" class="loc-btn" onclick="avisoTaxaAddLinha(\'\',30,document.getElementById(\'aviso-taxa-alu-padrao\').value);avisoGerar()">+ Adicionar mês</button>'
       +'<input type="hidden" id="aviso-taxa-alu-padrao" value="'+E(String(c.aluguel||'').replace('.',','))+'">'
-      +'<div class="loc-cfield full" style="margin-top:8px"><label>Observação (opcional)</label><input class="loc-cinput" id="aviso-taxa-obs" oninput="avisoGerarDebounced_()" placeholder="Ex.: dados para pagamento, número da apólice"></div>'
+      +'<div class="loc-cfield full" style="margin-top:8px"><label>Observação (opcional)</label><input class="loc-cinput" id="aviso-taxa-obs" autocomplete="off" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()" placeholder="Ex.: dados para pagamento, número da apólice"></div>'
       +'</div>';
   }
   var AVISO_DANOS_=['Infiltração / vazamento','Mofo / umidade','Rachaduras / trincas','Pintura / paredes danificadas','Piso / revestimento danificado','Instalação elétrica (curto, tomadas, quadro)','Instalação hidráulica (cano, torneira, descarga)','Telhado / cobertura / calha','Portas / janelas / esquadrias','Vidros quebrados','Portão / grades / fechaduras','Pragas (cupins, ratos, insetos)','Aparelhos / equipamentos que acompanham o imóvel','Área comum / condomínio','Outro (descrever abaixo)'];
@@ -23219,6 +23222,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>';
   }
   var _avisoGerarTimer_=null;
+  window.avisoGerarDebounced2_=function(){clearTimeout(_avisoGerarTimer_);_avisoGerarTimer_=setTimeout(function(){window.avisoGerar();},900);};
   window.avisoGerarDebounced_=function(){clearTimeout(_avisoGerarTimer_);_avisoGerarTimer_=setTimeout(function(){window.avisoGerar();},350);};
   window.avisoGerar=function(){
     var contratoNum=document.getElementById('avisoContratoSelect').value;
