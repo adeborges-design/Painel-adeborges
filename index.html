@@ -1373,9 +1373,15 @@
   }
 
   /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* Barras de rolagem visíveis (largas e com contraste) em qualquer tema */
+  :root { --sb-thumb:#8a94a6; --sb-thumb-hover:#5d6778; --sb-track:#e3e7ee; }
+  html.dark-mode { --sb-thumb:#8fa3c4; --sb-thumb-hover:#b4c4de; --sb-track:#1c2433; }
+  * { scrollbar-width: auto; scrollbar-color: var(--sb-thumb) var(--sb-track); }
+  ::-webkit-scrollbar { width: 14px; height: 14px; }
+  ::-webkit-scrollbar-track { background: var(--sb-track); }
+  ::-webkit-scrollbar-thumb { background: var(--sb-thumb); border-radius: 8px; border: 3px solid var(--sb-track); min-height: 48px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--sb-thumb-hover); }
+  ::-webkit-scrollbar-corner { background: var(--sb-track); }
 
   /* MODAL RECIBO */
   .modal-recibo-overlay {
