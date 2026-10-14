@@ -17993,6 +17993,16 @@ window.cpRenderFixas=cpRenderFixas;
   }
   body.printing-aviso-loc .parceiro-toolbar,
   body.printing-aviso-loc .entr-no-print { display:none !important; }
+  /* Carta de correspondência: cabe em uma única página (sem o bloco de contato, que é só para envio) */
+  body.printing-aviso-loc #modalAvisoLoc { padding:0 !important; }
+  body.printing-aviso-loc #avisoCard { padding:0 !important; }
+  body.printing-aviso-loc #avisoCard .contato-envio-section { display:none !important; }
+  body.printing-aviso-loc #avisoCard .parc-section { page-break-inside:auto !important; break-inside:auto !important; margin-bottom:8px !important; }
+  body.printing-aviso-loc #avisoCard .parc-header { page-break-inside:avoid !important; padding:10px 14px !important; }
+  body.printing-aviso-loc #avisoCard .parc-body { padding:10px 14px !important; }
+  body.printing-aviso-loc #avisoMensagemBox { font-size:11.5px !important; line-height:1.4 !important; padding:10px 12px !important; min-height:0 !important; box-shadow:none !important; }
+  body.printing-aviso-loc #avisoMensagemBox > div { margin-bottom:5px !important; }
+  body.printing-aviso-loc #avisoCard .parc-footer { margin-top:6px !important; padding:6px 0 0 !important; font-size:10px !important; }
   body.printing-recibo-acordo html, body.printing-recibo-acordo body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-recibo-acordo > * { display:none !important; }
   body.printing-recibo-acordo #modalReciboAcordo {
@@ -23146,6 +23156,16 @@ window.cpRenderFixas=cpRenderFixas;
   };
   // Tipos de dano mais comuns (a lista é só ponto de partida: "Outro" libera o texto livre).
   var AVISO_MESES_=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function avisoTaxaRecalcMulta_(){
+    var mp=num((document.getElementById('aviso-taxa-multapct')||{}).value);
+    if(!(mp>0&&mp<=100))mp=0;
+    Array.prototype.forEach.call(document.querySelectorAll('#avisoExtrasWrap .aviso-taxa-row'),function(r){
+      var m=r.querySelector('.at-multa');if(m.dataset.manual==='1')return;
+      var alu=num(r.querySelector('.at-alu').value),dias=Math.max(0,Math.min(30,num(r.querySelector('.at-dias').value)||30));
+      var v=(mp>0&&alu>0)?Math.round(alu*(dias/30)*(mp/100)*100)/100:0;
+      m.value=v>0?v.toFixed(2).replace('.',','):'';
+    });
+  }
   function avisoTaxaLerLinhas_(){
     return Array.prototype.map.call(document.querySelectorAll('#avisoExtrasWrap .aviso-taxa-row'),function(r){
       return {mes:r.querySelector('.at-mes').value,dias:r.querySelector('.at-dias').value,aluguel:r.querySelector('.at-alu').value,multa:r.querySelector('.at-multa').value};
@@ -23178,7 +23198,7 @@ window.cpRenderFixas=cpRenderFixas;
     d.innerHTML='<div class="loc-cfield"><label>Mês</label><input class="loc-cinput at-mes" type="month" value="'+E(mes||'')+'" onchange="avisoGerar()"></div>'
       +'<div class="loc-cfield"><label>Dias (30 = mês inteiro)</label><input class="loc-cinput at-dias" type="text" inputmode="numeric" autocomplete="off" value="'+E(dias||30)+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
       +'<div class="loc-cfield"><label>Aluguel do mês (R$)</label><input class="loc-cinput at-alu" type="text" inputmode="decimal" autocomplete="off" value="'+E(alu||'')+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
-      +'<div class="loc-cfield"><label>Multa por atraso (R$)</label><input class="loc-cinput at-multa" type="text" inputmode="decimal" autocomplete="off" value="" placeholder="0,00" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield"><label>Multa por atraso (R$)</label><input class="loc-cinput at-multa" type="text" inputmode="decimal" autocomplete="off" value="" placeholder="0,00" oninput="this.dataset.manual=\'1\';avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
       +'<button type="button" class="loc-btn" onclick="this.parentNode.remove();avisoGerar()" title="Remover linha">✕</button>';
     wrap.appendChild(d);
   };
@@ -23186,6 +23206,7 @@ window.cpRenderFixas=cpRenderFixas;
     return '<div class="aviso-extras-taxa">'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
       +'<div class="loc-cfield"><label>Taxa de administração (%)</label><input class="loc-cinput" id="aviso-taxa-pct" type="text" inputmode="decimal" autocomplete="off" value="'+E(avisoTaxaPctInicial_(c))+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()"></div>'
+      +'<div class="loc-cfield"><label>Multa por atraso (%)</label><input class="loc-cinput" id="aviso-taxa-multapct" type="text" inputmode="decimal" autocomplete="off" value="'+E(avisoTaxaPctInicial_({taxaPct:c.multaAtrasoPct}))+'" oninput="avisoGerarDebounced2_()" onchange="avisoGerar()" title="Percentual do contrato; a multa de cada mês já vem calculada. Deixe vazio para não cobrar multa."></div>'
       +'<div class="loc-cfield"><label>Pagar até (opcional)</label><input class="loc-cinput" id="aviso-taxa-prazo" type="date" onchange="avisoGerar()"></div>'
       +'</div>'
       +'<div class="parc-section-label" style="margin:8px 0 4px">Meses cobrados</div>'
@@ -23259,7 +23280,7 @@ window.cpRenderFixas=cpRenderFixas;
       extrasWrap.innerHTML='';
     }
     var ex={indice:(document.getElementById('aviso-indice')||{}).value,pct:(document.getElementById('aviso-pct')||{}).value};
-    if(def.extrasTaxa){ex.taxaRows=avisoTaxaLerLinhas_();ex.taxaPct=(document.getElementById('aviso-taxa-pct')||{}).value;ex.taxaPrazo=(document.getElementById('aviso-taxa-prazo')||{}).value;ex.taxaObs=(document.getElementById('aviso-taxa-obs')||{}).value;}
+    if(def.extrasTaxa){avisoTaxaRecalcMulta_();ex.taxaRows=avisoTaxaLerLinhas_();ex.taxaPct=(document.getElementById('aviso-taxa-pct')||{}).value;ex.taxaPrazo=(document.getElementById('aviso-taxa-prazo')||{}).value;ex.taxaObs=(document.getElementById('aviso-taxa-obs')||{}).value;}
     if(def.extrasDano){ex.danoTipo=(document.getElementById('aviso-dano-tipo')||{}).value;ex.danoOutro=(document.getElementById('aviso-dano-outro')||{}).value;ex.danoData=(document.getElementById('aviso-dano-data')||{}).value;ex.danoDesc=(document.getElementById('aviso-dano-desc')||{}).value;ex.danoProv=(document.getElementById('aviso-dano-prov')||{}).value;}
     if(_avisoReajusteContext){ex.valorAnterior=_avisoReajusteContext.valorAnterior;ex.valorNovo=_avisoReajusteContext.valorNovo;ex.jaAplicado=true;ex.integral=_avisoReajusteContext.integral;}
     if(_avisoConfirmacaoContext){ex.mesRef=_avisoConfirmacaoContext.mesRef;ex.valorRecebido=_avisoConfirmacaoContext.valorRecebido;ex.valorCobrado=_avisoConfirmacaoContext.valorCobrado;ex.diferenca=_avisoConfirmacaoContext.diferenca;ex.acaoTexto=_avisoConfirmacaoContext.acaoTexto;}
