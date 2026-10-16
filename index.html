@@ -17289,7 +17289,8 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield full"><label>Observação para o locatário <span style="font-weight:400;color:var(--muted)">— aparece no recibo de aluguel enviado a ele</span></label><textarea class="loc-cinput" id="cobr-obs-locatario" rows="2" placeholder="Ex.: próximo mês o aluguel será reajustado pelo índice contratual."></textarea></div>
         <div class="loc-cfield full"><label>Observação para o locador <span style="font-weight:400;color:var(--muted)">— aparece no informe de repasse enviado a ele</span></label><textarea class="loc-cinput" id="cobr-obs-locador" rows="2" placeholder="Ex.: este mês foi descontada a taxa do seguro fiança repassada ao locatário."></textarea></div>
 
-        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div></div>
+        <div class="loc-cfield full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px"><label>Total de encargos (soma − desconto, entra no repasse)</label><div class="loc-cinput" id="cobrTotalPreview" style="background:transparent;font-weight:700;color:var(--accent2);font-size:16px">R$ 0,00</div>
+          <div id="cobrTotalEscritorioBox" style="display:none;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5"><div>＋ Itens cobrados do locatário e destinados ao escritório (não entram no repasse): <strong id="cobrTotalEscritorio" style="color:var(--text)">R$ 0,00</strong></div><div>= Encargos cobrados do locatário (aparecem no recibo): <strong id="cobrTotalInquilino" style="color:var(--accent2)">R$ 0,00</strong></div></div></div>
       </div>
       <div class="loc-cform-actions" style="padding:0 18px 18px;flex-wrap:wrap">
         <button class="loc-btn" onclick="fecharModalCobrancas()">Cancelar</button>
@@ -21259,6 +21260,7 @@ window.cpRenderFixas=cpRenderFixas;
     abrirModalCobrancas(contrato);
   };
   window.cobrAtualizarPreview=function(){
+    var totEsc=0;
     var tot=num(document.getElementById('cobr-aluguel-mes').value);
     COBR_CAMPOS_NUM.forEach(function(p){
       var v=num(document.getElementById(p[0]).value);
@@ -21266,10 +21268,18 @@ window.cpRenderFixas=cpRenderFixas;
     });
     Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).forEach(function(div){
       var destinoEl=div.querySelector('.cobr-item-destino');
-      if(destinoEl&&destinoEl.value==='escritorio')return; // não entra na conta do que vai pro locador
+      if(destinoEl&&destinoEl.value==='escritorio'){ // não entra na conta do que vai pro locador, mas o locatário paga (se positivo)
+        var vEsc=num(div.querySelector('.cobr-item-valor').value); if(vEsc>0)totEsc+=vEsc; return;
+      }
       tot+=num(div.querySelector('.cobr-item-valor').value);
     });
     document.getElementById('cobrTotalPreview').textContent=BRL(tot);
+    var boxEsc=document.getElementById('cobrTotalEscritorioBox');
+    if(boxEsc){
+      boxEsc.style.display=totEsc>0?'':'none';
+      document.getElementById('cobrTotalEscritorio').textContent=BRL(totEsc);
+      document.getElementById('cobrTotalInquilino').textContent=BRL(tot+totEsc);
+    }
   };
   window.salvarCobrancas=function(){
     var contrato=document.getElementById('cobr-contrato').value;
