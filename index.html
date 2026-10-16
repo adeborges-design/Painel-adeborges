@@ -21776,6 +21776,20 @@ window.cpRenderFixas=cpRenderFixas;
 
   // ---------- RECIBO DE LOCAÇÃO (Comprovante Aluguel / Informe de Repasse) ----------
   var _reciboLocContrato=null, _reciboLocTipo=null;
+  // Aviso "o não pagamento acarreta multa de X%" do demonstrativo: o usuário pode desmarcar por
+  // contrato/mês. Sem escolha feita, vem desligado quando o lançamento tem multa RESCISÓRIA
+  // (o aviso de multa por atraso não faz sentido num demonstrativo de rescisão).
+  var _reciboLocAvisoMulta_={};
+  function reciboLocAvisoMultaOn_(w){
+    var k=(w.contrato||'')+'|'+(w.mes||'');
+    if(_reciboLocAvisoMulta_[k]!==undefined)return _reciboLocAvisoMulta_[k];
+    return !/rescis/i.test(w.outrasDesc||'');
+  }
+  window.reciboLocToggleAvisoMulta=function(on){
+    var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===_reciboLocContrato;})[0]; if(!w)return;
+    _reciboLocAvisoMulta_[(w.contrato||'')+'|'+(w.mes||'')]=!!on;
+    window.abrirReciboLoc(_reciboLocContrato,_reciboLocTipo);
+  };
   var _reciboLocImgCache_=ShareKit.criarCache(function(){return gerarReciboLocImagemFile();});
   var CONTA_ESCRITORIO={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
   // ---------- OUTRAS COBRANÇAS (lista com vários itens; valor negativo desconta do
@@ -23444,7 +23458,8 @@ window.cpRenderFixas=cpRenderFixas;
       // lançada neste recibo — se w.multa já tem valor, a multa deste atraso já está sendo
       // cobrada acima (em "Valores"), e repetir o aviso soaria como cobrança em dobro.
       var vencCorpo=(vencData?'<div>Vencimento: <strong>'+E(vencData)+'</strong></div>':'')
-        +(!w.multa?'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>':'');
+        +(!w.multa&&reciboLocAvisoMultaOn_(w)?'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>':'');
+      vencCorpo+=!w.multa?'<label data-html2canvas-ignore="true" class="entr-no-print" style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:11px;color:#8fadd4;cursor:pointer"><input type="checkbox" '+(reciboLocAvisoMultaOn_(w)?'checked ':'')+'onchange="reciboLocToggleAvisoMulta(this.checked)"> Exibir o aviso de multa por atraso neste informe</label>':'';
       vencSection='<div class="parc-section"><div class="parc-section-label">Vencimento</div><div class="parc-box" style="border-color:rgba(224,124,58,0.4)">'+vencCorpo+'</div></div>';
       contaTitulo='Dados bancários para pagamento';
       contaHtml=reciboLocContaHtml(reciboLocContaDestino(c));
@@ -23632,7 +23647,7 @@ window.cpRenderFixas=cpRenderFixas;
       if(vencData)txt+='Vencimento: '+vencData+'\n';
       // Mesma regra da versão em tela: só avisa que "vai incidir multa" quando a multa deste
       // atraso ainda não foi lançada no recibo — senão fica parecendo cobrança em dobro.
-      if(!w.multa)txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n';
+      if(!w.multa&&reciboLocAvisoMultaOn_(w))txt+='O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de '+pctMulta+'%':' contratual')+', mais juros e correção monetária.\n';
       if(w.observacoesLocatario)txt+='\n*OBSERVAÇÃO:* '+w.observacoesLocatario+'\n';
       txt+='\n*DADOS BANCÁRIOS PARA PAGAMENTO*\n';
       txt+=contaTxt(reciboLocContaDestino(c));
