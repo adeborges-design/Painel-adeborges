@@ -22731,6 +22731,12 @@ window.cpRenderFixas=cpRenderFixas;
     });
   }
 
+  // Atalho dentro do informe: o item de Despesas/Créditos do Locador já foi descontado em outro
+  // repasse — marca como Quitado (mesmo botão ✓ da tela de Despesas/Créditos) e refaz o informe.
+  window.relMensalQuitarAvulso_=function(id){
+    window.locLocMarcarQuitado(id);
+    window.relMensalGerar();
+  };
   window.relMensalAbrir=function(){
     var nomes={};
     DATA.contratos.forEach(function(c){if(c.locador)nomes[c.locador.trim()]=true;});
@@ -22818,7 +22824,8 @@ window.cpRenderFixas=cpRenderFixas;
       '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
       +'<div class="parc-box" style="border-left:3px solid var(--accent2)">'
       +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos do Locador</div>'
-      +avulsos.map(function(a){var im=String(a['Imovel']||'').trim();return itemComSinal(a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:''),num(a['Valor']));}).join('')
+      +avulsos.map(function(a){var im=String(a['Imovel']||'').trim();return itemComSinal(a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:''),num(a['Valor']))
+        +(a['ID']?'<div class="entr-no-print" data-html2canvas-ignore="true" style="text-align:right;margin:-2px 0 6px"><button type="button" onclick="relMensalQuitarAvulso_(\''+E(String(a['ID']))+'\')" title="Este item já foi descontado do locador em outro repasse — marca como quitado e tira daqui" style="background:none;border:1px solid var(--border2);color:var(--green);border-radius:6px;font-size:11px;padding:2px 8px;cursor:pointer">✓ Já descontado — tirar deste informe</button></div>':'');}).join('')
       +'</div></div>' : '';
     var subtotalHtml=(qtdAptos&&avulsos.length)?
       '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
