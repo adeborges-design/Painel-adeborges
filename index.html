@@ -19611,7 +19611,7 @@ window.cpRenderFixas=cpRenderFixas;
     return base;
   }
 
-  function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado')?'st-pago':(s==='Recebido a menor'?'st-menor':(s==='Recebido a maior'?'st-maior':(s==='Atrasado'?'st-atras':'st-pend')));}
+  function stCls(s){return (s==='Pago'||s==='Recebido'||s==='Repassado'||s==='Pago pela seguradora')?'st-pago':(s==='Recebido a menor'?'st-menor':(s==='Recebido a maior'?'st-maior':(s==='Atrasado'?'st-atras':'st-pend')));}
   // Data (dia informado, dentro do mês "MM/AAAA") — usada para calcular o atraso do repasse.
   function diaMes(dayNum,mesStr){
     var mp=String(mesStr||'').split('/'); if(mp.length!==2)return null;
@@ -20901,8 +20901,9 @@ window.cpRenderFixas=cpRenderFixas;
       if(l.statusAluguel==='Recebido a menor')cAlMenor++;
       else if(l.statusAluguel==='Recebido a maior')cAlMaior++;
       else if(recebeu)cAlRec++;else if(l.statusAluguel==='Atrasado')cAlAtras++;else cAlPend++;
-      if(repassou){repLiq+=rep;cRepFeito++;}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
-      if(recebeu&&!repassou)emCaixa+=rep;
+      var viaSeg=(l.statusRep==='Pago pela seguradora'); // quitado pela seguradora: não é repasse pendente nem feito por nós
+      if(repassou){repLiq+=rep;cRepFeito++;}else if(viaSeg){}else if(l.statusRep==='Atrasado')cRepAtras++;else cRepPend++;
+      if(recebeu&&!repassou&&!viaSeg)emCaixa+=rep;
       if(locPrecisaDecidirMultaJuros_(l,contratosById[l.contrato]))cMJPendente++;
     });
     var ativos=DATA.contratos.filter(function(c){return c.ativo;}).length;
@@ -20927,7 +20928,7 @@ window.cpRenderFixas=cpRenderFixas;
         // "Recebido a menor" ainda conta como pendência (falta receber a diferença); "Recebido a
         // maior" não (já recebeu tudo e mais um pouco).
         var alugPend=l.statusAluguel==='Pendente'||l.statusAluguel==='Atrasado'||l.statusAluguel==='Recebido a menor';
-        var repPend=locFoiRecebido_(l)&&l.statusRep!=='Repassado';
+        var repPend=locFoiRecebido_(l)&&l.statusRep!=='Repassado'&&l.statusRep!=='Pago pela seguradora';
         return alugPend||repPend;
       });
       var badge=document.getElementById('locMesAlerta');
@@ -20956,9 +20957,9 @@ window.cpRenderFixas=cpRenderFixas;
       if(locFiltroAtivo==='al_maior')return l.statusAluguel==='Recebido a maior';
       if(locFiltroAtivo==='al_pendente')return l.statusAluguel==='Pendente';
       if(locFiltroAtivo==='al_atrasado')return l.statusAluguel==='Atrasado';
-      if(locFiltroAtivo==='rep_aguardando')return recebeu&&!repassou;
+      if(locFiltroAtivo==='rep_aguardando')return recebeu&&!repassou&&l.statusRep!=='Pago pela seguradora';
       if(locFiltroAtivo==='rep_feito')return repassou;
-      if(locFiltroAtivo==='rep_pendente')return !repassou&&l.statusRep!=='Atrasado';
+      if(locFiltroAtivo==='rep_pendente')return !repassou&&l.statusRep!=='Atrasado'&&l.statusRep!=='Pago pela seguradora';
       if(locFiltroAtivo==='rep_atrasado')return l.statusRep==='Atrasado';
       if(locFiltroAtivo==='mj_pendente')return locPrecisaDecidirMultaJuros_(l,contratosById[l.contrato]);
       return true;
@@ -20968,7 +20969,7 @@ window.cpRenderFixas=cpRenderFixas;
       var c=contratosById[l.contrato]||{};var rep=effRep(l);
       var repassou=(l.statusRep==='Repassado');
       var repDate=diaMes(c.rep,selMes);
-      var atrasoRepasse=diasAtrasoFrom(repDate,repassou);
+      var atrasoRepasse=diasAtrasoFrom(repDate,repassou||l.statusRep==='Pago pela seguradora');
       var coprop=(DATA.desmembramento&&DATA.desmembramento[l.contrato])?' <span class="loc-num" title="Repasse dividido entre '+E(DATA.desmembramento[l.contrato].join(', '))+'">▸ '+DATA.desmembramento[l.contrato].length+' co-prop.</span>':'';
       var diasAtrasoAluguel=inadLocEstaAtrasado_(l,c)?inadLocDiasAtraso_(l,c):0;
       var alertaMJ=locPrecisaDecidirMultaJuros_(l,c)
@@ -20996,7 +20997,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td style="text-align:center">'+fmtAtraso(atrasoRepasse)+'</td>'+
         '<td>'+(!locFoiRecebido_(l)?
           '<span class="loc-status-badge '+stCls(l.statusRep)+'" title="Segue o Status Aluguel automaticamente. Só pode ser alterado depois que o aluguel for marcado como Recebido (inclusive a menor/a maior).">'+E(l.statusRep)+' <span class="lock">🔒</span></span>'
-          :'<select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+          :'<select class="loc-row-select '+stCls(l.statusRep)+'" onchange="locSetStatusRepasse(\''+E(l.contrato)+'\',this.value)">'+['Pendente','Repassado','Pago pela seguradora','Atrasado'].map(function(s){return '<option'+(s===l.statusRep?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
@@ -22761,7 +22762,7 @@ window.cpRenderFixas=cpRenderFixas;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,obsLocador:w.observacoesLocador||'',statusAluguel:w.statusAluguel,diferencaRecebido:diferencaRecebidoOf(w)};
+    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,seg:(w.statusRep==='Pago pela seguradora'),obsLocador:w.observacoesLocador||'',statusAluguel:w.statusAluguel,diferencaRecebido:diferencaRecebidoOf(w)};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -22787,27 +22788,29 @@ window.cpRenderFixas=cpRenderFixas;
       card.innerHTML='<div class="loc-note">'+(motivos.length?'Nenhum imóvel apto a repassar neste mês para este locador ('+motivos.join(', ')+').':'Nenhum lançamento encontrado para este locador neste mês.')+'</div>';
       return;
     }
-    var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var subtotalImoveis=linhas.reduce(function(s,l){return s+(l.seg?0:l.valorLiq);},0);
+    var qtdAptos=linhas.filter(function(l){return !l.seg;}).length;
     var totalAvulsos=avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var totalGeral=subtotalImoveis+totalAvulsos;
     var blocos=linhas.map(function(l,idx){
       var itensHtml=l.itens.map(function(it){return itemComSinal(it[0],it[1]);}).join('');
       return '<div class="parc-section rel-imovel-bloco" style="page-break-inside:avoid;break-inside:avoid">'
-        +'<div class="parc-box" style="border-left:3px solid '+(l.statusRep==='Repassado'?'var(--green)':'var(--yellow)')+'">'
+        +'<div class="parc-box" style="border-left:3px solid '+((l.statusRep==='Repassado'||l.seg)?'var(--green)':'var(--yellow)')+'">'
         +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
         +'<div style="font-weight:700;color:var(--accent2);font-size:14px">'+(idx+1)+'. '+E(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'</div>'
-        +'<div style="font-size:11px;color:'+(l.statusRep==='Repassado'?'var(--green)':'var(--yellow)')+';font-weight:700;white-space:nowrap;margin-left:10px">'+(l.statusRep==='Repassado'?'● Repassado':'● Pendente')+'</div>'
+        +'<div style="font-size:11px;color:'+((l.statusRep==='Repassado'||l.seg)?'var(--green)':'var(--yellow)')+';font-weight:700;white-space:nowrap;margin-left:10px">'+(l.seg?'● Pago pela seguradora':(l.statusRep==='Repassado'?'● Repassado':'● Pendente'))+'</div>'
         +'</div>'
         +'<div style="margin-bottom:2px">Contrato nº <strong>'+E(l.contrato)+'</strong></div>'
-        +linhaValor('Aluguel',l.aluguel,'')
-        +((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido?linhaValor(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês',Math.abs(l.diferencaRecebido),l.diferencaRecebido>0?'-':'+'):'')
-        +(l.taxa?linhaValor('Taxa de administração',l.taxa,'-'):'')
-        +(l.multa?linhaValor('Multa',l.multa,'+'):'')
-        +(l.juros?linhaValor('Juros',l.juros,'+'):'')
-        +itensHtml
-        +(l.iptu?linhaValor(iptuLabel_(l),l.iptu,'+'):'')
-        +(l.desconto?linhaValor('Desconto',l.desconto,'-'):'')
-        +linhaValor('Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':''),l.valorLiq,'=')
+        +(l.seg?linhaValor('Aluguel',l.aluguel,'')+'<div style="margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--green)">✓ Aluguel pago diretamente ao locador pela seguradora (seguro fiança). Taxa de administração já recebida pelo escritório. Nada a repassar por este escritório.</div>':'')
+        +(l.seg?'':linhaValor('Aluguel',l.aluguel,''))
+        +(l.seg?'':((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido?linhaValor(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês',Math.abs(l.diferencaRecebido),l.diferencaRecebido>0?'-':'+'):''))
+        +((!l.seg&&l.taxa)?linhaValor('Taxa de administração',l.taxa,'-'):'')
+        +((!l.seg&&l.multa)?linhaValor('Multa',l.multa,'+'):'')
+        +((!l.seg&&l.juros)?linhaValor('Juros',l.juros,'+'):'')
+        +(l.seg?'':itensHtml)
+        +((!l.seg&&l.iptu)?linhaValor(iptuLabel_(l),l.iptu,'+'):'')
+        +((!l.seg&&l.desconto)?linhaValor('Desconto',l.desconto,'-'):'')
+        +(l.seg?'':linhaValor('Líquido repassado'+(l.pct<100?' ('+l.pct+'%)':''),l.valorLiq,'='))
         +(l.obsLocador?'<div style="margin-top:8px;padding:9px 12px;background:rgba(224,84,84,.16);border:2px solid var(--red);border-radius:8px;color:var(--red);font-weight:700;font-size:12.5px;line-height:1.5">📌 '+E(l.obsLocador)+'</div>':'')
         +'</div></div>';
     }).join('');
@@ -22817,16 +22820,16 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:6px">💼 Despesas/Créditos do Locador</div>'
       +avulsos.map(function(a){var im=String(a['Imovel']||'').trim();return itemComSinal(a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:''),num(a['Valor']));}).join('')
       +'</div></div>' : '';
-    var subtotalHtml=(linhas.length&&avulsos.length)?
+    var subtotalHtml=(qtdAptos&&avulsos.length)?
       '<div class="parc-section"><div class="parc-box" style="background:rgba(91,141,238,0.1);border-color:rgba(91,141,238,0.3)"><div style="display:flex;justify-content:space-between"><span>Subtotal dos imóveis ('+linhas.length+')</span><strong>'+BRL(subtotalImoveis)+'</strong></div></div></div>' : '';
-    var contaLocadorHtml=linhas.length?
+    var contaLocadorHtml=qtdAptos?
       '<div class="parc-section"><div class="parc-section-label">Dados Bancários do Locador (Repasse)</div><div class="parc-box">'+reciboLocContaHtml(relLocadorDadosBancarios(nome,imoveis))+'</div></div>' : '';
     card.innerHTML=
       '<div class="parc-header">'
       +'<div><div class="parc-header-title">Aluguéis Recebidos a serem Repassados</div><div class="parc-header-sub">Escritório Adenilson Borges — OAB/SP 335.600</div></div>'
       +'</div>'
       +'<div class="parc-body">'
-      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+linhas.length+' imóvel(is) apto(s) a repassar'+((naoRecebidos||jaRepassados)?' <span style="color:var(--yellow)">— '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)</span>':'')+'</div></div>'
+      +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+qtdAptos+' imóvel(is) apto(s) a repassar'+((linhas.length-qtdAptos)?' (+ '+(linhas.length-qtdAptos)+' pago(s) pela seguradora)':'')+((naoRecebidos||jaRepassados)?' <span style="color:var(--yellow)">— '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)</span>':'')+'</div></div>'
       +blocos
       +'<div class="rel-final-bloco">'
       +subtotalHtml
@@ -22852,18 +22855,25 @@ window.cpRenderFixas=cpRenderFixas;
       else if(w.statusRep==='Repassado')jaRepassados++;
     });
     if(!linhas.length&&!avulsos.length)return '';
-    var subtotalImoveis=linhas.reduce(function(s,l){return s+l.valorLiq;},0);
+    var subtotalImoveis=linhas.reduce(function(s,l){return s+(l.seg?0:l.valorLiq);},0);
+    var qtdAptos=linhas.filter(function(l){return !l.seg;}).length;
     var totalGeral=subtotalImoveis+avulsos.reduce(function(s,a){return s+num(a['Valor']);},0);
     var txt='*ALUGUÉIS RECEBIDOS A SEREM REPASSADOS*\n';
     txt+='Escritório Adenilson Borges — OAB/SP 335.600\n';
     txt+='Referente a '+mesExtenso(mes)+'\n';
     txt+='═══════════════════\n\n';
     txt+='*Locador:* '+nome+'\n';
-    txt+=linhas.length+' imóvel(is) apto(s) a repassar'+((naoRecebidos||jaRepassados)?' — '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)':'')+'\n\n';
+    txt+=qtdAptos+' imóvel(is) apto(s) a repassar'+((linhas.length-qtdAptos)?' (+ '+(linhas.length-qtdAptos)+' pago(s) pela seguradora)':'')+((naoRecebidos||jaRepassados)?' — '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)':'')+'\n\n';
     linhas.forEach(function(l,idx){
-      txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.statusRep==='Repassado'?'✅':'⏳')+'\n';
+      txt+=(idx+1)+'. *'+(l.end||l.contrato)+(l.pct<100?' ('+l.pct+'%)':'')+'* '+(l.seg?'✅ (pago pela seguradora)':(l.statusRep==='Repassado'?'✅':'⏳'))+'\n';
       txt+='Contrato nº '+l.contrato+'\n';
       txt+='Aluguel: '+BRL(l.aluguel)+'\n';
+      if(l.seg){
+        txt+='✓ Aluguel pago diretamente ao locador pela seguradora (seguro fiança). Taxa de administração já recebida pelo escritório. Nada a repassar por este escritório.\n';
+        if(l.obsLocador)txt+='📌 *'+l.obsLocador+'*\n';
+        txt+='－－－－－－－－－－\n\n';
+        return;
+      }
       if((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido)txt+='('+(l.diferencaRecebido>0?'−':'+')+') '+(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês')+': '+BRL(Math.abs(l.diferencaRecebido))+'\n';
       if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
       l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
@@ -22873,14 +22883,14 @@ window.cpRenderFixas=cpRenderFixas;
       if(l.obsLocador)txt+='📌 *'+l.obsLocador+'*\n';
       txt+='－－－－－－－－－－\n\n';
     });
-    if(linhas.length&&avulsos.length)txt+='*Subtotal dos imóveis:* '+BRL(subtotalImoveis)+'\n\n';
+    if(qtdAptos&&avulsos.length)txt+='*Subtotal dos imóveis:* '+BRL(subtotalImoveis)+'\n\n';
     if(avulsos.length){
       txt+='*💼 Despesas/Créditos do Locador:*\n';
       avulsos.forEach(function(a){var im=String(a['Imovel']||'').trim();txt+='('+(num(a['Valor'])<0?'−':'+')+') '+a['Descricao']+' ('+a['Data']+')'+(im?' — '+im:'')+': '+BRL(Math.abs(num(a['Valor'])))+'\n';});
       txt+='\n';
     }
     txt+='*TOTAL GERAL DO MÊS:* '+BRL(totalGeral)+'\n\n';
-    if(linhas.length){
+    if(qtdAptos){
       var contaTxtLoc=relLocadorDadosBancarios(nome,imoveis);
       txt+='*DADOS BANCÁRIOS DO LOCADOR (REPASSE):*\n';
       txt+='Titular: '+(contaTxtLoc.titular||'')+'\n';
@@ -22933,7 +22943,7 @@ window.cpRenderFixas=cpRenderFixas;
     var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
     if(!w)return null;
     if(!locFoiRecebido_(w))return null;
-    if(w.statusRep==='Repassado')return null;
+    if(w.statusRep==='Repassado'||w.statusRep==='Pago pela seguradora')return null;
 
     var tenants=(window.locColoc||[]).filter(function(o){return o.Contrato===c.contrato;});
     var tenantsBoxHtml=tenants.length
