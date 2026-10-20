@@ -5914,6 +5914,26 @@ function rascFollowUpAtrasado(r){
 // Exposta em window (31/ago/2026) pra ser reaproveitada pelo drawer de Sinistro/Seguro Fiança,
 // que mora no bloco de script de Locações (escopo diferente deste bloco de Tarefas).
 window.rascFollowUpAtrasado = rascFollowUpAtrasado;
+// Pendências (amarelo) e tarefas (azul) em aberto de um contrato — usadas pelo alerta no contrato
+// (Locações) e pelo aviso do painel principal.
+window.tarContratoItens_=function(contrato){
+  var k=String(contrato||'').trim(); if(!k)return [];
+  return (window.rascunhosCache||[]).filter(function(r){return r['Status']==='Em andamento'&&String(r['Contrato']||'').trim()===k;});
+};
+window.tarContratoEstado_=function(contrato){
+  var it=window.tarContratoItens_(contrato);
+  var pend=it.filter(function(r){return r['Natureza']==='Pendência';}).length;
+  return {pend:pend,tar:it.length-pend,itens:it};
+};
+window.tarConcluir_=function(id){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
+  if(!r)return;
+  var agora=new Date().toLocaleDateString('pt-BR');
+  r['Status']='Concluída';r['Data Atualizacao']=agora;
+  fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:{'Status':'Concluída','Data Atualizacao':agora}})}).catch(function(){});
+  atualizarBadgeRascunhos();
+  if(typeof window.tarContratoModalRefresh_==='function')window.tarContratoModalRefresh_();
+};
 function atualizarBadgeRascunhos(){
   var lista=window.rascunhosCache||[];
   var andamento=lista.filter(function(r){return r['Status']==='Em andamento';});
@@ -5932,6 +5952,26 @@ function atualizarBadgeRascunhos(){
         +'<div class="ha-cta" onclick="rascunhosAbrir()">→ abrir Tarefas</div></div>';
     }
   }
+  // Pendências (amarelo) e tarefas (azul) vinculadas a contratos — aviso piscando no painel principal.
+  var hostP=document.getElementById('homeAlertPendencias');
+  if(hostP){
+    var vinc=andamento.filter(function(r){return String(r['Contrato']||'').trim();});
+    var nPend=vinc.filter(function(r){return r['Natureza']==='Pendência';}).length,nTar=vinc.length-nPend;
+    if(!vinc.length){hostP.innerHTML='';}
+    else{
+      vinc.sort(function(a,b){var A=a['Natureza']==='Pendência'?0:1,B=b['Natureza']==='Pendência'?0:1;return A-B;});
+      hostP.innerHTML='<div class="ha-head" onclick="toggleAlertBox(\'homeAlertPendencias\')"><span class="ha-summary"><span style="animation:pulse 1.4s ease-in-out infinite;display:inline-block">'
+        +(nPend?'<span style="color:var(--yellow)">🟡 '+nPend+' pendência(s)</span>':'')+(nPend&&nTar?' · ':'')+(nTar?'<span style="color:var(--accent2)">🔵 '+nTar+' tarefa(s)</span>':'')
+        +'</span> em contratos</span><span class="ha-chevron">▸</span></div>'
+        +'<div class="ha-body">'+vinc.map(function(r){
+          var pend=r['Natureza']==='Pendência';
+          var atr=rascFollowUpAtrasado(r);
+          return '<div class="ha-item" style="cursor:pointer" onclick="tarefaEditar_(\''+escHtml(r['ID'])+'\')"><span class="tar-nat-badge '+(pend?'tar-nat-pend':'tar-nat-tar')+'">'+(pend?'Pendência':'Tarefa')+'</span><b>'+escHtml(r['Titulo']||'-')+'</b> — contrato '+escHtml(r['Contrato'])
+            +(r['Data Follow-up']?' — <span style="color:'+(atr?'var(--red)':'inherit')+'">'+(atr?'atrasada, era ':'para ')+escHtml(r['Data Follow-up'])+'</span>':'')+'</div>';
+        }).join('')+'<div class="ha-cta" onclick="rascunhosAbrir()">→ abrir Tarefas</div></div>';
+    }
+  }
+  try{if(typeof window.locRender==='function'&&window._locRenderizadoUmaVez_)window.locRender();}catch(e){}
   if(typeof window.tarefasWidgetsAtualizar==='function')window.tarefasWidgetsAtualizar();
 }
 window.rascunhosAbrir=function(){
@@ -5966,6 +6006,12 @@ window.rascunhoAbrirForm=function(id,seed){
       return '<option value="'+valorReal+'"'+(marcado?' selected':'')+'>'+t+'</option>';
     }).join('')
     +'</select></div>'
+    +'<div class="loc-cfield"><label>Natureza</label><select class="loc-cinput" id="rasc-natureza">'
+    +'<option value="Tarefa"'+(d['Natureza']!=='Pendência'?' selected':'')+'>🔵 Tarefa — algo que eu preciso fazer</option>'
+    +'<option value="Pendência"'+(d['Natureza']==='Pendência'?' selected':'')+'>🟡 Pendência — aguardo de terceiro</option>'
+    +'</select></div>'
+    +'<div class="loc-cfield"><label>Contrato vinculado (opcional)</label><input class="loc-cinput" id="rasc-contrato" list="rasc-contrato-lista" value="'+(d['Contrato']?escHtml(d['Contrato']):'')+'" placeholder="Nº do contrato de locação" autocomplete="off">'
+    +'<datalist id="rasc-contrato-lista">'+((window.locContratosLista_?window.locContratosLista_():[]).map(function(c){return '<option value="'+escHtml(c.contrato)+'">'+escHtml((c.end||c.locatario||'').slice(0,60))+'</option>';}).join(''))+'</datalist></div>'
     +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="rasc-status">'
     +['Em andamento','Concluída','Convertido','Descartado'].map(function(s){return '<option'+(d['Status']===s?' selected':(!d['Status']&&s==='Em andamento'?' selected':''))+'>'+s+'</option>';}).join('')
     +'</select></div>'
@@ -6239,6 +6285,8 @@ window.rascunhoSalvar=async function(){
     'Data Follow-up':accDtBRfromInput(document.getElementById('rasc-followup').value),
     'Nr Processo':(document.getElementById('rasc-nrprocesso')||{}).value?document.getElementById('rasc-nrprocesso').value.trim():'',
     'Sinistro ID':(document.getElementById('rasc-sinistroid')||{}).value?document.getElementById('rasc-sinistroid').value.trim():'',
+    'Natureza':(document.getElementById('rasc-natureza')||{}).value||'Tarefa',
+    'Contrato':((document.getElementById('rasc-contrato')||{}).value||'').trim(),
     'Data Atualizacao':agora
   };
   if(id){
@@ -16825,6 +16873,20 @@ window.cpRenderFixas=cpRenderFixas;
   @keyframes locSinistroPing{0%,100%{background:rgba(224,84,84,0.14)}50%{background:rgba(224,84,84,0.32)}}
   tr.loc-row-sinistro{animation:locSinistroPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--red)}
   tr.loc-row-sinistro td{position:relative}
+  /* Pendência (amarelo) e Tarefa (azul) por contrato — mesmo esquema do sinistro (vermelho,
+     que tem prioridade). Pisca enquanto houver item em aberto. */
+  .loc-send-btn-pend{background:rgba(232,184,48,0.2);border-color:var(--yellow);color:var(--yellow);animation:locPendBtn 1.4s ease-in-out infinite}
+  .loc-send-btn-tar{background:rgba(91,141,238,0.2);border-color:var(--accent2);color:var(--accent2);animation:locTarBtn 1.4s ease-in-out infinite}
+  @keyframes locPendBtn{0%,100%{background:rgba(232,184,48,0.14)}50%{background:rgba(232,184,48,0.5)}}
+  @keyframes locTarBtn{0%,100%{background:rgba(91,141,238,0.14)}50%{background:rgba(91,141,238,0.5)}}
+  @keyframes locPendPing{0%,100%{background:rgba(232,184,48,0.08)}50%{background:rgba(232,184,48,0.24)}}
+  @keyframes locTarPing{0%,100%{background:rgba(91,141,238,0.08)}50%{background:rgba(91,141,238,0.24)}}
+  tr.loc-row-pend{animation:locPendPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--yellow)}
+  tr.loc-row-tar{animation:locTarPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--accent2)}
+  .tar-nat-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
+  .tar-nat-pend{background:rgba(232,184,48,0.2);color:var(--yellow);border:1px solid var(--yellow)}
+  .tar-nat-tar{background:rgba(91,141,238,0.2);color:var(--accent2);border:1px solid var(--accent2)}
+  @media (prefers-reduced-motion:reduce){.loc-send-btn-pend,.loc-send-btn-tar,tr.loc-row-pend,tr.loc-row-tar{animation:none}}
   .loc-money.rep{color:var(--accent2)}
   .loc-row-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
   .loc-row-date{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 6px;border-radius:6px;font-size:11px;outline:none;font-family:'DM Mono',monospace}
@@ -18310,6 +18372,21 @@ window.cpRenderFixas=cpRenderFixas;
       <div id="rascunhoFormWrap" style="display:none;margin-bottom:16px"></div>
     </div>
     <div id="rascunhosLista" style="padding:0 20px 20px;max-height:50vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- MODAL PENDÊNCIAS/TAREFAS DE UM CONTRATO (Locações) -->
+<div class="modal-repasse-overlay" id="modalTarContrato">
+  <div class="repasse-wrap" style="max-width:560px">
+    <div class="parceiro-toolbar" style="border-bottom:1px solid var(--border2)">
+      <div class="parceiro-toolbar-title" style="color:var(--accent)" id="tarContratoTitulo">📌 Pendências e tarefas</div>
+      <button class="btn-form-cancel" onclick="document.getElementById('modalTarContrato').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:14px 20px 0;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="loc-btn" style="border-color:var(--yellow);color:var(--yellow)" onclick="tarContratoNovaPend_()">+ 🟡 Pendência (aguardo de terceiro)</button>
+      <button class="loc-btn" style="border-color:var(--accent2);color:var(--accent2)" onclick="tarContratoNovaTar_()">+ 🔵 Tarefa (a fazer)</button>
+    </div>
+    <div id="tarContratoLista" style="padding:10px 20px 20px;max-height:55vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -19886,6 +19963,47 @@ window.cpRenderFixas=cpRenderFixas;
     document.body.appendChild(ov);
   }
   window.sinFechar=function(){var ov=document.getElementById('sinModalOverlay');if(ov)ov.style.display='none';};
+  // ---------- PENDÊNCIAS (amarelo) e TAREFAS (azul) POR CONTRATO ----------
+  // Mesmo cadastro da tela de Tarefas (planilha TAREFAS_RASCUNHOS), com Natureza + Contrato.
+  window.locContratosLista_=function(){return (DATA.contratos||[]).filter(function(c){return c.ativo;});};
+  function locBtnTarefas_(contrato,st,classeBase){
+    var cls=classeBase+(st.pend?' loc-send-btn-pend':(st.tar?' loc-send-btn-tar':''));
+    var tit=(st.pend||st.tar)?((st.pend?st.pend+' pendência(s)':'')+(st.pend&&st.tar?' e ':'')+(st.tar?st.tar+' tarefa(s)':'')+' em aberto — clique para ver'):'Agendar tarefa ou pendência deste contrato';
+    return '<button class="'+cls+'" title="'+E(tit)+'" onclick="event.stopPropagation();abrirTarefasContrato(\''+E(contrato)+'\')">📌'+((st.pend||st.tar)?'<sup style="font-size:9px;font-weight:700">'+(st.pend+st.tar)+'</sup>':'')+'</button>';
+  }
+  var _tarContratoAberto_=null;
+  window.abrirTarefasContrato=function(contrato){
+    _tarContratoAberto_=contrato;
+    window.tarContratoModalRefresh_();
+    document.getElementById('modalTarContrato').classList.add('open');
+  };
+  window.tarContratoModalRefresh_=function(){
+    var contrato=_tarContratoAberto_; if(!contrato)return;
+    var c=contratosById[contrato]||{};
+    var itens=window.tarContratoItens_(contrato);
+    itens.sort(function(a,b){var A=a['Natureza']==='Pendência'?0:1,B=b['Natureza']==='Pendência'?0:1;return A-B;});
+    document.getElementById('tarContratoTitulo').textContent='📌 '+contrato+' — '+(c.end||c.locatario||'');
+    document.getElementById('tarContratoLista').innerHTML=itens.length?itens.map(function(r){
+      var pend=r['Natureza']==='Pendência',atr=window.rascFollowUpAtrasado(r);
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
+        +'<div style="flex:1;min-width:180px"><span class="tar-nat-badge '+(pend?'tar-nat-pend':'tar-nat-tar')+'">'+(pend?'Pendência':'Tarefa')+'</span><b>'+E(r['Titulo']||'-')+'</b>'
+        +(r['Data Follow-up']?'<div style="font-size:11.5px;color:'+(atr?'var(--red)':'var(--muted)')+'">'+(atr?'Atrasada — era ':'Para ')+E(r['Data Follow-up'])+'</div>':'')
+        +(r['Notas']?'<div style="font-size:11.5px;color:var(--muted);white-space:pre-wrap">'+E(String(r['Notas']).slice(0,200))+'</div>':'')+'</div>'
+        +'<div style="display:flex;gap:6px"><button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="tarConcluir_(\''+E(r['ID'])+'\')">✓ Concluir</button>'
+        +'<button class="loc-btn-edit" onclick="tarContratoEditar_(\''+E(r['ID'])+'\')">✎</button></div></div>';
+    }).join(''):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhuma pendência ou tarefa em aberto neste contrato.</div>';
+  };
+  function tarContratoNova_(natureza){
+    var c=contratosById[_tarContratoAberto_]||{};
+    document.getElementById('modalTarContrato').classList.remove('open');
+    window.rascunhosAbrirComSeed({Tipo:'Acompanhamento de Locação',Natureza:natureza,Contrato:c.contrato||_tarContratoAberto_,Locador:c.locador||'',Locatario:c.locatario||'',Endereco:c.end||'',Status:'Em andamento'});
+  }
+  window.tarContratoNovaPend_=function(){tarContratoNova_('Pendência');};
+  window.tarContratoNovaTar_=function(){tarContratoNova_('Tarefa');};
+  window.tarContratoEditar_=function(id){
+    document.getElementById('modalTarContrato').classList.remove('open');
+    window.tarefaEditar_(id);
+  };
   window.abrirSinistro=function(contrato){
     var c=contratosById[contrato];if(!c)return;
     sinEnsureModal_();
@@ -20888,6 +21006,7 @@ window.cpRenderFixas=cpRenderFixas;
   // se o estado não fosse preservado numa variável fora do innerHTML).
   window.locSetAlertaVencidosOpen=function(open){alertaVencidosOpen=!!open;};
   window.locRender=function(){
+    window._locRenderizadoUmaVez_=true;
     var sel=document.getElementById('locMesSel'); if(sel&&sel.value)selMes=sel.value;
     var lstTodos=workingList().filter(function(l){return l.mes===selMes;});
     lstTodos.sort(function(a,b){var ca=contratosById[a.contrato]||{},cb=contratosById[b.contrato]||{};return (num(ca.venc)||99)-(num(cb.venc)||99);});
@@ -20980,7 +21099,9 @@ window.cpRenderFixas=cpRenderFixas;
       // ainda sem número) o botão já fica vermelho, só sem a linha inteira piscando.
       var sinAberto=sinAbertoDoContrato_(l.contrato);
       var sinComNumero=!!(sinAberto&&sinAberto['Numero Sinistro']);
-      var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':'';
+      var tarSt=(window.tarContratoEstado_?window.tarContratoEstado_(l.contrato):{pend:0,tar:0,itens:[]});
+      var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':(tarSt.pend?' class="loc-row-pend"':(tarSt.tar?' class="loc-row-tar"':''));
+      var btnTar=locBtnTarefas_(l.contrato,tarSt,'loc-send-btn')+' ';
       var btnSin='<button class="loc-send-btn'+(sinAberto?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAberto))+'" onclick="event.stopPropagation();abrirSinistro(\''+E(l.contrato)+'\')">🚨</button> ';
       return '<tr'+linhaClasseSin+'>'+
         '<td class="loc-num">'+E(l.contrato)+'</td>'+
@@ -21001,7 +21122,7 @@ window.cpRenderFixas=cpRenderFixas;
         )+'</td>'+
         '<td><input class="loc-row-date" type="date" value="'+brToIso(l.dataRep)+'" onchange="locSetDataRepasse(\''+E(l.contrato)+'\',this.value)"></td>'+
         '<td><select class="loc-row-select" onchange="locSetBanco(\''+E(l.contrato)+'\',this.value)"><option value="">—</option>'+banks.map(function(b){return '<option'+(b===l.banco?' selected':'')+'>'+b+'</option>';}).join('')+'</select></td>'+
-        '<td style="text-align:center;white-space:nowrap">'+btnSin+'<button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
+        '<td style="text-align:center;white-space:nowrap">'+btnSin+btnTar+'<button class="loc-send-btn" title="Enviar recibo de aluguel ao locatário" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'aluguel\')">📄</button>'
         +'<span style="cursor:pointer;font-size:12px;margin:0 3px" title="'+(l.reciboEnviado?('Recibo de aluguel enviado em '+E(l.dataEnvioRecibo||'—')+' — clique para desmarcar'):'Recibo de aluguel ainda não marcado como enviado — clique para marcar manualmente')+'" onclick="event.stopPropagation();locToggleReciboEnviado(\''+E(l.contrato)+'\')">'+(l.reciboEnviado?'✅':'⭘')+'</span>'
         +' <button class="loc-send-btn" title="Enviar informe de repasse ao locador" onclick="abrirReciboLoc(\''+E(l.contrato)+'\',\'repasse\')">💰</button> <button class="loc-send-btn" title="Anotações e mensagem ao locatário" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locatario\')">💬</button> <button class="loc-send-btn" title="Anotações e mensagem ao locador" onclick="abrirAnotacoes(\''+E(l.contrato)+'\',\'locador\')">🗣️</button>'
         +' <button class="loc-send-btn" style="color:var(--red);border-color:var(--red)" title="Excluir este lançamento do mês (ex.: mês gerado por engano, contrato encerrado). Não apaga o contrato nem outros meses." onclick="event.stopPropagation();locExcluirLancamentoMes(\''+E(l.id)+'\',\''+E(l.contrato)+'\',\''+E(l.mes)+'\')">🗑️</button></td>'+
@@ -23996,7 +24117,9 @@ window.cpRenderFixas=cpRenderFixas;
       var sinAbertoC=sinAbertoDoContrato_(c.contrato);
       var sinComNumeroC=!!(sinAbertoC&&sinAbertoC['Numero Sinistro']);
       var btnSinC='<button class="loc-btn-edit'+(sinAbertoC?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAbertoC))+'" onclick="abrirSinistro(\''+E(c.contrato)+'\')">🚨 garantia</button> ';
-      return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':'')+'>'+
+      var tarStC=(window.tarContratoEstado_?window.tarContratoEstado_(c.contrato):{pend:0,tar:0,itens:[]});
+      var btnTarC=locBtnTarefas_(c.contrato,tarStC,'loc-btn-edit')+' ';
+      return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':(tarStC.pend?' class="loc-row-pend"':(tarStC.tar?' class="loc-row-tar"':'')))+'>'+
         '<td class="loc-num">'+E(c.contrato)+'</td>'+
         '<td>'+E(c.locador||'-')+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
@@ -24004,7 +24127,7 @@ window.cpRenderFixas=cpRenderFixas;
         '<td class="loc-money">'+BRL(num(c.aluguel))+'</td>'+
         '<td style="text-align:center">'+E(c.taxaPct)+'% <span class="loc-num">('+BRL(Math.round(num(c.aluguel)*(num(c.taxaPct)/100)*100)/100)+')</span></td>'+
         '<td style="text-align:center">'+(c.ativo?'Sim':('<span title="'+E((c.motivoEncerramento||'Motivo não informado')+(c.dataEncerramento?' — '+c.dataEncerramento:''))+'">Não'+(c.motivoEncerramento?' ⓘ':'')+'</span>'))+'</td>'+
-        '<td style="white-space:nowrap">'+btnSinC+'<button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
+        '<td style="white-space:nowrap">'+btnSinC+btnTarC+'<button class="loc-btn-edit" onclick="locEditarContrato(\''+E(c.contrato)+'\')">✎ editar</button> <button class="loc-btn-edit" title="Ver/editar os lançamentos (aluguel, encargos e cobranças) deste contrato no mês selecionado na tela de Lançamentos" onclick="locAbrirLancamentoContrato(\''+E(c.contrato)+'\')">🧾 lançamentos</button> <button class="loc-btn-edit" title="Cadastrar múltiplos proprietários e percentuais deste imóvel" onclick="copropAbrir(\''+E(c.contrato)+'\')">👥 proprietários</button> <button class="loc-btn-edit" title="Cadastrar múltiplos inquilinos deste contrato" onclick="colocAbrir(\''+E(c.contrato)+'\')">👥 inquilinos</button> <button class="loc-btn-edit" style="color:var(--red);border-color:var(--red)" onclick="locExcluirContrato(\''+E(c.id)+'\',\''+E(c.contrato)+'\')">🗑️</button></td>'+
       '</tr>';
     }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">'+(busca?'Nenhum contrato encontrado para "'+E(busca)+'".':'Sem contratos.')+'</td></tr>';
   }
@@ -25733,6 +25856,7 @@ window.cpRenderFixas=cpRenderFixas;
           </div>
         </div>
         <div class="home-alertas" id="homeAlertRascunhos"></div>
+        <div class="home-alertas" id="homeAlertPendencias"></div>
       </div>
       <div class="home-module">
         <div class="home-card" onclick="openFerramentasHome()">
