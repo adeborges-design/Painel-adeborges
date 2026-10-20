@@ -16891,6 +16891,10 @@ window.cpRenderFixas=cpRenderFixas;
   @keyframes locTarPing{0%,100%{background:rgba(91,141,238,0.08)}50%{background:rgba(91,141,238,0.24)}}
   tr.loc-row-pend{animation:locPendPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--yellow)}
   tr.loc-row-tar{animation:locTarPing 1.8s ease-in-out infinite;box-shadow:inset 3px 0 0 var(--accent2)}
+  .loc-send-btn-both{border-color:var(--yellow);color:var(--text);animation:locBothBtn 1.6s steps(1,end) infinite}
+  @keyframes locBothBtn{0%{background:rgba(232,184,48,0.5);border-color:var(--yellow)}50%{background:rgba(91,141,238,0.5);border-color:var(--accent2)}}
+  @keyframes locBothPing{0%{background:rgba(232,184,48,0.24)}50%{background:rgba(91,141,238,0.24)}}
+  tr.loc-row-both{animation:locBothPing 2s steps(1,end) infinite;box-shadow:inset 3px 0 0 var(--yellow),inset 6px 0 0 var(--accent2)}
   .tar-nat-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
   .tar-nat-pend{background:rgba(232,184,48,0.2);color:var(--yellow);border:1px solid var(--yellow)}
   .tar-nat-tar{background:rgba(91,141,238,0.2);color:var(--accent2);border:1px solid var(--accent2)}
@@ -19974,7 +19978,7 @@ window.cpRenderFixas=cpRenderFixas;
   // Mesmo cadastro da tela de Tarefas (planilha TAREFAS_RASCUNHOS), com Natureza + Contrato.
   window.locContratosLista_=function(){return (DATA.contratos||[]).filter(function(c){return c.ativo;});};
   function locBtnTarefas_(contrato,st,classeBase){
-    var cls=classeBase+(st.pend?' loc-send-btn-pend':(st.tar?' loc-send-btn-tar':''));
+    var cls=classeBase+((st.pend&&st.tar)?' loc-send-btn-both':(st.pend?' loc-send-btn-pend':(st.tar?' loc-send-btn-tar':'')));
     var tit=(st.pend||st.tar)?((st.pend?st.pend+' pendência(s)':'')+(st.pend&&st.tar?' e ':'')+(st.tar?st.tar+' tarefa(s)':'')+' em aberto — clique para ver'):'Agendar tarefa ou pendência deste contrato';
     return '<button class="'+cls+'" title="'+E(tit)+'" onclick="event.stopPropagation();abrirTarefasContrato(\''+E(contrato)+'\')">📌'+((st.pend||st.tar)?'<sup style="font-size:9px;font-weight:700">'+(st.pend+st.tar)+'</sup>':'')+'</button>';
   }
@@ -21108,7 +21112,7 @@ window.cpRenderFixas=cpRenderFixas;
       var sinAberto=sinAbertoDoContrato_(l.contrato);
       var sinComNumero=!!(sinAberto&&sinAberto['Numero Sinistro']);
       var tarSt=(window.tarContratoEstado_?window.tarContratoEstado_(l.contrato):{pend:0,tar:0,itens:[]});
-      var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':(tarSt.pend?' class="loc-row-pend"':(tarSt.tar?' class="loc-row-tar"':''));
+      var linhaClasseSin=sinComNumero?' class="loc-row-sinistro"':((tarSt.pend&&tarSt.tar)?' class="loc-row-both"':tarSt.pend?' class="loc-row-pend"':(tarSt.tar?' class="loc-row-tar"':''));
       var btnTar=locBtnTarefas_(l.contrato,tarSt,'loc-send-btn')+' ';
       var btnSin='<button class="loc-send-btn'+(sinAberto?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAberto))+'" onclick="event.stopPropagation();abrirSinistro(\''+E(l.contrato)+'\')">🚨</button> ';
       return '<tr'+linhaClasseSin+'>'+
@@ -24127,7 +24131,7 @@ window.cpRenderFixas=cpRenderFixas;
       var btnSinC='<button class="loc-btn-edit'+(sinAbertoC?' loc-send-btn-sinistro':'')+'" title="'+E(sinBotaoTitulo_(c,sinAbertoC))+'" onclick="abrirSinistro(\''+E(c.contrato)+'\')">🚨 garantia</button> ';
       var tarStC=(window.tarContratoEstado_?window.tarContratoEstado_(c.contrato):{pend:0,tar:0,itens:[]});
       var btnTarC=locBtnTarefas_(c.contrato,tarStC,'loc-btn-edit')+' ';
-      return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':(tarStC.pend?' class="loc-row-pend"':(tarStC.tar?' class="loc-row-tar"':'')))+'>'+
+      return '<tr'+(sinComNumeroC?' class="loc-row-sinistro"':((tarStC.pend&&tarStC.tar)?' class="loc-row-both"':tarStC.pend?' class="loc-row-pend"':(tarStC.tar?' class="loc-row-tar"':'')))+'>'+
         '<td class="loc-num">'+E(c.contrato)+'</td>'+
         '<td>'+E(c.locador||'-')+'</td>'+
         '<td class="loc-locatario">'+E(c.locatario||'-')+'</td>'+
