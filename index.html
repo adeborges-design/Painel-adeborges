@@ -5898,11 +5898,17 @@ window.carregarRascunhos = async function(){
     if(rows.length<2){window.rascunhosCache=[];return;}
     var hd = rows[0];
     window.rascunhosCache = rows.slice(1).filter(function(x){return x[0];}).map(function(row){
-      var o={}; hd.forEach(function(h,i){o[h]=row[i]!==undefined?row[i]:'';}); return o;
+      var o={}; hd.forEach(function(h,i){o[String(h).trim()]=row[i]!==undefined?row[i]:'';}); return o;
     });
+    var hdT=hd.map(function(h){return String(h).trim();});
+    window.rascunhosTemColunasTar_=(hdT.indexOf('Contrato')>=0&&hdT.indexOf('Natureza')>=0);
+    var vincLocal=tarVincLer_();
+    window.rascunhosCache.forEach(function(o){var v=vincLocal[String(o['ID'])];if(v&&!String(o['Contrato']||'').trim()){o['Contrato']=v.Contrato;if(!o['Natureza'])o['Natureza']=v.Natureza;}});
   }catch(e){window.rascunhosCache=[];}
   atualizarBadgeRascunhos();
 };
+function tarVincLer_(){try{return JSON.parse(localStorage.getItem('tarVinculos_')||'{}');}catch(e){return {};}}
+function tarVincGravar_(id,contrato,natureza){try{if(!id||!contrato)return;var v=tarVincLer_();v[String(id)]={Contrato:contrato,Natureza:natureza};localStorage.setItem('tarVinculos_',JSON.stringify(v));}catch(e){}}
 function rascParseDataBR(s){var p=String(s||'').split('/');if(p.length!==3)return null;return new Date(+p[2],+p[1]-1,+p[0]).getTime();}
 function rascHojeMs(){return new Date().setHours(0,0,0,0);}
 // Diz se um rascunho está com o follow-up atrasado (data marcada já passou e ainda está "Em andamento")
@@ -5972,6 +5978,7 @@ function atualizarBadgeRascunhos(){
     }
   }
   try{if(typeof window.locRender==='function'&&window._locRenderizadoUmaVez_)window.locRender();}catch(e){}
+  try{if(typeof window.locRenderContratos==='function'&&window._locRenderizadoUmaVez_)window.locRenderContratos();}catch(e){}
   if(typeof window.tarefasWidgetsAtualizar==='function')window.tarefasWidgetsAtualizar();
 }
 window.rascunhosAbrir=function(){
@@ -6292,13 +6299,14 @@ window.rascunhoSalvar=async function(){
   if(id){
     var existente=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
     if(existente)Object.assign(existente,campos);
+    tarVincGravar_(id,campos['Contrato'],campos['Natureza']);
     fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:campos})}).catch(function(){});
   }else{
     campos['Data Criacao']=agora;
     var temp=Object.assign({ID:'tmp'+Date.now()},campos);
     window.rascunhosCache.unshift(temp);
     fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_rascunhos',campos:campos})})
-      .then(function(r){return r.json();}).then(function(d){if(d&&d.id)temp.ID=String(d.id);}).catch(function(){});
+      .then(function(r){return r.json();}).then(function(d){if(d&&d.id){temp.ID=String(d.id);tarVincGravar_(temp.ID,campos['Contrato'],campos['Natureza']);}}).catch(function(){});
   }
   document.getElementById('rascunhoFormWrap').style.display='none';
   rascunhosRender();
@@ -19983,7 +19991,8 @@ window.cpRenderFixas=cpRenderFixas;
     var itens=window.tarContratoItens_(contrato);
     itens.sort(function(a,b){var A=a['Natureza']==='Pendência'?0:1,B=b['Natureza']==='Pendência'?0:1;return A-B;});
     document.getElementById('tarContratoTitulo').textContent='📌 '+contrato+' — '+(c.end||c.locatario||'');
-    document.getElementById('tarContratoLista').innerHTML=itens.length?itens.map(function(r){
+    var avisoCol=(window.rascunhosTemColunasTar_===false)?'<div style="background:var(--yellow);color:#000;padding:8px;border-radius:6px;font-size:12px;margin-bottom:6px">Atenção: a aba TAREFAS_RASCUNHOS não tem as colunas exatas <b>Natureza</b> e <b>Contrato</b> (confira a grafia no cabeçalho). Sem elas o vínculo só vale neste navegador.</div>':'';
+    document.getElementById('tarContratoLista').innerHTML=avisoCol+(itens.length?itens.map(function(r){
       var pend=r['Natureza']==='Pendência',atr=window.rascFollowUpAtrasado(r);
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
         +'<div style="flex:1;min-width:180px"><span class="tar-nat-badge '+(pend?'tar-nat-pend':'tar-nat-tar')+'">'+(pend?'Pendência':'Tarefa')+'</span><b>'+E(r['Titulo']||'-')+'</b>'
@@ -19991,7 +20000,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(r['Notas']?'<div style="font-size:11.5px;color:var(--muted);white-space:pre-wrap">'+E(String(r['Notas']).slice(0,200))+'</div>':'')+'</div>'
         +'<div style="display:flex;gap:6px"><button class="loc-btn-edit" style="color:var(--green);border-color:var(--green)" onclick="tarConcluir_(\''+E(r['ID'])+'\')">✓ Concluir</button>'
         +'<button class="loc-btn-edit" onclick="tarContratoEditar_(\''+E(r['ID'])+'\')">✎</button></div></div>';
-    }).join(''):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhuma pendência ou tarefa em aberto neste contrato.</div>';
+    }).join(''):'<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhuma pendência ou tarefa em aberto neste contrato.</div>');
   };
   function tarContratoNova_(natureza){
     var c=contratosById[_tarContratoAberto_]||{};
