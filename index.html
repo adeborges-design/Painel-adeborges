@@ -6206,17 +6206,34 @@ window.fpEstadoProcesso_=function(p){
   var pend=it.filter(function(r){return r['Natureza']==='Pendência';}).length;
   return {pend:pend,tar:it.length-pend,n:it.length};
 };
+window.fpBadgeHtml_=function(p){
+  var st=window.fpEstadoProcesso_(p);if(!st.n)return '';
+  var cls=st.pend&&st.tar?'both':(st.pend?'pend':'tar');
+  var txt=(st.pend?'🟡 '+st.pend+' pendência'+(st.pend>1?'s':''):'')+(st.pend&&st.tar?' · ':'')+(st.tar?'🔵 '+st.tar+' tarefa'+(st.tar>1?'s':''):'');
+  return '<span class="badge badge-fup badge-fup-'+cls+'" title="Follow-ups em aberto — clique em Follow-up para ver">'+txt+'</span>';
+};
 window.fpClasseBotao_=function(p){
   var st=window.fpEstadoProcesso_(p);
   return st.n?(st.pend&&st.tar?' btn-fup-both':(st.pend?' btn-fup-pend':' btn-fup-tar')):'';
 };
 window.fpAtualizarBotoes_=function(){
   if(typeof allProcessos==='undefined')return;
+  document.querySelectorAll('.fup-slot[data-uid]').forEach(function(sl){
+    var p=allProcessos.find(function(x){return String(x._uid)===String(sl.dataset.uid);});if(!p)return;
+    sl.innerHTML=window.fpBadgeHtml_(p);
+  });
   document.querySelectorAll('button.btn-fup[data-uid]').forEach(function(b){
     var p=allProcessos.find(function(x){return String(x._uid)===String(b.dataset.uid);});if(!p)return;
     b.classList.remove('btn-fup-pend','btn-fup-tar','btn-fup-both');
     var c=window.fpClasseBotao_(p).trim();if(c)b.classList.add(c);
   });
+};
+window.fpAlternarNatureza_=function(id,uid){
+  var r=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});if(!r)return;
+  var nova=r['Natureza']==='Pendência'?'Tarefa':'Pendência';
+  r['Natureza']=nova;
+  if(!/^tmp/.test(String(id)))fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:{'Natureza':nova}})}).catch(function(){});
+  fpRenderModal_(uid);window.fpAtualizarBotoes_();
 };
 window.fpFormAbrir_=function(uid,id){
   var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
@@ -6293,7 +6310,7 @@ function fpRenderModal_(uid){
       var atrasado=rascFollowUpAtrasado(r);
       var cor=tarStatusCor_(r['Status'],atrasado);
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
-        +'<div style="font-size:12.5px"><span class="tar-nat-badge '+(r['Natureza']==='Pendência'?'tar-nat-pend':'tar-nat-tar')+'">'+(r['Natureza']==='Pendência'?'Pendência':'Tarefa')+'</span><strong>'+escHtml(r['Titulo']||'-')+'</strong> <span style="color:'+cor+'">· '+escHtml(r['Status']||'')+'</span>'
+        +'<div style="font-size:12.5px"><span class="tar-nat-badge tar-nat-click '+(r['Natureza']==='Pendência'?'tar-nat-pend':'tar-nat-tar')+'" title="Clique para alternar entre Tarefa e Pendência" onclick="fpAlternarNatureza_(\''+escHtml(r['ID'])+'\',\''+uid+'\')">'+(r['Natureza']==='Pendência'?'Pendência':'Tarefa')+'</span><strong>'+escHtml(r['Titulo']||'-')+'</strong> <span style="color:'+cor+'">· '+escHtml(r['Status']||'')+'</span>'
         +(r['Data Follow-up']?' <span style="color:'+(atrasado?'var(--red)':'var(--muted)')+'">· follow-up '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</span>':'')+'</div>'
         +'<div style="white-space:nowrap">'
         +'<button class="loc-btn-edit" onclick="fpFormAbrir_(\''+uid+'\',\''+escHtml(r['ID'])+'\')" title="Editar">✎</button> '
@@ -8065,6 +8082,7 @@ function renderCard(p, idx) {
       <div class="processo-body">
         <div class="processo-top">
           <span class="processo-nome">${escHtml(p.nome)}</span>
+          <span class="fup-slot" data-uid="${p._uid}">${fpBadgeHtml_(p)}</span>
           <span class="badge badge-ramo" style="${familiaChipStyle_(fam.color)}" title="${escHtml(fam.label)}">${escHtml(p.ramo || p.tipo)}</span>
           ${p.situacao ? `<span class="badge badge-situacao">${escHtml(p.situacao)}</span>` : ''}
           ${urgBadge ? `<span class="badge badge-urgencia ${urgBadge}">${urgLabel}</span>` : ''}
@@ -16929,6 +16947,11 @@ window.cpRenderFixas=cpRenderFixas;
   .btn-group-andamento .btn-action.btn-fup-pend{background:rgba(232,184,48,0.2);border-color:var(--yellow);color:var(--yellow);animation:locPendBtn 1.4s ease-in-out infinite}
   .btn-group-andamento .btn-action.btn-fup-tar{background:rgba(91,141,238,0.2);border-color:var(--accent2);color:var(--accent2);animation:locTarBtn 1.4s ease-in-out infinite}
   .btn-group-andamento .btn-action.btn-fup-both{border-color:var(--yellow);animation:locBothBtn 1.6s steps(1,end) infinite}
+  .badge-fup{font-weight:700;border:1px solid var(--yellow);color:var(--text)}
+  .badge-fup-pend{border-color:var(--yellow);animation:locPendBtn 1.4s ease-in-out infinite}
+  .badge-fup-tar{border-color:var(--accent2);animation:locTarBtn 1.4s ease-in-out infinite}
+  .badge-fup-both{animation:locBothBtn 1.6s steps(1,end) infinite}
+  .tar-nat-badge.tar-nat-click{cursor:pointer}
   .tar-nat-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
   .tar-nat-pend{background:rgba(232,184,48,0.2);color:var(--yellow);border:1px solid var(--yellow)}
   .tar-nat-tar{background:rgba(91,141,238,0.2);color:var(--accent2);border:1px solid var(--accent2)}
