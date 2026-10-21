@@ -5980,6 +5980,7 @@ function atualizarBadgeRascunhos(){
   try{if(typeof window.locRender==='function'&&window._locRenderizadoUmaVez_)window.locRender();}catch(e){}
   try{if(typeof window.locRenderContratos==='function'&&window._locRenderizadoUmaVez_)window.locRenderContratos();}catch(e){}
   if(typeof window.tarefasWidgetsAtualizar==='function')window.tarefasWidgetsAtualizar();
+  try{if(typeof window.fpAtualizarBotoes_==='function')window.fpAtualizarBotoes_();}catch(e){}
 }
 window.rascunhosAbrir=function(){
   document.getElementById('rascunhoFormWrap').style.display='none';
@@ -6187,14 +6188,36 @@ window.abrirFollowupsProcesso=function(uid){
 };
 function fpItens_(p){
   var pk=String(p.processo||'').trim().toLowerCase();
+  var nm=String(p.nome||'').trim().toLowerCase();
   return (window.rascunhosCache||[]).filter(function(r){
-    return r['Tipo']==='Follow-up de Processo' && String(r['Nr Processo']||'').trim().toLowerCase()===pk && pk;
+    if(r['Tipo']!=='Follow-up de Processo')return false;
+    var rp=String(r['Nr Processo']||'').trim().toLowerCase();
+    // Processo sem número cadastrado: o vínculo é pelo nome do cliente.
+    if(pk)return rp===pk;
+    return !rp&&nm&&String(r['Nome']||'').trim().toLowerCase()===nm;
   }).sort(function(a,b){
     var A=rascFollowUpAtrasado(a)?0:1,B=rascFollowUpAtrasado(b)?0:1;
     if(A!==B)return A-B;
     return String(b['ID']).localeCompare(String(a['ID']));
   });
 }
+window.fpEstadoProcesso_=function(p){
+  var it=fpItens_(p).filter(function(r){return r['Status']==='Em andamento';});
+  var pend=it.filter(function(r){return r['Natureza']==='Pendência';}).length;
+  return {pend:pend,tar:it.length-pend,n:it.length};
+};
+window.fpClasseBotao_=function(p){
+  var st=window.fpEstadoProcesso_(p);
+  return st.n?(st.pend&&st.tar?' btn-fup-both':(st.pend?' btn-fup-pend':' btn-fup-tar')):'';
+};
+window.fpAtualizarBotoes_=function(){
+  if(typeof allProcessos==='undefined')return;
+  document.querySelectorAll('button.btn-fup[data-uid]').forEach(function(b){
+    var p=allProcessos.find(function(x){return String(x._uid)===String(b.dataset.uid);});if(!p)return;
+    b.classList.remove('btn-fup-pend','btn-fup-tar','btn-fup-both');
+    var c=window.fpClasseBotao_(p).trim();if(c)b.classList.add(c);
+  });
+};
 window.fpFormAbrir_=function(uid,id){
   var p=allProcessos.find(function(x){return x._uid===parseInt(uid);});if(!p)return;
   var r=id?(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);}):null;
@@ -6203,6 +6226,9 @@ window.fpFormAbrir_=function(uid,id){
   host.innerHTML='<input type="hidden" id="fp-id" value="'+(r?escHtml(r['ID']):'')+'">'
     +'<div class="loc-cform" style="padding:0;border:none;background:none">'
     +'<div class="loc-cfield full"><label>Título</label><input class="loc-cinput" id="fp-titulo" value="'+(r&&r['Titulo']?escHtml(r['Titulo']):'')+'" placeholder="Ex.: Cobrar documento do cliente"></div>'
+    +'<div class="loc-cfield"><label>Natureza</label><select class="loc-cinput" id="fp-natureza">'
+    +['Tarefa','Pendência'].map(function(s){return '<option'+((r&&r['Natureza']===s)?' selected':'')+'>'+s+'</option>';}).join('')
+    +'</select></div>'
     +'<div class="loc-cfield"><label>Follow-up em</label><input class="loc-cinput" id="fp-followup" type="date" value="'+(r&&r['Data Follow-up']?accIsoFromBR(r['Data Follow-up']):'')+'"></div>'
     +'<div class="loc-cfield"><label>Status</label><select class="loc-cinput" id="fp-status">'
     +['Em andamento','Concluída','Descartado'].map(function(s){return '<option'+((r?r['Status']===s:s==='Em andamento')?' selected':'')+'>'+s+'</option>';}).join('')
@@ -6224,18 +6250,23 @@ window.fpSalvar_=async function(uid){
     'Status':document.getElementById('fp-status').value,
     'Data Follow-up':accDtBRfromInput(document.getElementById('fp-followup').value),
     'Notas':document.getElementById('fp-notas').value,
-    'Nr Processo':p.processo||'','Data Atualizacao':agora
+    'Nr Processo':p.processo||'','Data Atualizacao':agora,
+    'Natureza':(document.getElementById('fp-natureza')||{}).value||'Tarefa'
   };
+  var btnS=document.querySelector('#fpFormHost .loc-btn.primary');if(btnS){btnS.disabled=true;btnS.textContent='Salvando...';}
   if(id){
     var existente=(window.rascunhosCache||[]).find(function(x){return String(x['ID'])===String(id);});
     if(existente)Object.assign(existente,campos);
     await fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_rascunhos',id:id,campos:campos})}).catch(function(){});
   }else{
     campos['Data Criacao']=agora;
+    var temp=Object.assign({ID:'tmp'+Date.now()},campos);
+    window.rascunhosCache.unshift(temp);
     await fetch(URL_AS,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_rascunhos',campos:campos})})
-      .then(function(r){return r.json();}).catch(function(){});
+      .then(function(r){return r.json();}).then(function(d){if(d&&d.id)temp.ID=String(d.id);}).catch(function(){});
   }
   document.getElementById('fpFormHost').style.display='none';
+  fpRenderModal_(uid);window.fpAtualizarBotoes_();
   setTimeout(async function(){await carregarRascunhos();fpRenderModal_(uid);},1200);
 };
 window.fpConcluir_=async function(id,uid){
@@ -6262,7 +6293,7 @@ function fpRenderModal_(uid){
       var atrasado=rascFollowUpAtrasado(r);
       var cor=tarStatusCor_(r['Status'],atrasado);
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">'
-        +'<div style="font-size:12.5px"><strong>'+escHtml(r['Titulo']||'-')+'</strong> <span style="color:'+cor+'">· '+escHtml(r['Status']||'')+'</span>'
+        +'<div style="font-size:12.5px"><span class="tar-nat-badge '+(r['Natureza']==='Pendência'?'tar-nat-pend':'tar-nat-tar')+'">'+(r['Natureza']==='Pendência'?'Pendência':'Tarefa')+'</span><strong>'+escHtml(r['Titulo']||'-')+'</strong> <span style="color:'+cor+'">· '+escHtml(r['Status']||'')+'</span>'
         +(r['Data Follow-up']?' <span style="color:'+(atrasado?'var(--red)':'var(--muted)')+'">· follow-up '+escHtml(r['Data Follow-up'])+(atrasado?' (atrasado)':'')+'</span>':'')+'</div>'
         +'<div style="white-space:nowrap">'
         +'<button class="loc-btn-edit" onclick="fpFormAbrir_(\''+uid+'\',\''+escHtml(r['ID'])+'\')" title="Editar">✎</button> '
@@ -8252,7 +8283,7 @@ function renderCard(p, idx) {
             <div class="btn-group-row btn-group-andamento">
               <span class="btn-group-label">Andamento</span>
               <div class="btn-group-buttons">
-              <button class="btn-action primary" data-uid="${p._uid}" onclick="event.stopPropagation();abrirFollowupsProcesso(this.dataset.uid)" title="Follow-ups deste processo — cria lembretes que sincronizam com o Google Agenda">
+              <button class="btn-action primary btn-fup${fpClasseBotao_(p)}" data-uid="${p._uid}" onclick="event.stopPropagation();abrirFollowupsProcesso(this.dataset.uid)" title="Follow-ups deste processo — cria lembretes que sincronizam com o Google Agenda">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
@@ -16895,6 +16926,9 @@ window.cpRenderFixas=cpRenderFixas;
   @keyframes locBothBtn{0%{background:rgba(232,184,48,0.5);border-color:var(--yellow)}50%{background:rgba(91,141,238,0.5);border-color:var(--accent2)}}
   @keyframes locBothPing{0%{background:rgba(232,184,48,0.24)}50%{background:rgba(91,141,238,0.24)}}
   tr.loc-row-both{animation:locBothPing 2s steps(1,end) infinite;box-shadow:inset 3px 0 0 var(--yellow),inset 6px 0 0 var(--accent2)}
+  .btn-group-andamento .btn-action.btn-fup-pend{background:rgba(232,184,48,0.2);border-color:var(--yellow);color:var(--yellow);animation:locPendBtn 1.4s ease-in-out infinite}
+  .btn-group-andamento .btn-action.btn-fup-tar{background:rgba(91,141,238,0.2);border-color:var(--accent2);color:var(--accent2);animation:locTarBtn 1.4s ease-in-out infinite}
+  .btn-group-andamento .btn-action.btn-fup-both{border-color:var(--yellow);animation:locBothBtn 1.6s steps(1,end) infinite}
   .tar-nat-badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
   .tar-nat-pend{background:rgba(232,184,48,0.2);color:var(--yellow);border:1px solid var(--yellow)}
   .tar-nat-tar{background:rgba(91,141,238,0.2);color:var(--accent2);border:1px solid var(--accent2)}
