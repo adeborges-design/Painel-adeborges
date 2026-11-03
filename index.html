@@ -7480,6 +7480,15 @@ function sistemaLinkUrl_(p) {
   if (p.sistema === 'EPROC') {
     return `https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${encodeURIComponent(p.processo)}`;
   }
+  // PJe: o tribunal sai do código J.TR do número CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO).
+  // 4.03 = Justiça Federal da 3ª Região (SP/MS) -> PJe 1º grau do TRF3 (login com certificado).
+  // 5.02 = Justiça do Trabalho, TRT2 -> PJe TRT2. O 'state' do link do SSO é de sessão e não é guardado.
+  const tr = (String(p.processo).match(/\.(\d)\.(\d{2})\.\d{4}\s*$/) || []);
+  const jtr = tr[1] ? tr[1] + '.' + tr[2] : '';
+  if (p.sistema === 'PJE' || p.sistema === 'TRF3') {
+    if (jtr === '4.03') return 'https://pje1g.trf3.jus.br/pje/login.seam';
+    if (jtr === '5.02') return 'https://pje.trt2.jus.br/primeirograu/login.seam';
+  }
   if (p.sistema === 'PJE') {
     return 'https://pje.trt2.jus.br/primeirograu/login.seam';
   }
@@ -8329,7 +8338,7 @@ function renderCard(p, idx) {
                 EPROC
               </a>` : ''}
               ${p.processo && p.sistema === 'PJE' && sistemaLinkUrl_(p) ? `
-              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" title="Login PJe TRT2 (certificado/token) — a consulta pública não mostra os autos completos" onclick="event.stopPropagation()">
+              <a class="btn-action" href="${sistemaLinkUrl_(p)}" target="_blank" title="Login do PJe do tribunal do processo (certificado/token) — a consulta pública não mostra os autos completos" onclick="event.stopPropagation()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                 </svg>
