@@ -22952,7 +22952,7 @@ window.cpRenderFixas=cpRenderFixas;
   };
   // Monta o extrato de UM imóvel específico, num mês específico, já considerando o percentual
   // (se for coproprietário) e excluindo os itens "só entre escritório e locatário".
-  function relMensalDadosImovel(imovelInfo,mes){
+  function relMensalDadosImovel(imovelInfo,mes,nomeLocador){
     var c=imovelInfo.contrato,pct=imovelInfo.pct;
     var w=(workingList()||[]).filter(function(x){return x.mes===mes&&x.contrato===c.contrato;})[0];
     if(!w)return null;
@@ -22966,8 +22966,21 @@ window.cpRenderFixas=cpRenderFixas;
     if(w.statusRep==='Repassado')return null;
     var repTotal=effRep(w);
     var valorLiq=Math.round(repTotal*pct/100*100)/100;
+    // IRRF retido na fonte pelo locatário (PJ) sobre a fatia DESTE proprietário no aluguel — mesma
+    // conta do informe de repasse (reciboLocDadosProprietario): só quando ele está marcado "Retém IR".
+    var irValor=0,nomeL=String(nomeLocador||'').trim();
+    if(nomeL&&!w.seg){
+      var ownIR=(window.locCoprop||[]).filter(function(o){return o.Contrato===c.contrato&&String(o.Nome||'').trim()===nomeL&&String(o.RetemIR||'').toLowerCase()==='sim';})[0];
+      if(ownIR){
+        irValor=locCalcularIR(Math.round((w.aluguel||0)*pct/100*100)/100)||0;
+        // Usa a MESMA conta do informe de repasse do proprietário (cada parcela arredondada
+        // separadamente), para o relatório e o informe fecharem no centavo.
+        try{var dInf=reciboLocDadosProprietario(w,c,ownIR);if(dInf&&isFinite(dInf.totalValor))valorLiq=dInf.totalValor;else valorLiq=Math.round((valorLiq-irValor)*100)/100;}
+        catch(e){valorLiq=Math.round((valorLiq-irValor)*100)/100;}
+      }
+    }
     var itens=reciboLocItensCondo(w,true).filter(function(it){return it[1];});
-    return {end:c.end,contrato:c.contrato,pct:pct,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,seg:(w.statusRep==='Pago pela seguradora'),obsLocador:w.observacoesLocador||'',statusAluguel:w.statusAluguel,diferencaRecebido:diferencaRecebidoOf(w)};
+    return {end:c.end,contrato:c.contrato,pct:pct,ir:irValor,aluguel:w.aluguel,taxa:w.taxa,multa:w.multa,juros:w.juros,iptu:w.iptu,iptuParcelaNum:w.iptuParcelaNum,iptuParcelaTotal:w.iptuParcelaTotal,desconto:w.desconto,itens:itens,valorLiq:valorLiq,statusRep:w.statusRep,seg:(w.statusRep==='Pago pela seguradora'),obsLocador:w.observacoesLocador||'',statusAluguel:w.statusAluguel,diferencaRecebido:diferencaRecebidoOf(w)};
   }
   window.relMensalGerar=function(){
     var nome=document.getElementById('relMensalLocadorSelect').value;
@@ -22975,7 +22988,7 @@ window.cpRenderFixas=cpRenderFixas;
     var card=document.getElementById('relMensalCard');
     if(!nome||!mes){card.innerHTML='';return;}
     var imoveis=relLocadorImoveis(nome);
-    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
+    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes,nome);}).filter(Boolean);
     // Conta quantos imóveis ficaram de fora e por qual motivo — pra avisar em vez de simplesmente
     // sumir sem explicação nenhuma.
     var naoRecebidos=0,jaRepassados=0;
@@ -23010,6 +23023,7 @@ window.cpRenderFixas=cpRenderFixas;
         +(l.seg?'':linhaValor('Aluguel',l.aluguel,''))
         +(l.seg?'':((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido?linhaValor(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês',Math.abs(l.diferencaRecebido),l.diferencaRecebido>0?'-':'+'):''))
         +((!l.seg&&l.taxa)?linhaValor('Taxa de administração',l.taxa,'-'):'')
+        +((!l.seg&&l.ir)?linhaValor('IRRF retido na fonte'+(l.pct<100?' (sobre '+l.pct+'% do aluguel)':''),l.ir,'-'):'')
         +((!l.seg&&l.multa)?linhaValor('Multa',l.multa,'+'):'')
         +((!l.seg&&l.juros)?linhaValor('Juros',l.juros,'+'):'')
         +(l.seg?'':itensHtml)
@@ -23051,7 +23065,7 @@ window.cpRenderFixas=cpRenderFixas;
     var mes=document.getElementById('relMensalMesSelect').value;
     if(!nome||!mes)return '';
     var imoveis=relLocadorImoveis(nome);
-    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes);}).filter(Boolean);
+    var linhas=imoveis.map(function(im){return relMensalDadosImovel(im,mes,nome);}).filter(Boolean);
     var avulsos=locLocPendentes(nome,mes);
     var naoRecebidos=0,jaRepassados=0;
     imoveis.forEach(function(im){
@@ -23082,6 +23096,7 @@ window.cpRenderFixas=cpRenderFixas;
       }
       if((l.statusAluguel==='Recebido a menor'||l.statusAluguel==='Recebido a maior')&&l.diferencaRecebido)txt+='('+(l.diferencaRecebido>0?'−':'+')+') '+(l.diferencaRecebido>0?'Locatário pagou a menor este mês (a cobrar)':'Locatário pagou a maior este mês')+': '+BRL(Math.abs(l.diferencaRecebido))+'\n';
       if(l.taxa)txt+='(−) Taxa: -'+BRL(l.taxa)+'\n';
+      if(l.ir)txt+='(−) IRRF retido na fonte'+(l.pct<100?' (sobre '+l.pct+'% do aluguel)':'')+': -'+BRL(l.ir)+'\n';
       l.itens.forEach(function(it){txt+='('+(it[1]<0?'−':'+')+') '+it[0]+': '+BRL(Math.abs(it[1]))+'\n';});
       if(l.iptu)txt+='(+) '+iptuLabel_(l)+': '+BRL(l.iptu)+'\n';
       if(l.desconto)txt+='(−) Desconto: -'+BRL(l.desconto)+'\n';
