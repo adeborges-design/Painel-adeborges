@@ -21319,7 +21319,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'</div>'
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
       +'<label style="display:flex;gap:5px;align-items:center;font-size:11px;color:var(--muted);cursor:pointer">'
-      +'<input type="checkbox" class="cobr-item-incide-taxa"'+(incideTaxa?' checked':'')+'> Este valor entra na base de cálculo da taxa de administração (ex.: um desconto que deve reduzir a taxa cobrada)'
+      +'<input type="checkbox" class="cobr-item-incide-taxa"'+((incideTaxa||/multa/i.test(String(desc||'')))?' checked':'')+'> Este valor entra na base de cálculo da taxa de administração (ex.: um desconto que deve reduzir a taxa cobrada). Itens com "multa" na descrição entram sempre.'
       +'</label>'
       +'</div>'
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
@@ -22054,8 +22054,12 @@ window.cpRenderFixas=cpRenderFixas;
   // Soma só os itens de "Outras Cobranças e Descontos" marcados individualmente como "incide na
   // taxa de administração" — usada pra ajustar a base de cálculo da taxa (ex.: um desconto
   // parcelado de aluguel que deve reduzir a base sobre a qual a taxa incide).
+  // Itens cuja descrição fala em "multa" (multa por atraso, multa rescisória...) entram SEMPRE na
+  // base da taxa de administração — a taxa incide sobre a multa. Os demais só quando o item
+  // estiver marcado individualmente.
+  function itemIncideTaxa_(it){return !!it.incideTaxa||/multa/i.test(String(it.desc||''));}
   function somaOutrasCobrancasIncideTaxa(l){
-    return parseOutrasCobrancas(l).filter(function(it){return it.incideTaxa;}).reduce(function(s,it){return s+it.valor;},0);
+    return parseOutrasCobrancas(l).filter(itemIncideTaxa_).reduce(function(s,it){return s+it.valor;},0);
   }
   // Descrição pronta pra exibir (acrescenta "(atual/total)" quando for parcelado)
   function descComParcela(it){
