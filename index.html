@@ -3453,7 +3453,10 @@
   // texto puro é gravada — sempre o hash SHA-256, do mesmo jeito que já era feito antes.
   var GATE_OFF_KEY = 'lexflow_gate_off';
   var SENHA_CUSTOM_KEY = 'lexflow_senha_hash_custom';
-  function gateDesativado(){ try{ return localStorage.getItem(GATE_OFF_KEY) === '1'; }catch(e){ return false; } }
+  // Senha DESATIVADA por padrão (único usuário). Para reativar: Configurações > Senha de Acesso
+  // (grava '0' em GATE_OFF_KEY) ou troque GATE_DESATIVADO_PADRAO para false abaixo.
+  var GATE_DESATIVADO_PADRAO = true;
+  function gateDesativado(){ try{ var v = localStorage.getItem(GATE_OFF_KEY); if (v === '0') return false; if (v === '1') return true; return GATE_DESATIVADO_PADRAO; }catch(e){ return GATE_DESATIVADO_PADRAO; } }
   function hashAtual(){ try{ return localStorage.getItem(SENHA_CUSTOM_KEY) || HASH; }catch(e){ return HASH; } }
   // ---------- Reforço de segurança do acesso ----------
   // O que isso resolve: alguém pegar o celular/computador DESTRAVADO (com o app já aberto e
@@ -3523,7 +3526,7 @@
   window.lexflowSetGateOff = function(v){
     try{
       if (v) { localStorage.setItem(GATE_OFF_KEY, '1'); unlock(); }
-      else { localStorage.removeItem(GATE_OFF_KEY); }
+      else { localStorage.setItem(GATE_OFF_KEY, '0'); }
     }catch(e){}
   };
   window.lexflowDefinirSenha = async function(novaSenhaPlana){
