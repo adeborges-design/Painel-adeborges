@@ -21566,7 +21566,7 @@ window.cpRenderFixas=cpRenderFixas;
     var ano=dt.getFullYear();
     var fimAno=new Date(ano,11,31);
     var totalDiasAno=calcIptuDiasNoAno(ano);
-    var diasRestantes=Math.round((fimAno-dt)/86400000)+1;
+    var diasRestantes=Math.round((fimAno-dt)/86400000); // não conta o dia de início (24/10 → 31/12 = 68 dias)
     var valorProporcional=anual/totalDiasAno*diasRestantes;
 
     if(comSugestao){
@@ -21578,7 +21578,7 @@ window.cpRenderFixas=cpRenderFixas;
     var meses=num(document.getElementById('calciptu-meses').value);
     var valorMensal=meses>0?(valorProporcional/meses):0;
 
-    detalheEl.innerHTML='Dias restantes até 31/12: <strong>'+diasRestantes+'</strong> de '+totalDiasAno+' dias do ano ('+ano+').<br>'
+    detalheEl.innerHTML='Dias restantes até 31/12 (sem contar o dia de início): <strong>'+diasRestantes+'</strong> de '+totalDiasAno+' dias do ano ('+ano+').<br>'
       +'Valor proporcional do IPTU no período: <strong>'+BRL(valorProporcional)+'</strong>.';
     resultEl.textContent=BRL(valorMensal);
     window._calcIptuValor=valorMensal;
@@ -21717,19 +21717,23 @@ window.cpRenderFixas=cpRenderFixas;
     var meses=contrato?mesesContratoDisponiveis_(contrato):[];
     selCopiar.innerHTML='<option value="">Nenhum (usa valores padrão do contrato)</option>'+meses.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
   };
-  window.locCriarLancamento=function(){
-    var msg=document.getElementById('recriarlanc-msg');
-    var contrato=document.getElementById('recriarlanc-contrato').value;
-    var mesInput=document.getElementById('recriarlanc-mes').value; // yyyy-mm (input type=month)
+  // Com argumentos (contrato, 'MM/AAAA') cria direto, sem usar o modal e sem alert — usado ao salvar
+  // um contrato NOVO, para ele já aparecer em Lançamentos do mês.
+  window.locCriarLancamento=function(contratoArg,mesArg){
+    var auto=!!(contratoArg&&mesArg);
+    var msg=auto?{style:{},textContent:''}:document.getElementById('recriarlanc-msg');
+    var contrato=auto?contratoArg:document.getElementById('recriarlanc-contrato').value;
+    var mesInput=auto?'auto':document.getElementById('recriarlanc-mes').value; // yyyy-mm (input type=month)
     if(!contrato){msg.style.color='var(--red)';msg.textContent='Selecione o contrato.';return;}
     if(!mesInput){msg.style.color='var(--red)';msg.textContent='Selecione o mês.';return;}
-    var p=mesInput.split('-'); var mes=p[1]+'/'+p[0];
+    var mes;
+    if(auto){mes=mesArg;}else{var p=mesInput.split('-'); mes=p[1]+'/'+p[0];}
     var c=contratosById[contrato];
     if(!c){msg.style.color='var(--red)';msg.textContent='Contrato não encontrado.';return;}
     if((workingList()||[]).some(function(x){return x.mes===mes&&x.contrato===contrato;})){
       msg.style.color='var(--red)';msg.textContent='Este contrato já tem lançamento em '+mes+'. Use "🧾 lançamentos" nesse mês pra editar, em vez de criar outro.';return;
     }
-    var mesOrigem=document.getElementById('recriarlanc-copiar').value;
+    var mesOrigem=auto?'':document.getElementById('recriarlanc-copiar').value;
     var origem=mesOrigem?(workingList()||[]).filter(function(x){return x.mes===mesOrigem&&x.contrato===contrato;})[0]:null;
     var base=origem
       ?{aluguel:origem.aluguel,condominio:origem.condominio,iptu:origem.iptu,iptuParcelaNum:origem.iptuParcelaNum,iptuParcelaTotal:origem.iptuParcelaTotal,aguaPriv:origem.aguaPriv,gasPriv:origem.gasPriv,aguaComum:origem.aguaComum,gasPiscina:origem.gasPiscina,energiaComum:origem.energiaComum,taxaLeitura:origem.taxaLeitura,fundoFerias:origem.fundoFerias,decimoTerceiro:origem.decimoTerceiro,desconto:origem.desconto,descontoIncideTaxa:origem.descontoIncideTaxa,outrasDesc:origem.outrasDesc}
@@ -21745,11 +21749,13 @@ window.cpRenderFixas=cpRenderFixas;
     var detalhe='Mês '+mes+(mesOrigem?' — copiado de '+mesOrigem:' — valores padrão do contrato');
     if(live){
       try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'lancar_locl',campos:campos})});}catch(e){}
-      logAuditoria_('Lançamento recriado',contrato,detalhe);
-      document.getElementById('modalRecriarLanc').classList.remove('open');
-      alert('Solicitada a criação do lançamento de '+mes+' para '+contrato+'. Aguarde alguns segundos e clique em 🔄 Atualizar (ou espere — a tela recarrega sozinha).');
-      selMes=mes;
-      setTimeout(carregarAlugueis,2800);
+      logAuditoria_(auto?'Lançamento criado junto com o contrato':'Lançamento recriado',contrato,detalhe);
+      if(!auto){
+        document.getElementById('modalRecriarLanc').classList.remove('open');
+        alert('Solicitada a criação do lançamento de '+mes+' para '+contrato+'. Aguarde alguns segundos e clique em 🔄 Atualizar (ou espere — a tela recarrega sozinha).');
+        selMes=mes;
+        setTimeout(carregarAlugueis,2800);
+      }
     }else{
       var s=state();
       s.extra.push({id:'',mes:mes,contrato:contrato,aluguel:base.aluguel||0,taxa:taxa,statusAluguel:'Pendente',statusRep:'Pendente',dataPag:'',banco:'',
@@ -21758,8 +21764,7 @@ window.cpRenderFixas=cpRenderFixas;
         desconto:base.desconto||0,multa:0,juros:0,outrasDesc:base.outrasDesc||'',outrasValor:somaOutrasCobrancas(base),descontoIncideTaxa:!!base.descontoIncideTaxa});
       saveState(s);
       logAuditoria_('Lançamento recriado (local)',contrato,detalhe);
-      document.getElementById('modalRecriarLanc').classList.remove('open');
-      selMes=mes;locRefreshMeses();locRender();
+      if(!auto){document.getElementById('modalRecriarLanc').classList.remove('open');selMes=mes;locRefreshMeses();locRender();}
     }
   };
   document.addEventListener('DOMContentLoaded',function(){
@@ -24689,6 +24694,8 @@ window.cpRenderFixas=cpRenderFixas;
     // atualização local imediata (sessão)
     var i=-1;DATA.contratos.forEach(function(c,idx){if(c.contrato===campos.Contrato)i=idx;});
     var antigo=i>=0?DATA.contratos[i]:null;
+    // Contrato NOVO com número que já existe = duplicação (ex.: clicar em Salvar duas vezes, ou número repetido).
+    if(!id&&antigo){msg.style.color='var(--red)';msg.textContent='Já existe um contrato com o número '+campos.Contrato+'. Para alterar, use o botão "editar" do contrato; para um contrato novo, mude o número.';return;}
     // "Data Ultimo Reajuste" não é campo do formulário (é controlada pelo fluxo de Reajustes) —
     // preserva o valor do registro anterior pra não perder o histórico ao editar o contrato.
     novo.dataUltimoReajuste=antigo?antigo.dataUltimoReajuste:'';
@@ -24717,6 +24724,19 @@ window.cpRenderFixas=cpRenderFixas;
       msg.style.color='var(--yellow)';msg.textContent='Salvo apenas nesta sessão (configure a planilha em Config para gravar de forma permanente).';
     }
     lcSenhasAtualizarPainel(novo);
+    // Contrato novo e ativo: já cria o lançamento do mês (senão ele só aparece em Lançamentos quando
+    // o mês seguinte for gerado). Mês = o mês que está na tela, ou o mês de início da vigência se for futuro.
+    if(!id&&novo.ativo!==false&&String(novo.ativo).toLowerCase()!=='não'){
+      try{
+        var mesAlvo=selMes;
+        var vi=locParseDataBR_(campos['Data Inicio Contrato']);
+        if(vi&&selMes){var ps=selMes.split('/');var mesSel=new Date(+ps[1],+ps[0]-1,1);var mesVig=new Date(vi.getFullYear(),vi.getMonth(),1);if(mesVig>mesSel)mesAlvo=('0'+(vi.getMonth()+1)).slice(-2)+'/'+vi.getFullYear();}
+        if(mesAlvo&&!(workingList()||[]).some(function(x){return x.mes===mesAlvo&&x.contrato===campos.Contrato;})){
+          window.locCriarLancamento(campos.Contrato,mesAlvo);
+          msg.style.color='var(--green)';msg.textContent='Contrato enviado à planilha com o lançamento de '+mesAlvo+'. Aguarde alguns segundos.';
+        }
+      }catch(eL){}
+    }
     locRenderContratos();locRender();
   };
 
