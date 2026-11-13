@@ -30235,5 +30235,88 @@ window.imovExcluir = function (id) {
   }
 </script>
 
+
+<!-- BANNER DE DICAS DO SISTEMA (nov/2026) -->
+<script>
+(function(){
+  // Faixa de dicas que acompanha a tela/módulo aberto. Troca sozinha a cada 12 s; "próxima" avança;
+  // "✕" esconde por hoje (volta amanhã) e deixa só um botão 💡 pequeno pra reabrir na hora.
+  var DICAS={
+    inicio:[
+      'O alerta "em contratos" no Início mostra as pendências (🟡) e tarefas (🔵) abertas dos contratos — clique no item para abri-lo.',
+      'No menu do seu nome (canto superior direito) ficam Notas Rápidas, Atualizar dados, Manual e Configurações.',
+      'O logotipo EIXO, no canto superior esquerdo, volta para o Início de qualquer tela.',
+      'Follow-ups com data marcada aparecem também no seu Google Agenda automaticamente.'
+    ],
+    processos:[
+      'Cada follow-up do processo pode ser Tarefa (🔵) ou Pendência (🟡). O selo piscando ao lado do nome do cliente mostra o que está em aberto, mesmo com o card fechado.',
+      'O botão PJE abre o login do tribunal certo pelo número CNJ: processos com ".4.03." vão para o PJe do TRF3.',
+      'Em Editar Cadastro, o botão 🔑 Chave da IA guarda a chave da Anthropic neste navegador para analisar o caso com Claude.',
+      'Processo sem número cadastrado? Os follow-ups dele ficam vinculados pelo nome do cliente.',
+      'Clique no selo "Tarefa/Pendência" de um follow-up para alternar a natureza na hora.'
+    ],
+    locacoes:[
+      'O botão 📌 de cada contrato agenda uma tarefa (azul) ou pendência (amarela). Ele pisca enquanto houver item em aberto; sinistro (vermelho) tem prioridade.',
+      'Em Lançamentos > Encargos, o campo "Vencimento excepcional deste mês" muda a data de vencimento só daquele mês.',
+      'Em Outras Cobranças, itens com "multa" na descrição entram sempre na base da taxa de administração.',
+      'Em Correspondências, o botão 📌 Registrar pendência cria o follow-up do assunto, com data, direto no Google Agenda.',
+      'Ao cadastrar contrato, escolha o Tipo de imóvel e o número sai sozinho, com o código do imóvel (ex.: C26.SL001).',
+      'Aluguel pago direto pela seguradora (seguro fiança)? Use o Status Repasse "Pago pela seguradora" para não aparecer como repasse a pagar.',
+      'No cadastro do locador, escolha um nome já existente na lista para copiar CPF, contatos e dados bancários.'
+    ],
+    outros:[
+      'O logotipo EIXO, no canto superior esquerdo, volta para o Início de qualquer tela.',
+      'O Manual, no menu do seu nome, explica cada módulo do sistema.',
+      'Atualizar dados, no mesmo menu, recarrega a planilha — use depois de lançar algo para conferir se gravou.',
+      'Follow-ups com data marcada aparecem também no seu Google Agenda automaticamente.'
+    ]
+  };
+  var OVERLAYS=[['imovOverlay','outros'],['ferramentasOverlay','outros'],['contasOverlay','outros'],['acordosOverlay','outros'],['captacaoOverlay','outros'],['comOverlay','outros'],['honOverlay','outros'],['locOverlay','locacoes'],['homeOverlay','inicio']];
+  var HIDE_KEY='lf_dicas_oculto_ate', idx={}, timer=null, ctxAtual='', box=null, mini=null;
+  function hoje(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  function oculto(){try{return localStorage.getItem(HIDE_KEY)===hoje();}catch(e){return false;}}
+  function setOculto(v){try{if(v)localStorage.setItem(HIDE_KEY,hoje());else localStorage.removeItem(HIDE_KEY);}catch(e){}}
+  function contexto(){
+    for(var i=0;i<OVERLAYS.length;i++){var e=document.getElementById(OVERLAYS[i][0]);if(e&&e.classList.contains('open'))return OVERLAYS[i][1];}
+    return 'processos';
+  }
+  function css(){
+    var st=document.createElement('style');
+    st.textContent='#lfDicas{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9990;max-width:min(760px,calc(100vw - 24px));display:flex;align-items:center;gap:10px;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-left:3px solid var(--accent2);border-radius:10px;padding:8px 10px 8px 12px;box-shadow:0 6px 24px rgba(0,0,0,.28);font-size:12.5px;line-height:1.45}'
+      +'#lfDicas .lfd-ico{font-size:16px;flex:none}#lfDicas .lfd-txt{flex:1;min-width:0}#lfDicas .lfd-tit{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:1px}'
+      +'#lfDicas button{flex:none;background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11.5px;cursor:pointer}#lfDicas button:hover{color:var(--text)}'
+      +'#lfDicasMini{position:fixed;left:12px;bottom:14px;z-index:9990;width:30px;height:30px;border-radius:50%;background:var(--surface);color:var(--text);border:1px solid var(--border2);cursor:pointer;font-size:15px;box-shadow:0 3px 12px rgba(0,0,0,.25);display:none}'
+      +'@media print{#lfDicas,#lfDicasMini{display:none!important}}@media (max-width:600px){#lfDicas{bottom:8px}#lfDicas .lfd-prox{display:none}}';
+    document.head.appendChild(st);
+  }
+  function render(){
+    if(!box)return;
+    var ocul=oculto();
+    box.style.display=ocul?'none':'flex';
+    mini.style.display=ocul?'block':'none';
+    if(ocul)return;
+    var lista=DICAS[ctxAtual]||DICAS.outros;
+    var i=(idx[ctxAtual]||0)%lista.length;
+    box.querySelector('.lfd-txt').innerHTML='<span class="lfd-tit">Dica do sistema · '+(i+1)+'/'+lista.length+'</span>'+lista[i].replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  }
+  function proxima(){idx[ctxAtual]=((idx[ctxAtual]||0)+1);render();}
+  function atualizaContexto(){var c=contexto();if(c!==ctxAtual){ctxAtual=c;if(idx[c]==null)idx[c]=Math.floor(Math.random()*((DICAS[c]||DICAS.outros).length));render();}}
+  function iniciar(){
+    css();
+    box=document.createElement('div');box.id='lfDicas';box.setAttribute('role','note');
+    box.innerHTML='<span class="lfd-ico">💡</span><span class="lfd-txt"></span><button type="button" class="lfd-prox" title="Mostrar outra dica">próxima</button><button type="button" class="lfd-x" title="Esconder as dicas por hoje">✕</button>';
+    box.querySelector('.lfd-prox').addEventListener('click',proxima);
+    box.querySelector('.lfd-x').addEventListener('click',function(){setOculto(true);render();});
+    mini=document.createElement('button');mini.id='lfDicasMini';mini.type='button';mini.title='Mostrar as dicas do sistema';mini.textContent='💡';
+    mini.addEventListener('click',function(){setOculto(false);render();});
+    document.body.appendChild(box);document.body.appendChild(mini);
+    var mo=new MutationObserver(atualizaContexto);
+    OVERLAYS.forEach(function(o){var e=document.getElementById(o[0]);if(e)mo.observe(e,{attributes:true,attributeFilter:['class']});});
+    atualizaContexto();render();
+    timer=setInterval(function(){if(!oculto()){proxima();}},12000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar);else iniciar();
+})();
+</script>
 </body>
 </html>
