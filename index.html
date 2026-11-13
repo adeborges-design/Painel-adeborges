@@ -18579,6 +18579,7 @@ window.cpRenderFixas=cpRenderFixas;
       <button class="btn-recibo-print" onclick="avisoImprimir()">🖨 Imprimir/PDF</button>
       <button class="loc-btn" onclick="avisoCopiarTexto()">📋 Copiar texto</button>
       <button class="loc-btn" onclick="avisoCopiarContato_()">📋 Copiar contato</button>
+      <button class="loc-btn" style="color:var(--yellow);border-color:var(--yellow)" onclick="avisoRegistrarPendencia()" title="Cria um follow-up do tipo Pendência para este contrato (com data, vai para o Google Agenda) e o contrato passa a piscar em amarelo">📌 Registrar pendência / follow-up</button>
     </div>
   </div>
 </div>
@@ -23634,6 +23635,36 @@ window.cpRenderFixas=cpRenderFixas;
     txt+='\n\nDr. Adenilson Borges da Silva — OAB/SP 335.600\n(11) 99931-3712';
     return txt;
   }
+  // Registra o assunto deste aviso como PENDÊNCIA (aguardando terceiro) no módulo Tarefas/Follow-up,
+  // vinculada ao contrato: pisca em amarelo em Locações e, com data de follow-up, sincroniza com o
+  // Google Agenda (mesma rotina das tarefas). Abre o formulário já preenchido — só falta confirmar a data.
+  window.avisoRegistrarPendencia=function(){
+    var contrato=document.getElementById('avisoContratoSelect').value;
+    var tipoSel=document.getElementById('avisoTipoSelect');
+    var tipo=tipoSel.value;
+    var c=contratosById[contrato]; if(!c){alert('Selecione um contrato.');return;}
+    var rotulo=(tipoSel.options[tipoSel.selectedIndex]||{}).text||'Aviso';
+    rotulo=rotulo.replace(/^\d+\.\s*/,'');
+    var titulo=rotulo+' — '+(c.end||c.locatario||contrato);
+    var notas='Contrato '+contrato+(c.end?' — '+c.end:'')+'\nAssunto: '+rotulo;
+    if(tipo==='dano_locatario'||tipo==='dano_locador'||document.getElementById('aviso-dano-tipo')){
+      var dt=(document.getElementById('aviso-dano-tipo')||{}).value||'';
+      if(dt==='Outro'){var dOutro=(document.getElementById('aviso-dano-outro')||{}).value||'';if(dOutro.trim())dt=dOutro.trim();}
+      var dd=(document.getElementById('aviso-dano-data')||{}).value||'';
+      var ds=(document.getElementById('aviso-dano-desc')||document.querySelector('#avisoExtrasWrap textarea')||{}).value||'';
+      if(dt){titulo='Pendência — '+dt+' — '+(c.end||c.locatario||contrato);notas+='\nProblema: '+dt;}
+      if(dd)notas+='\nInformado pelo locatário em '+accDtBRfromInput(dd);
+      if(ds)notas+='\nRelato: '+ds.trim();
+    }
+    var d=new Date();d.setDate(d.getDate()+7);
+    var fu=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+    var seed={'Tipo':'Acompanhamento de Locação','Natureza':'Pendência','Contrato':contrato,'Titulo':titulo,
+      'Locador':c.locador||'','Locatario':c.locatario||'','Endereco':c.end||'',
+      'Telefone':c.telLocatario1||c.telLocatario2||'','Email':c.emailLocatario1||c.emailLocatario2||'',
+      'Notas':notas,'Data Follow-up':fu,'Status':'Em andamento'};
+    document.getElementById('modalAvisoLoc').classList.remove('open');
+    if(typeof window.rascunhosAbrirComSeed==='function')window.rascunhosAbrirComSeed(seed);
+  };
   window.avisoCopiarTexto=function(){
     var texto=avisoMontarTexto();
     if(!texto){alert('Selecione o contrato e o tipo de aviso primeiro.');return;}
