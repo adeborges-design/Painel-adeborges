@@ -17135,8 +17135,8 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-cfield half">
           <label>Nº do Contrato *</label>
           <div style="display:flex;gap:6px">
-            <input class="loc-cinput" id="lc-contrato" placeholder="Ex.: R26.001" style="flex:1">
-            <button type="button" class="loc-btn" style="padding:0 10px;white-space:nowrap" title="Sugerir número automaticamente com base no tipo de locação e no ano de início de vigência" onclick="locSugerirNumeroContrato()">🔢 Sugerir</button>
+            <input class="loc-cinput" id="lc-contrato" placeholder="Ex.: C26.SL001" style="flex:1">
+            <button type="button" class="loc-btn" style="padding:0 10px;white-space:nowrap" title="Sugerir número automaticamente com base no tipo de locação, no tipo de imóvel e no ano de início de vigência (ex.: C26.SL001)" onclick="locSugerirNumeroContrato()">🔢 Sugerir</button>
           </div>
         </div>
         <div class="loc-cfield"><label>Ativo</label><select class="loc-cinput" id="lc-ativo" onchange="locToggleEncerramento()"><option>Sim</option><option>Não</option></select></div>
@@ -17160,7 +17160,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="Residencial">Residencial</option>
           <option value="Comercial">Comercial</option>
         </select></div>
-        <div class="loc-cfield"><label>Tipo de imóvel</label><select class="loc-cinput" id="lc-tipo-imovel">
+        <div class="loc-cfield"><label>Tipo de imóvel</label><select class="loc-cinput" id="lc-tipo-imovel" onchange="locAutoSugerirSeVazio()">
           <option value="">Selecionar</option>
           <option>Apartamento</option>
           <option>Casa</option>
@@ -24350,28 +24350,47 @@ window.cpRenderFixas=cpRenderFixas;
   // Comercial) + ano de início de vigência (2 dígitos) + sequencial de 3 dígitos, único dentro
   // do mesmo tipo+ano. Ex.: R26.001, R26.002, C26.001. Nunca sobrescreve um número já digitado
   // manualmente (só preenche se o campo estiver vazio ou via clique explícito no botão).
+  // Formato novo (nov/2026): {R|C}{AA}.{TT}{SEQ} — tipo de locação + ano de início + código do tipo de
+  // imóvel + sequencial de 3 dígitos (único dentro de tipo+ano+código). Ex.: C26.SL001 (sala
+  // comercial), R26.CS002 (casa), C26.GP001 (galpão). Sem tipo de imóvel escolhido, cai no formato
+  // antigo R26.001. Números antigos continuam válidos e não são alterados.
+  var LOC_COD_IMOVEL={'Apartamento':'AP','Casa':'CS','Sobrado':'SB','Kitnet/Studio':'KT','Prédio Comercial':'PC','Sala Comercial':'SL','Loja':'LJ','Galpão':'GP','Terreno':'TE','Outro':'OU'};
   window.locSugerirNumeroContrato=function(){
     var tipo=document.getElementById('lc-tipo-locacao').value;
     var pref=(tipo==='Comercial')?'C':'R';
     var vig=document.getElementById('lc-vig-inicio').value;
     var ano=vig?parseInt(vig.slice(0,4),10):(new Date()).getFullYear();
     var aa=('0'+(ano%100)).slice(-2);
+    var tImovel=document.getElementById('lc-tipo-imovel').value;
+    var cod=LOC_COD_IMOVEL[tImovel]||'';
+    var re=new RegExp('^'+pref+aa+'\\.'+cod+'(\\d{3})$');
     var max=0;
     (DATA.contratos||[]).forEach(function(c){
-      var m=/^([RC])(\d{2})\.(\d{3})$/.exec(String(c.contrato||'').trim());
-      if(m&&m[1]===pref&&m[2]===aa){var n=parseInt(m[3],10);if(n>max)max=n;}
+      var m=re.exec(String(c.contrato||'').trim());
+      if(m){var n=parseInt(m[1],10);if(n>max)max=n;}
     });
-    var sugestao=pref+aa+'.'+('00'+(max+1)).slice(-3);
+    var sugestao=pref+aa+'.'+cod+('00'+(max+1)).slice(-3);
     var campo=document.getElementById('lc-contrato');
     campo.value=sugestao;
+    campo.dataset.autoVal=sugestao; // marca que foi gerado automaticamente (pode ser regerado ao mudar o tipo)
     campo.focus();
-    if(!tipo){var msg=document.getElementById('lc-msg');msg.style.color='var(--yellow)';msg.textContent='Sugestão gerada como Residencial (padrão) — selecione o Tipo de locação e clique em Sugerir de novo se for Comercial.';}
+    var msg=document.getElementById('lc-msg');
+    if(!tipo||!tImovel){msg.style.color='var(--yellow)';msg.textContent='Sugestão gerada sem '+(!tipo?'tipo de locação (padrão Residencial)':'tipo de imóvel (sem código)')+' — selecione '+(!tipo?'o Tipo de locação':'o Tipo de imóvel')+' e o número é refeito sozinho.';}
+    else{msg.textContent='';}
   };
-  // Auto-preenche o número sugerido quando o Tipo de locação ou a Vigência-início mudam,
-  // mas só se o campo Contrato ainda estiver vazio (nunca sobrescreve o que o usuário digitou).
+  // Gera/refaz o número sugerido quando o Tipo de imóvel (ou de locação, ou o ano da vigência)
+  // mudar — só se o campo estiver vazio ou ainda tiver o último número gerado automaticamente
+  // (nunca sobrescreve um número digitado ou de contrato já existente).
   window.locAutoSugerirSeVazio=function(){
     var campo=document.getElementById('lc-contrato');
-    if(campo&&!campo.value.trim())locSugerirNumeroContrato();
+    if(!campo)return;
+    var v=campo.value.trim();
+    if(document.getElementById('lc-id').value)return; // editando contrato existente: não mexe no número
+    if(!v||v===campo.dataset.autoVal){
+      if(!document.getElementById('lc-tipo-imovel').value&&v)return; // sem tipo de imóvel não refaz um número já gerado
+      if(!document.getElementById('lc-tipo-imovel').value)return;     // espera o tipo de imóvel para gerar
+      locSugerirNumeroContrato();
+    }
   };
   // Calcula a Vigência-fim a partir da Vigência-início + quantidade de meses (ex.: início
   // 01/01/2026 + 12 meses = fim 31/12/2026 — o dia anterior ao mesmo dia N meses depois,
