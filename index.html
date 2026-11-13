@@ -17182,7 +17182,7 @@ window.cpRenderFixas=cpRenderFixas;
           <option value="Nao">Não (padrão — não abre a carta ao marcar Recebido)</option>
           <option value="Sim">Sim (abre a carta ao marcar Recebido)</option>
         </select></div>
-        <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" placeholder="Nome do dono do imóvel"></div>
+        <div class="loc-cfield half"><label>Locador (proprietário) *</label><input class="loc-cinput" id="lc-locador" list="lc-locador-lista" autocomplete="off" placeholder="Nome do dono — escolha da lista ou digite um novo" onchange="locLocadorExistenteSelecionado()"><datalist id="lc-locador-lista"></datalist><div id="lc-locador-aviso" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>
         <div class="loc-cfield half"><label>Locatário (inquilino) *</label><input class="loc-cinput" id="lc-locatario" placeholder="Nome de quem aluga"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locador</label><input class="loc-cinput" id="lc-cpf-locador" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)"></div>
         <div class="loc-cfield half"><label>CPF/CNPJ do locatário</label><input class="loc-cinput" id="lc-cpf-locatario" placeholder="000.000.000-00" maxlength="18" oninput="mascararCPFCNPJ(this)"></div>
@@ -17228,7 +17228,7 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="loc-cfield-wrap full" id="lc-garantia-SeguroFianca" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
-            <div class="loc-cfield half"><label>Seguradora</label><input class="loc-cinput" id="lc-gar-seguradora" placeholder="Nome da seguradora"></div>
+            <div class="loc-cfield half"><label>Seguradora</label><input class="loc-cinput" id="lc-gar-seguradora" list="lc-gar-seguradora-lista" autocomplete="off" placeholder="Escolha da lista ou digite uma nova"><datalist id="lc-gar-seguradora-lista"></datalist></div>
             <div class="loc-cfield half"><label>Nº da apólice</label><input class="loc-cinput" id="lc-gar-apolice"></div>
             <div class="loc-cfield full" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">Corretora de seguros (recebe o aviso pra comunicar a seguradora)</div>
             <div class="loc-cfield"><label>Nome da corretora</label><input class="loc-cinput" id="lc-gar-corretora-nome"></div>
@@ -17250,7 +17250,7 @@ window.cpRenderFixas=cpRenderFixas;
         </div>
         <div class="loc-cfield-wrap full" id="lc-garantia-TituloCapitalizacao" style="display:none;padding:0;border:none">
           <div class="loc-cform" style="padding:0;border:none;background:none">
-            <div class="loc-cfield half"><label>Empresa emissora do título</label><input class="loc-cinput" id="lc-gar-empresa-titulo"></div>
+            <div class="loc-cfield half"><label>Empresa emissora do título</label><input class="loc-cinput" id="lc-gar-empresa-titulo" list="lc-gar-empresa-titulo-lista" autocomplete="off" placeholder="Escolha da lista ou digite uma nova"><datalist id="lc-gar-empresa-titulo-lista"></datalist></div>
             <div class="loc-cfield half"><label>Nº da proposta</label><input class="loc-cinput" id="lc-gar-nr-proposta"></div>
             <div class="loc-cfield half"><label>Valor inicial aplicado (R$)</label><input class="loc-cinput" id="lc-gar-titulo-valor-inicial" type="text" inputmode="decimal" placeholder="0,00"></div>
             <div class="loc-cfield half"><label>Valor atualizado (R$)</label><input class="loc-cinput" id="lc-gar-titulo-valor-atualizado" type="text" inputmode="decimal" placeholder="0,00"></div>
@@ -21530,7 +21530,8 @@ window.cpRenderFixas=cpRenderFixas;
   };
 
   // ---------- CALCULADORA DE IPTU (proporcional no ano de início + regime normal do carnê) ----------
-  function calcIptuDiasNoAno(ano){return ((ano%4===0&&ano%100!==0)||ano%400===0)?366:365;}
+  // Base fixa de 365 dias (pedido do usuário), inclusive em ano bissexto.
+  function calcIptuDiasNoAno(ano){return 365;}
   window.abrirCalcIptu=function(targetId){
     // A calculadora é um modal único e global, reaproveitado pra qualquer lançamento — sem
     // limpar os campos aqui, o valor anual/meses/parcelas digitados pro contrato ou mês
@@ -24318,7 +24319,41 @@ window.cpRenderFixas=cpRenderFixas;
     if(!/^https?:\/\//i.test(u))u='https://'+u;
     window.open(u,'_blank','noopener');
   };
+  // ---------- Listas de seleção do cadastro de contrato (nov/2026) ----------
+  // Locadores: todos que já aparecem em algum contrato (ativo ou inativo) ou como coproprietário.
+  // Ao escolher um nome que já existe, copia CPF/CNPJ, telefones, e-mails e dados bancários do
+  // contrato mais recente dele — nada é gravado até o usuário salvar o contrato. Nome novo = cadastro novo.
+  // Seguradoras/emissoras: lista padrão + tudo o que já foi digitado em outros contratos. Digitar um
+  // nome que não está na lista funciona (o campo é livre) e ele passa a aparecer na lista depois de salvo.
+  var LOC_SEGURADORAS_PADRAO=['Porto Seguro Cia de Seguros Gerais'];
+  var LOC_EMISSORAS_TITULO_PADRAO=['Porto Seguro Capitalização S.A.'];
+  function locUnicos_(arr){var vistos={},out=[];arr.forEach(function(x){x=String(x||'').trim();var k=x.toLowerCase();if(x&&!vistos[k]){vistos[k]=1;out.push(x);}});return out.sort(function(a,b){return a.localeCompare(b,'pt-BR');});}
+  function locPreencherDatalist_(id,valores){var dl=document.getElementById(id);if(!dl)return;dl.innerHTML=valores.map(function(v){return '<option value="'+E(v)+'"></option>';}).join('');}
+  window.locAtualizarListasContrato_=function(){
+    var cs=DATA.contratos||[];
+    var nomes=cs.map(function(c){return c.locador;}).concat((window.locCoprop||[]).map(function(o){return o.Nome;}));
+    locPreencherDatalist_('lc-locador-lista',locUnicos_(nomes));
+    locPreencherDatalist_('lc-gar-seguradora-lista',locUnicos_(LOC_SEGURADORAS_PADRAO.concat(cs.map(function(c){return c.garSeguradora;}))));
+    locPreencherDatalist_('lc-gar-empresa-titulo-lista',locUnicos_(LOC_EMISSORAS_TITULO_PADRAO.concat(cs.map(function(c){return c.garEmpresaTitulo;}))));
+  };
+  window.locLocadorExistenteSelecionado=function(){
+    var campo=document.getElementById('lc-locador'),aviso=document.getElementById('lc-locador-aviso');
+    var nome=campo.value.trim(); if(!nome){if(aviso)aviso.textContent='';return;}
+    var idEdit=document.getElementById('lc-id').value;
+    var cands=(DATA.contratos||[]).filter(function(c){return String(c.locador||'').trim().toLowerCase()===nome.toLowerCase();});
+    if(!cands.length){if(aviso)aviso.textContent='Locador novo — será cadastrado junto com este contrato.';return;}
+    cands.sort(function(a,b){return (b.ativo?1:0)-(a.ativo?1:0)||String(b.id).localeCompare(String(a.id),undefined,{numeric:true});});
+    var c=cands[0], ativos=cands.filter(function(x){return x.ativo;}).length;
+    campo.value=c.locador;
+    if(aviso)aviso.textContent='Locador já cadastrado ('+ativos+' contrato(s) ativo(s), '+(cands.length-ativos)+' inativo(s)). Dados copiados do contrato '+c.contrato+' — confira.';
+    if(idEdit)return; // editando: não sobrescreve os dados do contrato em edição
+    var set=function(id,v){var e=document.getElementById(id);if(e&&!e.value.trim()&&v)e.value=v;};
+    set('lc-cpf-locador',c.cpfLocador);set('lc-tel-locador-1',c.telLocador1);set('lc-tel-locador-2',c.telLocador2);
+    set('lc-email-locador-1',c.emailLocador1);set('lc-email-locador-2',c.emailLocador2);
+    set('lc-banco-locador',c.bancoLocador);set('lc-agencia-locador',c.agenciaLocador);set('lc-conta-locador',c.contaLocador);set('lc-pix-locador',c.pixLocador);
+  };
   window.locNovoContrato=function(){
+    try{locAtualizarListasContrato_();var av=document.getElementById('lc-locador-aviso');if(av)av.textContent='';}catch(e){}
     var s=document.getElementById('locContratosSection');s.classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
     document.getElementById('locCFormTitle').textContent='Novo contrato';
@@ -24448,6 +24483,7 @@ window.cpRenderFixas=cpRenderFixas;
     }
   };
   window.locEditarContrato=function(contrato){
+    try{locAtualizarListasContrato_();var av0=document.getElementById('lc-locador-aviso');if(av0)av0.textContent='';}catch(e){}
     var c=contratosById[contrato];if(!c)return;
     document.getElementById('locContratosSection').classList.remove('loc-hidden');
     document.getElementById('locCFormWrap').classList.remove('loc-hidden');
@@ -25063,7 +25099,7 @@ window.cpRenderFixas=cpRenderFixas;
     var dIA=new Date(anoEx+'-01-01T12:00:00'),dFA=new Date(anoEx+'-12-31T12:00:00');
     var dS=dO>dIA?dO:dIA,dE=dC<dFA?dC:dFA;
     var diasR=Math.max(0,Math.round((dE-dS)/86400000));
-    var diasAno=((anoEx%4===0&&anoEx%100!==0)||(anoEx%400===0))?366:365;
+    var diasAno=365; // base fixa de 365 dias
     var iptuProp=diasR/diasAno*total;
     if(rescIptuMode==='av'){
       document.getElementById('resc-iptu-av-result').value=rescBRL_(iptuProp);
@@ -25168,7 +25204,7 @@ window.cpRenderFixas=cpRenderFixas;
       var dIA=new Date(anoEx+'-01-01T12:00:00'),dFA=new Date(anoEx+'-12-31T12:00:00');
       var dS=dO>dIA?dO:dIA,dE=dCd<dFA?dCd:dFA;
       var diasR=Math.max(0,Math.round((dE-dS)/86400000));
-      var diasAno=((anoEx%4===0&&anoEx%100!==0)||(anoEx%400===0))?366:365;
+      var diasAno=365; // base fixa de 365 dias
       var iptuProp=diasR/diasAno*iptuTot;
       if(rescIptuMode==='av'){
         iptuFinal=iptuProp;
