@@ -17424,6 +17424,7 @@ window.cpRenderFixas=cpRenderFixas;
         <div class="loc-note" style="margin-bottom:8px">Adicione quantos itens precisar. Valor <strong>positivo</strong> soma, <strong>negativo</strong> desconta. Em <strong>"Quem recebe/paga esse valor?"</strong>: escolha <strong>"Repassar ao locador"</strong> pra encargos normais (condomínio, IPTU pago por você e recuperado do locador, reparo cobrado do inquilino...); escolha <strong>"Só entre você e o locatário"</strong> quando o valor não tem nada a ver com o locador — ex.: seguro fiança que você pagou e está cobrando do inquilino em parcelas. Marque <strong>"Este valor entra na base de cálculo da taxa"</strong> quando o item deve reduzir (ou aumentar) o valor sobre o qual a taxa de administração é calculada — ex.: um desconto de aluguel parcelado, marcado assim, faz a taxa incidir sobre o aluguel já líquido do desconto. Em "Repetição", escolha <strong>"Só este mês"</strong> pra algo pontual, <strong>"Todo mês"</strong> pra algo fixo que se repete sozinho, ou <strong>"Parcelado"</strong> pra IPTU, descontos combinados e afins — o sistema avança a parcela sozinho a cada mês gerado, e para automaticamente quando chegar na última.</div>
         <div id="cobr-outras-lista"></div>
         <div class="loc-cfield full"><button type="button" class="loc-btn" onclick="cobrAdicionarItem()" style="padding:6px 12px;font-size:12px">+ adicionar item</button></div>
+        <div class="loc-cfield full" style="background:rgba(200,169,110,0.08);border-radius:8px;padding:10px 12px"><label>Vencimento excepcional deste mês <span style="font-weight:400;color:var(--muted)">(opcional — vale só para este lançamento; deixe vazio para usar o dia padrão do contrato)</span></label><div style="display:flex;gap:8px;align-items:center"><input class="loc-cinput" id="cobr-venc-ex" type="date" style="max-width:200px"><button type="button" class="loc-btn" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('cobr-venc-ex').value=''">Voltar ao padrão</button><span id="cobr-venc-padrao" style="font-size:11px;color:var(--muted)"></span></div></div>
         <div class="loc-cfield"><label>Desconto (R$)</label><input class="loc-cinput" id="cobr-desconto" type="text" inputmode="decimal" placeholder="0,00" oninput="cobrAtualizarPreview()"></div>
         <div class="loc-cfield"><label>Desconto incide na taxa de administração?</label><select class="loc-cinput" id="cobr-desconto-incide-taxa">
           <option value="Nao">Não (taxa sobre o aluguel cheio)</option>
@@ -19843,7 +19844,7 @@ window.cpRenderFixas=cpRenderFixas;
         return {id:String(cell(row,ml,'ID')),mes:mesRef(cell(row,ml,'Mes Ref')),contrato:String(cell(row,ml,'Contrato')),aluguel:num(cell(row,ml,'Aluguel')),taxa:num(cell(row,ml,'Taxa Adm')),
           condominio:cell(row,ml,'Condominio'),iptu:cell(row,ml,'IPTU'),
           iptuParcelaNum:cell(row,ml,'IPTU Parcela Numero'),iptuParcelaTotal:cell(row,ml,'IPTU Parcela Total'),
-          reciboEnviado:cell(row,ml,'Recibo Enviado'),dataEnvioRecibo:cell(row,ml,'Data Envio Recibo')||'',
+          reciboEnviado:cell(row,ml,'Recibo Enviado'),dataEnvioRecibo:cell(row,ml,'Data Envio Recibo')||'',vencEx:cell(row,ml,'Vencimento Excepcional')||'',
           aguaPriv:cell(row,ml,'Agua Privativa'),gasPriv:cell(row,ml,'Gas Privativa'),aguaComum:cell(row,ml,'Agua Comum'),gasPiscina:cell(row,ml,'Gas Piscina'),
           energiaComum:cell(row,ml,'Energia Comum'),taxaLeitura:cell(row,ml,'Taxa Leitura'),fundoFerias:cell(row,ml,'Fundo Ferias'),decimoTerceiro:cell(row,ml,'Decimo Terceiro'),
           desconto:cell(row,ml,'Desconto'),multa:cell(row,ml,'Multa'),juros:cell(row,ml,'Juros'),
@@ -20312,7 +20313,7 @@ window.cpRenderFixas=cpRenderFixas;
       reciboLocItensCondo(l,'inquilino').forEach(function(it){if(it[1])itens.push([it[0],it[1]]);});
       if(l.desconto)itens.push(['Desconto',-l.desconto]);
       var total=Math.round(itens.reduce(function(s,it){return s+it[1];},0)*100)/100;
-      var venc=diaMes(c.venc,l.mes);
+      var venc=((l.vencEx&&locParseDataBR_(l.vencEx))||diaMes(c.venc,l.mes));
       return {mes:l.mes,venc:venc,dias:venc?diasAtrasoFrom(venc,false):null,itens:itens,total:total};
     });
     meses.sort(function(a,b){return (a.venc&&b.venc)?(a.venc-b.venc):0;});
@@ -20966,8 +20967,10 @@ window.cpRenderFixas=cpRenderFixas;
              // Observações do mês, cada uma só aparece no documento correspondente (recibo x informe).
              observacoesLocatario:l.observacoesLocatario||'',observacoesLocador:l.observacoesLocador||'',
              valorRecebido:(l.valorRecebido!=null&&l.valorRecebido!=='')?num(l.valorRecebido):'',
-             saldoProxMesDesc:l.saldoProxMesDesc||'',saldoProxMesValor:num(l.saldoProxMesValor)};
+             saldoProxMesDesc:l.saldoProxMesDesc||'',saldoProxMesValor:num(l.saldoProxMesValor),
+             vencEx:String(l.vencEx||'').trim()};
       if(o){
+        if(o.vencEx!=null)r.vencEx=String(o.vencEx).trim();
         if(o.aluguel!=null)r.aluguel=num(o.aluguel);
         if(o.statusAluguel)r.statusAluguel=o.statusAluguel;
         if(o.statusRep)r.statusRep=o.statusRep;
@@ -21288,7 +21291,7 @@ window.cpRenderFixas=cpRenderFixas;
       'IPTU Parcela Numero':w.iptuParcelaNum||'','IPTU Parcela Total':w.iptuParcelaTotal||'',
       'Recibo Enviado':w.reciboEnviado?'Sim':'Nao','Data Envio Recibo':w.dataEnvioRecibo||'',
       'Observacoes':w.observacoesLocador||'','Observacoes Locatario':w.observacoesLocatario||'',
-      'Valor Recebido':(w.valorRecebido!=null&&w.valorRecebido!=='')?w.valorRecebido:'','Saldo Prox Mes Desc':w.saldoProxMesDesc||'','Saldo Prox Mes Valor':w.saldoProxMesValor||''};
+      'Vencimento Excepcional':w.vencEx||'','Valor Recebido':(w.valorRecebido!=null&&w.valorRecebido!=='')?w.valorRecebido:'','Saldo Prox Mes Desc':w.saldoProxMesDesc||'','Saldo Prox Mes Valor':w.saldoProxMesValor||''};
     try{fetch(URL_AS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({acao:'atualizar_locl',id:l.id,campos:campos})});}catch(e){}
   }
 
@@ -21398,6 +21401,8 @@ window.cpRenderFixas=cpRenderFixas;
     document.getElementById('cobr-iptu-tipo').value=(l.iptuParcelaTotal>0)?'parcelado':'mensal';
     document.getElementById('cobr-iptu-parcelas-wrap').style.display=(l.iptuParcelaTotal>0)?'block':'none';
     document.getElementById('cobr-desconto-incide-taxa').value=l.descontoIncideTaxa?'Sim':'Nao';
+    var vxEl=document.getElementById('cobr-venc-ex');
+    if(vxEl){vxEl.value=l.vencEx?locIsoFromBR(l.vencEx):'';var vp=document.getElementById('cobr-venc-padrao');if(vp)vp.textContent='Padrão do contrato: dia '+((contratosById[contrato]||{}).venc||'—');}
     document.getElementById('cobr-obs-locatario').value=l.observacoesLocatario||'';
     document.getElementById('cobr-obs-locador').value=l.observacoesLocador||'';
     document.getElementById('cobr-outras-lista').innerHTML='';
@@ -21506,6 +21511,8 @@ window.cpRenderFixas=cpRenderFixas;
     patch.iptuParcelaNum=(iptuTipo==='parcelado')?(parseInt(document.getElementById('cobr-iptu-parcela-num').value,10)||0):0;
     patch.iptuParcelaTotal=(iptuTipo==='parcelado')?(parseInt(document.getElementById('cobr-iptu-parcela-total').value,10)||0):0;
     patch.descontoIncideTaxa=document.getElementById('cobr-desconto-incide-taxa').value==='Sim';
+    var vxV=(document.getElementById('cobr-venc-ex')||{}).value||'';
+    patch.vencEx=vxV?locDtBRfromInput(vxV):'';
     patch.observacoesLocatario=document.getElementById('cobr-obs-locatario').value.trim();
     patch.observacoesLocador=document.getElementById('cobr-obs-locador').value.trim();
     // Sempre que os componentes (aluguel, condomínio, IPTU, desconto...) são editados por aqui,
@@ -21649,7 +21656,8 @@ window.cpRenderFixas=cpRenderFixas;
     var c=contratosById[contrato]||{};
     document.getElementById('calcmj-base').value=cobrBaseAluguelEncargosAtual_().toFixed(2);
     var mesLancamento=selMes||mesAtual();
-    var vencData=inadLocVencimentoData_(mesLancamento,num(c.venc));
+    var wMes=(workingList()||[]).filter(function(x){return x.mes===mesLancamento&&x.contrato===contrato;})[0];
+    var vencData=wMes?vencDataLanc_(wMes,c):inadLocVencimentoData_(mesLancamento,num(c.venc));
     document.getElementById('calcmj-venc').value=dataISO_(vencData);
     document.getElementById('calcmj-pagto').value=hojeISO_();
     document.getElementById('calcmj-pct-multa').value=num(c.multaAtrasoPct)||'';
@@ -22182,6 +22190,7 @@ window.cpRenderFixas=cpRenderFixas;
     return MESES_EXTENSO[mi]+'/'+p[1];
   }
   function reciboLocVencimentoStr(w,c){
+    if(w&&String(w.vencEx||'').trim())return String(w.vencEx).trim(); // vencimento excepcional deste mês
     var p=String(w.mes||'').split('/'); var dia=String(c.venc||'').trim();
     if(!dia||p.length!==2)return '';
     return (dia.length===1?'0'+dia:dia)+'/'+p[0]+'/'+p[1];
@@ -22447,16 +22456,23 @@ window.cpRenderFixas=cpRenderFixas;
     var ultimoDia=new Date(yyyy,mm,0).getDate();
     return new Date(yyyy,mm-1,Math.min(diaVenc||1,ultimoDia));
   }
+  // Data de vencimento EFETIVA do lançamento: a data excepcional do mês (se houver) ou o dia padrão do contrato.
+  function vencDataLanc_(l,c){
+    var ex=String((l&&l.vencEx)||'').trim();
+    if(ex){var d=locParseDataBR_(ex);if(d)return d;}
+    return inadLocVencimentoData_(l.mes,num(c&&c.venc));
+  }
   function inadLocEstaAtrasado_(l,c){
     if(l.statusAluguel==='Atrasado')return true;
     if(l.statusAluguel!=='Pendente')return false;
-    if(inadLocMesJaPassou_(l.mes))return true; // mês inteiro já ficou pra trás — pendente vira atraso
-    var venc=inadLocVencimentoData_(l.mes,num(c.venc));
+    var venc=vencDataLanc_(l,c);
+    var temEx=!!(l.vencEx&&String(l.vencEx).trim());
+    if(!temEx&&inadLocMesJaPassou_(l.mes))return true; // mês inteiro já ficou pra trás — pendente vira atraso
     var hoje=new Date();hoje.setHours(0,0,0,0);
-    return venc<hoje; // mês corrente: só conta se o dia de vencimento já passou
+    return venc<hoje; // só conta se a data de vencimento (padrão ou excepcional) já passou
   }
   function inadLocDiasAtraso_(l,c){
-    var venc=inadLocVencimentoData_(l.mes,num(c.venc));
+    var venc=vencDataLanc_(l,c);
     var hoje=new Date();hoje.setHours(0,0,0,0);
     return Math.max(0,Math.round((hoje-venc)/86400000));
   }
@@ -25604,7 +25620,7 @@ window.cpRenderFixas=cpRenderFixas;
     lst.forEach(function(l){
       var c=contratosById[l.contrato]||{};
       var atrasado=(l.statusAluguel==='Atrasado');
-      var pendVencido=(l.statusAluguel==='Pendente'&&ehMesCorrente&&num(c.venc)>0&&num(c.venc)<diaHoje);
+      var pendVencido=(l.statusAluguel==='Pendente'&&(String(l.vencEx||'').trim()?(vencDataLanc_(l,c)<new Date(new Date().setHours(0,0,0,0))):(ehMesCorrente&&num(c.venc)>0&&num(c.venc)<diaHoje)));
       if(atrasado||pendVencido) out.push({contrato:l.contrato,locatario:c.locatario||l.contrato,aluguel:l.aluguel,venc:c.venc,status:atrasado?'atrasado':'vencido'});
     });
     return {mes:m,itens:out};
