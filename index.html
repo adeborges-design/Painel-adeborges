@@ -30282,11 +30282,12 @@ window.imovExcluir = function (id) {
   }
   function css(){
     var st=document.createElement('style');
-    st.textContent='#lfDicas{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9990;max-width:min(760px,calc(100vw - 24px));display:flex;align-items:center;gap:10px;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-left:3px solid var(--accent2);border-radius:10px;padding:8px 10px 8px 12px;box-shadow:0 6px 24px rgba(0,0,0,.28);font-size:12.5px;line-height:1.45}'
-      +'#lfDicas .lfd-ico{font-size:16px;flex:none}#lfDicas .lfd-txt{flex:1;min-width:0}#lfDicas .lfd-tit{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:1px}'
-      +'#lfDicas button{flex:none;background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11.5px;cursor:pointer}#lfDicas button:hover{color:var(--text)}'
-      +'#lfDicasMini{position:fixed;left:12px;bottom:14px;z-index:9990;width:30px;height:30px;border-radius:50%;background:var(--surface);color:var(--text);border:1px solid var(--border2);cursor:pointer;font-size:15px;box-shadow:0 3px 12px rgba(0,0,0,.25);display:none}'
-      +'@media print{#lfDicas,#lfDicasMini{display:none!important}}@media (max-width:600px){#lfDicas{bottom:8px}#lfDicas .lfd-prox{display:none}}';
+    st.textContent='#lfDicas{position:fixed;right:14px;bottom:96px;z-index:9990;width:min(400px,calc(100vw - 24px));display:flex;align-items:flex-start;gap:10px;background:linear-gradient(135deg,#1b3a5c,#27507d);color:#fff;border:1px solid #c8a96e;border-left:5px solid #c8a96e;border-radius:12px;padding:12px 12px 12px 14px;box-shadow:0 10px 32px rgba(0,0,0,.45);font-size:15px;line-height:1.5;touch-action:none}'
+      +'#lfDicas .lfd-ico{font-size:22px;flex:none;cursor:grab}#lfDicas .lfd-txt{flex:1;min-width:0}#lfDicas .lfd-tit{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#f0d9a3;display:block;margin-bottom:3px;cursor:grab}'
+      +'#lfDicas .lfd-btns{display:flex;flex-direction:column;gap:6px;flex:none}'
+      +'#lfDicas button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:7px;padding:4px 10px;font-size:13px;cursor:pointer}#lfDicas button:hover{background:rgba(255,255,255,.25)}'
+      +'#lfDicasMini{position:fixed;right:14px;bottom:96px;z-index:9990;width:42px;height:42px;border-radius:50%;background:#1b3a5c;color:#fff;border:2px solid #c8a96e;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.4);display:none}'
+      +'@media print{#lfDicas,#lfDicasMini{display:none!important}}@media (max-width:600px){#lfDicas{right:8px;bottom:90px;font-size:14px}}';
     document.head.appendChild(st);
   }
   function render(){
@@ -30304,12 +30305,34 @@ window.imovExcluir = function (id) {
   function iniciar(){
     css();
     box=document.createElement('div');box.id='lfDicas';box.setAttribute('role','note');
-    box.innerHTML='<span class="lfd-ico">💡</span><span class="lfd-txt"></span><button type="button" class="lfd-prox" title="Mostrar outra dica">próxima</button><button type="button" class="lfd-x" title="Esconder as dicas por hoje">✕</button>';
+    box.innerHTML='<span class="lfd-ico" title="Arraste para mover o banner">💡</span><span class="lfd-txt"></span><span class="lfd-btns"><button type="button" class="lfd-prox" title="Mostrar outra dica">próxima</button><button type="button" class="lfd-x" title="Esconder as dicas por hoje">✕</button></span>';
     box.querySelector('.lfd-prox').addEventListener('click',proxima);
     box.querySelector('.lfd-x').addEventListener('click',function(){setOculto(true);render();});
     mini=document.createElement('button');mini.id='lfDicasMini';mini.type='button';mini.title='Mostrar as dicas do sistema';mini.textContent='💡';
     mini.addEventListener('click',function(){setOculto(false);render();});
     document.body.appendChild(box);document.body.appendChild(mini);
+    // Posição: arraste o banner (pelo 💡 ou pelo título) para onde não atrapalhar; fica guardada neste navegador.
+    var POS_KEY='lf_dicas_pos';
+    function aplicaPos(p){[box,mini].forEach(function(el){el.style.left=p.l+'px';el.style.top=p.t+'px';el.style.right='auto';el.style.bottom='auto';});}
+    try{var sp=JSON.parse(localStorage.getItem(POS_KEY)||'null');if(sp&&isFinite(sp.l)&&isFinite(sp.t))aplicaPos({l:Math.max(0,Math.min(sp.l,innerWidth-60)),t:Math.max(0,Math.min(sp.t,innerHeight-60))});}catch(e){}
+    var arr=null;
+    function iniciaArrasto(ev){
+      if(ev.target.closest('button'))return;
+      var alvo=(box.style.display==='none')?mini:box, r=alvo.getBoundingClientRect();
+      arr={dx:ev.clientX-r.left,dy:ev.clientY-r.top,mov:false};
+      ev.preventDefault();
+    }
+    box.addEventListener('pointerdown',iniciaArrasto);
+    document.addEventListener('pointermove',function(ev){
+      if(!arr)return;arr.mov=true;
+      var l=Math.max(0,Math.min(ev.clientX-arr.dx,innerWidth-60)),t=Math.max(0,Math.min(ev.clientY-arr.dy,innerHeight-50));
+      aplicaPos({l:l,t:t});
+    });
+    document.addEventListener('pointerup',function(){
+      if(!arr)return;
+      if(arr.mov){var r=box.getBoundingClientRect();try{localStorage.setItem(POS_KEY,JSON.stringify({l:Math.round(r.left),t:Math.round(r.top)}));}catch(e){}}
+      arr=null;
+    });
     var mo=new MutationObserver(atualizaContexto);
     OVERLAYS.forEach(function(o){var e=document.getElementById(o[0]);if(e)mo.observe(e,{attributes:true,attributeFilter:['class']});});
     atualizaContexto();render();
