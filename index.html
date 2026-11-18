@@ -21482,14 +21482,14 @@ window.cpRenderFixas=cpRenderFixas;
     Array.from(document.querySelectorAll('#cobr-outras-lista .cobr-item-linha')).forEach(function(div){
       var destinoEl=div.querySelector('.cobr-item-destino');
       if(destinoEl&&destinoEl.value==='escritorio'){ // não entra na conta do que vai pro locador, mas o locatário paga (se positivo)
-        var vEsc=num(div.querySelector('.cobr-item-valor').value); if(vEsc>0)totEsc+=vEsc; return;
+        var vEsc=num(div.querySelector('.cobr-item-valor').value); totEsc+=vEsc; return;
       }
       tot+=num(div.querySelector('.cobr-item-valor').value);
     });
     document.getElementById('cobrTotalPreview').textContent=BRL(tot);
     var boxEsc=document.getElementById('cobrTotalEscritorioBox');
     if(boxEsc){
-      boxEsc.style.display=totEsc>0?'':'none';
+      boxEsc.style.display=totEsc!==0?'':'none';
       document.getElementById('cobrTotalEscritorio').textContent=BRL(totEsc);
       document.getElementById('cobrTotalInquilino').textContent=BRL(tot+totEsc);
     }
@@ -22038,7 +22038,7 @@ window.cpRenderFixas=cpRenderFixas;
   // aparece pro inquilino (ex.: uma cobrança sua ao locador que não é da conta do inquilino);
   // 'escritorio' é uma cobrança que fica só entre você e o locatário (ex.: seguro fiança que
   // você pagou e está recuperando em parcelas) — aparece no recibo do inquilino quando
-  // positivo, mas NUNCA entra na conta do que vai pro locador.
+  // (cobrança) ou negativo (crédito, ex.: pagamento a maior no mês anterior), mas NUNCA entra na conta do que vai pro locador.
   function parseOutrasCobrancas(l){
     var bruto=String(l.outrasDesc||'').trim();
     if(!bruto)return [];
@@ -22097,7 +22097,7 @@ window.cpRenderFixas=cpRenderFixas;
       // inquilino não pode nem saber que existem.
       outras=outras.filter(function(it){
         if(it.destino==='privado_locador')return false;
-        return it.destino!=='escritorio'||it.valor>0;
+        return true; // 'escritorio' entra tanto positivo (cobrança) quanto negativo (crédito ao locatário, ex.: pagamento a maior)
       });
     }
     return [
