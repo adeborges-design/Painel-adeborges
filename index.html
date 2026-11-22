@@ -2664,12 +2664,18 @@
          de forma confiável o fundo branco definido em html/body no Chrome — é o que
          causava a borda preta ao redor do documento no PDF gerado/impresso. */
       background: #ffffff;
-      @bottom-right {
-        content: counter(page);
+      /* "Página X de Y" no canto superior direito de TODAS as folhas (inclusive a primeira): quem
+         recebe relatório/informe de várias páginas reclamava de não perceber a página 2. */
+      @top-right {
+        content: "Página " counter(page) " de " counter(pages);
         font-family: 'Segoe UI', sans-serif;
-        font-size: 8pt;
-        color: #404040;
+        font-size: 9pt;
+        font-weight: 600;
+        color: #1a2a4a;
+        vertical-align: bottom;
+        padding-bottom: 6pt;
       }
+      @bottom-right { content: none; }
     }
     @page :first {
       @bottom-right { content: none; }
@@ -17606,7 +17612,10 @@ window.cpRenderFixas=cpRenderFixas;
   <div class="cobr-wrap">
     <div class="cobr-header">
       <div class="cobr-title">🧲 Triagem — <span id="captDetalheNome"></span></div>
-      <button class="btn-form-cancel" onclick="document.getElementById('modalCaptDetalhe').classList.remove('open')">✕</button>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="loc-btn primary" id="captBtnPdf" type="button">📄 Salvar em PDF</button>
+        <button class="btn-form-cancel" onclick="document.getElementById('modalCaptDetalhe').classList.remove('open')">✕</button>
+      </div>
     </div>
     <div class="cobr-body" id="captDetalheBody"></div>
   </div>
@@ -18071,6 +18080,19 @@ window.cpRenderFixas=cpRenderFixas;
   body.printing-rel-inad-loc .rel-imovel-bloco,
   body.printing-rel-inad-loc .parc-header,
   body.printing-rel-inad-loc .parc-tarefa-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+  #captPrintDoc { display:none; }
+  body.printing-capt * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.printing-capt html, body.printing-capt body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
+  body.printing-capt > *:not(#captPrintDoc) { display:none !important; }
+  body.printing-capt #captPrintDoc { display:block !important; position:static !important; background:#fff !important; color:#000 !important; font-family:'Segoe UI',sans-serif; font-size:11pt; line-height:1.15; }
+  #captPrintDoc h1 { font-size:15pt; margin:0 0 2pt; color:#1a2a4a; }
+  #captPrintDoc .cp-sub { font-size:9.5pt; color:#404040; margin:0 0 10pt; padding-bottom:6pt; border-bottom:1.5pt solid #1a2a4a; }
+  #captPrintDoc h2 { font-size:11.5pt; margin:12pt 0 5pt; color:#1a2a4a; border-bottom:.5pt solid #999; padding-bottom:2pt; break-after:avoid; }
+  #captPrintDoc table { width:100%; border-collapse:collapse; }
+  #captPrintDoc td { padding:3pt 4pt; vertical-align:top; border-bottom:.25pt solid #ddd; font-size:10.5pt; }
+  #captPrintDoc td.cp-l { width:34%; font-weight:700; color:#333; }
+  #captPrintDoc tr { break-inside:avoid; }
+  #captPrintDoc .cp-nd { color:#777; font-style:italic; }
   body.printing-rel-mensal * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-rel-mensal html, body.printing-rel-mensal body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
   body.printing-rel-mensal > * { display:none !important; }
@@ -18093,6 +18115,8 @@ window.cpRenderFixas=cpRenderFixas;
      abre o relatório antes do primeiro imóvel), e o bloco final (subtotal/despesas/total geral/
      dados bancários) sai junto, inteiro, numa última página separada da última locação. */
   body.printing-rel-mensal .rel-imovel-bloco + .rel-imovel-bloco { page-break-before: always !important; break-before: page !important; }
+  .rel-continua-print { display:none; }
+  body.printing-rel-mensal .rel-continua-print { display:block !important; margin:12px 0 0; padding:8px 12px; border:1px dashed #1a2a4a; border-radius:6px; font-size:12px; font-weight:700; color:#1a2a4a; text-align:center; }
   body.printing-rel-mensal .rel-final-bloco { page-break-before: always !important; break-before: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   body.printing-informes-lote * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body.printing-informes-lote html, body.printing-informes-lote body { background:#fff !important; margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; }
@@ -23081,6 +23105,7 @@ window.cpRenderFixas=cpRenderFixas;
       +'<div class="parc-body">'
       +'<div class="parc-section"><div class="parc-section-label">Locador</div><div class="parc-processo-nome">'+E(nome)+'</div><div class="parc-processo-num">Referente a '+E(mesExtenso(mes))+' — '+qtdAptos+' imóvel(is) apto(s) a repassar'+((linhas.length-qtdAptos)?' (+ '+(linhas.length-qtdAptos)+' pago(s) pela seguradora)':'')+((naoRecebidos||jaRepassados)?' <span style="color:var(--yellow)">— '+[naoRecebidos?naoRecebidos+' pendente/atrasado':'',jaRepassados?jaRepassados+' já repassado(s)':''].filter(Boolean).join(', ')+', não incluído(s)</span>':'')+'</div></div>'
       +blocos
+      +'<div class="rel-continua-print">➜ Continua na página seguinte: subtotal, despesas/créditos do locador, total geral do mês e dados bancários.</div>'
       +'<div class="rel-final-bloco">'
       +subtotalHtml
       +avulsosHtml
@@ -26410,6 +26435,32 @@ window.cpRenderFixas=cpRenderFixas;
     return '<div style="margin-bottom:18px"><div style="font-family:\'DM Serif Display\',serif;font-size:16px;margin-bottom:8px;color:var(--accent2)">' + E(titulo) + '</div>' + conteudoHtml + '</div>';
   }
 
+  // Ficha de triagem para PDF: só o que o cliente informou (sem status nem notas internas),
+  // pronta para instruir peça judicial ou requerimento administrativo.
+  window.captImprimirFicha = function(id){
+    var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
+    if (!x) return;
+    function lin(l, k){ var v = x[k]; return '<tr><td class="cp-l">' + E(l) + '</td><td>' + (v ? E(v) : '<span class="cp-nd">Não informado</span>') + '</td></tr>'; }
+    function sec(t, linhas){ return '<h2>' + E(t) + '</h2><table>' + linhas + '</table>'; }
+    var arq = '';
+    try { var a = x['Arquivos'] ? JSON.parse(x['Arquivos']) : []; arq = a.map(function(f){ return '<tr><td colspan="2">' + E(f.nome||'arquivo') + ' — ' + E(f.url||'') + '</td></tr>'; }).join(''); }
+    catch(e){ arq = x['Arquivos'] ? '<tr><td colspan="2">' + E(x['Arquivos']) + '</td></tr>' : ''; }
+    var html = '<h1>Ficha de triagem — ' + E(x['Nome Completo']||'') + '</h1>' +
+      '<p class="cp-sub">Formulário recebido em ' + E(x['Timestamp']||'—') + ' · Escritório Adenilson Borges — OAB/SP 335.600</p>' +
+      sec('Dados pessoais', lin('Nome completo','Nome Completo') + lin('CPF','CPF') + lin('Data de nascimento','Data Nascimento') + lin('Telefone','Telefone') + lin('E-mail','E-mail') + lin('Endereço','Endereco')) +
+      sec('Vínculo empregatício', lin('Empresa','Empresa') + lin('CNPJ','CNPJ Empresa') + lin('Cargo','Cargo') + lin('Carteira assinada','Carteira Assinada') + lin('Admissão','Data Admissao') + lin('Ainda trabalha lá','Ainda Trabalha') + lin('Saída','Data Saida') + lin('Salário aproximado','Salario Aproximado') + lin('Como terminou','Como Terminou')) +
+      sec('Possível reclamação', lin('Verbas pleiteadas','Verbas Pleiteadas') + lin('Outras verbas','Verbas Outro') + lin('Documentos que possui','Documentos Que Tem')) +
+      sec('Disponibilidade e observações', lin('Disponibilidade para atendimento','Disponibilidade') + lin('Observações do cliente','Observacoes Cliente')) +
+      sec('Documentos anexados', arq || '<tr><td colspan="2"><span class="cp-nd">Nenhum documento anexado no formulário.</span></td></tr>');
+    var d = document.getElementById('captPrintDoc');
+    if (!d) { d = document.createElement('div'); d.id = 'captPrintDoc'; document.body.appendChild(d); }
+    d.innerHTML = html;
+    var tit = document.title;
+    document.title = 'Ficha de triagem - ' + (x['Nome Completo']||'cliente');
+    imprimirComClasse_('printing-capt', 200);
+    setTimeout(function(){ document.title = tit; }, 4000);
+  };
+
   window.captAbrirDetalhe = function(id){
     var x = (window.captLista||[]).find(function(v){ return String(v['ID']) === String(id); });
     if (!x) return;
@@ -26438,6 +26489,8 @@ window.cpRenderFixas=cpRenderFixas;
         '</div>'
       );
     document.getElementById('captDetalheBody').innerHTML = body;
+    var bp = document.getElementById('captBtnPdf');
+    if (bp) bp.onclick = function(){ captImprimirFicha(id); };
     document.getElementById('modalCaptDetalhe').classList.add('open');
   };
 
