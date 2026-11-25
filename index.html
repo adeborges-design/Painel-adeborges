@@ -5519,12 +5519,12 @@
      padronizado no WhatsApp, salvar PNG ou copiar o texto) -->
 <div class="modal-card-overlay" id="modalCardHon">
   <div class="card-preview-wrap">
-    <div class="card-preview-title">Card de Honorários</div>
+    <div class="card-preview-title" id="cardHonTituloModal">Card de Honorários</div>
     <div class="card-preview-sub" id="cardHonPreviewSub">pré-visualização para envio</div>
 
     <div class="atend-card" id="atendCardHon">
       <div class="atend-header">
-        <div class="atend-header-title">Aviso de Honorários em Aberto</div>
+        <div class="atend-header-title" id="cardHonTitulo">Aviso de Honorários em Aberto</div>
         <div class="atend-header-sub">Escritório Adenilson Borges</div>
       </div>
       <div class="atend-body">
@@ -15113,15 +15113,19 @@ function honAtualizarEstadoFiltros_(){
 var CONTA_ESCRITORIO_HON={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
 // Card de Honorários usando o padrão comum de compartilhamento (ShareKit).
 var _cardHonImgCache_=ShareKit.criarCache(gerarImagemCardHonFile);
-window.abrirCardHonorarios=function(k,idx){
+window.abrirCardHonorarios=function(k,idx,modo){
   idx=idx||0;
+  modo=(modo==='lembrete')?'lembrete':'aberto';
   var d=(window._honAvisoData||{})[k];
-  var lista=(window._honAvisoParcelas||{})[k]||[];
+  var lista=((modo==='lembrete')?(window._honLembreteParcelas||{}):(window._honAvisoParcelas||{}))[k]||[];
   var p=lista[idx];
   if(!d||!p){alert('Não encontrei os dados dessa parcela pra montar o aviso.');return;}
   var modal=document.getElementById('modalCardHon');
   if(!modal)return;
-  modal.dataset.k=k;modal.dataset.idx=String(idx);
+  modal.dataset.k=k;modal.dataset.idx=String(idx);modal.dataset.modo=modo;
+  var ehL=(modo==='lembrete');
+  var tEl=document.getElementById('cardHonTitulo');if(tEl)tEl.textContent=ehL?'Lembrete de Pagamento de Honorários':'Aviso de Honorários em Aberto';
+  var tmEl=document.getElementById('cardHonTituloModal');if(tmEl)tmEl.textContent=ehL?'Lembrete de Vencimento':'Card de Honorários';
   document.getElementById('cardHonNome').textContent=(d.cliente||'').toUpperCase();
   document.getElementById('cardHonProcesso').textContent=d.proc?('Processo '+d.proc):'';
   // Mostra TODAS as parcelas em atraso deste contrato (não só a que foi clicada) — se o
@@ -15129,7 +15133,15 @@ window.abrirCardHonorarios=function(k,idx){
   // dias cada uma está em atraso, em vez de dar a impressão de que só existe uma pendência.
   var labelEl=document.getElementById('cardHonParcelasLabel');
   var boxEl=document.getElementById('cardHonParcelasBox');
-  if(labelEl&&boxEl){
+  if(labelEl&&boxEl&&ehL){
+   labelEl.textContent='Próximo Vencimento';
+   boxEl.innerHTML='<div class="atend-box destaque-cliente" style="margin-bottom:8px">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">Parcela '+(p.ref||'-')+'</div>'
+    +'<div style="font-size:12px;margin-bottom:6px">Vencimento: <b>'+(p.venc||'-')+'</b> &nbsp;•&nbsp; '+(p.diasParaVencer===0?'vence hoje':'vence em '+p.diasParaVencer+(p.diasParaVencer===1?' dia':' dias'))+'</div>'
+    +'<div style="font-size:19px;font-weight:700">'+fmr(p.valor||0)+'</div>'
+    +'<div style="font-size:12px;margin-top:6px">Pagamento via Pix — chave abaixo</div>'
+    +'</div>';
+  } else if(labelEl&&boxEl){
    labelEl.textContent=lista.length>1?('Parcelas em Aberto ('+lista.length+')'):'Parcela em Aberto';
    var totalParc=0;
    boxEl.innerHTML=lista.map(function(pp){
@@ -15146,7 +15158,7 @@ window.abrirCardHonorarios=function(k,idx){
   if(d.senhaCliente){secSenha.style.display='';document.getElementById('cardHonSenha').textContent=d.senhaCliente;}
   else{secSenha.style.display='none';}
   modal.classList.add('open');
-  _cardHonImgCache_.preAquecer(k+'|'+idx);
+  _cardHonImgCache_.preAquecer(modo+'|'+k+'|'+idx);
 };
 function getCardHonImagemFile(){ return _cardHonImgCache_.obter(); }
 function gerarImagemCardHonFile(){
@@ -15164,8 +15176,20 @@ function montarTextoCardHon_(formatoWpp){
   var modal=document.getElementById('modalCardHon');
   var k=modal.dataset.k,idx=parseInt(modal.dataset.idx)||0;
   var d=(window._honAvisoData||{})[k]||{};
-  var lista=(window._honAvisoParcelas||{})[k]||[];
   var b=formatoWpp?'*':'',ib=formatoWpp?'_':'';
+  if(modal.dataset.modo==='lembrete'){
+   var pl=((window._honLembreteParcelas||{})[k]||[])[idx];
+   if(pl){
+    var prim=String(d.cliente||'').trim().split(/\s+/)[0];prim=prim?(prim.charAt(0).toUpperCase()+prim.slice(1).toLowerCase()):'';
+    var quando=pl.diasParaVencer===0?'vence '+b+'hoje'+b:(pl.diasParaVencer===1?'vence '+b+'amanhã'+b:'vence em '+b+pl.diasParaVencer+' dias'+b);
+    var t='Olá'+(prim?', '+prim:'')+'! Tudo bem?\n\nPassando para lembrar que a parcela '+pl.ref+' dos honorários '+quando+', no dia '+b+pl.venc+b+'.\n\n';
+    t+=b+'Valor: '+fmr(pl.valor||0)+b+'\n'+b+'Chave Pix: '+CONTA_ESCRITORIO_HON.pix+b+'\nTitular: '+CONTA_ESCRITORIO_HON.titular+'\n\n';
+    t+='Depois do pagamento, se puder, me envie o comprovante por aqui. Qualquer dúvida, estou à disposição.\n\n';
+    t+=window.AVISO_GOLPE_TEXTO+'ADENILSON BORGES DA SILVA - OAB/SP 335.600 - (11) 99931-3712';
+    return t;
+   }
+  }
+  var lista=(window._honAvisoParcelas||{})[k]||[];
   var txt=b+'AVISO DE HONORÁRIOS EM ABERTO'+b+'\n'+ib+'Escritório Adenilson Borges'+ib+'\n\n';
   txt+=b+'CLIENTE'+b+'\n'+(d.cliente||'')+'\n';
   if(d.proc)txt+='Processo: '+d.proc+'\n';
@@ -15307,7 +15331,7 @@ window.renderVencimentos=function(){
   // sobrepoe o calculo automatico mensal, uma data por parcela na ordem (entrada primeiro).
   var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey(honProcRotulo(pp),pp.nome)===k;});
   var datasCustom=[];
-  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
+  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(function(d){return d&&d.getFullYear()>=2000&&d.getFullYear()<=2100;});}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
   var start=datasCustom[0]||datas[0]||hoje;
   var plano=[];
@@ -15323,6 +15347,8 @@ window.renderVencimentos=function(){
   // cabeçalho do card usa sempre o índice 0 (a parcela mais antiga em aberto).
   window._honAvisoParcelas=window._honAvisoParcelas||{};
   window._honAvisoParcelas[k]=[];
+  window._honLembreteParcelas=window._honLembreteParcelas||{};
+  window._honLembreteParcelas[k]=[];
   var acoesFor=function(id){return '<div class="hon-acoes"><button class="btn-hon-edit" onclick="editarHonorario(\''+escAttr(id)+'\')">✏️</button><button class="btn-hon-del" onclick="excluirHonorario(\''+escAttr(id)+'\')">🗑️</button></div>';};
   plano.forEach(function(p){
    var stH,acoesH='';
@@ -15332,8 +15358,12 @@ window.renderVencimentos=function(){
      var idxAviso=window._honAvisoParcelas[k].length;
      window._honAvisoParcelas[k].push({ref:p.ref,venc:fdt(p.venc),valor:p.valor,diasAtraso:-diff});
      stH='<span class="hon-badge hv-badge-atraso">VENCIDA ha '+(-diff)+'d</span><span class="hon-alerta" title="Avisar cliente sobre esta parcela" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\','+idxAviso+')">⚠️</span>';atrasoCli+=p.valor;totAtraso+=p.valor;}
-    else if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>';tot30+=p.valor;temVencer30=true;}
-    else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>';if(diff<=30){tot30+=p.valor;temVencer30=true;}}}
+    else{
+     var idxLemb=window._honLembreteParcelas[k].length;
+     window._honLembreteParcelas[k].push({ref:p.ref,venc:fdt(p.venc),valor:p.valor,diasParaVencer:diff});
+     var bellH='<span class="hon-alerta" title="Lembrar o cliente deste vencimento (WhatsApp)" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\','+idxLemb+',\'lembrete\')">🔔</span>';
+     if(diff===0){stH='<span class="hon-badge hv-badge-hoje">VENCE HOJE</span>'+bellH;tot30+=p.valor;temVencer30=true;}
+     else{stH='<span class="hon-badge hv-badge-fut">a vencer em '+diff+'d</span>'+bellH;if(diff<=30){tot30+=p.valor;temVencer30=true;}}}}
    linhas+='<div class="hv-row"><span class="ref">'+esc(p.ref)+'</span><span class="dt">'+fdt(p.venc)+'</span><span class="vl">'+fmr(p.valor)+'</span><span class="st">'+stH+'</span>'+acoesH+'</div>';
   });
   // Filtro "tardio" dos cartões de resumo clicáveis — só dá pra saber se este contrato tem
@@ -15360,8 +15390,10 @@ window.renderVencimentos=function(){
   window._honAvisoData=window._honAvisoData||{};
   window._honAvisoData[k]={cliente:cliente,proc:proc,telefone:(procMatch&&procMatch.telefone)||'',senhaCliente:(procMatch&&procMatch.senhaCliente)||''};
   var btnAvisar=atrasoCli>0?' <button class="btn-hon-avisar" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\',0)" title="Monta o card padrão do escritório com a parcela em aberto pra enviar por WhatsApp">📱 Avisar cliente</button>':'';
+  var proxLemb=(window._honLembreteParcelas[k]||[])[0];
+  var btnLembrar=(proxLemb&&proxLemb.diasParaVencer<=30)?' <button class="btn-hon-avisar" style="background:rgba(224,124,58,.12);border-color:rgba(224,124,58,.35);color:var(--orange)" onclick="event.stopPropagation();abrirCardHonorarios(\''+escAttr(k)+'\',0,\'lembrete\')" title="Lembrete amigável do próximo vencimento, com valor e Pix, para enviar por WhatsApp">🔔 Lembrar cliente</button>':'';
   var aberto=atrasoCli>0?true:(honOpenState[k]===true);
-  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop+btnAvisar
+  cards.push({ordem:atrasoCli>0?0:(saldo>0?1:2),html:'<details class="hv-contrato"'+(aberto?' open':'')+' ontoggle="window.honToggleGroup(\''+escAttr(k)+'\',this.open)"><summary class="hv-contr-head"><span class="nome">'+esc(cliente)+'</span>'+badgeTop+btnAvisar+btnLembrar
    +(tipo?'<span class="hon-badge hv-badge-fut">'+esc(tipo)+'</span>':'')
    +(proc?'<span style="font-size:11px;color:var(--muted)">'+esc(proc)+'</span>':'')
    +'<span style="font-size:12px;color:var(--muted)">Contrato: <b style="color:var(--text)">'+(vTotal?fmr(vTotal):'-')+'</b> | Recebido: <b style="color:var(--green)">'+fmr(recebido)+'</b> | Saldo: <b style="color:var(--accent2)">'+fmr(saldo)+'</b>'+(formaPag?' | Forma: <b style="color:var(--text)">'+esc(formaPag)+'</b>':'')+'</span></summary>'
@@ -15446,7 +15478,7 @@ function calcAlertas(){
   var pags=rows.filter(function(r){return nbr(r['Valor Recebido'])>0;});
   var procMatch=(typeof allProcessos!=='undefined'?allProcessos:[]).find(function(pp){return gkey((typeof window.honProcRotulo==='function')?window.honProcRotulo(pp):(pp.processo||''),pp.nome)===k;});
   var datasCustom=[];
-  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(Boolean);}
+  if(procMatch&&procMatch.datasVencimento){datasCustom=String(procMatch.datasVencimento).split(/[,;]+/).map(function(s){return dbr(s.trim());}).filter(function(d){return d&&d.getFullYear()>=2000&&d.getFullYear()<=2100;});}
   var datas=rows.map(function(r){return dbr(r['Data Pagamento'])||dbr(r['Data Lancamento']);}).filter(Boolean).sort(function(a,b){return a-b;});
   var start=datasCustom[0]||datas[0]||hoje;
   var plano=[];
