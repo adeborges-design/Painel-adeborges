@@ -22078,6 +22078,34 @@ window.cpRenderFixas=cpRenderFixas;
     _reciboLocAvisoMulta_[(w.contrato||'')+'|'+(w.mes||'')]=!!on;
     window.abrirReciboLoc(_reciboLocContrato,_reciboLocTipo);
   };
+  // Multa e juros calculados direto do informe: mesma conta da calculadora de multa/juros dos
+  // encargos (multa = % fixo sobre a base; juros = % ao mês pro rata die desde o vencimento até
+  // HOJE), com base = aluguel + encargos cobrados do locatário + IPTU − desconto. Grava no
+  // lançamento (a taxa de administração é recalculada sozinha em workingList) e reabre o informe.
+  function reciboLocCalcMultaJuros_(w,c){
+    var vd=vencDataLanc_(w,c); if(!vd)return null;
+    var h=new Date(); h.setHours(0,0,0,0);
+    var dias=Math.round((h-vd)/86400000); if(dias<=0)return null;
+    var condo=reciboLocItensCondo(w,'inquilino').reduce(function(s,it){return s+(it[1]||0);},0);
+    var base=(w.aluguel||0)+condo+(w.iptu||0)-(w.desconto||0);
+    var pM=num(c.multaAtrasoPct), pJ=num(c.jurosMoraPct);
+    return {dias:dias,base:base,pM:pM,pJ:pJ,
+      multa:Math.round(base*(pM/100)*100)/100,
+      juros:Math.round(base*(pJ/100/30)*dias*100)/100};
+  }
+  window.reciboLocAplicarMultaJuros=function(){
+    var w=workingList().filter(function(x){return x.mes===selMes&&x.contrato===_reciboLocContrato;})[0]; if(!w)return;
+    var c=contratosById[w.contrato]||{};
+    var r=reciboLocCalcMultaJuros_(w,c);
+    if(!r){alert('Este lançamento ainda não está vencido.');return;}
+    if(!r.pM&&!r.pJ){alert('O contrato não tem percentual de multa nem de juros cadastrado.');return;}
+    if(!confirm('Aplicar neste informe, com atraso de '+r.dias+' dia(s):\n\nBase: '+BRL(r.base)+'\nMulta ('+r.pM+'%): '+BRL(r.multa)+'\nJuros ('+r.pJ+'% a.m.): '+BRL(r.juros)+'\n\nOs valores serão gravados no lançamento do mês. Continuar?'))return;
+    setOverride(w.contrato,{multa:r.multa,juros:r.juros});
+    gravarSheet(w.contrato);
+    logAuditoria_('Multa e juros aplicados pelo informe',w.contrato,'Mês '+w.mes+' — '+r.dias+' dia(s): multa '+BRL(r.multa)+', juros '+BRL(r.juros));
+    if(typeof locRender==='function')locRender();
+    window.abrirReciboLoc(_reciboLocContrato,_reciboLocTipo);
+  };
   var _reciboLocImgCache_=ShareKit.criarCache(function(){return gerarReciboLocImagemFile();});
   var CONTA_ESCRITORIO={titular:'Adenilson Borges da Silva',banco:'Itaú',agencia:'8397',conta:'04213-9',pix:'051.303.588-56 (CPF)'};
   // ---------- OUTRAS COBRANÇAS (lista com vários itens; valor negativo desconta do
@@ -23821,6 +23849,10 @@ window.cpRenderFixas=cpRenderFixas;
       // cobrada acima (em "Valores"), e repetir o aviso soaria como cobrança em dobro.
       var vencCorpo=(vencData?'<div>Vencimento: <strong>'+E(vencData)+'</strong></div>':'')
         +(!w.multa&&reciboLocAvisoMultaOn_(w)?'<div style="margin-top:6px;color:#f2d3b0;font-size:11.5px">O não pagamento no dia do vencimento acarreta automaticamente cobrança de multa'+(pctMulta?' de <strong>'+pctMulta+'%</strong>':' contratual')+', mais juros e correção monetária.</div>':'');
+      if(!locFoiRecebido_(w)&&!/rescis/i.test(w.outrasDesc||'')&&(num(c.multaAtrasoPct)||num(c.jurosMoraPct))){
+        var rmj=reciboLocCalcMultaJuros_(w,c);
+        if(rmj)vencCorpo+='<div data-html2canvas-ignore="true" class="entr-no-print" style="margin-top:8px"><button type="button" class="loc-btn" style="padding:5px 10px;font-size:11.5px" onclick="reciboLocAplicarMultaJuros()">'+((w.multa||w.juros)?'🔄 Recalcular':'⚡ Calcular')+' multa e juros até hoje ('+rmj.dias+' dia'+(rmj.dias>1?'s':'')+' de atraso)</button></div>';
+      }
       vencCorpo+=!w.multa?'<label data-html2canvas-ignore="true" class="entr-no-print" style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:11px;color:#8fadd4;cursor:pointer"><input type="checkbox" '+(reciboLocAvisoMultaOn_(w)?'checked ':'')+'onchange="reciboLocToggleAvisoMulta(this.checked)"> Exibir o aviso de multa por atraso neste informe</label>':'';
       vencSection='<div class="parc-section"><div class="parc-section-label">Vencimento</div><div class="parc-box" style="border-color:rgba(224,124,58,0.4)">'+vencCorpo+'</div></div>';
       contaTitulo='Dados bancários para pagamento';
